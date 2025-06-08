@@ -8,7 +8,7 @@ import { PanelLeft } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { Button, type ButtonProps } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
@@ -262,7 +262,7 @@ Sidebar.displayName = "Sidebar"
 
 const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
-  React.ComponentProps<typeof Button> & { asChild?: boolean }
+  ButtonProps & { asChild?: boolean }
 >(({ className, onClick, children, asChild = false, ...props }, ref) => {
   const { toggleSidebar } = useSidebar();
 
@@ -405,10 +405,11 @@ SidebarSeparator.displayName = "SidebarSeparator"
 
 const SidebarContent = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<"div">
->(({ className, ...props }, ref) => {
+  React.ComponentProps<"div"> & { asChild?: boolean }
+>(({ className, asChild, ...props }, ref) => {
+  const Comp = asChild ? Slot : "div";
   return (
-    <div
+    <Comp
       ref={ref}
       data-sidebar="content"
       className={cn(
@@ -715,13 +716,13 @@ SidebarMenuSubItem.displayName = "SidebarMenuSubItem"
 
 const SidebarMenuSubButton = React.forwardRef<
   HTMLButtonElement,
-  React.ComponentProps<"button"> & {
+  React.ComponentProps<"button"> & { // Changed from "a" to "button" for props
     asChild?: boolean
     size?: "sm" | "md"
     isActive?: boolean
   }
 >(({ asChild = false, size = "md", isActive, className, ...props }, ref) => {
-  const Comp = asChild ? Slot : "button"
+  const Comp = asChild ? Slot : "button"; // Changed default from "a" to "button"
 
   return (
     <Comp
