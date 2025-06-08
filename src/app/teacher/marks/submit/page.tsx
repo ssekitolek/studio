@@ -17,6 +17,8 @@ import { BookOpenCheck, Loader2, AlertTriangle, CheckCircle, ShieldAlert, FileWa
 import { getTeacherAssessments, getStudentsForAssessment, submitMarks } from "@/lib/actions/teacher-actions";
 import type { Student, AnomalyExplanation } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
+import { useSearchParams, useRouter } from "next/navigation"; // Added useRouter
+import Link from "next/link";
 
 const markSchema = z.object({
   studentId: z.string(), // This will hold studentIdNumber
@@ -42,6 +44,10 @@ interface AssessmentOption {
 
 export default function SubmitMarksPage() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const router = useRouter(); // For redirecting if no teacherId
+  const teacherId = searchParams.get("teacherId");
+
   const [isPending, startTransition] = useTransition();
   const [isLoadingAssessments, setIsLoadingAssessments] = useState(true);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
@@ -63,11 +69,15 @@ export default function SubmitMarksPage() {
   });
 
   useEffect(() => {
+    if (!teacherId) {
+      toast({ title: "Access Denied", description: "No teacher ID provided. Please login.", variant: "destructive" });
+      router.push("/login/teacher"); // Redirect to login if no teacherId
+      return;
+    }
     async function fetchAssessments() {
       setIsLoadingAssessments(true);
       try {
-        // Teacher ID would come from auth in a real app
-        const assessmentData = await getTeacherAssessments("teacher123"); 
+        const assessmentData = await getTeacherAssessments(teacherId as string); 
         setAssessments(assessmentData);
       } catch (error) {
         toast({ title: "Error", description: "Failed to load assessments.", variant: "destructive" });
@@ -76,7 +86,7 @@ export default function SubmitMarksPage() {
       }
     }
     fetchAssessments();
-  }, [toast]);
+  }, [toast, teacherId, router]);
 
   const handleAssessmentChange = async (assessmentId: string) => {
     form.setValue("assessmentId", assessmentId);
@@ -89,6 +99,7 @@ export default function SubmitMarksPage() {
     if (assessmentId) {
       setIsLoadingStudents(true);
       try {
+        // getStudentsForAssessment does not need teacherId if assessmentId is unique enough (e.g., examId_classId_subjectId)
         const students: Student[] = await getStudentsForAssessment(assessmentId);
         const marksData = students.map(student => ({
           studentId: student.studentIdNumber, 
@@ -125,7 +136,7 @@ export default function SubmitMarksPage() {
     }
     
     let invalidScoreFound = false;
-    data.marks.forEach((mark, index) => { // Added index for form.setError
+    data.marks.forEach((mark, index) => { 
       if (mark.score !== null && mark.score !== undefined) {
         if (mark.score < 0 || mark.score > selectedAssessment.maxMarks) {
           form.setError(`marks.${index}.score`, {
@@ -146,7 +157,7 @@ export default function SubmitMarksPage() {
       try {
         const result = await submitMarks({
           assessmentId: data.assessmentId,
-          marks: marksToSubmit as Array<{ studentId: string; score: number }>, // Ensure score is number
+          marks: marksToSubmit as Array<{ studentId: string; score: number }>, 
         });
         if (result.success) {
           toast({
@@ -161,12 +172,7 @@ export default function SubmitMarksPage() {
           } else {
             setAnomalies([]);
             setShowAnomalyWarning(false);
-            // Reset form after successful submission without anomalies
             form.reset({ assessmentId: data.assessmentId, marks: fields.map(f => ({...f, score: null})) }); 
-            // Or clear selection:
-            // form.reset({ assessmentId: "", marks: [] });
-            // setSelectedAssessment(null);
-            // replace([]);
           }
         } else {
           toast({ title: "Error", description: result.message, variant: "destructive" });
@@ -179,6 +185,26 @@ export default function SubmitMarksPage() {
   };
   
   const currentMaxMarks = selectedAssessment?.maxMarks ?? 100;
+
+  if (!teacherId && !isLoadingAssessments) { // Check if teacherId is still missing after initial load attempt
+    return (
+      <div className="space-y-6">
+        <PageHeader
+            title="Submit Marks"
+            description="Access denied. Please log in."
+            icon={BookOpenCheck}
+        />
+        <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Authentication Required</AlertTitle>
+            <AlertDescription>
+                You must be logged in to submit marks. Please <Link href="/login/teacher" className="underline">login</Link>.
+            </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
 
   return (
     <div className="space-y-6">
@@ -206,7 +232,7 @@ export default function SubmitMarksPage() {
                             handleAssessmentChange(value);
                         }} 
                         value={field.value}
-                        disabled={isLoadingAssessments}
+                        disabled={isLoadingAssessments || !teacherId}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -220,7 +246,7 @@ export default function SubmitMarksPage() {
                           </SelectItem>
                         ))}
                          {assessments.length === 0 && !isLoadingAssessments && (
-                            <p className="p-4 text-sm text-muted-foreground">No assessments available.</p>
+                            <p className="p-4 text-sm text-muted-foreground">No assessments available for the current term or your assignments.</p>
                         )}
                       </SelectContent>
                     </Select>
@@ -277,7 +303,7 @@ export default function SubmitMarksPage() {
                                         }}
                                         min="0"
                                         max={currentMaxMarks}
-                                        step="any" // Allows decimals if needed
+                                        step="any" 
                                       />
                                     </FormControl>
                                     <FormMessage className="text-xs text-left" />
@@ -332,5 +358,3 @@ export default function SubmitMarksPage() {
     </div>
   );
 }
-
-    

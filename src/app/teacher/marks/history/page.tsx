@@ -9,10 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { History, Eye, Download, Loader2, AlertTriangle } from "lucide-react";
-import { getSubmittedMarksHistory } from "@/lib/actions/teacher-actions"; // Assuming this exists
+import { getSubmittedMarksHistory } from "@/lib/actions/teacher-actions"; 
 import { useToast } from "@/hooks/use-toast";
+import { useSearchParams, useRouter } from "next/navigation"; // Added useRouter
+import Link from "next/link";
 
-// Mock interface for submission history item
 interface SubmissionHistoryItem {
   id: string;
   assessmentName: string;
@@ -24,27 +25,54 @@ interface SubmissionHistoryItem {
 
 export default function MarksHistoryPage() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const router = useRouter(); // For redirecting if no teacherId
+  const teacherId = searchParams.get("teacherId");
+
   const [isLoading, startLoadingTransition] = useTransition();
   const [history, setHistory] = useState<SubmissionHistoryItem[]>([]);
 
   useEffect(() => {
+    if (!teacherId) {
+      toast({ title: "Access Denied", description: "No teacher ID provided. Please login.", variant: "destructive" });
+      router.push("/login/teacher"); // Redirect to login
+      return;
+    }
     startLoadingTransition(async () => {
       try {
-        // Teacher ID would come from auth in a real app
-        const submissionData = await getSubmittedMarksHistory("teacher123"); 
+        const submissionData = await getSubmittedMarksHistory(teacherId as string); 
         setHistory(submissionData);
       } catch (error) {
         toast({ title: "Error", description: "Failed to load submission history.", variant: "destructive" });
       }
     });
-  }, [toast]);
+  }, [toast, teacherId, router]);
 
   const getStatusVariant = (status: SubmissionHistoryItem['status']) => {
-    if (status.includes("Anomaly Detected")) return "default"; // Default is primary, can be changed
-    if (status === "Accepted") return "default"; // Or a success variant if you add one to Badge
+    if (status.includes("Anomaly Detected")) return "default"; 
+    if (status === "Accepted") return "default"; 
     if (status === "Rejected") return "destructive";
     return "secondary";
   };
+
+  if (!teacherId && !isLoading) { // Render message if teacherId is missing after initial checks
+     return (
+      <div className="space-y-6">
+        <PageHeader
+            title="Marks Submission History"
+            description="Access denied. Please log in."
+            icon={History}
+        />
+        <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Authentication Required</AlertTitle>
+            <AlertDescription>
+                You must be logged in to view submission history. Please <Link href="/login/teacher" className="underline">login</Link>.
+            </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   if (isLoading && history.length === 0) {
     return (
@@ -98,12 +126,9 @@ export default function MarksHistoryPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="outline" size="sm" className="mr-2">
+                      <Button variant="outline" size="sm" className="mr-2" disabled>
                         <Eye className="mr-1 h-4 w-4" /> View Details
                       </Button>
-                      {/* <Button variant="outline" size="sm" disabled>
-                        <Download className="mr-1 h-4 w-4" /> Download
-                      </Button> */}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -112,7 +137,7 @@ export default function MarksHistoryPage() {
           ) : (
              !isLoading && <p className="text-center text-muted-foreground py-8">No submission history found.</p>
           )}
-           {isLoading && history.length > 0 && ( // Show subtle loading if refreshing
+           {isLoading && history.length > 0 && ( 
             <div className="text-center text-muted-foreground py-4">
                 <Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading more...
             </div>
@@ -133,5 +158,3 @@ export default function MarksHistoryPage() {
     </div>
   );
 }
-
-    

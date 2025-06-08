@@ -10,13 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LogIn, User, AlertTriangle, Loader2 } from "lucide-react";
 import Link from "next/link";
-
-// Hardcoded for prototype - in real app, this would come from DB
-const TEACHER_EMAIL = "teacher@example.com";
-const TEACHER_PASSWORD = "password123";
+import { loginTeacherByEmailPassword } from "@/lib/actions/teacher-actions";
+import { useToast } from "@/hooks/use-toast";
 
 export default function TeacherLoginPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -27,17 +26,22 @@ export default function TeacherLoginPage() {
     setError(null);
     setIsLoading(true);
 
-    // Simulate network delay for user experience
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    if (email === TEACHER_EMAIL && password === TEACHER_PASSWORD) {
-      // In a real app, you'd set a session cookie or token here
-      // And likely fetch the teacher's ID to pass to the dashboard or store in context
-      router.push("/teacher/dashboard");
-    } else {
-      setError("Invalid email or password.");
+    try {
+      const result = await loginTeacherByEmailPassword(email, password);
+      if (result.success && result.teacher) {
+        toast({ title: "Login Successful", description: `Welcome back, ${result.teacher.name}!`});
+        router.push(`/teacher/dashboard?teacherId=${result.teacher.id}&teacherName=${encodeURIComponent(result.teacher.name)}`);
+      } else {
+        setError(result.message || "Invalid email or password.");
+        toast({ title: "Login Failed", description: result.message || "Invalid email or password.", variant: "destructive"});
+      }
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred during login.";
+        setError(errorMessage);
+        toast({ title: "Login Error", description: errorMessage, variant: "destructive"});
+    } finally {
+        setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (

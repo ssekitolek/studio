@@ -3,28 +3,51 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { LayoutDashboard, BookOpenCheck, CalendarClock, Bell, ListChecks, AlertCircle } from "lucide-react";
+import { LayoutDashboard, BookOpenCheck, CalendarClock, Bell, ListChecks, AlertCircle, AlertTriangle } from "lucide-react";
 import Image from "next/image";
 import { getTeacherDashboardData } from "@/lib/actions/teacher-actions";
 import type { TeacherDashboardAssignment, TeacherNotification } from "@/lib/types";
+import { Alert } from "@/components/ui/alert"; // For displaying error if no teacherId
 
 const defaultResourcesText = `Access your teaching schedule, submit student marks, and view historical submission data using the sidebar navigation. 
 Stay updated with notifications from the D.O.S. and ensure timely submission of grades. 
 If you encounter any issues, please contact the administration.`;
 
-export default async function TeacherDashboardPage() {
-  // In a real app, teacherId would come from authentication.
-  const teacherId = "teacher123"; // Placeholder for now
+export default async function TeacherDashboardPage({
+  searchParams,
+}: {
+  searchParams?: { teacherId?: string; teacherName?: string };
+}) {
+  const teacherId = searchParams?.teacherId;
+
+  if (!teacherId) {
+    return (
+      <div className="space-y-8">
+        <PageHeader
+            title="Teacher Dashboard"
+            description="Please log in to view your dashboard."
+            icon={LayoutDashboard}
+        />
+        <Alert variant="destructive" className="shadow-md">
+            <AlertTriangle className="h-4 w-4" />
+            <CardTitle>Access Denied</CardTitle>
+            <CardDescription>No teacher ID provided. Please <Link href="/login/teacher" className="underline">login</Link> to access your dashboard.</CardDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   const dashboardData = await getTeacherDashboardData(teacherId);
   const assignments: TeacherDashboardAssignment[] = dashboardData.assignments;
   const notifications: TeacherNotification[] = dashboardData.notifications;
   const resourcesText = dashboardData.resourcesText || defaultResourcesText;
+  const teacherDisplayName = dashboardData.teacherName || (searchParams?.teacherName ? decodeURIComponent(searchParams.teacherName) : "Teacher");
 
   return (
     <div className="space-y-8">
       <PageHeader
         title="Teacher Dashboard"
-        description={`Welcome back${dashboardData.teacherName ? `, ${dashboardData.teacherName}` : ''}! Here's an overview of your tasks and classes.`}
+        description={`Welcome back, ${teacherDisplayName}! Here's an overview of your tasks and classes.`}
         icon={LayoutDashboard}
       />
 
@@ -48,8 +71,7 @@ export default async function TeacherDashboardPage() {
                     </p>
                   </div>
                   <Button variant="outline" size="sm" asChild>
-                    {/* Link might need to pass context if submit page can be pre-filled */}
-                    <Link href="/teacher/marks/submit">
+                    <Link href={`/teacher/marks/submit?teacherId=${teacherId}`}>
                       <BookOpenCheck className="mr-2 h-4 w-4" /> Enter Marks
                     </Link>
                   </Button>
@@ -57,7 +79,7 @@ export default async function TeacherDashboardPage() {
               </Card>
             ))}
              {assignments.length === 0 && (
-              <p className="text-muted-foreground text-center py-4">No classes assigned yet.</p>
+              <p className="text-muted-foreground text-center py-4">No classes assigned yet for the current term.</p>
             )}
           </CardContent>
         </Card>
@@ -106,7 +128,7 @@ export default async function TeacherDashboardPage() {
                 </p>
               ))}
               <Button variant="default" className="mt-4" asChild>
-                <Link href="/teacher/marks/submit">
+                <Link href={`/teacher/marks/submit?teacherId=${teacherId}`}>
                   <BookOpenCheck className="mr-2 h-4 w-4" /> Go to Marks Submission
                 </Link>
               </Button>

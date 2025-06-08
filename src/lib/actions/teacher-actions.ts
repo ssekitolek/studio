@@ -1,12 +1,13 @@
 
 "use server";
 
-import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification } from "@/lib/types";
+import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType } from "@/lib/types";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
 import { revalidatePath } from "next/cache";
-import { getClasses, getSubjects, getExams, getGeneralSettings, getTeacherById, getTerms, getStudents as getAllStudents } from '@/lib/actions/dos-actions';
-import type { ClassInfo, Subject as SubjectType, Exam, GeneralSettings, Teacher, Term } from '@/lib/types';
-
+import { getClasses, getSubjects, getExams, getGeneralSettings, getTeacherById as getTeacherByIdFromDOS, getTerms, getStudents as getAllStudents } from '@/lib/actions/dos-actions';
+import type { ClassInfo, Subject as SubjectType, Exam, GeneralSettings, Term } from '@/lib/types';
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
 
 // Simulate a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -15,6 +16,43 @@ interface MarksSubmissionData {
   assessmentId: string;
   marks: Array<{ studentId: string; score: number }>; // score should be number by this point
 }
+
+export async function loginTeacherByEmailPassword(email: string, passwordToVerify: string): Promise<{ success: boolean; message: string; teacher?: { id: string; name: string; email: string; } }> {
+  if (!db) {
+    return { success: false, message: "Database service is not available." };
+  }
+  try {
+    const teachersRef = collection(db, "teachers");
+    const q = query(teachersRef, where("email", "==", email), limit(1));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      return { success: false, message: "Invalid email or password." };
+    }
+
+    const teacherDoc = querySnapshot.docs[0];
+    const teacherData = teacherDoc.data() as TeacherType;
+
+    if (teacherData.password === passwordToVerify) {
+      return {
+        success: true,
+        message: "Login successful.",
+        teacher: {
+          id: teacherDoc.id,
+          name: teacherData.name,
+          email: teacherData.email,
+        }
+      };
+    } else {
+      return { success: false, message: "Invalid email or password." };
+    }
+  } catch (error) {
+    console.error("Error during teacher login:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+    return { success: false, message: `Login failed: ${errorMessage}` };
+  }
+}
+
 
 export async function submitMarks(data: MarksSubmissionData): Promise<{ success: boolean; message: string; anomalies?: GradeAnomalyDetectionOutput }> {
   console.log("Submitting marks:", data);
@@ -111,7 +149,8 @@ export async function getStudentsForAssessment(assessmentId: string): Promise<St
 
 export async function getSubmittedMarksHistory(teacherId: string): Promise<any[]> {
     await delay(300);
-    // This remains mock data for now. In a real app, query Firestore for actual submissions.
+    // This remains mock data for now. In a real app, query Firestore for actual submissions for this teacherId.
+    console.log(`Fetching submission history for teacher: ${teacherId}`);
     return [
         { 
             id: 'sub1_math_f1a', 
@@ -141,21 +180,30 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<any[]
 }
 
 export async function getTeacherAssessments(teacherId: string): Promise<Array<{id: string, name: string, maxMarks: number}>> {
-    const teacher = await getTeacherById(teacherId);
-    if (!teacher) return [];
+    const teacher = await getTeacherByIdFromDOS(teacherId); // Use the action from dos-actions
+    if (!teacher) {
+        console.warn(`Teacher not found for ID: ${teacherId}`);
+        return [];
+    }
 
     const [allExams, allClasses, generalSettings, allTerms] = await Promise.all([
         getExams(),
-        getClasses(), // getClasses now includes subjects for each class
+        getClasses(), 
         getGeneralSettings(),
         getTerms(),
     ]);
 
     const currentTermId = generalSettings.currentTermId;
-    if (!currentTermId) return []; // No assessments if no current term is set
+    if (!currentTermId) {
+        console.warn("No current term ID set in general settings.");
+        return []; 
+    }
 
     const currentTermExams = allExams.filter(exam => exam.termId === currentTermId);
-    if (currentTermExams.length === 0) return [];
+    if (currentTermExams.length === 0) {
+        console.warn(`No exams found for current term ID: ${currentTermId}`);
+        return [];
+    }
 
     const assessments: Array<{id: string, name: string, maxMarks: number}> = [];
     const teacherAssignments = new Set<string>(); // Store as "classId-subjectId"
@@ -180,7 +228,7 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
     teacherAssignments.forEach(assignmentKey => {
         const [classId, subjectId] = assignmentKey.split('-');
         const cls = allClasses.find(c => c.id === classId);
-        const subj = cls?.subjects.find(s => s.id === subjectId); // Subjects are nested in class
+        const subj = cls?.subjects.find(s => s.id === subjectId); 
 
         if (cls && subj) {
             currentTermExams.forEach(exam => {
@@ -190,10 +238,12 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
                     maxMarks: exam.maxMarks,
                 });
             });
+        } else {
+            if (!cls) console.warn(`Class not found for ID: ${classId} in assignmentKey: ${assignmentKey}`);
+            if (cls && !subj) console.warn(`Subject not found for ID: ${subjectId} in class ${cls.name} (ID: ${cls.id}) for assignmentKey: ${assignmentKey}`);
         }
     });
     
-    // Sort assessments for consistent display
     assessments.sort((a, b) => a.name.localeCompare(b.name));
 
     return assessments;
@@ -201,7 +251,7 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
 
 export async function getTeacherDashboardData(teacherId: string): Promise<TeacherDashboardData> {
   const [teacher, allClasses, generalSettings, allTerms] = await Promise.all([
-    getTeacherById(teacherId),
+    getTeacherByIdFromDOS(teacherId), // Use action from dos-actions
     getClasses(), 
     getGeneralSettings(),
     getTerms(),
@@ -305,10 +355,5 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     }
   }
   
-  // Example static notification, can be made dynamic if needed
-  // notifications.push({ message: "System maintenance scheduled for July 22nd, 2 AM - 4 AM.", type: "warning", id: "system_maintenance" });
-
   return { assignments, notifications, teacherName, resourcesText };
 }
-
-    
