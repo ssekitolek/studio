@@ -43,8 +43,7 @@ export interface Exam {
   id: string;
   name: string; // E.g., "Midterm Exam"
   termId: string;
-  // subjectId: string; // An exam can be for multiple subjects if it's a general exam type
-  date?: string; // ISO date string
+  date?: string; // ISO date string - Can be used as the exam date or a specific deadline
   maxMarks: number; // Default max marks, can be overridden per subject
   description?: string;
 }
@@ -87,6 +86,7 @@ export interface GeneralSettings {
     defaultGradingScale: Array<GradingScaleItem>; // Now uses GradingScaleItem
     currentTermId?: string;
     markSubmissionTimeZone: string; // e.g., "Africa/Nairobi"
+    globalMarksSubmissionDeadline?: string; // Optional ISO date string YYYY-MM-DD
 }
 
 // Grading Policy specific types

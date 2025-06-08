@@ -401,16 +401,16 @@ export async function getTermById(termId: string): Promise<Term | null> {
 }
 
 
-export async function createExam(examData: Omit<Exam, 'id' | 'date'>): Promise<{ success: boolean; message: string; exam?: Exam }> {
+export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success: boolean; message: string; exam?: Exam }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
     const examPayload = {
       ...examData,
-      maxMarks: Number(examData.maxMarks), // Ensure maxMarks is stored as a number
+      maxMarks: Number(examData.maxMarks), 
       description: examData.description || null,
-      // 'date' is intentionally omitted for "Exam Type"
+      date: examData.date || null, 
     };
     const docRef = await addDoc(collection(db, "exams"), examPayload);
     const newExam: Exam = { 
@@ -418,7 +418,8 @@ export async function createExam(examData: Omit<Exam, 'id' | 'date'>): Promise<{
         name: examPayload.name,
         termId: examPayload.termId,
         maxMarks: examPayload.maxMarks,
-        description: examPayload.description === null ? undefined : examPayload.description
+        description: examPayload.description === null ? undefined : examPayload.description,
+        date: examPayload.date === null ? undefined : examPayload.date,
     };
     revalidatePath("/dos/settings/exams");
     return { success: true, message: "Exam type created successfully.", exam: newExam };
@@ -537,9 +538,11 @@ export async function updateGeneralSettings(settings: GeneralSettings): Promise<
     const settingsToSave = {
         ...settings,
         currentTermId: settings.currentTermId || null,
+        globalMarksSubmissionDeadline: settings.globalMarksSubmissionDeadline || null,
     };
     await updateDoc(settingsRef, settingsToSave, { merge: true }); 
     revalidatePath("/dos/settings/general");
+    revalidatePath("/dos/dashboard"); // Revalidate dashboard as it uses these settings
     return { success: true, message: "General settings updated." };
   } catch (error) {
     console.error("Error in updateGeneralSettings:", error);
@@ -705,15 +708,15 @@ export async function getExams(): Promise<Exam[]> {
     try {
         const examsCol = collection(db, "exams");
         const examSnapshot = await getDocs(examsCol);
-        const examsList = examSnapshot.docs.map(doc => {
-            const data = doc.data();
+        const examsList = examSnapshot.docs.map(docSnap => {
+            const data = docSnap.data();
             return {
-                id: doc.id,
+                id: docSnap.id,
                 name: data.name,
                 termId: data.termId,
                 maxMarks: data.maxMarks,
                 description: data.description === null ? undefined : data.description,
-                // date field is not typically part of "Exam Type" but specific assessment instances
+                date: data.date === null ? undefined : data.date,
             } as Exam;
         });
         return examsList;
@@ -729,7 +732,8 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
      return {
         defaultGradingScale: [{ grade: 'N/A', minScore: 0, maxScore: 0 }],
         markSubmissionTimeZone: 'UTC',
-        currentTermId: undefined
+        currentTermId: undefined,
+        globalMarksSubmissionDeadline: undefined,
     };
   }
     try {
@@ -743,15 +747,23 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
                 currentTermId: data.currentTermId === null ? undefined : data.currentTermId,
                 defaultGradingScale,
                 markSubmissionTimeZone: data.markSubmissionTimeZone || 'UTC',
+                globalMarksSubmissionDeadline: data.globalMarksSubmissionDeadline === null ? undefined : data.globalMarksSubmissionDeadline,
             } as GeneralSettings;
         }
+        // Default values if 'general' settings document doesn't exist
         return {
             defaultGradingScale: [{ grade: 'A', minScore: 80, maxScore: 100 }, { grade: 'B', minScore: 70, maxScore: 79 }],
             markSubmissionTimeZone: 'UTC',
-            currentTermId: undefined
+            currentTermId: undefined,
+            globalMarksSubmissionDeadline: undefined,
         };
     } catch (error) {
         console.error("Error fetching general settings:", error);
-        return { defaultGradingScale: [], markSubmissionTimeZone: 'UTC', currentTermId: undefined };
+        return { 
+            defaultGradingScale: [], 
+            markSubmissionTimeZone: 'UTC', 
+            currentTermId: undefined,
+            globalMarksSubmissionDeadline: undefined,
+        };
     }
 }
