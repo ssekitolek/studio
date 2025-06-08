@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { createClass, getTeachers, getSubjects } from "@/lib/actions/dos-actions";
+import { createClass, getTeachers, getSubjects, updateClass } from "@/lib/actions/dos-actions";
 import type { Teacher, Subject, ClassInfo } from "@/lib/types";
 import { Loader2, Save, PlusCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -40,6 +40,8 @@ interface ClassFormProps {
   onSuccess?: () => void;
 }
 
+const NONE_TEACHER_VALUE = "_NONE_"; // Sentinel value for no teacher
+
 export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
   const { toast } = useToast();
   const router = useRouter();
@@ -56,7 +58,7 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
       name: initialData?.name || "",
       level: initialData?.level || "",
       stream: initialData?.stream || "",
-      classTeacherId: initialData?.classTeacherId || "",
+      classTeacherId: initialData?.classTeacherId || "", // Empty string means placeholder will show
       subjectIds: initialData?.subjects.map(s => s.id) || [],
     },
   });
@@ -86,7 +88,7 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
         name: initialData.name,
         level: initialData.level,
         stream: initialData.stream || "",
-        classTeacherId: initialData.classTeacherId || "",
+        classTeacherId: initialData.classTeacherId || "", // If undefined/null, becomes "" for placeholder
         subjectIds: initialData.subjects.map(s => s.id),
       });
     }
@@ -94,21 +96,23 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
 
   const onSubmit = (data: ClassFormValues) => {
     startTransition(async () => {
+      const payload = {
+        ...data,
+        classTeacherId: data.classTeacherId === NONE_TEACHER_VALUE ? undefined : data.classTeacherId,
+      };
+
       try {
-        // For now, this form only handles creation. Edit would need an updateClass action.
-        if (isEditMode) {
-          // const result = await updateClass(classId!, data); // Assuming updateClass exists and handles data appropriately
-          // if (result.success) {
-          //   toast({ title: "Class Updated", description: `Class "${data.name}" updated successfully.` });
-          //   if (onSuccess) onSuccess(); else router.push("/dos/classes");
-          // } else {
-          //   toast({ title: "Error", description: result.message || "Failed to update class.", variant: "destructive" });
-          // }
-          console.warn("Edit mode for classes not fully implemented yet.");
-          toast({title: "Info", description: "Class editing is not fully implemented yet."});
-          return;
+        if (isEditMode && classId) {
+           // Type assertion for updateClass, as payload matches the expected structure
+          const result = await updateClass(classId, payload as { name: string; level: string; stream?: string; classTeacherId?: string; subjectIds: string[] });
+          if (result.success) {
+            toast({ title: "Class Updated", description: `Class "${data.name}" updated successfully.` });
+            if (onSuccess) onSuccess(); else router.push("/dos/classes");
+          } else {
+            toast({ title: "Error", description: result.message || "Failed to update class.", variant: "destructive" });
+          }
         } else {
-          const result = await createClass(data);
+          const result = await createClass(payload);
           if (result.success && result.classInfo) {
             toast({
               title: "Class Created",
@@ -190,14 +194,14 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Class Teacher (Optional)</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingData}>
+                <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingData}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder={isLoadingData ? "Loading teachers..." : "Select a teacher"} />
+                      <SelectValue placeholder={isLoadingData ? "Loading teachers..." : "Select a teacher or None"} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value={NONE_TEACHER_VALUE}>None</SelectItem>
                     {!isLoadingData && teachers.map(teacher => (
                       <SelectItem key={teacher.id} value={teacher.id}>{teacher.name}</SelectItem>
                     ))}
@@ -268,7 +272,7 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
             {isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : isEditMode ? (
-               <Save className="mr-2 h-4 w-4" /> // Placeholder for edit icon
+               <Save className="mr-2 h-4 w-4" />
             ): (
               <PlusCircle className="mr-2 h-4 w-4" />
             )}
@@ -279,5 +283,3 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
     </Form>
   );
 }
-
-    
