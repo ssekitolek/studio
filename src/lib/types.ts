@@ -1,3 +1,4 @@
+
 export interface Teacher {
   id: string;
   name: string;
@@ -83,7 +84,21 @@ export interface AnomalyExplanation {
 
 // General settings
 export interface GeneralSettings {
-    defaultGradingScale: Array<{ grade: string, minScore: number, maxScore: number }>;
+    defaultGradingScale: Array<GradingScaleItem>; // Now uses GradingScaleItem
     currentTermId?: string;
     markSubmissionTimeZone: string; // e.g., "Africa/Nairobi"
+}
+
+// Grading Policy specific types
+export interface GradingScaleItem {
+  grade: string;
+  minScore: number;
+  maxScore: number;
+}
+
+export interface GradingPolicy {
+  id: string;
+  name: string;
+  scale: GradingScaleItem[];
+  isDefault?: boolean;
 }

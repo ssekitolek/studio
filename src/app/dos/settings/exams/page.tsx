@@ -3,22 +3,23 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { FileText, PlusCircle } from "lucide-react";
+import { FileText, PlusCircle, Scale } from "lucide-react";
+import { getExams, getGradingPolicies } from "@/lib/actions/dos-actions"; // Updated imports
+import type { Exam, GradingPolicy } from "@/lib/types"; // Updated imports
 
-// Mock data - replace with actual data fetching
-const examsData = [
-  { id: "exam1", name: "Midterm Exam", term: "Term 1 2024", maxMarks: 100, description: "Covers first half of syllabus." },
-  { id: "exam2", name: "Final Exam", term: "Term 1 2024", maxMarks: 100, description: "Comprehensive final exam." },
-  { id: "exam3", name: "CAT 1", term: "Term 2 2024", maxMarks: 30, description: "Continuous Assessment Test 1." },
+// Mock data for exams - replace with actual data fetching if needed for this part of the page
+const examsData: Exam[] = [ // Using Exam type
+  { id: "exam1", name: "Midterm Exam", termId: "term1", maxMarks: 100, description: "Covers first half of syllabus." },
+  { id: "exam2", name: "Final Exam", termId: "term1", maxMarks: 100, description: "Comprehensive final exam." },
+  { id: "exam3", name: "CAT 1", termId: "term2", maxMarks: 30, description: "Continuous Assessment Test 1." },
 ];
 
-const gradingPolicies = [
-    {id: "gp1", name: "Standard Grading Scale", default: true, scale: [
-        {grade: "A", min: 80, max: 100}, {grade: "B", min: 70, max: 79}, {grade: "C", min: 60, max: 69}
-    ]}
-]
+export default async function ManageExamsAndGradingPage() {
+  // Fetch actual grading policies
+  const gradingPolicies: GradingPolicy[] = await getGradingPolicies();
+  const exams: Exam[] = await getExams(); // Fetch actual exams
 
-export default function ManageExamsPage() {
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -28,12 +29,12 @@ export default function ManageExamsPage() {
         actionButton={
           <div className="flex gap-2">
             <Button asChild variant="outline">
-                <Link href="/dos/settings/grading/new"> {/* Placeholder Link */}
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Grading Policy
+                <Link href="/dos/settings/grading/new">
+                <Scale className="mr-2 h-4 w-4" /> Add Grading Policy
                 </Link>
             </Button>
             <Button asChild>
-                <Link href="/dos/settings/exams/new"> {/* Placeholder Link */}
+                <Link href="/dos/settings/exams/new"> 
                 <PlusCircle className="mr-2 h-4 w-4" /> Add New Exam Type
                 </Link>
             </Button>
@@ -47,16 +48,16 @@ export default function ManageExamsPage() {
           <CardDescription>All defined examination types in the system.</CardDescription>
         </CardHeader>
         <CardContent>
-          {examsData.length > 0 ? (
+          {exams.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {examsData.map((exam) => (
+              {exams.map((exam) => (
                 <Card key={exam.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <CardTitle>{exam.name}</CardTitle>
-                    <CardDescription>Term: {exam.term} - Max Marks: {exam.maxMarks}</CardDescription>
+                    <CardDescription>Term ID: {exam.termId} - Max Marks: {exam.maxMarks}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground mb-2">{exam.description}</p>
+                    <p className="text-sm text-muted-foreground mb-2">{exam.description || "No description."}</p>
                     <Button variant="outline" size="sm" className="w-full" asChild>
                         <Link href={`/dos/settings/exams/${exam.id}/edit`}>Edit Exam</Link>
                     </Button>
@@ -76,28 +77,25 @@ export default function ManageExamsPage() {
           <CardDescription>Define how scores translate to grades.</CardDescription>
         </CardHeader>
         <CardContent>
-           {gradingPolicies.map(policy => (
-             <Card key={policy.id} className="mb-4">
+           {gradingPolicies.length > 0 ? gradingPolicies.map(policy => (
+             <Card key={policy.id} className="mb-4 hover:shadow-lg transition-shadow">
                 <CardHeader>
-                    <CardTitle className="text-lg">{policy.name} {policy.default && <span className="text-xs font-normal text-green-600">(Default)</span>}</CardTitle>
+                    <CardTitle className="text-lg">{policy.name} {policy.isDefault && <span className="text-xs font-normal text-green-600 ml-2">(Default)</span>}</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <ul className="text-sm space-y-1">
-                        {policy.scale.map(s => <li key={s.grade}>{s.grade}: {s.min}% - {s.max}%</li>)}
+                        {policy.scale.map((s, index) => <li key={`${s.grade}-${index}`}>{s.grade}: {s.minScore}% - {s.maxScore}%</li>)}
                     </ul>
                      <Button variant="link" size="sm" className="p-0 h-auto mt-2 self-start text-xs" asChild>
                         <Link href={`/dos/settings/grading/${policy.id}/edit`}>Edit Policy</Link>
                     </Button>
                 </CardContent>
              </Card>
-           ))}
-            {gradingPolicies.length === 0 && (
-                 <p className="text-center text-muted-foreground py-8">No grading policies found.</p>
-            )}
+           )) : (
+                <p className="text-center text-muted-foreground py-8">No grading policies found. Add a new policy to get started.</p>
+           )}
         </CardContent>
       </Card>
     </div>
   );
 }
-
-    

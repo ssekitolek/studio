@@ -1,10 +1,10 @@
 
 "use server";
 
-import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings } from "@/lib/types";
+import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference } from "firebase/firestore";
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference, runTransaction, writeBatch } from "firebase/firestore";
 
 // Simulate a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -366,9 +366,6 @@ export async function updateTerm(termId: string, termData: Partial<Omit<Term, 'i
     if (termPayload.year && typeof termPayload.year !== 'number') {
         termPayload.year = Number(termPayload.year);
     }
-    // Dates from form (via termDataToSave in TermForm) are already strings "yyyy-MM-dd"
-    // So no need to reformat here if they are passed correctly.
-
     await updateDoc(termRef, termPayload);
     revalidatePath("/dos/settings/terms");
     revalidatePath(`/dos/settings/terms/${termId}/edit`);
@@ -419,6 +416,105 @@ export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success:
     return { success: false, message: `Failed to create exam: ${errorMessage}` };
   }
 }
+
+// --- Grading Policy Management ---
+export async function createGradingPolicy(policyData: Omit<GradingPolicy, 'id'>): Promise<{ success: boolean; message: string; policy?: GradingPolicy }> {
+  if (!db) {
+    return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
+  }
+  try {
+    const policyPayload = { ...policyData };
+
+    if (policyPayload.isDefault) {
+      // If setting this as default, unset other defaults
+      const policiesRef = collection(db, "gradingPolicies");
+      const q = query(policiesRef, where("isDefault", "==", true));
+      const querySnapshot = await getDocs(q);
+      const batch = writeBatch(db);
+      querySnapshot.forEach((doc) => {
+        batch.update(doc.ref, { isDefault: false });
+      });
+      await batch.commit();
+    }
+
+    const docRef = await addDoc(collection(db, "gradingPolicies"), policyPayload);
+    const newPolicy: GradingPolicy = { id: docRef.id, ...policyPayload };
+    revalidatePath("/dos/settings/exams"); // This page displays grading policies
+    return { success: true, message: "Grading policy created successfully.", policy: newPolicy };
+  } catch (error) {
+    console.error("Error in createGradingPolicy:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+    return { success: false, message: `Failed to create grading policy: ${errorMessage}` };
+  }
+}
+
+export async function updateGradingPolicy(policyId: string, policyData: Omit<GradingPolicy, 'id'>): Promise<{ success: boolean; message: string; policy?: GradingPolicy }> {
+  if (!db) {
+    return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
+  }
+  try {
+    const policyRef = doc(db, "gradingPolicies", policyId);
+    const policyPayload = { ...policyData };
+
+    if (policyPayload.isDefault) {
+        // If setting this as default, unset other defaults
+        const policiesRef = collection(db, "gradingPolicies");
+        const q = query(policiesRef, where("isDefault", "==", true));
+        const querySnapshot = await getDocs(q);
+        const batch = writeBatch(db);
+        querySnapshot.forEach((doc) => {
+          if (doc.id !== policyId) { // Don't unset the current one if it's already default
+            batch.update(doc.ref, { isDefault: false });
+          }
+        });
+        await batch.commit();
+    }
+    
+    await updateDoc(policyRef, policyPayload);
+    revalidatePath("/dos/settings/exams");
+    revalidatePath(`/dos/settings/grading/${policyId}/edit`);
+    const updatedPolicyDoc = await getDoc(policyRef);
+    const updatedPolicy = { id: updatedPolicyDoc.id, ...updatedPolicyDoc.data() } as GradingPolicy;
+    return { success: true, message: "Grading policy updated successfully.", policy: updatedPolicy };
+
+  } catch (error) {
+    console.error(`Error in updateGradingPolicy for ${policyId}:`, error);
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+    return { success: false, message: `Failed to update grading policy: ${errorMessage}` };
+  }
+}
+
+export async function getGradingPolicyById(policyId: string): Promise<GradingPolicy | null> {
+  if (!db) return null;
+  try {
+    const policyRef = doc(db, "gradingPolicies", policyId);
+    const policySnap = await getDoc(policyRef);
+    if (policySnap.exists()) {
+      return { id: policySnap.id, ...policySnap.data() } as GradingPolicy;
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error fetching grading policy ${policyId}:`, error);
+    return null;
+  }
+}
+
+export async function getGradingPolicies(): Promise<GradingPolicy[]> {
+  if (!db) {
+    console.error("Firestore is not initialized.");
+    return [];
+  }
+  try {
+    const policiesCol = collection(db, "gradingPolicies");
+    const policySnapshot = await getDocs(policiesCol);
+    const policiesList = policySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GradingPolicy));
+    return policiesList;
+  } catch (error) {
+    console.error("Error fetching grading policies:", error);
+    return [];
+  }
+}
+
 
 export async function updateGeneralSettings(settings: GeneralSettings): Promise<{ success: boolean; message: string }> {
   if (!db) {
