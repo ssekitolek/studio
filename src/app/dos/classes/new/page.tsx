@@ -4,9 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft, PlusCircle } from "lucide-react";
-
-// This will eventually be a form component
-// import { ClassForm } from "@/components/forms/ClassForm";
+import { ClassForm } from "@/components/forms/ClassForm"; // Updated import
 
 export default function CreateNewClassPage() {
   return (
@@ -30,11 +28,11 @@ export default function CreateNewClassPage() {
           <CardDescription>Provide the necessary information for the new class.</CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Placeholder for ClassForm */}
-          <p className="text-muted-foreground">Class creation form will be here.</p>
-          {/* <ClassForm /> */}
+          <ClassForm />
         </CardContent>
       </Card>
     </div>
   );
 }
+
+    
