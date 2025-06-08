@@ -8,7 +8,8 @@ import { TermForm } from "@/components/forms/TermForm";
 import { getTermById } from "@/lib/actions/dos-actions";
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from "@/components/ui/alert";
 
-export default async function EditTermPage({ params }: { params: { termId: string } }) {
+export default async function EditTermPage({ params: paramsInput }: { params: { termId: string } }) {
+  const params = await paramsInput; // Await the params object
   const termData = await getTermById(params.termId);
 
   if (!termData) {
