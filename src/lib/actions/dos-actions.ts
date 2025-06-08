@@ -430,6 +430,63 @@ export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success:
   }
 }
 
+export async function getExamById(examId: string): Promise<Exam | null> {
+  if (!db) {
+    console.error("Firestore is not initialized. Check Firebase configuration.");
+    return null;
+  }
+  try {
+    const examRef = doc(db, "exams", examId);
+    const examSnap = await getDoc(examRef);
+    if (examSnap.exists()) {
+      const data = examSnap.data();
+      return {
+        id: examSnap.id,
+        name: data.name,
+        termId: data.termId,
+        maxMarks: data.maxMarks,
+        description: data.description === null ? undefined : data.description,
+        date: data.date === null ? undefined : data.date,
+      } as Exam;
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error fetching exam ${examId}:`, error);
+    return null;
+  }
+}
+
+export async function updateExam(examId: string, examData: Partial<Omit<Exam, 'id'>>): Promise<{ success: boolean; message: string; exam?: Exam }> {
+  if (!db) {
+    return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
+  }
+  try {
+    const examRef = doc(db, "exams", examId);
+    const examPayload: any = { ...examData };
+
+    if (examPayload.maxMarks !== undefined) {
+      examPayload.maxMarks = Number(examPayload.maxMarks);
+    }
+    if (examPayload.hasOwnProperty('description')) {
+        examPayload.description = examPayload.description || null;
+    }
+    if (examPayload.hasOwnProperty('date')) {
+        examPayload.date = examPayload.date || null;
+    }
+    
+    await updateDoc(examRef, examPayload);
+    revalidatePath("/dos/settings/exams");
+    revalidatePath(`/dos/settings/exams/${examId}/edit`);
+    const updatedExam = await getExamById(examId);
+    return { success: true, message: "Exam type updated successfully.", exam: updatedExam ?? undefined };
+  } catch (error) {
+    console.error(`Error updating exam ${examId}:`, error);
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+    return { success: false, message: `Failed to update exam type: ${errorMessage}` };
+  }
+}
+
+
 // --- Grading Policy Management ---
 export async function createGradingPolicy(policyData: Omit<GradingPolicy, 'id'>): Promise<{ success: boolean; message: string; policy?: GradingPolicy }> {
   if (!db) {
@@ -767,3 +824,4 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
         };
     }
 }
+

@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { createExam, getTerms } from "@/lib/actions/dos-actions";
+import { createExam, getTerms, updateExam } from "@/lib/actions/dos-actions";
 import type { Term, Exam } from "@/lib/types";
 import { Loader2, Save, PlusCircle, Edit3 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -29,6 +29,7 @@ const examTypeFormSchema = z.object({
   termId: z.string().min(1, "Please select an academic term."),
   maxMarks: z.coerce.number().min(1, "Maximum marks must be at least 1.").max(1000, "Maximum marks seem too high."),
   description: z.string().optional(),
+  date: z.date().optional(), // Optional date field for the exam
 });
 
 type ExamTypeFormValues = z.infer<typeof examTypeFormSchema>;
@@ -55,6 +56,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
       termId: initialData?.termId || "",
       maxMarks: initialData?.maxMarks || 100,
       description: initialData?.description || "",
+      date: initialData?.date ? new Date(initialData.date) : undefined,
     },
   });
 
@@ -80,33 +82,35 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
         termId: initialData.termId,
         maxMarks: initialData.maxMarks,
         description: initialData.description || "",
+        date: initialData.date ? new Date(initialData.date) : undefined,
       });
     }
-  }, [initialData, form]);
+  }, [initialData, form, isEditMode]);
 
   const onSubmit = (data: ExamTypeFormValues) => {
     startTransition(async () => {
       const examDataToSave = {
         ...data,
-        // `date` is not part of this form for "Exam Type" definition
+        date: data.date ? data.date.toISOString().split('T')[0] : undefined,
       };
 
       try {
         if (isEditMode && examId) {
-          // const result = await updateExam(examId, examDataToSave); // updateExam action would be needed for edit mode
-          // For now, log and show placeholder toast for edit
-          console.log("Updating exam (placeholder):", examId, examDataToSave);
-          toast({ title: "Exam Type Updated (Placeholder)", description: `Exam Type "${data.name}" update functionality pending.` });
-          if (onSuccess) onSuccess(); else router.push("/dos/settings/exams");
-
+          const result = await updateExam(examId, examDataToSave as Partial<Omit<Exam, 'id'>>);
+          if (result.success && result.exam) {
+            toast({ title: "Exam Type Updated", description: `Exam Type "${result.exam.name}" updated successfully.` });
+            if (onSuccess) onSuccess(); else router.push("/dos/settings/exams");
+          } else {
+             toast({ title: "Error Updating Exam Type", description: result.message || "Failed to update exam type.", variant: "destructive" });
+          }
         } else {
-          const result = await createExam(examDataToSave as Omit<Exam, 'id' | 'date'>);
+          const result = await createExam(examDataToSave as Omit<Exam, 'id'>);
           if (result.success && result.exam) {
             toast({
               title: "Exam Type Created",
               description: `Exam Type "${result.exam.name}" has been successfully created.`,
             });
-            form.reset({ name: "", termId: "", maxMarks: 100, description: "" });
+            form.reset({ name: "", termId: "", maxMarks: 100, description: "", date: undefined });
             if (onSuccess) onSuccess(); else router.push("/dos/settings/exams");
           } else {
             toast({
@@ -178,6 +182,25 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
               </FormItem>
             )}
           />
+           {/* Date field can be added here if needed using DatePicker component */}
+           {/* 
+            <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                <FormItem className="flex flex-col">
+                    <FormLabel>Exam Date (Optional)</FormLabel>
+                    <DatePicker
+                        date={field.value}
+                        setDate={field.onChange} // Pass field.onChange directly
+                        placeholder="Select exam date"
+                    />
+                    <FormDescription>The specific date of this exam, if applicable.</FormDescription>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+            */}
           <FormField
             control={form.control}
             name="description"
