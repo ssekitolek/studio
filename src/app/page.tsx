@@ -1,9 +1,10 @@
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LogIn, UserCog, User } from 'lucide-react';
 
-export default function LoginPage() {
+export default function LandingPage() { // Renamed from LoginPage
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-8 bg-gradient-to-br from-background to-secondary">
       <div className="text-center mb-12">
@@ -17,13 +18,13 @@ export default function LoginPage() {
         <Card className="shadow-xl hover:shadow-2xl transition-shadow duration-300">
           <CardHeader className="items-center">
             <UserCog className="w-16 h-16 text-primary mb-3" />
-            <CardTitle className="text-2xl font-headline">D.O.S. Login</CardTitle>
-            <CardDescription>Access administrative tools and manage the portal.</CardDescription>
+            <CardTitle className="text-2xl font-headline">D.O.S. Portal</CardTitle>
+            <CardDescription>Login for administrative access.</CardDescription>
           </CardHeader>
           <CardContent className="text-center">
             <Button asChild size="lg" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Link href="/dos/dashboard">
-                <LogIn className="mr-2 h-5 w-5" /> Login as D.O.S.
+              <Link href="/login/dos">
+                <LogIn className="mr-2 h-5 w-5" /> D.O.S. Login
               </Link>
             </Button>
           </CardContent>
@@ -32,13 +33,13 @@ export default function LoginPage() {
         <Card className="shadow-xl hover:shadow-2xl transition-shadow duration-300">
           <CardHeader className="items-center">
             <User className="w-16 h-16 text-primary mb-3" />
-            <CardTitle className="text-2xl font-headline">Teacher Login</CardTitle>
-            <CardDescription>Submit marks and manage your classes.</CardDescription>
+            <CardTitle className="text-2xl font-headline">Teacher Portal</CardTitle>
+            <CardDescription>Login to manage marks and classes.</CardDescription>
           </CardHeader>
           <CardContent className="text-center">
             <Button asChild size="lg" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Link href="/teacher/dashboard">
-                <LogIn className="mr-2 h-5 w-5" /> Login as Teacher
+              <Link href="/login/teacher">
+                <LogIn className="mr-2 h-5 w-5" /> Teacher Login
               </Link>
             </Button>
           </CardContent>
