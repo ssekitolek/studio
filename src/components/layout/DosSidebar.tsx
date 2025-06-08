@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -93,7 +94,7 @@ export function DosSidebar() {
 
     return (
       <SidebarMenuItem key={index}>
-        <Link href={item.href} passHref legacyBehavior>
+        <Link href={item.href}>
           <SidebarMenuButton isActive={isItemActive(item.href)} tooltip={item.tooltip} className="justify-start">
             <item.icon className="h-5 w-5" />
             {state === 'expanded' && <span>{item.label}</span>}
@@ -132,7 +133,7 @@ export function DosSidebar() {
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter className="p-2">
-        <Link href="/" passHref legacyBehavior>
+        <Link href="/">
           <SidebarMenuButton tooltip="Log Out" className="justify-start">
             <LogOut className="h-5 w-5" />
             {state === 'expanded' && <span>Log Out</span>}
