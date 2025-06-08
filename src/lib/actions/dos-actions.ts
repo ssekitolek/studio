@@ -4,7 +4,7 @@
 import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit } from "firebase/firestore";
 
 // Simulate a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -15,9 +15,18 @@ export async function createTeacher(teacherData: Omit<Teacher, 'id'>): Promise<{
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
+    // Check if teacher with the same email already exists
+    const teachersRef = collection(db, "teachers");
+    const q = query(teachersRef, where("email", "==", teacherData.email), limit(1));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      return { success: false, message: `Teacher with email ${teacherData.email} already exists.` };
+    }
+
     const teacherPayload = {
       ...teacherData,
-      subjectsAssigned: teacherData.subjectsAssigned || [], // Ensure subjectsAssigned is an array
+      subjectsAssigned: teacherData.subjectsAssigned || [], 
     };
     const docRef = await addDoc(collection(db, "teachers"), teacherPayload);
     const newTeacher: Teacher = { id: docRef.id, ...teacherPayload };
@@ -57,7 +66,7 @@ export async function updateTeacher(teacherId: string, teacherData: Partial<Omit
     await updateDoc(teacherRef, teacherData);
     revalidatePath(`/dos/teachers`);
     revalidatePath(`/dos/teachers/${teacherId}/edit`);
-    const updatedTeacher = await getTeacherById(teacherId); // Fetch the updated teacher data to return
+    const updatedTeacher = await getTeacherById(teacherId); 
     return { success: true, message: "Teacher updated successfully.", teacher: updatedTeacher ?? undefined };
   } catch (error) {
     console.error(`Error in updateTeacher for ${teacherId}:`, error);
@@ -87,8 +96,23 @@ export async function createStudent(studentData: Omit<Student, 'id'>): Promise<{
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
-    const docRef = await addDoc(collection(db, "students"), studentData);
-    const newStudent: Student = { id: docRef.id, ...studentData };
+    // Optional: Check if student with the same studentIdNumber already exists
+    const studentsRef = collection(db, "students");
+    const q = query(studentsRef, where("studentIdNumber", "==", studentData.studentIdNumber), limit(1));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      return { success: false, message: `Student with ID Number ${studentData.studentIdNumber} already exists.` };
+    }
+
+    const studentPayload: Omit<Student, 'id'> = {
+      ...studentData,
+      dateOfBirth: studentData.dateOfBirth || undefined, // Ensure optional fields are handled
+      gender: studentData.gender || undefined,
+    };
+
+    const docRef = await addDoc(collection(db, "students"), studentPayload);
+    const newStudent: Student = { id: docRef.id, ...studentPayload };
     revalidatePath("/dos/students");
     return { success: true, message: "Student registered successfully.", student: newStudent };
   } catch (error) {
@@ -196,9 +220,10 @@ export async function createSubject(subjectData: Omit<Subject, 'id'>): Promise<{
   try {
     const subjectDataToSave = {
         ...subjectData,
-        code: subjectData.code || null,
+        code: subjectData.code || null, // Store empty string as null or handle as needed
     };
     const docRef = await addDoc(collection(db, "subjects"), subjectDataToSave);
+    // Ensure the returned subject has `code` as undefined if it was stored as null
     const newSubject: Subject = { id: docRef.id, ...subjectDataToSave, code: subjectDataToSave.code === null ? undefined : subjectDataToSave.code };
     revalidatePath("/dos/classes");
     return { success: true, message: "Subject created successfully.", subject: newSubject };
@@ -249,7 +274,11 @@ export async function updateGeneralSettings(settings: GeneralSettings): Promise<
   }
   try {
     const settingsRef = doc(db, "settings", "general");
-    await updateDoc(settingsRef, settings, { merge: true });
+    // Firestore does not store `undefined` values. Ensure they are handled or converted.
+    // For example, delete fields that are undefined if that's the desired behavior.
+    // Or ensure Zod schema doesn't produce them for Firestore.
+    // For this example, we assume `settings` is already Firestore-compatible.
+    await updateDoc(settingsRef, { ...settings }, { merge: true }); // Use spread to avoid passing undefined directly if settings is a class instance.
     revalidatePath("/dos/settings/general");
     return { success: true, message: "General settings updated." };
   } catch (error) {
@@ -289,7 +318,7 @@ export async function getTeachers(): Promise<Teacher[]> {
         id: doc.id,
         name: data.name,
         email: data.email,
-        subjectsAssigned: data.subjectsAssigned || []
+        subjectsAssigned: data.subjectsAssigned || [] // Ensure subjectsAssigned defaults to an empty array
       } as Teacher;
     });
     return teachersList;
@@ -307,7 +336,18 @@ export async function getStudents(): Promise<Student[]> {
   try {
     const studentsCol = collection(db, "students");
     const studentSnapshot = await getDocs(studentsCol);
-    const studentsList = studentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
+    const studentsList = studentSnapshot.docs.map(docSnap => {
+      const data = docSnap.data();
+      return { 
+        id: docSnap.id, 
+        studentIdNumber: data.studentIdNumber,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        classId: data.classId,
+        dateOfBirth: data.dateOfBirth, // Keep as string or undefined
+        gender: data.gender,
+       } as Student;
+    });
     return studentsList;
   } catch (error) {
     console.error("Error fetching students:", error);
@@ -329,16 +369,19 @@ export async function getClasses(): Promise<ClassInfo[]> {
 
             if (classData.subjectReferences && Array.isArray(classData.subjectReferences)) {
                 for (const subjectRef of classData.subjectReferences) {
+                    // Ensure subjectRef is a DocumentReference-like object with an id
                     if (subjectRef && typeof subjectRef.id === 'string') {
                         try {
                             const subjectDocSnap = await getDoc(doc(db, "subjects", subjectRef.id));
                             if (subjectDocSnap.exists()) {
                                 subjectsArray.push({ id: subjectDocSnap.id, ...subjectDocSnap.data() } as Subject);
                             } else {
+                                // If subject not found, create a placeholder or skip
                                 subjectsArray.push({ id: subjectRef.id, name: `Unknown Subject (${subjectRef.id})` });
                             }
                         } catch (e) {
-                             subjectsArray.push({ id: subjectRef.id, name: `Error Subject (${subjectRef.id})` });
+                             console.error(`Error fetching subject ${subjectRef.id} for class ${classDoc.id}:`, e);
+                             subjectsArray.push({ id: subjectRef.id, name: `Error Subject (${subjectRef.id})` }); // Placeholder for errored fetch
                         }
                     }
                 }
@@ -421,8 +464,15 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
         const settingsSnap = await getDoc(settingsRef);
 
         if (settingsSnap.exists()) {
-            return settingsSnap.data() as GeneralSettings;
+            const data = settingsSnap.data();
+             // Ensure defaultGradingScale is an array, even if Firestore returns null/undefined
+            const defaultGradingScale = Array.isArray(data.defaultGradingScale) ? data.defaultGradingScale : [];
+            return {
+                ...data,
+                defaultGradingScale,
+            } as GeneralSettings;
         }
+        // Default settings if nothing is found in Firestore
         return {
             defaultGradingScale: [{ grade: 'A', minScore: 80, maxScore: 100 }],
             markSubmissionTimeZone: 'UTC',
@@ -430,8 +480,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
         };
     } catch (error) {
         console.error("Error fetching general settings:", error);
+        // Return a safe default in case of error
         return { defaultGradingScale: [], markSubmissionTimeZone: 'UTC', currentTermId: undefined };
     }
 }
-
-    

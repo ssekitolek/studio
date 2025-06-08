@@ -4,9 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { UserPlus, ArrowLeft } from "lucide-react";
-
-// This will eventually be a form component
-// import { StudentRegistrationForm } from "@/components/forms/StudentRegistrationForm";
+import { StudentRegistrationForm } from "@/components/forms/StudentRegistrationForm"; // Updated import
 
 export default function RegisterStudentPage() {
   return (
@@ -30,9 +28,7 @@ export default function RegisterStudentPage() {
           <CardDescription>Enter the student's details below.</CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Placeholder for StudentRegistrationForm */}
-          <p className="text-muted-foreground">Student registration form will be here.</p>
-          {/* <StudentRegistrationForm /> */}
+          <StudentRegistrationForm />
         </CardContent>
       </Card>
     </div>
