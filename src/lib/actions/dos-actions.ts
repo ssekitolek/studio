@@ -4,7 +4,7 @@
 import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc } from "firebase/firestore";
 
 // Simulate a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -12,9 +12,13 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 // --- Teacher Management ---
 export async function createTeacher(teacherData: Omit<Teacher, 'id'>): Promise<{ success: boolean; message: string; teacher?: Teacher }> {
   try {
-    console.log("Creating teacher:", teacherData);
-    const docRef = await addDoc(collection(db, "teachers"), teacherData);
-    const newTeacher: Teacher = { id: docRef.id, ...teacherData };
+    const teacherPayload = {
+      ...teacherData,
+      subjectsAssigned: teacherData.subjectsAssigned || [], // Ensure subjectsAssigned is an array
+    };
+    console.log("Creating teacher in Firestore:", teacherPayload);
+    const docRef = await addDoc(collection(db, "teachers"), teacherPayload);
+    const newTeacher: Teacher = { id: docRef.id, ...teacherPayload };
     revalidatePath("/dos/teachers");
     return { success: true, message: "Teacher created successfully.", teacher: newTeacher };
   } catch (error) {
@@ -99,20 +103,26 @@ export async function deleteStudent(studentId: string): Promise<{ success: boole
 export async function createClass(classData: Omit<ClassInfo, 'id' | 'subjects'> & { subjectIds: string[] }): Promise<{ success: boolean; message: string; classInfo?: ClassInfo }> {
   try {
     console.log("Creating class:", classData);
-    // In Firestore, you might store subject IDs and then fetch/resolve them as needed.
-    // For this example, we'll prepare a structure similar to the type, but actual subject objects won't be stored directly in the class document if they are separate entities.
     const { subjectIds, ...restOfClassData } = classData; 
     const classDataToSave = {
       ...restOfClassData,
-      subjectReferences: subjectIds.map(id => doc(db, "subjects", id)) // Store references
+      subjectReferences: subjectIds.map(id => doc(db, "subjects", id)) 
     };
 
     const docRef = await addDoc(collection(db, "classes"), classDataToSave);
     
-    // For the return value, we'll create a temporary ClassInfo structure.
-    // In a real scenario, you might fetch the newly created class or resolve subject names here.
-    const tempSubjects: Subject[] = subjectIds.map(id => ({ id, name: `Subject ${id}` })); // Placeholder names
-    const newClass: ClassInfo = { ...restOfClassData, id: docRef.id, subjects: tempSubjects };
+    // Fetch subject details for the response
+    const subjects: Subject[] = [];
+    for (const subjectId of subjectIds) {
+        const subjectDocRef = doc(db, "subjects", subjectId);
+        const subjectDocSnap = await getDoc(subjectDocRef);
+        if (subjectDocSnap.exists()) {
+            subjects.push({ id: subjectDocSnap.id, ...subjectDocSnap.data() } as Subject);
+        } else {
+            subjects.push({ id: subjectId, name: `Unknown Subject (${subjectId})` }); // Fallback
+        }
+    }
+    const newClass: ClassInfo = { ...restOfClassData, id: docRef.id, subjects };
     
     revalidatePath("/dos/classes");
     return { success: true, message: "Class created successfully.", classInfo: newClass };
@@ -147,14 +157,14 @@ export async function updateClass(classId: string, classData: Partial<Omit<Class
 
 export async function createSubject(subjectData: Omit<Subject, 'id'>): Promise<{ success: boolean; message: string; subject?: Subject }> {
   try {
-    console.log("Creating subject:", subjectData);
+    console.log("Creating subject in Firestore:", subjectData);
     const subjectDataToSave = {
         ...subjectData,
-        code: subjectData.code || null, // Store null if code is undefined/empty
+        code: subjectData.code || null, 
     };
     const docRef = await addDoc(collection(db, "subjects"), subjectDataToSave);
     const newSubject: Subject = { id: docRef.id, ...subjectDataToSave, code: subjectDataToSave.code === null ? undefined : subjectDataToSave.code };
-    revalidatePath("/dos/classes"); // This page displays subjects
+    revalidatePath("/dos/classes"); 
     return { success: true, message: "Subject created successfully.", subject: newSubject };
   } catch (error) {
     console.error("Error in createSubject:", error);
@@ -196,10 +206,8 @@ export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success:
 export async function updateGeneralSettings(settings: GeneralSettings): Promise<{ success: boolean; message: string }> {
   try {
     console.log("Updating general settings:", settings);
-    // In Firestore, general settings are often stored as a single document in a 'settings' collection.
-    // Assuming a document ID 'general' for these settings.
     const settingsRef = doc(db, "settings", "general");
-    await updateDoc(settingsRef, settings, { merge: true }); // Use merge to avoid overwriting other settings if any
+    await updateDoc(settingsRef, settings, { merge: true }); 
     revalidatePath("/dos/settings/general");
     return { success: true, message: "General settings updated." };
   } catch (error) {
@@ -212,8 +220,6 @@ export async function updateGeneralSettings(settings: GeneralSettings): Promise<
 export async function downloadAllMarks(): Promise<{ success: boolean; message: string; data?: string }> {
   try {
     console.log("Downloading all marks requested.");
-    // This would involve complex queries across multiple collections (students, marks, assessments, etc.)
-    // For now, we keep it as a mock.
     await delay(1000);
     const csvData = "StudentID,StudentName,Class,Subject,Exam,Score\nS1001,John Doe,Form 1A,Math,Midterm,85\nS1002,Jane Smith,Form 1A,Math,Midterm,92";
     return { success: true, message: "Marks data prepared for download (mock).", data: csvData };
@@ -229,11 +235,19 @@ export async function getTeachers(): Promise<Teacher[]> {
   try {
     const teachersCol = collection(db, "teachers");
     const teacherSnapshot = await getDocs(teachersCol);
-    const teachersList = teacherSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Teacher));
+    const teachersList = teacherSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return { 
+        id: doc.id, 
+        name: data.name,
+        email: data.email,
+        subjectsAssigned: data.subjectsAssigned || [] // Ensure subjectsAssigned is an array
+      } as Teacher;
+    });
     return teachersList;
   } catch (error) {
     console.error("Error fetching teachers from Firestore:", error);
-    return []; // Return empty on error, UI should handle this
+    return []; 
   }
 }
 
@@ -255,31 +269,37 @@ export async function getClasses(): Promise<ClassInfo[]> {
         const classSnapshot = await getDocs(classesCol);
         const classesListPromises = classSnapshot.docs.map(async (classDoc) => {
             const classData = classDoc.data();
-            let subjects: Subject[] = [];
+            let subjectsArray: Subject[] = [];
+
             if (classData.subjectReferences && Array.isArray(classData.subjectReferences)) {
-                // This is a simplified approach. In a real app, you might want to fetch subject details
-                // or simply store subject names/codes if they don't need full objects here.
-                // For now, let's assume subjectReferences contain enough info or are just IDs.
-                // If they are DocumentReferences, you would need to getDoc for each.
-                // For simplicity, let's map them to basic Subject objects if they are just IDs or simple objects.
-                 subjects = await Promise.all(classData.subjectReferences.map(async (ref: any) => {
-                    // If ref is a DocumentReference
-                    if (ref.path) {
-                        // This is a simplified example. Ideally, you'd fetch the actual subject document.
-                        // const subjectDoc = await getDoc(ref);
-                        // if (subjectDoc.exists()) {
-                        //    return { id: subjectDoc.id, ...subjectDoc.data() } as Subject;
-                        // }
-                        // For now, just return a placeholder if it's a reference path
-                        return { id: ref.id || ref.path.split('/').pop(), name: `Subject ${ref.id || ref.path.split('/').pop()}` };
+                for (const subjectRef of classData.subjectReferences) {
+                    if (subjectRef && typeof subjectRef.id === 'string') { // Check if it's a DocumentReference
+                        try {
+                            const subjectDocSnap = await getDoc(doc(db, "subjects", subjectRef.id));
+                            if (subjectDocSnap.exists()) {
+                                subjectsArray.push({ id: subjectDocSnap.id, ...subjectDocSnap.data() } as Subject);
+                            } else {
+                                console.warn(`Subject with ID ${subjectRef.id} referenced by class ${classDoc.id} not found.`);
+                                subjectsArray.push({ id: subjectRef.id, name: `Unknown Subject (${subjectRef.id})` });
+                            }
+                        } catch (e) {
+                             console.error(`Error fetching subject ${subjectRef.id} for class ${classDoc.id}:`,e);
+                             subjectsArray.push({ id: subjectRef.id, name: `Error Subject (${subjectRef.id})` });
+                        }
+                    } else {
+                        console.warn(`Invalid subject reference in class ${classDoc.id}:`, subjectRef);
                     }
-                    // If ref is already an object with id and name (less likely for references)
-                    if (ref.id && ref.name) return ref as Subject;
-                    // Fallback for other structures
-                    return { id: String(ref), name: `Subject ${String(ref)}`};
-                }));
+                }
             }
-            return { id: classDoc.id, ...classData, subjects } as ClassInfo;
+            // Ensure all fields from ClassInfo are present, providing defaults if necessary
+            return { 
+                id: classDoc.id, 
+                name: classData.name || "Unnamed Class",
+                level: classData.level || "Unknown Level",
+                stream: classData.stream || undefined,
+                classTeacherId: classData.classTeacherId || undefined,
+                subjects: subjectsArray 
+            } as ClassInfo;
         });
         return Promise.all(classesListPromises);
     } catch (error) {
@@ -326,10 +346,11 @@ export async function getExams(): Promise<Exam[]> {
 
 export async function getGeneralSettings(): Promise<GeneralSettings> {
     try {
-        const settingsDoc = await getDocs(collection(db, "settings")); // Assuming settings are in a 'settings' collection
-        if (!settingsDoc.empty && settingsDoc.docs.find(doc => doc.id === "general")) {
-            const generalSettingsDoc = settingsDoc.docs.find(doc => doc.id === "general")!;
-            return generalSettingsDoc.data() as GeneralSettings;
+        const settingsRef = doc(db, "settings", "general");
+        const settingsSnap = await getDoc(settingsRef);
+        
+        if (settingsSnap.exists()) {
+            return settingsSnap.data() as GeneralSettings;
         }
         // Return default if not found
         return { 

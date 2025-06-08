@@ -4,9 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { UserPlus, ArrowLeft } from "lucide-react";
-
-// This will eventually be a form component
-// import { TeacherForm } from "@/components/forms/TeacherForm";
+import { TeacherForm } from "@/components/forms/TeacherForm";
 
 export default function AddNewTeacherPage() {
   return (
@@ -30,9 +28,7 @@ export default function AddNewTeacherPage() {
           <CardDescription>Enter the teacher's information below.</CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Placeholder for TeacherForm */}
-          <p className="text-muted-foreground">Teacher creation form will be here.</p>
-          {/* <TeacherForm /> */}
+          <TeacherForm />
         </CardContent>
       </Card>
     </div>
