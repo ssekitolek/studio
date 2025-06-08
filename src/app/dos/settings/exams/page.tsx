@@ -4,20 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { FileText, PlusCircle, Scale } from "lucide-react";
-import { getExams, getGradingPolicies } from "@/lib/actions/dos-actions"; // Updated imports
-import type { Exam, GradingPolicy } from "@/lib/types"; // Updated imports
-
-// Mock data for exams - replace with actual data fetching if needed for this part of the page
-const examsData: Exam[] = [ // Using Exam type
-  { id: "exam1", name: "Midterm Exam", termId: "term1", maxMarks: 100, description: "Covers first half of syllabus." },
-  { id: "exam2", name: "Final Exam", termId: "term1", maxMarks: 100, description: "Comprehensive final exam." },
-  { id: "exam3", name: "CAT 1", termId: "term2", maxMarks: 30, description: "Continuous Assessment Test 1." },
-];
+import { getExams, getGradingPolicies } from "@/lib/actions/dos-actions";
+import type { Exam, GradingPolicy } from "@/lib/types";
 
 export default async function ManageExamsAndGradingPage() {
-  // Fetch actual grading policies
   const gradingPolicies: GradingPolicy[] = await getGradingPolicies();
-  const exams: Exam[] = await getExams(); // Fetch actual exams
+  const exams: Exam[] = await getExams();
 
 
   return (
@@ -83,9 +75,13 @@ export default async function ManageExamsAndGradingPage() {
                     <CardTitle className="text-lg">{policy.name} {policy.isDefault && <span className="text-xs font-normal text-green-600 ml-2">(Default)</span>}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <ul className="text-sm space-y-1">
-                        {policy.scale.map((s, index) => <li key={`${s.grade}-${index}`}>{s.grade}: {s.minScore}% - {s.maxScore}%</li>)}
-                    </ul>
+                    {Array.isArray(policy.scale) && policy.scale.length > 0 ? (
+                        <ul className="text-sm space-y-1">
+                            {policy.scale.map((s, index) => <li key={`${s.grade}-${index}`}>{s.grade}: {s.minScore}% - {s.maxScore}%</li>)}
+                        </ul>
+                    ) : (
+                        <p className="text-sm text-muted-foreground italic">No grade tiers defined for this policy.</p>
+                    )}
                      <Button variant="link" size="sm" className="p-0 h-auto mt-2 self-start text-xs" asChild>
                         <Link href={`/dos/settings/grading/${policy.id}/edit`}>Edit Policy</Link>
                     </Button>
