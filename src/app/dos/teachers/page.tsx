@@ -7,26 +7,59 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { BookUser, UserPlus, MoreHorizontal, Edit3, Trash2, Mail } from "lucide-react";
 import { getTeachers, getClasses, getSubjects } from "@/lib/actions/dos-actions";
-import type { Teacher, ClassInfo, Subject } from "@/lib/types";
+import type { Teacher, ClassInfo, Subject as SubjectType } from "@/lib/types";
 
-// Dummy delete action for client-side interaction demonstration if direct delete button was used.
-// Actual delete is handled via the edit page with ?action=delete_prompt
-async function handleDeleteTeacher(teacherId: string) {
-  "use server"; 
-  console.log("Attempting to delete teacher:", teacherId);
-  // const result = await deleteTeacher(teacherId); // This would be the actual server action
-  // revalidatePath("/dos/teachers"); // if action doesn't do it
-  // return result;
-  return { success: true, message: `Teacher ${teacherId} would be deleted.` };
+interface DisplayedAssignment {
+  classId: string;
+  subjectId: string;
+  className: string;
+  subjectName: string;
 }
 
 export default async function ManageTeachersPage() {
-  const teachers = await getTeachers();
-  const classes = await getClasses();
-  const subjects = await getSubjects();
+  const teachers: Teacher[] = await getTeachers();
+  const classes: ClassInfo[] = await getClasses();
+  const subjects: SubjectType[] = await getSubjects();
 
-  const getSubjectName = (subjectId: string) => subjects.find(s => s.id === subjectId)?.name || subjectId;
-  const getClassName = (classId: string) => classes.find(c => c.id === classId)?.name || classId;
+  const getSubjectName = (subjectId: string): string => subjects.find(s => s.id === subjectId)?.name || subjectId;
+  const getClassName = (classId: string): string => classes.find(c => c.id === classId)?.name || classId;
+
+  const getDisplayedAssignmentsForTeacher = (teacher: Teacher): DisplayedAssignment[] => {
+    const assignmentsMap = new Map<string, DisplayedAssignment>();
+
+    // Add assignments from teacher.subjectsAssigned
+    if (teacher.subjectsAssigned) {
+      teacher.subjectsAssigned.forEach(assignment => {
+        const key = `${assignment.classId}-${assignment.subjectId}`;
+        if (!assignmentsMap.has(key)) {
+          assignmentsMap.set(key, {
+            classId: assignment.classId,
+            subjectId: assignment.subjectId,
+            className: getClassName(assignment.classId),
+            subjectName: getSubjectName(assignment.subjectId),
+          });
+        }
+      });
+    }
+
+    // Add assignments derived from being a class teacher
+    classes.forEach(classItem => {
+      if (classItem.classTeacherId === teacher.id) {
+        classItem.subjects.forEach(subject => {
+          const key = `${classItem.id}-${subject.id}`;
+          if (!assignmentsMap.has(key)) {
+            assignmentsMap.set(key, {
+              classId: classItem.id,
+              subjectId: subject.id,
+              className: classItem.name,
+              subjectName: subject.name,
+            });
+          }
+        });
+      }
+    });
+    return Array.from(assignmentsMap.values());
+  };
 
   return (
     <div className="space-y-6">
@@ -60,56 +93,59 @@ export default async function ManageTeachersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {teachers.map((teacher) => (
-                  <TableRow key={teacher.id}>
-                    <TableCell className="font-medium">{teacher.name}</TableCell>
-                    <TableCell>
-                        <div className="flex items-center gap-1">
-                            <Mail className="h-4 w-4 text-muted-foreground"/>
-                            {teacher.email}
-                        </div>
-                    </TableCell>
-                    <TableCell>
-                      {teacher.subjectsAssigned && teacher.subjectsAssigned.length > 0 ? (
-                        <ul className="list-disc list-inside text-sm">
-                          {teacher.subjectsAssigned.slice(0,2).map(assignment => ( // Show max 2 for brevity
-                            <li key={`${assignment.classId}-${assignment.subjectId}`}>
-                              {getSubjectName(assignment.subjectId)} ({getClassName(assignment.classId)})
-                            </li>
-                          ))}
-                          {teacher.subjectsAssigned.length > 2 && <li>...and {teacher.subjectsAssigned.length - 2} more</li>}
-                        </ul>
-                      ) : (
-                        <span className="text-muted-foreground italic">No assignments</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/dos/teachers/${teacher.id}/edit`}>
-                              <Edit3 className="mr-2 h-4 w-4" /> Edit
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                            asChild
-                           >
-                             <Link href={`/dos/teachers/${teacher.id}/edit?action=delete_prompt`}>
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                             </Link>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {teachers.map((teacher) => {
+                  const displayedAssignments = getDisplayedAssignmentsForTeacher(teacher);
+                  return (
+                    <TableRow key={teacher.id}>
+                      <TableCell className="font-medium">{teacher.name}</TableCell>
+                      <TableCell>
+                          <div className="flex items-center gap-1">
+                              <Mail className="h-4 w-4 text-muted-foreground"/>
+                              {teacher.email}
+                          </div>
+                      </TableCell>
+                      <TableCell>
+                        {displayedAssignments.length > 0 ? (
+                          <ul className="list-disc list-inside text-sm">
+                            {displayedAssignments.slice(0, 2).map(assignment => (
+                              <li key={`${assignment.classId}-${assignment.subjectId}`}>
+                                {assignment.subjectName} ({assignment.className})
+                              </li>
+                            ))}
+                            {displayedAssignments.length > 2 && <li>...and {displayedAssignments.length - 2} more</li>}
+                          </ul>
+                        ) : (
+                          <span className="text-muted-foreground italic">No assignments</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/dos/teachers/${teacher.id}/edit`}>
+                                <Edit3 className="mr-2 h-4 w-4" /> Edit
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                              asChild
+                             >
+                               <Link href={`/dos/teachers/${teacher.id}/edit?action=delete_prompt`}>
+                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                               </Link>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           ) : (
