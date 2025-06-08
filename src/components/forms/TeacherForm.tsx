@@ -18,39 +18,53 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { createTeacher, updateTeacher } from "@/lib/actions/dos-actions";
-import { Loader2, Save, UserPlus, Edit3 } from "lucide-react";
+import { Loader2, Save, UserPlus, Edit3, KeyRound } from "lucide-react";
 import type { Teacher } from "@/lib/types";
-import { useRouter } from "next/navigation"; // Added for redirect
+import { useRouter } from "next/navigation";
 
-const teacherFormSchema = z.object({
+// Base schema for common fields
+const teacherBaseSchema = z.object({
   name: z.string().min(2, {
     message: "Teacher name must be at least 2 characters.",
   }),
   email: z.string().email({
     message: "Please enter a valid email address.",
   }),
-  // subjectsAssigned could be added here if you want to edit them directly in this form
 });
 
-type TeacherFormValues = z.infer<typeof teacherFormSchema>;
+// Schema for creating a teacher (password required)
+const createTeacherFormSchema = teacherBaseSchema.extend({
+  password: z.string().min(6, "Password must be at least 6 characters."),
+});
+
+// Schema for updating a teacher (password optional)
+const updateTeacherFormSchema = teacherBaseSchema.extend({
+  password: z.string().optional().refine(val => !val || val.length >= 6, {
+    message: "Password must be at least 6 characters if provided.",
+  }),
+});
+
+
+type TeacherFormValues = z.infer<typeof createTeacherFormSchema> | z.infer<typeof updateTeacherFormSchema>;
 
 interface TeacherFormProps {
-  initialData?: Teacher | null; // Changed to allow null
+  initialData?: Teacher | null;
   teacherId?: string;
   onSuccess?: () => void;
 }
 
 export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormProps) {
   const { toast } = useToast();
-  const router = useRouter(); // Added for redirect
+  const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
   const isEditMode = !!teacherId && !!initialData;
 
   const form = useForm<TeacherFormValues>({
-    resolver: zodResolver(teacherFormSchema),
+    resolver: zodResolver(isEditMode ? updateTeacherFormSchema : createTeacherFormSchema),
     defaultValues: {
       name: initialData?.name || "",
       email: initialData?.email || "",
+      password: "", // Always start with empty password field in form
     },
   });
 
@@ -59,6 +73,7 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
       form.reset({
         name: initialData.name,
         email: initialData.email,
+        password: "", // Password field is for setting/changing, not displaying
       });
     }
   }, [initialData, form]);
@@ -67,19 +82,35 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
     startTransition(async () => {
       try {
         let result;
+        const teacherPayload: Partial<Teacher> & { name: string; email: string; password?: string } = {
+          name: data.name,
+          email: data.email,
+        };
+
+        // Only include password if it's provided (and not an empty string from the form)
+        if (data.password && data.password.trim() !== "") {
+          teacherPayload.password = data.password;
+        }
+        
         if (isEditMode) {
-          const teacherDataToUpdate: Partial<Omit<Teacher, 'id' | 'subjectsAssigned'>> = {
-            name: data.name,
-            email: data.email,
+          // In edit mode, updateTeacher expects Partial<Omit<Teacher, 'id' | 'subjectsAssigned'>>
+          // We ensure teacherPayload fits this structure.
+          const updatePayload: Partial<Omit<Teacher, 'id' | 'subjectsAssigned'>> = {
+            name: teacherPayload.name,
+            email: teacherPayload.email,
           };
-          result = await updateTeacher(teacherId!, teacherDataToUpdate);
+          if (teacherPayload.password) {
+            updatePayload.password = teacherPayload.password;
+          }
+
+          result = await updateTeacher(teacherId!, updatePayload);
           if (result.success && result.teacher) {
             toast({
               title: "Teacher Updated",
               description: `Teacher "${result.teacher.name}" has been successfully updated.`,
             });
             if (onSuccess) onSuccess();
-            else router.push("/dos/teachers"); // Redirect after successful update
+            else router.push("/dos/teachers");
           } else {
             toast({
               title: "Error Updating Teacher",
@@ -88,20 +119,21 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
             });
           }
         } else {
-          const teacherDataToCreate: Omit<Teacher, 'id' | 'subjectsAssigned'> & { subjectsAssigned?: Array<{ classId: string; subjectId: string }> } = {
-            name: data.name,
-            email: data.email,
-            // subjectsAssigned is handled by createTeacher to initialize as empty array
-          };
-          result = await createTeacher(teacherDataToCreate as Omit<Teacher, 'id'>);
+          // Create mode, password is required by schema if createTeacherFormSchema is used
+          if (!teacherPayload.password) {
+             // This case should ideally be caught by Zod, but as a safeguard:
+            toast({ title: "Password Required", description: "Password is required to create a new teacher.", variant: "destructive"});
+            return;
+          }
+          result = await createTeacher(teacherPayload as Omit<Teacher, 'id' | 'subjectsAssigned'> & {password: string});
           if (result.success && result.teacher) {
             toast({
               title: "Teacher Created",
               description: `Teacher "${result.teacher.name}" has been successfully added.`,
             });
-            form.reset(); // Reset form only on create
+            form.reset({ name: "", email: "", password: "" });
             if (onSuccess) onSuccess();
-            else router.push("/dos/teachers"); // Redirect after successful creation
+            else router.push("/dos/teachers");
           } else {
             toast({
               title: "Error Creating Teacher",
@@ -111,9 +143,10 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
           }
         }
       } catch (error) {
+        const err = error as Error;
         toast({
           title: "Submission Error",
-          description: "An unexpected error occurred.",
+          description: err.message || "An unexpected error occurred.",
           variant: "destructive",
         });
       }
@@ -155,7 +188,22 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
             </FormItem>
           )}
         />
-        {/* Future: Add subject/class assignment fields here if needed for edit mode */}
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password</FormLabel>
+              <FormControl>
+                <Input type="password" placeholder="Enter password (min. 6 characters)" {...field} />
+              </FormControl>
+              <FormDescription>
+                {isEditMode ? "Enter a new password to change it, or leave blank to keep the current one." : "Set the initial password for the teacher."}
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <div className="flex justify-end">
           <Button type="submit" disabled={isPending}>
             {isPending ? (
@@ -163,14 +211,12 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
             ) : isEditMode ? (
               <Edit3 className="mr-2 h-4 w-4" />
             ) : (
-              <Save className="mr-2 h-4 w-4" />
+              <UserPlus className="mr-2 h-4 w-4" />
             )}
-            {isEditMode ? "Update Teacher" : "Save Teacher"}
+            {isEditMode ? "Update Teacher" : "Add Teacher"}
           </Button>
         </div>
       </form>
     </Form>
   );
 }
-
-    

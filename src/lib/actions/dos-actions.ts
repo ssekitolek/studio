@@ -10,12 +10,11 @@ import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // --- Teacher Management ---
-export async function createTeacher(teacherData: Omit<Teacher, 'id'>): Promise<{ success: boolean; message: string; teacher?: Teacher }> {
+export async function createTeacher(teacherData: Omit<Teacher, 'id' | 'subjectsAssigned'> & { password?: string }): Promise<{ success: boolean; message: string; teacher?: Teacher }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
-    // Check if teacher with the same email already exists
     const teachersRef = collection(db, "teachers");
     const q = query(teachersRef, where("email", "==", teacherData.email), limit(1));
     const querySnapshot = await getDocs(q);
@@ -24,10 +23,13 @@ export async function createTeacher(teacherData: Omit<Teacher, 'id'>): Promise<{
       return { success: false, message: `Teacher with email ${teacherData.email} already exists.` };
     }
 
-    const teacherPayload = {
-      ...teacherData,
-      subjectsAssigned: teacherData.subjectsAssigned || [],
+    const teacherPayload: Omit<Teacher, 'id'> = {
+      name: teacherData.name,
+      email: teacherData.email,
+      password: teacherData.password, // Store password (plain text - insecure for production)
+      subjectsAssigned: [], // Initialize with empty array
     };
+
     const docRef = await addDoc(collection(db, "teachers"), teacherPayload);
     const newTeacher: Teacher = { id: docRef.id, ...teacherPayload };
     revalidatePath("/dos/teachers");
@@ -48,7 +50,14 @@ export async function getTeacherById(teacherId: string): Promise<Teacher | null>
     const teacherRef = doc(db, "teachers", teacherId);
     const teacherSnap = await getDoc(teacherRef);
     if (teacherSnap.exists()) {
-      return { id: teacherSnap.id, ...teacherSnap.data() } as Teacher;
+      const data = teacherSnap.data();
+      return {
+        id: teacherSnap.id,
+        name: data.name,
+        email: data.email,
+        password: data.password, // Include password if it exists
+        subjectsAssigned: data.subjectsAssigned || [],
+      } as Teacher;
     }
     return null;
   } catch (error) {
@@ -57,13 +66,26 @@ export async function getTeacherById(teacherId: string): Promise<Teacher | null>
   }
 }
 
-export async function updateTeacher(teacherId: string, teacherData: Partial<Omit<Teacher, 'id'>>): Promise<{ success: boolean; message: string; teacher?: Teacher }> {
+export async function updateTeacher(teacherId: string, teacherData: Partial<Omit<Teacher, 'id' | 'subjectsAssigned'>>): Promise<{ success: boolean; message: string; teacher?: Teacher }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
     const teacherRef = doc(db, "teachers", teacherId);
-    await updateDoc(teacherRef, teacherData);
+    
+    // Create a new object for update to avoid passing undefined password if not changing
+    const dataToUpdate: Partial<Omit<Teacher, 'id' | 'subjectsAssigned'>> = {
+      name: teacherData.name,
+      email: teacherData.email,
+    };
+
+    if (teacherData.password) { // Only include password in update if it's provided
+      dataToUpdate.password = teacherData.password;
+    }
+    // If password is not in teacherData, it won't be sent in the updateDoc, preserving the old one.
+    // To clear a password, teacherData.password would need to be explicitly set to null or Firestore.FieldValue.delete()
+
+    await updateDoc(teacherRef, dataToUpdate);
     revalidatePath(`/dos/teachers`);
     revalidatePath(`/dos/teachers/${teacherId}/edit`);
     const updatedTeacher = await getTeacherById(teacherId);
@@ -636,12 +658,13 @@ export async function getTeachers(): Promise<Teacher[]> {
   try {
     const teachersCol = collection(db, "teachers");
     const teacherSnapshot = await getDocs(teachersCol);
-    const teachersList = teacherSnapshot.docs.map(doc => {
-      const data = doc.data();
+    const teachersList = teacherSnapshot.docs.map(docSnap => {
+      const data = docSnap.data();
       return {
-        id: doc.id,
+        id: docSnap.id,
         name: data.name,
         email: data.email,
+        password: data.password, // Include password if it exists
         subjectsAssigned: data.subjectsAssigned || []
       } as Teacher;
     });

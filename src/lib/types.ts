@@ -3,6 +3,7 @@ export interface Teacher {
   id: string;
   name: string;
   email: string;
+  password?: string; // Password assigned by D.O.S.
   subjectsAssigned: Array<{ classId: string; subjectId: string }>; // Tracks which subjects in which classes
 }
 
