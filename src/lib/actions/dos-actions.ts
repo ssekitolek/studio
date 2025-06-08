@@ -1,3 +1,4 @@
+
 "use server";
 
 import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings } from "@/lib/types";
@@ -8,110 +9,175 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // --- Teacher Management ---
 export async function createTeacher(teacherData: Omit<Teacher, 'id'>): Promise<{ success: boolean; message: string; teacher?: Teacher }> {
-  console.log("Creating teacher:", teacherData);
-  await delay(500);
-  // In a real app, save to DB and get an ID
-  const newTeacher: Teacher = { ...teacherData, id: Math.random().toString(36).substring(7) };
-  revalidatePath("/dos/teachers");
-  return { success: true, message: "Teacher created successfully.", teacher: newTeacher };
+  try {
+    console.log("Creating teacher:", teacherData);
+    await delay(500);
+    // In a real app, save to DB and get an ID
+    const newTeacher: Teacher = { ...teacherData, id: Math.random().toString(36).substring(7) };
+    revalidatePath("/dos/teachers");
+    return { success: true, message: "Teacher created successfully.", teacher: newTeacher };
+  } catch (error) {
+    console.error("Error in createTeacher:", error);
+    return { success: false, message: "An unexpected error occurred while creating the teacher." };
+  }
 }
 
 export async function updateTeacher(teacherId: string, teacherData: Partial<Teacher>): Promise<{ success: boolean; message: string }> {
-  console.log(`Updating teacher ${teacherId}:`, teacherData);
-  await delay(500);
-  revalidatePath(`/dos/teachers`);
-  revalidatePath(`/dos/teachers/${teacherId}/edit`);
-  return { success: true, message: "Teacher updated successfully." };
+  try {
+    console.log(`Updating teacher ${teacherId}:`, teacherData);
+    await delay(500);
+    revalidatePath(`/dos/teachers`);
+    revalidatePath(`/dos/teachers/${teacherId}/edit`);
+    return { success: true, message: "Teacher updated successfully." };
+  } catch (error) {
+    console.error(`Error in updateTeacher for ${teacherId}:`, error);
+    return { success: false, message: "An unexpected error occurred while updating the teacher." };
+  }
 }
 
 export async function deleteTeacher(teacherId: string): Promise<{ success: boolean; message: string }> {
-  console.log("Deleting teacher:", teacherId);
-  await delay(500);
-  revalidatePath("/dos/teachers");
-  return { success: true, message: "Teacher deleted successfully." };
+  try {
+    console.log("Deleting teacher:", teacherId);
+    await delay(500);
+    revalidatePath("/dos/teachers");
+    return { success: true, message: "Teacher deleted successfully." };
+  } catch (error) {
+    console.error(`Error in deleteTeacher for ${teacherId}:`, error);
+    return { success: false, message: "An unexpected error occurred while deleting the teacher." };
+  }
 }
 
 // --- Student Management ---
 export async function createStudent(studentData: Omit<Student, 'id'>): Promise<{ success: boolean; message: string; student?: Student }> {
-  console.log("Creating student:", studentData);
-  await delay(500);
-  const newStudent: Student = { ...studentData, id: Math.random().toString(36).substring(7) };
-  revalidatePath("/dos/students");
-  return { success: true, message: "Student registered successfully.", student: newStudent };
+  try {
+    console.log("Creating student:", studentData);
+    await delay(500);
+    const newStudent: Student = { ...studentData, id: Math.random().toString(36).substring(7) };
+    revalidatePath("/dos/students");
+    return { success: true, message: "Student registered successfully.", student: newStudent };
+  } catch (error) {
+    console.error("Error in createStudent:", error);
+    return { success: false, message: "An unexpected error occurred while registering the student." };
+  }
 }
 
 export async function updateStudent(studentId: string, studentData: Partial<Student>): Promise<{ success: boolean; message: string }> {
-  console.log(`Updating student ${studentId}:`, studentData);
-  await delay(500);
-  revalidatePath("/dos/students");
-  revalidatePath(`/dos/students/${studentId}/edit`);
-  return { success: true, message: "Student updated successfully." };
+  try {
+    console.log(`Updating student ${studentId}:`, studentData);
+    await delay(500);
+    revalidatePath("/dos/students");
+    revalidatePath(`/dos/students/${studentId}/edit`);
+    return { success: true, message: "Student updated successfully." };
+  } catch (error) {
+    console.error(`Error in updateStudent for ${studentId}:`, error);
+    return { success: false, message: "An unexpected error occurred while updating the student." };
+  }
 }
 
 export async function deleteStudent(studentId: string): Promise<{ success: boolean; message: string }> {
-  console.log("Deleting student:", studentId);
-  await delay(500);
-  revalidatePath("/dos/students");
-  return { success: true, message: "Student deleted successfully." };
+  try {
+    console.log("Deleting student:", studentId);
+    await delay(500);
+    revalidatePath("/dos/students");
+    return { success: true, message: "Student deleted successfully." };
+  } catch (error) {
+    console.error(`Error in deleteStudent for ${studentId}:`, error);
+    return { success: false, message: "An unexpected error occurred while deleting the student." };
+  }
 }
 
 // --- Class & Subject Management ---
 export async function createClass(classData: Omit<ClassInfo, 'id' | 'subjects'> & { subjectIds: string[] }): Promise<{ success: boolean; message: string; classInfo?: ClassInfo }> {
-  console.log("Creating class:", classData);
-  await delay(500);
-  // Dummy subject objects based on IDs
-  const subjects: Subject[] = classData.subjectIds.map(id => ({ id, name: `Subject ${id}` }));
-  const newClass: ClassInfo = { ...classData, id: Math.random().toString(36).substring(7), subjects };
-  revalidatePath("/dos/classes");
-  return { success: true, message: "Class created successfully.", classInfo: newClass };
+  try {
+    console.log("Creating class:", classData);
+    await delay(500);
+    // Dummy subject objects based on IDs
+    const subjects: Subject[] = classData.subjectIds.map(id => ({ id, name: `Subject ${id}` })); // Assuming mock subjects here
+    const newClass: ClassInfo = { ...classData, id: Math.random().toString(36).substring(7), subjects };
+    revalidatePath("/dos/classes");
+    return { success: true, message: "Class created successfully.", classInfo: newClass };
+  } catch (error) {
+    console.error("Error in createClass:", error);
+    return { success: false, message: "An unexpected error occurred while creating the class." };
+  }
 }
 
 export async function updateClass(classId: string, classData: Partial<ClassInfo>): Promise<{ success: boolean; message: string }> {
-  console.log(`Updating class ${classId}:`, classData);
-  await delay(500);
-  revalidatePath("/dos/classes");
-  return { success: true, message: "Class updated successfully." };
+  try {
+    console.log(`Updating class ${classId}:`, classData);
+    await delay(500);
+    revalidatePath("/dos/classes");
+    return { success: true, message: "Class updated successfully." };
+  } catch (error) {
+    console.error(`Error in updateClass for ${classId}:`, error);
+    return { success: false, message: "An unexpected error occurred while updating the class." };
+  }
 }
 
 export async function createSubject(subjectData: Omit<Subject, 'id'>): Promise<{ success: boolean; message: string; subject?: Subject }> {
-  console.log("Creating subject:", subjectData);
-  await delay(500);
-  const newSubject: Subject = { ...subjectData, id: Math.random().toString(36).substring(7) };
-  revalidatePath("/dos/classes"); // Assuming subjects are managed/viewed alongside classes
-  return { success: true, message: "Subject created successfully.", subject: newSubject };
+  try {
+    console.log("Creating subject:", subjectData);
+    await delay(500);
+    const newSubject: Subject = { ...subjectData, id: Math.random().toString(36).substring(7) };
+    revalidatePath("/dos/classes"); // Assuming subjects are managed/viewed alongside classes
+    return { success: true, message: "Subject created successfully.", subject: newSubject };
+  } catch (error) {
+    console.error("Error in createSubject:", error);
+    return { success: false, message: "An unexpected error occurred while creating the subject." };
+  }
 }
 
 
 // --- Term & Exam Management ---
 export async function createTerm(termData: Omit<Term, 'id'>): Promise<{ success: boolean; message: string; term?: Term }> {
-  console.log("Creating term:", termData);
-  await delay(500);
-  const newTerm: Term = { ...termData, id: Math.random().toString(36).substring(7) };
-  revalidatePath("/dos/settings/terms");
-  return { success: true, message: "Term created successfully.", term: newTerm };
+  try {
+    console.log("Creating term:", termData);
+    await delay(500);
+    const newTerm: Term = { ...termData, id: Math.random().toString(36).substring(7) };
+    revalidatePath("/dos/settings/terms");
+    return { success: true, message: "Term created successfully.", term: newTerm };
+  } catch (error) {
+    console.error("Error in createTerm:", error);
+    return { success: false, message: "An unexpected error occurred while creating the term." };
+  }
 }
 
 export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success: boolean; message: string; exam?: Exam }> {
-  console.log("Creating exam:", examData);
-  await delay(500);
-  const newExam: Exam = { ...examData, id: Math.random().toString(36).substring(7) };
-  revalidatePath("/dos/settings/exams");
-  return { success: true, message: "Exam created successfully.", exam: newExam };
+  try {
+    console.log("Creating exam:", examData);
+    await delay(500);
+    const newExam: Exam = { ...examData, id: Math.random().toString(36).substring(7) };
+    revalidatePath("/dos/settings/exams");
+    return { success: true, message: "Exam created successfully.", exam: newExam };
+  } catch (error) {
+    console.error("Error in createExam:", error);
+    return { success: false, message: "An unexpected error occurred while creating the exam." };
+  }
 }
 
 export async function updateGeneralSettings(settings: GeneralSettings): Promise<{ success: boolean; message: string }> {
-  console.log("Updating general settings:", settings);
-  await delay(500);
-  revalidatePath("/dos/settings/general");
-  return { success: true, message: "General settings updated." };
+  try {
+    console.log("Updating general settings:", settings);
+    await delay(500);
+    revalidatePath("/dos/settings/general");
+    return { success: true, message: "General settings updated." };
+  } catch (error) {
+    console.error("Error in updateGeneralSettings:", error);
+    return { success: false, message: "An unexpected error occurred while updating general settings." };
+  }
 }
 
 export async function downloadAllMarks(): Promise<{ success: boolean; message: string; data?: string }> {
+  try {
     console.log("Downloading all marks requested.");
     await delay(1000);
     // In a real app, fetch data and generate CSV
     const csvData = "StudentID,StudentName,Class,Subject,Exam,Score\nS1001,John Doe,Form 1A,Math,Midterm,85\nS1002,Jane Smith,Form 1A,Math,Midterm,92";
     return { success: true, message: "Marks data prepared for download.", data: csvData };
+  } catch (error) {
+    console.error("Error in downloadAllMarks:", error);
+    return { success: false, message: "An unexpected error occurred while preparing marks data for download." };
+  }
 }
 
 // Placeholder data fetch functions
@@ -178,3 +244,6 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
         markSubmissionTimeZone: 'Africa/Nairobi',
     };
 }
+
+
+    
