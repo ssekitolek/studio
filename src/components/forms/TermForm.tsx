@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
-import { createTerm, updateTerm } from "@/lib/actions/dos-actions"; // Assuming updateTerm will be created
+import { createTerm, updateTerm } from "@/lib/actions/dos-actions";
 import type { Term } from "@/lib/types";
 import { Loader2, Save, CalendarPlus, Edit3 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -65,8 +65,8 @@ export function TermForm({ initialData, termId, onSuccess }: TermFormProps) {
       form.reset({
         name: initialData.name,
         year: initialData.year,
-        startDate: new Date(initialData.startDate),
-        endDate: new Date(initialData.endDate),
+        startDate: new Date(initialData.startDate), // Dates are strings from DB, convert to Date
+        endDate: new Date(initialData.endDate),   // Dates are strings from DB, convert to Date
       });
     }
   }, [initialData, form]);
@@ -75,21 +75,20 @@ export function TermForm({ initialData, termId, onSuccess }: TermFormProps) {
     startTransition(async () => {
       const termDataToSave = {
         ...data,
-        startDate: format(data.startDate, "yyyy-MM-dd"),
+        // Dates are already Date objects from form, format them to string for DB
+        startDate: format(data.startDate, "yyyy-MM-dd"), 
         endDate: format(data.endDate, "yyyy-MM-dd"),
       };
 
       try {
         if (isEditMode && termId) {
-          // const result = await updateTerm(termId, termDataToSave);
-          // if (result.success) {
-          //   toast({ title: "Term Updated", description: `Term "${data.name}" updated successfully.` });
-          //   if (onSuccess) onSuccess(); else router.push("/dos/settings/terms");
-          // } else {
-          //   toast({ title: "Error", description: result.message || "Failed to update term.", variant: "destructive" });
-          // }
-          console.log("Update functionality to be implemented for term", termId, termDataToSave)
-           toast({ title: "Placeholder", description: "Update term functionality not yet implemented.", variant: "default" });
+          const result = await updateTerm(termId, termDataToSave as Partial<Omit<Term, 'id'>>);
+          if (result.success) {
+            toast({ title: "Term Updated", description: `Term "${data.name}" updated successfully.` });
+            if (onSuccess) onSuccess(); else router.push("/dos/settings/terms");
+          } else {
+            toast({ title: "Error Updating Term", description: result.message || "Failed to update term.", variant: "destructive" });
+          }
         } else {
           const result = await createTerm(termDataToSave as Omit<Term, 'id'>);
           if (result.success && result.term) {
@@ -101,7 +100,7 @@ export function TermForm({ initialData, termId, onSuccess }: TermFormProps) {
             if (onSuccess) onSuccess(); else router.push("/dos/settings/terms");
           } else {
             toast({
-              title: "Error",
+              title: "Error Creating Term",
               description: result.message || "Failed to create term.",
               variant: "destructive",
             });

@@ -365,17 +365,27 @@ export async function updateTerm(termId: string, termData: Partial<Omit<Term, 'i
   try {
     const termRef = doc(db, "terms", termId);
     const termPayload = { ...termData };
-    if (termPayload.year) {
+    if (termPayload.year && typeof termPayload.year !== 'number') {
         termPayload.year = Number(termPayload.year);
     }
+    if (termPayload.startDate && typeof termPayload.startDate !== 'string') {
+      // Assuming termData.startDate is a Date object, format it
+      termPayload.startDate = (termPayload.startDate as unknown as Date).toISOString().split('T')[0];
+    }
+    if (termPayload.endDate && typeof termPayload.endDate !== 'string') {
+      // Assuming termData.endDate is a Date object, format it
+      termPayload.endDate = (termPayload.endDate as unknown as Date).toISOString().split('T')[0];
+    }
+
     await updateDoc(termRef, termPayload);
     revalidatePath("/dos/settings/terms");
-    revalidatePath(`/dos/settings/terms/${termId}/edit`); // If an edit page exists
-    const updatedTerm = await getTermById(termId); // Assuming getTermById exists
+    revalidatePath(`/dos/settings/terms/${termId}/edit`);
+    const updatedTerm = await getTermById(termId);
     return { success: true, message: "Term updated successfully.", term: updatedTerm ?? undefined };
   } catch (error) {
     console.error(`Error updating term ${termId}:`, error);
-    return { success: false, message: "Failed to update term." };
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+    return { success: false, message: `Failed to update term: ${errorMessage}` };
   }
 }
 
@@ -385,7 +395,14 @@ export async function getTermById(termId: string): Promise<Term | null> {
         const termRef = doc(db, "terms", termId);
         const termSnap = await getDoc(termRef);
         if (termSnap.exists()) {
-            return { id: termSnap.id, ...termSnap.data() } as Term;
+            const data = termSnap.data();
+            return {
+                id: termSnap.id,
+                name: data.name,
+                year: data.year,
+                startDate: data.startDate, // Stored as YYYY-MM-DD string
+                endDate: data.endDate,     // Stored as YYYY-MM-DD string
+            } as Term;
         }
         return null;
     } catch (error) {
