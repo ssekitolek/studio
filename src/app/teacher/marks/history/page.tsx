@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { History, Eye, Download, Loader2, AlertTriangle } from "lucide-react";
 import { getSubmittedMarksHistory } from "@/lib/actions/teacher-actions"; // Assuming this exists
 import { useToast } from "@/hooks/use-toast";
