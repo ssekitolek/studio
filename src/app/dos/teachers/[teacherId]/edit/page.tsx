@@ -1,19 +1,20 @@
 
+import { getTeacherById } from "@/lib/actions/dos-actions";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { UserCog, ArrowLeft, Edit3, AlertTriangle } from "lucide-react";
-import { TeacherForm } from "@/components/forms/TeacherForm";
-import { getTeacherById } from "@/lib/actions/dos-actions";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Ensured AlertTitle is imported
+import { ArrowLeft, Edit3, AlertTriangle } from "lucide-react";
+import { TeacherEditView } from "./TeacherEditView"; // Updated import
 
 interface EditTeacherPageProps {
   params: { teacherId: string };
+  searchParams?: { action?: string };
 }
 
-export default async function EditTeacherPage({ params }: EditTeacherPageProps) {
+export default async function EditTeacherPage({ params, searchParams }: EditTeacherPageProps) {
   const teacher = await getTeacherById(params.teacherId);
+  const showDeletePrompt = searchParams?.action === 'delete_prompt';
 
   if (!teacher) {
     return (
@@ -33,7 +34,7 @@ export default async function EditTeacherPage({ params }: EditTeacherPageProps) 
         />
         <Alert variant="destructive" className="shadow-md">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Teacher Not Found</AlertTitle> {/* Changed from CardTitle to AlertTitle */}
+            <AlertTitle>Teacher Not Found</AlertTitle>
             <AlertDescription>
             The teacher with ID "{params.teacherId}" could not be found. They may have been deleted or the ID is incorrect.
             </AlertDescription>
@@ -42,30 +43,5 @@ export default async function EditTeacherPage({ params }: EditTeacherPageProps) 
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title={`Edit Teacher: ${teacher.name}`}
-        description="Update teacher account and roles."
-        icon={Edit3}
-        actionButton={
-          <Button variant="outline" asChild>
-            <Link href="/dos/teachers">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Teachers
-            </Link>
-          </Button>
-        }
-      />
-      <Card className="shadow-md">
-        <CardHeader>
-          <CardTitle className="font-headline text-xl text-primary">Edit Teacher Form</CardTitle>
-          <CardDescription>Modify the teacher's information for ID: {params.teacherId}.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <TeacherForm initialData={teacher} teacherId={params.teacherId} />
-        </CardContent>
-      </Card>
-    </div>
-  );
+  return <TeacherEditView teacher={teacher} showDeletePromptInitially={showDeletePrompt} />;
 }
