@@ -4,9 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft, PlusCircle } from "lucide-react";
-
-// This will eventually be a form component
-// import { SubjectForm } from "@/components/forms/SubjectForm";
+import { SubjectForm } from "@/components/forms/SubjectForm";
 
 export default function AddNewSubjectPage() {
   return (
@@ -30,9 +28,7 @@ export default function AddNewSubjectPage() {
           <CardDescription>Provide the details for the new subject.</CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Placeholder for SubjectForm */}
-          <p className="text-muted-foreground">Subject creation form will be here.</p>
-          {/* <SubjectForm /> */}
+          <SubjectForm />
         </CardContent>
       </Card>
     </div>
