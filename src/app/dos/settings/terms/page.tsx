@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { CalendarDays, PlusCircle, CalendarPlus } from "lucide-react";
+import { CalendarDays, CalendarPlus } from "lucide-react";
 import { getTerms } from "@/lib/actions/dos-actions";
 import type { Term } from "@/lib/types";
 
