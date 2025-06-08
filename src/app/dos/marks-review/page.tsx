@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
@@ -7,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input"; // Added missing import
 import { ShieldAlert, Loader2, CheckCircle, Search, FileWarning } from "lucide-react";
 import { getClasses, getSubjects, getExams, getStudents, getGeneralSettings } from "@/lib/actions/dos-actions"; // Assuming these exist
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
@@ -214,3 +216,5 @@ export default function MarksReviewPage() {
     </div>
   );
 }
+
+    
