@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { UserPlus, ArrowLeft } from "lucide-react";
-import { StudentRegistrationForm } from "@/components/forms/StudentRegistrationForm"; // Updated import
+import { StudentRegistrationForm } from "@/components/forms/StudentRegistrationForm";
 
 export default function RegisterStudentPage() {
   return (

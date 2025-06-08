@@ -96,7 +96,6 @@ export async function createStudent(studentData: Omit<Student, 'id'>): Promise<{
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
-    // Optional: Check if student with the same studentIdNumber already exists
     const studentsRef = collection(db, "students");
     const q = query(studentsRef, where("studentIdNumber", "==", studentData.studentIdNumber), limit(1));
     const querySnapshot = await getDocs(q);
@@ -107,7 +106,7 @@ export async function createStudent(studentData: Omit<Student, 'id'>): Promise<{
 
     const studentPayload: Omit<Student, 'id'> = {
       ...studentData,
-      dateOfBirth: studentData.dateOfBirth || undefined, // Ensure optional fields are handled
+      dateOfBirth: studentData.dateOfBirth || undefined, 
       gender: studentData.gender || undefined,
     };
 
@@ -122,16 +121,48 @@ export async function createStudent(studentData: Omit<Student, 'id'>): Promise<{
   }
 }
 
-export async function updateStudent(studentId: string, studentData: Partial<Student>): Promise<{ success: boolean; message: string }> {
+export async function getStudentById(studentId: string): Promise<Student | null> {
+  if (!db) {
+    console.error("Firestore is not initialized. Check Firebase configuration.");
+    return null;
+  }
+  try {
+    const studentRef = doc(db, "students", studentId);
+    const studentSnap = await getDoc(studentRef);
+    if (studentSnap.exists()) {
+      const data = studentSnap.data();
+      return { 
+        id: studentSnap.id, 
+        ...data,
+        dateOfBirth: data.dateOfBirth ? data.dateOfBirth : undefined,
+        gender: data.gender ? data.gender : undefined,
+       } as Student;
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error fetching student ${studentId}:`, error);
+    return null;
+  }
+}
+
+
+export async function updateStudent(studentId: string, studentData: Partial<Omit<Student, 'id'>>): Promise<{ success: boolean; message: string, student?: Student }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
     const studentRef = doc(db, "students", studentId);
-    await updateDoc(studentRef, studentData);
+    // Ensure optional fields are handled correctly (e.g., set to null if empty or undefined)
+    const dataToUpdate = {
+      ...studentData,
+      dateOfBirth: studentData.dateOfBirth || null,
+      gender: studentData.gender || null,
+    };
+    await updateDoc(studentRef, dataToUpdate);
     revalidatePath("/dos/students");
     revalidatePath(`/dos/students/${studentId}/edit`);
-    return { success: true, message: "Student updated successfully." };
+    const updatedStudent = await getStudentById(studentId);
+    return { success: true, message: "Student updated successfully.", student: updatedStudent ?? undefined };
   } catch (error) {
     console.error(`Error in updateStudent for ${studentId}:`, error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
@@ -168,14 +199,13 @@ export async function createClass(
     
     const classDataToSave = {
       ...restOfClassData,
-      classTeacherId: restOfClassData.classTeacherId || null, // Store empty string as null
-      stream: restOfClassData.stream || null, // Store empty string as null
+      classTeacherId: restOfClassData.classTeacherId || null, 
+      stream: restOfClassData.stream || null, 
       subjectReferences: subjectReferences
     };
 
     const docRef = await addDoc(collection(db, "classes"), classDataToSave);
 
-    // For the returned ClassInfo, resolve subject names
     const subjects: Subject[] = [];
     for (const subjectId of subjectIds) {
         const subjectDocRef = doc(db, "subjects", subjectId);
@@ -269,7 +299,6 @@ export async function updateClass(classId: string, classData: Partial<Omit<Class
     if (subjectIds) {
       dataToUpdate.subjectReferences = subjectIds.map(id => doc(db, "subjects", id));
     }
-    // Ensure optional fields are stored as null if they are empty strings or undefined
     dataToUpdate.classTeacherId = dataToUpdate.classTeacherId || null;
     dataToUpdate.stream = dataToUpdate.stream || null;
 
@@ -350,7 +379,7 @@ export async function updateGeneralSettings(settings: GeneralSettings): Promise<
         ...settings,
         currentTermId: settings.currentTermId || null, 
     };
-    await updateDoc(settingsRef, settingsToSave, { merge: true });
+    await updateDoc(settingsRef, settingsToSave, { merge: true }); // Use updateDoc with merge: true or setDoc with merge: true
     revalidatePath("/dos/settings/general");
     return { success: true, message: "General settings updated." };
   } catch (error) {
@@ -547,8 +576,9 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
                 markSubmissionTimeZone: data.markSubmissionTimeZone || 'UTC',
             } as GeneralSettings;
         }
+        // Return default settings if the document doesn't exist
         return {
-            defaultGradingScale: [{ grade: 'A', minScore: 80, maxScore: 100 }],
+            defaultGradingScale: [{ grade: 'A', minScore: 80, maxScore: 100 }, { grade: 'B', minScore: 70, maxScore: 79 }],
             markSubmissionTimeZone: 'UTC',
             currentTermId: undefined
         };

@@ -19,9 +19,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
-import { createStudent, getClasses } from "@/lib/actions/dos-actions";
+import { createStudent, getClasses, updateStudent } from "@/lib/actions/dos-actions"; // Added updateStudent
 import type { ClassInfo, Student } from "@/lib/types";
-import { Loader2, Save, UserPlus } from "lucide-react";
+import { Loader2, Save, UserPlus, Edit3 } from "lucide-react"; // Added Edit3
 import { useRouter } from "next/navigation";
 
 const studentRegistrationFormSchema = z.object({
@@ -30,14 +30,14 @@ const studentRegistrationFormSchema = z.object({
   lastName: z.string().min(2, "Last name must be at least 2 characters."),
   classId: z.string().min(1, "Please select a class."),
   dateOfBirth: z.date().optional(),
-  gender: z.enum(["Male", "Female", "Other"]).optional(),
+  gender: z.enum(["Male", "Female", "Other", ""]).optional(), // Added "" for unselected
 });
 
 type StudentFormValues = z.infer<typeof studentRegistrationFormSchema>;
 
 interface StudentRegistrationFormProps {
-  initialData?: Student; // For editing, not used in this "new" form initially
-  studentDocumentId?: string; // Firestore document ID for editing
+  initialData?: Student | null; 
+  studentDocumentId?: string; 
   onSuccess?: () => void;
 }
 
@@ -58,7 +58,7 @@ export function StudentRegistrationForm({ initialData, studentDocumentId, onSucc
       lastName: initialData?.lastName || "",
       classId: initialData?.classId || "",
       dateOfBirth: initialData?.dateOfBirth ? new Date(initialData.dateOfBirth) : undefined,
-      gender: initialData?.gender || undefined,
+      gender: initialData?.gender || "",
     },
   });
 
@@ -85,7 +85,7 @@ export function StudentRegistrationForm({ initialData, studentDocumentId, onSucc
         lastName: initialData.lastName,
         classId: initialData.classId,
         dateOfBirth: initialData.dateOfBirth ? new Date(initialData.dateOfBirth) : undefined,
-        gender: initialData.gender,
+        gender: initialData.gender || "",
       });
     }
   }, [initialData, form]);
@@ -93,32 +93,41 @@ export function StudentRegistrationForm({ initialData, studentDocumentId, onSucc
 
   const onSubmit = (data: StudentFormValues) => {
     startTransition(async () => {
-      const studentDataToSave: Omit<Student, 'id'> = {
+      const studentDataToSave = {
         ...data,
-        dateOfBirth: data.dateOfBirth?.toISOString().split('T')[0], // Store as YYYY-MM-DD string
+        dateOfBirth: data.dateOfBirth?.toISOString().split('T')[0], 
+        gender: data.gender === "" ? undefined : data.gender,
       };
 
       try {
-        // For now, this form is only for creation as per the request.
-        // Edit mode would require an updateStudent action.
-        const result = await createStudent(studentDataToSave);
-        if (result.success && result.student) {
-          toast({
-            title: "Student Registered",
-            description: `Student "${result.student.firstName} ${result.student.lastName}" has been successfully registered.`,
-          });
-          form.reset();
-          if (onSuccess) {
-            onSuccess();
+        if (isEditMode && studentDocumentId) {
+          const result = await updateStudent(studentDocumentId, studentDataToSave as Partial<Student>);
+          if (result.success) {
+            toast({ title: "Student Updated", description: `Student "${data.firstName} ${data.lastName}" updated successfully.`});
+            if (onSuccess) onSuccess(); else router.push("/dos/students");
           } else {
-            router.push("/dos/students"); // Redirect to student list
+            toast({ title: "Error", description: result.message || "Failed to update student.", variant: "destructive"});
           }
         } else {
-          toast({
-            title: "Error",
-            description: result.message || "Failed to register student.",
-            variant: "destructive",
-          });
+          const result = await createStudent(studentDataToSave as Omit<Student, 'id'>);
+          if (result.success && result.student) {
+            toast({
+              title: "Student Registered",
+              description: `Student "${result.student.firstName} ${result.student.lastName}" has been successfully registered.`,
+            });
+            form.reset({ studentIdNumber: "", firstName: "", lastName: "", classId: "", dateOfBirth: undefined, gender: "" });
+            if (onSuccess) {
+              onSuccess();
+            } else {
+              router.push("/dos/students"); 
+            }
+          } else {
+            toast({
+              title: "Error",
+              description: result.message || "Failed to register student.",
+              variant: "destructive",
+            });
+          }
         }
       } catch (error) {
         toast({
@@ -154,7 +163,7 @@ export function StudentRegistrationForm({ initialData, studentDocumentId, onSucc
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Class</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingClasses}>
+                <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingClasses}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder={isLoadingClasses ? "Loading classes..." : "Select class"} />
@@ -218,7 +227,7 @@ export function StudentRegistrationForm({ initialData, studentDocumentId, onSucc
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Gender (Optional)</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select gender" />
@@ -239,10 +248,12 @@ export function StudentRegistrationForm({ initialData, studentDocumentId, onSucc
           <Button type="submit" disabled={isPending || isLoadingClasses} size="lg">
             {isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : isEditMode ? (
+              <Edit3 className="mr-2 h-4 w-4" />
             ) : (
-              <Save className="mr-2 h-4 w-4" />
+              <UserPlus className="mr-2 h-4 w-4" />
             )}
-            Register Student
+            {isEditMode ? "Update Student" : "Register Student"}
           </Button>
         </div>
       </form>
