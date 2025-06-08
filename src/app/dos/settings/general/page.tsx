@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
@@ -10,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DatePicker } from "@/components/ui/date-picker"; // Assuming a DatePicker component exists
+import { Textarea } from "@/components/ui/textarea";
 import { Settings2, Save, PlusCircle, Trash2, Loader2 } from "lucide-react";
 import { getGeneralSettings, updateGeneralSettings, getTerms } from "@/lib/actions/dos-actions";
 import type { GeneralSettings, Term } from "@/lib/types";
@@ -18,15 +19,13 @@ import { useToast } from "@/hooks/use-toast";
 
 // Create a simple DatePicker if not already available
 const SimpleDatePicker = ({ value, onChange }: { value?: string, onChange: (date?: string) => void }) => {
-  const [date, setDate] = useState<Date | undefined>(value ? new Date(value) : undefined);
   return (
     <Input 
       type="date" 
       value={value ? value.split('T')[0] : ""} // Format for HTML date input
       onChange={(e) => {
-        const newDate = e.target.value ? new Date(e.target.value) : undefined;
-        setDate(newDate);
-        onChange(newDate?.toISOString());
+        const newDateValue = e.target.value;
+        onChange(newDateValue ? new Date(newDateValue).toISOString() : undefined);
       }}
     />
   );
@@ -35,8 +34,8 @@ const SimpleDatePicker = ({ value, onChange }: { value?: string, onChange: (date
 
 const gradingScaleItemSchema = z.object({
   grade: z.string().min(1, "Grade cannot be empty."),
-  minScore: z.number().min(0).max(100),
-  maxScore: z.number().min(0).max(100),
+  minScore: z.coerce.number().min(0).max(100),
+  maxScore: z.coerce.number().min(0).max(100),
 }).refine(data => data.minScore <= data.maxScore, {
   message: "Min score cannot exceed max score.",
   path: ["minScore"],
@@ -46,8 +45,9 @@ const generalSettingsSchema = z.object({
   currentTermId: z.string().optional(),
   defaultGradingScale: z.array(gradingScaleItemSchema),
   markSubmissionTimeZone: z.string().min(1, "Timezone is required."),
-  // Example: Adding a global deadline field
   globalMarksSubmissionDeadline: z.string().optional(), 
+  dosGlobalAnnouncementText: z.string().optional(),
+  dosGlobalAnnouncementType: z.enum(["info", "warning", ""]).optional(),
 });
 
 type GeneralSettingsFormValues = z.infer<typeof generalSettingsSchema>;
@@ -65,6 +65,8 @@ export default function GeneralSettingsPage() {
       defaultGradingScale: [{ grade: "A", minScore: 80, maxScore: 100 }],
       markSubmissionTimeZone: "UTC",
       globalMarksSubmissionDeadline: undefined,
+      dosGlobalAnnouncementText: "",
+      dosGlobalAnnouncementType: "",
     },
   });
 
@@ -80,9 +82,11 @@ export default function GeneralSettingsPage() {
         const [settings, termsData] = await Promise.all([getGeneralSettings(), getTerms()]);
         form.reset({
           currentTermId: settings.currentTermId || "",
-          defaultGradingScale: settings.defaultGradingScale.length > 0 ? settings.defaultGradingScale : [{ grade: "A", minScore: 80, maxScore: 100 }],
+          defaultGradingScale: settings.defaultGradingScale && settings.defaultGradingScale.length > 0 ? settings.defaultGradingScale : [{ grade: "A", minScore: 80, maxScore: 100 }],
           markSubmissionTimeZone: settings.markSubmissionTimeZone || "UTC",
-          // globalMarksSubmissionDeadline: settings.globalMarksSubmissionDeadline // Assuming this field exists
+          globalMarksSubmissionDeadline: settings.globalMarksSubmissionDeadline || undefined,
+          dosGlobalAnnouncementText: settings.dosGlobalAnnouncementText || "",
+          dosGlobalAnnouncementType: settings.dosGlobalAnnouncementType || "",
         });
         setTerms(termsData);
       } catch (error) {
@@ -97,7 +101,11 @@ export default function GeneralSettingsPage() {
   const onSubmit = (data: GeneralSettingsFormValues) => {
     startTransition(async () => {
       try {
-        const result = await updateGeneralSettings(data as GeneralSettings); // Cast might be needed if types slightly differ
+        const settingsToSave: GeneralSettings = {
+          ...data,
+          dosGlobalAnnouncementType: data.dosGlobalAnnouncementType === "" ? undefined : data.dosGlobalAnnouncementType,
+        };
+        const result = await updateGeneralSettings(settingsToSave); 
         if (result.success) {
           toast({ title: "Settings Saved", description: result.message });
         } else {
@@ -138,7 +146,7 @@ export default function GeneralSettingsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Current Academic Term</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || ""} >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select current term" />
@@ -175,8 +183,57 @@ export default function GeneralSettingsPage() {
 
           <Card className="shadow-md">
             <CardHeader>
-              <CardTitle className="font-headline text-xl text-primary">Grading Scale</CardTitle>
-              <CardDescription>Define the default grading scale used across the system.</CardDescription>
+              <CardTitle className="font-headline text-xl text-primary">D.O.S. Announcements</CardTitle>
+              <CardDescription>Set a global announcement for teachers.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="dosGlobalAnnouncementText"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Announcement Text (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Enter announcement here..."
+                        className="resize-y min-h-[100px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>This message will be shown on the teacher dashboard.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="dosGlobalAnnouncementType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Announcement Type</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select announcement type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="info">Info</SelectItem>
+                        <SelectItem value="warning">Warning</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>Visual style for the announcement.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-md">
+            <CardHeader>
+              <CardTitle className="font-headline text-xl text-primary">Default Grading Scale</CardTitle>
+              <CardDescription>Define the default grading scale used across the system unless a specific policy overrides it.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {fields.map((item, index) => (
@@ -219,6 +276,7 @@ export default function GeneralSettingsPage() {
                     variant="destructive"
                     onClick={() => remove(index)}
                     className="w-full md:w-auto"
+                    disabled={fields.length <=1}
                   >
                     <Trash2 className="mr-2 h-4 w-4" /> Remove
                   </Button>
@@ -245,8 +303,7 @@ export default function GeneralSettingsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>System Timezone</FormLabel>
-                    {/* In a real app, this would be a comprehensive list or a smarter picker */}
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select timezone" />
@@ -278,46 +335,3 @@ export default function GeneralSettingsPage() {
     </div>
   );
 }
-
-// Basic DatePicker if ShadCN's is not readily available or too complex for this scope
-// If you have components/ui/date-picker.tsx, this can be removed.
-// This is a placeholder for a proper date picker component.
-// For now, using SimpleDatePicker above.
-/*
-"use client";
-import * as React from "react";
-import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-
-export function DatePicker({ date, setDate, placeholder = "Pick a date" }: { date?: Date, setDate: (date?: Date) => void, placeholder?: string }) {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant={"outline"}
-          className={cn(
-            "w-full justify-start text-left font-normal",
-            !date && "text-muted-foreground"
-          )}
-        >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, "PPP") : <span>{placeholder}</span>}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={setDate}
-          initialFocus
-        />
-      </PopoverContent>
-    </Popover>
-  );
-}
-*/
-

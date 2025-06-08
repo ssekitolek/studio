@@ -1,29 +1,25 @@
+
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { LayoutDashboard, BookOpenCheck, CalendarClock, Bell, ListChecks, AlertCircle } from "lucide-react";
 import Image from "next/image";
+import { getTeacherDashboardData } from "@/lib/actions/teacher-actions";
+import type { TeacherDashboardAssignment, TeacherNotification } from "@/lib/types";
 
-// Dummy data
-const assignedClasses = [
-  { name: "Form 1A", subject: "Mathematics", upcomingDeadline: "July 25th" },
-  { name: "Form 2B", subject: "Physics", upcomingDeadline: "July 28th" },
-  { name: "Form 3C", subject: "English", upcomingDeadline: "July 30th" },
-];
+export default async function TeacherDashboardPage() {
+  // In a real app, teacherId would come from authentication.
+  const teacherId = "teacher123"; // Placeholder for now
+  const dashboardData = await getTeacherDashboardData(teacherId);
+  const assignments: TeacherDashboardAssignment[] = dashboardData.assignments;
+  const notifications: TeacherNotification[] = dashboardData.notifications;
 
-const notifications = [
-  { message: "Reminder: Mid-term marks for Form 1A Mathematics due July 25th.", type: "deadline", id: "1" },
-  { message: "New grading rubric for English uploaded by D.O.S.", type: "info", id: "2" },
-  { message: "System maintenance scheduled for July 22nd, 2 AM - 4 AM.", type: "warning", id: "3" },
-];
-
-export default function TeacherDashboardPage() {
   return (
     <div className="space-y-8">
       <PageHeader
         title="Teacher Dashboard"
-        description="Welcome back! Here's an overview of your tasks and classes."
+        description={`Welcome back${dashboardData.teacherName ? `, ${dashboardData.teacherName}` : ''}! Here's an overview of your tasks and classes.`}
         icon={LayoutDashboard}
       />
 
@@ -36,17 +32,18 @@ export default function TeacherDashboardPage() {
             <CardDescription>Your current teaching assignments and upcoming deadlines.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {assignedClasses.map((item, index) => (
-              <Card key={index} className="bg-secondary/50 p-4 rounded-lg">
+            {assignments.map((item) => (
+              <Card key={item.id} className="bg-secondary/50 p-4 rounded-lg">
                 <div className="flex justify-between items-center">
                   <div>
-                    <h3 className="font-semibold text-primary">{item.name} - {item.subject}</h3>
+                    <h3 className="font-semibold text-primary">{item.className} - {item.subjectName}</h3>
                     <p className="text-sm text-muted-foreground">
                       <CalendarClock className="inline-block mr-1 h-4 w-4" />
-                      Next Deadline: {item.upcomingDeadline}
+                      Next Deadline: {item.nextDeadlineInfo}
                     </p>
                   </div>
                   <Button variant="outline" size="sm" asChild>
+                    {/* Link might need to pass context if submit page can be pre-filled */}
                     <Link href="/teacher/marks/submit">
                       <BookOpenCheck className="mr-2 h-4 w-4" /> Enter Marks
                     </Link>
@@ -54,7 +51,7 @@ export default function TeacherDashboardPage() {
                 </div>
               </Card>
             ))}
-             {assignedClasses.length === 0 && (
+             {assignments.length === 0 && (
               <p className="text-muted-foreground text-center py-4">No classes assigned yet.</p>
             )}
           </CardContent>
@@ -74,7 +71,7 @@ export default function TeacherDashboardPage() {
                 className={`flex items-start p-3 rounded-lg ${
                   notification.type === 'deadline' ? 'bg-accent/10 text-accent-foreground' :
                   notification.type === 'warning' ? 'bg-destructive/10 text-destructive-foreground' :
-                  'bg-blue-500/10 text-blue-700 dark:text-blue-300'
+                  'bg-blue-500/10 text-blue-700 dark:text-blue-300' // default to info style
                 }`}
               >
                 {notification.type === 'warning' || notification.type === 'deadline' ? (

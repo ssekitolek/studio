@@ -1,9 +1,12 @@
 
 "use server";
 
-import type { Mark, GradeEntry, Student } from "@/lib/types";
+import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification } from "@/lib/types";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
 import { revalidatePath } from "next/cache";
+import { getClasses, getSubjects, getExams, getGeneralSettings, getTeacherById, getTerms } from '@/lib/actions/dos-actions';
+import type { ClassInfo, Subject as SubjectType, Exam, GeneralSettings, Teacher, Term } from '@/lib/types';
+
 
 // Simulate a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -33,14 +36,11 @@ export async function submitMarks(data: MarksSubmissionData): Promise<{ success:
 
     if (!assessmentDetails.subjectName || !assessmentDetails.examName) {
         console.error("Could not retrieve subject name or exam name for anomaly detection for assessmentId:", data.assessmentId);
-        // Decide if this should be a blocking error or just a warning
-        // For now, we'll proceed without anomaly detection if details are missing, but log it.
     } else {
         const anomalyInput: GradeAnomalyDetectionInput = {
           subject: assessmentDetails.subjectName,
           exam: assessmentDetails.examName,
           grades: gradeEntries,
-          // historicalAverage: 75, // Optional: fetch historical average if available
         };
         
         console.log("Anomaly detection input:", JSON.stringify(anomalyInput, null, 2));
@@ -49,23 +49,18 @@ export async function submitMarks(data: MarksSubmissionData): Promise<{ success:
             console.log("Anomaly detection result:", anomalyResult);
         } catch (error) {
             console.error("Error during anomaly detection:", error);
-            // Log and continue, or return error, based on policy
-            // return { success: false, message: `Error during anomaly detection: ${error instanceof Error ? error.message : String(error)}`};
         }
     }
   }
   
-  // Simulate saving marks to a database
   await delay(1000); 
   console.log(`Simulated saving ${data.marks.length} marks for assessment ${data.assessmentId} to database.`);
   data.marks.forEach(mark => {
-    // In a real app, you'd do something like:
-    // await db.collection('marks').add({ assessmentId: data.assessmentId, studentId: mark.studentId, score: mark.score, submittedAt: new Date() });
     console.log(`DB_SAVE_MOCK: Student ${mark.studentId}, Score: ${mark.score}`);
   });
 
-  revalidatePath("/teacher/marks/submit"); // To allow for resubmission or new submissions
-  revalidatePath("/teacher/marks/history"); // To update the list of past submissions
+  revalidatePath("/teacher/marks/submit"); 
+  revalidatePath("/teacher/marks/history"); 
   
   if (anomalyResult?.hasAnomalies) {
     return { success: true, message: "Marks submitted. Potential anomalies were detected and logged.", anomalies: anomalyResult };
@@ -75,14 +70,8 @@ export async function submitMarks(data: MarksSubmissionData): Promise<{ success:
 }
 
 
-// Dummy function to simulate fetching assessment details
 async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName: string; examName: string }> {
-    await delay(100); // Simulate network latency
-    // In a real app, you would query your database based on assessmentId.
-    // This might involve looking up an 'assessments' collection that links
-    // exam types, subjects, classes, and teachers.
-    
-    // Placeholder logic based on example assessment IDs:
+    await delay(100); 
     if (assessmentId === "asm_math_midterm_f1a") {
         return { subjectName: "Mathematics", examName: "Midterm (Form 1A)" };
     }
@@ -93,17 +82,12 @@ async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName
         return { subjectName: "English", examName: "Quiz 1 (Form 3C)" };
     }
     console.warn(`No specific details found for assessmentId: ${assessmentId}. Returning generic names.`);
-    return { subjectName: "Selected Subject", examName: "Selected Exam" }; // Fallback
+    return { subjectName: "Selected Subject", examName: "Selected Exam" }; 
 }
 
-// Dummy function to get students for a class and subject (assessment)
 export async function getStudentsForAssessment(assessmentId: string): Promise<Student[]> {
-  await delay(200); // Simulate network latency
-  // This would depend on how assessmentId links to a class.
-  // For instance, assessmentId might be structured or you might query an 'assessments' collection
-  // to find the classId, then query 'students' collection for students in that class.
+  await delay(200); 
   
-  // Placeholder data:
   if (assessmentId === "asm_math_midterm_f1a") {
     return [
       { id: 'st1', studentIdNumber: 'S1001', firstName: 'Alice', lastName: 'Wonder', classId: 'c1_f1a', dateOfBirth: '2010-05-10', gender: 'Female' },
@@ -127,13 +111,11 @@ export async function getStudentsForAssessment(assessmentId: string): Promise<St
       { id: 'st8', studentIdNumber: 'S3003', firstName: 'Harriet', lastName: 'Potter', classId: 'c3_f3c', dateOfBirth: '2008-04-18', gender: 'Female' },
     ];
   }
-  return []; // Return empty array if no match
+  return []; 
 }
 
-// Dummy data for teacher's view of their submitted marks
 export async function getSubmittedMarksHistory(teacherId: string): Promise<any[]> {
     await delay(300);
-    // In a real app, query the 'marksSubmissions' or equivalent collection, filtered by teacherId.
     return [
         { 
             id: 'sub1_math_f1a', 
@@ -148,7 +130,7 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<any[]
             assessmentName: 'Form 2B - Physics - Final', 
             dateSubmitted: '2024-07-18', 
             studentCount: 22, 
-            averageScore: 65.2, // Example: this might have triggered an anomaly
+            averageScore: 65.2,
             status: 'Pending Review (Anomaly Detected)'
         },
          { 
@@ -156,17 +138,14 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<any[]
             assessmentName: 'Form 3C - English - Quiz 1', 
             dateSubmitted: '2024-07-20', 
             studentCount: 30, 
-            averageScore: 15.7, // out of 20
+            averageScore: 15.7, 
             status: 'Accepted' 
         },
     ];
 }
 
-// Dummy data for selectable assessments for a teacher
 export async function getTeacherAssessments(teacherId: string): Promise<Array<{id: string, name: string, maxMarks: number}>> {
     await delay(100);
-    // In a real app, query assessments assigned to this teacher that are pending submission or open for marking.
-    // This might involve looking at a Teacher -> Class -> Subject assignment, then Term -> ExamType.
     return [
         { id: "asm_math_midterm_f1a", name: "Mathematics - Midterm (Form 1A)", maxMarks: 100 },
         { id: "asm_physics_final_f2b", name: "Physics - Final (Form 2B)", maxMarks: 100 },
@@ -174,5 +153,113 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
     ];
 }
 
+export async function getTeacherDashboardData(teacherId: string): Promise<TeacherDashboardData> {
+  const [teacher, allClasses, generalSettings, allTerms] = await Promise.all([
+    getTeacherById(teacherId),
+    getClasses(), // This already fetches subjects for each class
+    getGeneralSettings(),
+    getTerms(),
+  ]);
 
-    
+  const assignmentsMap = new Map<string, TeacherDashboardAssignment>();
+  const notifications: TeacherNotification[] = [];
+  const teacherName = teacher?.name;
+
+  const currentTerm = generalSettings.currentTermId ? allTerms.find(t => t.id === generalSettings.currentTermId) : null;
+  let deadlineText = "No specific deadline set";
+  if (generalSettings.globalMarksSubmissionDeadline) {
+    deadlineText = `Global: ${new Date(generalSettings.globalMarksSubmissionDeadline).toLocaleDateString()}`;
+  } else if (currentTerm?.endDate) {
+    deadlineText = `Term End: ${new Date(currentTerm.endDate).toLocaleDateString()}`;
+  }
+
+  if (teacher) {
+    // Assignments where the teacher is the class teacher
+    allClasses.forEach(cls => {
+      if (cls.classTeacherId === teacher.id && cls.subjects) {
+        cls.subjects.forEach(subj => {
+          const assignmentId = `${cls.id}-${subj.id}`;
+          if (!assignmentsMap.has(assignmentId)) {
+            assignmentsMap.set(assignmentId, {
+              id: assignmentId,
+              className: cls.name,
+              subjectName: subj.name,
+              nextDeadlineInfo: deadlineText,
+            });
+          }
+        });
+      }
+    });
+
+    // Assignments from teacher.subjectsAssigned (specific subject/class combos)
+    if (teacher.subjectsAssigned) {
+      for (const assigned of teacher.subjectsAssigned) {
+        const cls = allClasses.find(c => c.id === assigned.classId);
+        // Subjects are already part of cls.subjects if fetched by getClasses correctly
+        const subjDetails = cls?.subjects.find(s => s.id === assigned.subjectId);
+
+        if (cls && subjDetails) {
+          const assignmentId = `${cls.id}-${subjDetails.id}`;
+          if (!assignmentsMap.has(assignmentId)) { // Avoid duplicates
+            assignmentsMap.set(assignmentId, {
+              id: assignmentId,
+              className: cls.name,
+              subjectName: subjDetails.name,
+              nextDeadlineInfo: deadlineText,
+            });
+          }
+        }
+      }
+    }
+  }
+  
+  const assignments = Array.from(assignmentsMap.values()).sort((a, b) => {
+    if (a.className < b.className) return -1;
+    if (a.className > b.className) return 1;
+    if (a.subjectName < b.subjectName) return -1;
+    if (a.subjectName > b.subjectName) return 1;
+    return 0;
+  });
+
+
+  // Notifications
+  if (generalSettings.dosGlobalAnnouncementText) {
+    notifications.push({
+      id: 'dos_announcement',
+      message: generalSettings.dosGlobalAnnouncementText,
+      type: generalSettings.dosGlobalAnnouncementType || 'info',
+    });
+  }
+
+  let deadlineDateToCompare: Date | null = null;
+  let deadlineMessagePrefix = "";
+
+  if (generalSettings.globalMarksSubmissionDeadline) {
+    deadlineDateToCompare = new Date(generalSettings.globalMarksSubmissionDeadline);
+    deadlineMessagePrefix = "Global marks submission deadline";
+  } else if (currentTerm?.endDate) {
+    deadlineDateToCompare = new Date(currentTerm.endDate);
+    deadlineMessagePrefix = "Current term submission deadline (term end)";
+  }
+
+  if (deadlineDateToCompare) {
+    const today = new Date();
+    today.setHours(0,0,0,0); // Normalize today
+    deadlineDateToCompare.setHours(0,0,0,0); // Normalize deadline
+
+    const diffTime = deadlineDateToCompare.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays >= 0 && diffDays <= 7) { 
+      notifications.push({
+        id: 'deadline_reminder',
+        message: `${deadlineMessagePrefix} is ${diffDays === 0 ? 'today' : diffDays === 1 ? 'tomorrow' : `in ${diffDays} days`} (${deadlineDateToCompare.toLocaleDateString()}).`,
+        type: 'deadline',
+      });
+    }
+  }
+  
+  notifications.push({ message: "System maintenance scheduled for July 22nd, 2 AM - 4 AM.", type: "warning", id: "system_maintenance" });
+
+  return { assignments, notifications, teacherName };
+}

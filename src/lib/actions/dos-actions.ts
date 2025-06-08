@@ -596,10 +596,13 @@ export async function updateGeneralSettings(settings: GeneralSettings): Promise<
         ...settings,
         currentTermId: settings.currentTermId || null,
         globalMarksSubmissionDeadline: settings.globalMarksSubmissionDeadline || null,
+        dosGlobalAnnouncementText: settings.dosGlobalAnnouncementText || null,
+        dosGlobalAnnouncementType: settings.dosGlobalAnnouncementType || null,
     };
     await updateDoc(settingsRef, settingsToSave, { merge: true }); 
     revalidatePath("/dos/settings/general");
-    revalidatePath("/dos/dashboard"); // Revalidate dashboard as it uses these settings
+    revalidatePath("/dos/dashboard"); 
+    revalidatePath("/teacher/dashboard"); // Revalidate teacher dashboard for announcements
     return { success: true, message: "General settings updated." };
   } catch (error) {
     console.error("Error in updateGeneralSettings:", error);
@@ -791,6 +794,8 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
         markSubmissionTimeZone: 'UTC',
         currentTermId: undefined,
         globalMarksSubmissionDeadline: undefined,
+        dosGlobalAnnouncementText: undefined,
+        dosGlobalAnnouncementType: undefined,
     };
   }
     try {
@@ -805,6 +810,8 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
                 defaultGradingScale,
                 markSubmissionTimeZone: data.markSubmissionTimeZone || 'UTC',
                 globalMarksSubmissionDeadline: data.globalMarksSubmissionDeadline === null ? undefined : data.globalMarksSubmissionDeadline,
+                dosGlobalAnnouncementText: data.dosGlobalAnnouncementText === null ? undefined : data.dosGlobalAnnouncementText,
+                dosGlobalAnnouncementType: data.dosGlobalAnnouncementType === null ? undefined : data.dosGlobalAnnouncementType,
             } as GeneralSettings;
         }
         // Default values if 'general' settings document doesn't exist
@@ -813,6 +820,8 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
             markSubmissionTimeZone: 'UTC',
             currentTermId: undefined,
             globalMarksSubmissionDeadline: undefined,
+            dosGlobalAnnouncementText: "Welcome to GradeCentral! Please ensure all marks are submitted on time.",
+            dosGlobalAnnouncementType: "info",
         };
     } catch (error) {
         console.error("Error fetching general settings:", error);
@@ -821,7 +830,8 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
             markSubmissionTimeZone: 'UTC', 
             currentTermId: undefined,
             globalMarksSubmissionDeadline: undefined,
+            dosGlobalAnnouncementText: "Error fetching announcements.",
+            dosGlobalAnnouncementType: "warning",
         };
     }
 }
-

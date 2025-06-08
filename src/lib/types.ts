@@ -87,6 +87,8 @@ export interface GeneralSettings {
     currentTermId?: string;
     markSubmissionTimeZone: string; // e.g., "Africa/Nairobi"
     globalMarksSubmissionDeadline?: string; // Optional ISO date string YYYY-MM-DD
+    dosGlobalAnnouncementText?: string;
+    dosGlobalAnnouncementType?: 'info' | 'warning';
 }
 
 // Grading Policy specific types
@@ -101,4 +103,25 @@ export interface GradingPolicy {
   name: string;
   scale: GradingScaleItem[];
   isDefault?: boolean;
+}
+
+// Teacher Dashboard specific types
+export interface TeacherDashboardAssignment {
+  id: string; 
+  className: string;
+  subjectName: string; 
+  nextDeadlineInfo: string;
+}
+
+export interface TeacherNotification {
+  id: string;
+  message: string;
+  type: 'deadline' | 'info' | 'warning';
+  link?: string;
+}
+
+export interface TeacherDashboardData {
+  assignments: TeacherDashboardAssignment[];
+  notifications: TeacherNotification[];
+  teacherName?: string;
 }
