@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Download, Loader2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { downloadAllMarks } from "@/lib/actions/dos-actions"; // Assuming this action exists
@@ -35,7 +36,8 @@ export default function DownloadMarksPage() {
           toast({ title: "Download Failed", description: result.message, variant: "destructive" });
         }
       } catch (error) {
-        toast({ title: "Error", description: "An unexpected error occurred during download.", variant: "destructive" });
+        const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+        toast({ title: "Error", description: `An unexpected error occurred during download: ${errorMessage}`, variant: "destructive" });
       }
     });
   };
@@ -112,4 +114,3 @@ export default function DownloadMarksPage() {
   );
 }
 
-    
