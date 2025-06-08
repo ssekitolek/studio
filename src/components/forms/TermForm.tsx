@@ -65,8 +65,8 @@ export function TermForm({ initialData, termId, onSuccess }: TermFormProps) {
       form.reset({
         name: initialData.name,
         year: initialData.year,
-        startDate: new Date(initialData.startDate), // Dates are strings from DB, convert to Date
-        endDate: new Date(initialData.endDate),   // Dates are strings from DB, convert to Date
+        startDate: new Date(initialData.startDate), 
+        endDate: new Date(initialData.endDate),   
       });
     }
   }, [initialData, form]);
@@ -75,7 +75,6 @@ export function TermForm({ initialData, termId, onSuccess }: TermFormProps) {
     startTransition(async () => {
       const termDataToSave = {
         ...data,
-        // Dates are already Date objects from form, format them to string for DB
         startDate: format(data.startDate, "yyyy-MM-dd"), 
         endDate: format(data.endDate, "yyyy-MM-dd"),
       };

@@ -152,7 +152,6 @@ export async function updateStudent(studentId: string, studentData: Partial<Omit
   }
   try {
     const studentRef = doc(db, "students", studentId);
-    // Ensure optional fields are handled correctly (e.g., set to null if empty or undefined)
     const dataToUpdate = {
       ...studentData,
       dateOfBirth: studentData.dateOfBirth || null,
@@ -342,7 +341,6 @@ export async function createTerm(termData: Omit<Term, 'id'>): Promise<{ success:
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
-    // Ensure year is a number
     const termPayload = {
       ...termData,
       year: Number(termData.year),
@@ -368,14 +366,8 @@ export async function updateTerm(termId: string, termData: Partial<Omit<Term, 'i
     if (termPayload.year && typeof termPayload.year !== 'number') {
         termPayload.year = Number(termPayload.year);
     }
-    if (termPayload.startDate && typeof termPayload.startDate !== 'string') {
-      // Assuming termData.startDate is a Date object, format it
-      termPayload.startDate = (termPayload.startDate as unknown as Date).toISOString().split('T')[0];
-    }
-    if (termPayload.endDate && typeof termPayload.endDate !== 'string') {
-      // Assuming termData.endDate is a Date object, format it
-      termPayload.endDate = (termPayload.endDate as unknown as Date).toISOString().split('T')[0];
-    }
+    // Dates from form (via termDataToSave in TermForm) are already strings "yyyy-MM-dd"
+    // So no need to reformat here if they are passed correctly.
 
     await updateDoc(termRef, termPayload);
     revalidatePath("/dos/settings/terms");
@@ -400,8 +392,8 @@ export async function getTermById(termId: string): Promise<Term | null> {
                 id: termSnap.id,
                 name: data.name,
                 year: data.year,
-                startDate: data.startDate, // Stored as YYYY-MM-DD string
-                endDate: data.endDate,     // Stored as YYYY-MM-DD string
+                startDate: data.startDate, 
+                endDate: data.endDate,     
             } as Term;
         }
         return null;
@@ -438,7 +430,7 @@ export async function updateGeneralSettings(settings: GeneralSettings): Promise<
         ...settings,
         currentTermId: settings.currentTermId || null,
     };
-    await updateDoc(settingsRef, settingsToSave, { merge: true }); // Use updateDoc with merge: true or setDoc with merge: true
+    await updateDoc(settingsRef, settingsToSave, { merge: true }); 
     revalidatePath("/dos/settings/general");
     return { success: true, message: "General settings updated." };
   } catch (error) {
@@ -635,7 +627,6 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
                 markSubmissionTimeZone: data.markSubmissionTimeZone || 'UTC',
             } as GeneralSettings;
         }
-        // Return default settings if the document doesn't exist
         return {
             defaultGradingScale: [{ grade: 'A', minScore: 80, maxScore: 100 }, { grade: 'B', minScore: 70, maxScore: 79 }],
             markSubmissionTimeZone: 'UTC',
