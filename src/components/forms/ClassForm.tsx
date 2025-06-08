@@ -21,7 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { createClass, getTeachers, getSubjects, updateClass } from "@/lib/actions/dos-actions";
 import type { Teacher, Subject, ClassInfo } from "@/lib/types";
-import { Loader2, Save, PlusCircle } from "lucide-react";
+import { Loader2, Save, PlusCircle, Edit3 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 const classFormSchema = z.object({
@@ -35,12 +35,12 @@ const classFormSchema = z.object({
 type ClassFormValues = z.infer<typeof classFormSchema>;
 
 interface ClassFormProps {
-  initialData?: ClassInfo; // For editing
-  classId?: string; // For editing
+  initialData?: ClassInfo | null; 
+  classId?: string; 
   onSuccess?: () => void;
 }
 
-const NONE_TEACHER_VALUE = "_NONE_"; // Sentinel value for no teacher
+const NONE_TEACHER_VALUE = "_NONE_"; 
 
 export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
   const { toast } = useToast();
@@ -58,7 +58,7 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
       name: initialData?.name || "",
       level: initialData?.level || "",
       stream: initialData?.stream || "",
-      classTeacherId: initialData?.classTeacherId || "", // Empty string means placeholder will show
+      classTeacherId: initialData?.classTeacherId || "", 
       subjectIds: initialData?.subjects.map(s => s.id) || [],
     },
   });
@@ -88,7 +88,7 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
         name: initialData.name,
         level: initialData.level,
         stream: initialData.stream || "",
-        classTeacherId: initialData.classTeacherId || "", // If undefined/null, becomes "" for placeholder
+        classTeacherId: initialData.classTeacherId || "", 
         subjectIds: initialData.subjects.map(s => s.id),
       });
     }
@@ -103,7 +103,6 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
 
       try {
         if (isEditMode && classId) {
-           // Type assertion for updateClass, as payload matches the expected structure
           const result = await updateClass(classId, payload as { name: string; level: string; stream?: string; classTeacherId?: string; subjectIds: string[] });
           if (result.success) {
             toast({ title: "Class Updated", description: `Class "${data.name}" updated successfully.` });
@@ -194,7 +193,7 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Class Teacher (Optional)</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingData}>
+                <Select onValueChange={field.onChange} value={field.value || NONE_TEACHER_VALUE} disabled={isLoadingData}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder={isLoadingData ? "Loading teachers..." : "Select a teacher or None"} />
@@ -272,7 +271,7 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
             {isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : isEditMode ? (
-               <Save className="mr-2 h-4 w-4" />
+               <Edit3 className="mr-2 h-4 w-4" />
             ): (
               <PlusCircle className="mr-2 h-4 w-4" />
             )}

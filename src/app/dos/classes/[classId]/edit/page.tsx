@@ -3,16 +3,45 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Edit3, ArrowLeft } from "lucide-react";
+import { Edit3, ArrowLeft, AlertTriangle } from "lucide-react";
+import { ClassForm } from "@/components/forms/ClassForm"; 
+import { getClassById } from "@/lib/actions/dos-actions";
+import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from "@/components/ui/alert"; // Renamed AlertTitle to avoid conflict with CardTitle
 
-// This will eventually be a form component for editing a class
-// import { ClassForm } from "@/components/forms/ClassForm";
+export default async function EditClassPage({ params }: { params: { classId: string } }) {
+  const classData = await getClassById(params.classId);
 
-export default function EditClassPage({ params }: { params: { classId: string } }) {
+  if (!classData) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Edit Class"
+          description="Modify the details of the selected class."
+          icon={Edit3}
+          actionButton={
+            <Button variant="outline" asChild>
+              <Link href="/dos/classes">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Classes
+              </Link>
+            </Button>
+          }
+        />
+        <Alert variant="destructive" className="shadow-md">
+          <AlertTriangle className="h-4 w-4" />
+          <ShadcnAlertTitle>Class Not Found</ShadcnAlertTitle>
+          <AlertDescription>
+            The class with ID "{params.classId}" could not be found. It may have been deleted or the ID is incorrect.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Edit Class ${params.classId}`}
+        title={`Edit Class: ${classData.name}`}
         description="Modify the details of the selected class."
         icon={Edit3}
         actionButton={
@@ -27,12 +56,10 @@ export default function EditClassPage({ params }: { params: { classId: string } 
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle className="font-headline text-xl text-primary">Edit Class Form</CardTitle>
-          <CardDescription>Update the information for class {params.classId}.</CardDescription>
+          <CardDescription>Update the information for class {classData.name} (ID: {params.classId}).</CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Placeholder for ClassForm with initialData */}
-          <p className="text-muted-foreground">Class editing form for ID: {params.classId} will be here.</p>
-          {/* <ClassForm classId={params.classId} /> */}
+          <ClassForm classId={params.classId} initialData={classData} />
         </CardContent>
       </Card>
     </div>

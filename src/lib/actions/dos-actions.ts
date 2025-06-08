@@ -183,7 +183,6 @@ export async function createClass(
         if (subjectDocSnap.exists()) {
             subjects.push({ id: subjectDocSnap.id, ...subjectDocSnap.data() } as Subject);
         } else {
-            // This case should ideally not happen if form validation ensures subjects exist
             subjects.push({ id: subjectId, name: `Unknown Subject (${subjectId})` });
         }
     }
@@ -204,8 +203,60 @@ export async function createClass(
   }
 }
 
+export async function getClassById(classId: string): Promise<ClassInfo | null> {
+  if (!db) {
+    console.error("Firestore is not initialized. Check Firebase configuration.");
+    return null;
+  }
+  try {
+    const classRef = doc(db, "classes", classId);
+    const classSnap = await getDoc(classRef);
 
-export async function updateClass(classId: string, classData: Partial<Omit<ClassInfo, 'subjects'>> & { subjectIds?: string[] }): Promise<{ success: boolean; message: string }> {
+    if (!classSnap.exists()) {
+      return null;
+    }
+
+    const classData = classSnap.data();
+    let subjectsArray: Subject[] = [];
+
+    if (classData.subjectReferences && Array.isArray(classData.subjectReferences)) {
+      for (const subjectRef of classData.subjectReferences) {
+        if (subjectRef && typeof subjectRef.id === 'string') {
+          try {
+            const subjectDocSnap = await getDoc(doc(db, "subjects", subjectRef.id));
+            if (subjectDocSnap.exists()) {
+              const subjData = subjectDocSnap.data();
+              subjectsArray.push({
+                id: subjectDocSnap.id,
+                name: subjData.name,
+                code: subjData.code === null ? undefined : subjData.code
+              } as Subject);
+            } else {
+              subjectsArray.push({ id: subjectRef.id, name: `Unknown Subject (${subjectRef.id})` });
+            }
+          } catch (e) {
+            console.error(`Error fetching subject ${subjectRef.id} for class ${classSnap.id}:`, e);
+            subjectsArray.push({ id: subjectRef.id, name: `Error Subject (${subjectRef.id})` });
+          }
+        }
+      }
+    }
+    return {
+      id: classSnap.id,
+      name: classData.name || "Unnamed Class",
+      level: classData.level || "Unknown Level",
+      stream: classData.stream === null ? undefined : classData.stream,
+      classTeacherId: classData.classTeacherId === null ? undefined : classData.classTeacherId,
+      subjects: subjectsArray
+    } as ClassInfo;
+  } catch (error) {
+    console.error(`Error fetching class ${classId}:`, error);
+    return null;
+  }
+}
+
+
+export async function updateClass(classId: string, classData: Partial<Omit<ClassInfo, 'id' | 'subjects'>> & { subjectIds?: string[] }): Promise<{ success: boolean; message: string }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
@@ -218,12 +269,14 @@ export async function updateClass(classId: string, classData: Partial<Omit<Class
     if (subjectIds) {
       dataToUpdate.subjectReferences = subjectIds.map(id => doc(db, "subjects", id));
     }
-    if (dataToUpdate.classTeacherId === "") dataToUpdate.classTeacherId = null;
-    if (dataToUpdate.stream === "") dataToUpdate.stream = null;
+    // Ensure optional fields are stored as null if they are empty strings or undefined
+    dataToUpdate.classTeacherId = dataToUpdate.classTeacherId || null;
+    dataToUpdate.stream = dataToUpdate.stream || null;
 
 
     await updateDoc(classRef, dataToUpdate);
     revalidatePath("/dos/classes");
+    revalidatePath(`/dos/classes/${classId}/edit`);
     return { success: true, message: "Class updated successfully." };
   } catch (error)
 {
@@ -240,12 +293,11 @@ export async function createSubject(subjectData: Omit<Subject, 'id'>): Promise<{
   try {
     const subjectDataToSave = {
         ...subjectData,
-        code: subjectData.code || null, // Store empty string as null or handle as needed
+        code: subjectData.code || null, 
     };
     const docRef = await addDoc(collection(db, "subjects"), subjectDataToSave);
-    // Ensure the returned subject has `code` as undefined if it was stored as null
     const newSubject: Subject = { id: docRef.id, ...subjectDataToSave, code: subjectDataToSave.code === null ? undefined : subjectDataToSave.code };
-    revalidatePath("/dos/classes"); // Also revalidates subject list on classes page
+    revalidatePath("/dos/classes"); 
     return { success: true, message: "Subject created successfully.", subject: newSubject };
   } catch (error) {
     console.error("Error in createSubject:", error);
@@ -296,7 +348,7 @@ export async function updateGeneralSettings(settings: GeneralSettings): Promise<
     const settingsRef = doc(db, "settings", "general");
     const settingsToSave = {
         ...settings,
-        currentTermId: settings.currentTermId || null, // Store empty/undefined as null
+        currentTermId: settings.currentTermId || null, 
     };
     await updateDoc(settingsRef, settingsToSave, { merge: true });
     revalidatePath("/dos/settings/general");
@@ -338,7 +390,7 @@ export async function getTeachers(): Promise<Teacher[]> {
         id: doc.id,
         name: data.name,
         email: data.email,
-        subjectsAssigned: data.subjectsAssigned || [] // Ensure subjectsAssigned defaults to an empty array
+        subjectsAssigned: data.subjectsAssigned || [] 
       } as Teacher;
     });
     return teachersList;
@@ -364,7 +416,7 @@ export async function getStudents(): Promise<Student[]> {
         firstName: data.firstName,
         lastName: data.lastName,
         classId: data.classId,
-        dateOfBirth: data.dateOfBirth, // Keep as string or undefined
+        dateOfBirth: data.dateOfBirth, 
         gender: data.gender,
        } as Student;
     });
@@ -389,7 +441,7 @@ export async function getClasses(): Promise<ClassInfo[]> {
 
             if (classData.subjectReferences && Array.isArray(classData.subjectReferences)) {
                 for (const subjectRef of classData.subjectReferences) {
-                    if (subjectRef && typeof subjectRef.id === 'string') { // Check if it's a Firestore-like ref
+                    if (subjectRef && typeof subjectRef.id === 'string') { 
                         try {
                             const subjectDocSnap = await getDoc(doc(db, "subjects", subjectRef.id));
                             if (subjectDocSnap.exists()) {
@@ -505,5 +557,3 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
         return { defaultGradingScale: [], markSubmissionTimeZone: 'UTC', currentTermId: undefined };
     }
 }
-
-    
