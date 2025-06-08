@@ -362,7 +362,7 @@ export async function updateTerm(termId: string, termData: Partial<Omit<Term, 'i
   }
   try {
     const termRef = doc(db, "terms", termId);
-    const termPayload = { ...termData };
+    const termPayload:any = { ...termData };
     if (termPayload.year && typeof termPayload.year !== 'number') {
         termPayload.year = Number(termPayload.year);
     }
@@ -401,19 +401,31 @@ export async function getTermById(termId: string): Promise<Term | null> {
 }
 
 
-export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success: boolean; message: string; exam?: Exam }> {
+export async function createExam(examData: Omit<Exam, 'id' | 'date'>): Promise<{ success: boolean; message: string; exam?: Exam }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
-    const docRef = await addDoc(collection(db, "exams"), examData);
-    const newExam: Exam = { id: docRef.id, ...examData };
+    const examPayload = {
+      ...examData,
+      maxMarks: Number(examData.maxMarks), // Ensure maxMarks is stored as a number
+      description: examData.description || null,
+      // 'date' is intentionally omitted for "Exam Type"
+    };
+    const docRef = await addDoc(collection(db, "exams"), examPayload);
+    const newExam: Exam = { 
+        id: docRef.id, 
+        name: examPayload.name,
+        termId: examPayload.termId,
+        maxMarks: examPayload.maxMarks,
+        description: examPayload.description === null ? undefined : examPayload.description
+    };
     revalidatePath("/dos/settings/exams");
-    return { success: true, message: "Exam created successfully.", exam: newExam };
+    return { success: true, message: "Exam type created successfully.", exam: newExam };
   } catch (error) {
     console.error("Error in createExam:", error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
-    return { success: false, message: `Failed to create exam: ${errorMessage}` };
+    return { success: false, message: `Failed to create exam type: ${errorMessage}` };
   }
 }
 
@@ -693,7 +705,17 @@ export async function getExams(): Promise<Exam[]> {
     try {
         const examsCol = collection(db, "exams");
         const examSnapshot = await getDocs(examsCol);
-        const examsList = examSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Exam));
+        const examsList = examSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                name: data.name,
+                termId: data.termId,
+                maxMarks: data.maxMarks,
+                description: data.description === null ? undefined : data.description,
+                // date field is not typically part of "Exam Type" but specific assessment instances
+            } as Exam;
+        });
         return examsList;
     } catch (error) {
         console.error("Error fetching exams:", error);
