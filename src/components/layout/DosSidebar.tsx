@@ -78,7 +78,7 @@ export function DosSidebar() {
              <SidebarMenuSub>
               {item.subItems.map((subItem: any, subIndex: number) => (
                 <SidebarMenuSubItem key={`${index}-${subIndex}`}>
-                  <Link href={subItem.href} passHref legacyBehavior>
+                  <Link href={subItem.href}>
                     <SidebarMenuSubButton isActive={isItemActive(subItem.href)} className="justify-start">
                       <subItem.icon className="h-4 w-4 mr-2" />
                       {state === 'expanded' && <span>{subItem.label}</span>}
@@ -143,3 +143,4 @@ export function DosSidebar() {
     </Sidebar>
   );
 }
+
