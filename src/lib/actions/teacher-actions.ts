@@ -4,7 +4,7 @@
 import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification } from "@/lib/types";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
 import { revalidatePath } from "next/cache";
-import { getClasses, getSubjects, getExams, getGeneralSettings, getTeacherById, getTerms } from '@/lib/actions/dos-actions';
+import { getClasses, getSubjects, getExams, getGeneralSettings, getTeacherById, getTerms, getStudents as getAllStudents } from '@/lib/actions/dos-actions';
 import type { ClassInfo, Subject as SubjectType, Exam, GeneralSettings, Teacher, Term } from '@/lib/types';
 
 
@@ -23,9 +23,8 @@ export async function submitMarks(data: MarksSubmissionData): Promise<{ success:
     return { success: false, message: "Invalid submission data. Assessment ID and marks are required." };
   }
 
-  // Prepare data for anomaly detection
   const gradeEntries: GradeEntry[] = data.marks.map(mark => ({
-    studentId: mark.studentId, // This is studentIdNumber from the form
+    studentId: mark.studentId,
     grade: mark.score,
   }));
 
@@ -41,6 +40,7 @@ export async function submitMarks(data: MarksSubmissionData): Promise<{ success:
           subject: assessmentDetails.subjectName,
           exam: assessmentDetails.examName,
           grades: gradeEntries,
+          // historicalAverage: assessmentDetails.historicalAverage, // Could be added in future
         };
         
         console.log("Anomaly detection input:", JSON.stringify(anomalyInput, null, 2));
@@ -49,15 +49,22 @@ export async function submitMarks(data: MarksSubmissionData): Promise<{ success:
             console.log("Anomaly detection result:", anomalyResult);
         } catch (error) {
             console.error("Error during anomaly detection:", error);
+            // Continue submission even if anomaly detection fails for some reason
+            anomalyResult = { hasAnomalies: false, anomalies: [{studentId: "SYSTEM_ERROR", explanation: "Anomaly check failed to run."}] };
         }
     }
   }
   
   await delay(1000); 
   console.log(`Simulated saving ${data.marks.length} marks for assessment ${data.assessmentId} to database.`);
-  data.marks.forEach(mark => {
-    console.log(`DB_SAVE_MOCK: Student ${mark.studentId}, Score: ${mark.score}`);
-  });
+  // In a real app, here you would interact with Firestore to save the marks.
+  // For example, for each mark in data.marks:
+  // await addDoc(collection(db, "marks"), { 
+  //   assessmentId: data.assessmentId, 
+  //   studentId: mark.studentId, // This is studentIdNumber
+  //   score: mark.score,
+  //   submittedAt: new Date().toISOString(),
+  // });
 
   revalidatePath("/teacher/marks/submit"); 
   revalidatePath("/teacher/marks/history"); 
@@ -71,51 +78,40 @@ export async function submitMarks(data: MarksSubmissionData): Promise<{ success:
 
 
 async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName: string; examName: string }> {
-    await delay(100); 
-    if (assessmentId === "asm_math_midterm_f1a") {
-        return { subjectName: "Mathematics", examName: "Midterm (Form 1A)" };
+    const parts = assessmentId.split('_');
+    if (parts.length !== 3) {
+        console.error(`Invalid assessmentId format: ${assessmentId}`);
+        return { subjectName: "Unknown Subject", examName: "Unknown Exam" };
     }
-    if (assessmentId === "asm_physics_final_f2b") {
-        return { subjectName: "Physics", examName: "Final (Form 2B)" };
-    }
-    if (assessmentId === "asm_english_quiz1_f3c") {
-        return { subjectName: "English", examName: "Quiz 1 (Form 3C)" };
-    }
-    console.warn(`No specific details found for assessmentId: ${assessmentId}. Returning generic names.`);
-    return { subjectName: "Selected Subject", examName: "Selected Exam" }; 
+    const [examId, , subjectId] = parts; // classId is also in parts[1] if needed
+
+    const allExams = await getExams();
+    const allSubjects = await getSubjects();
+
+    const exam = allExams.find(e => e.id === examId);
+    const subject = allSubjects.find(s => s.id === subjectId);
+
+    return {
+        subjectName: subject?.name || "Unknown Subject",
+        examName: exam?.name || "Unknown Exam",
+    };
 }
 
 export async function getStudentsForAssessment(assessmentId: string): Promise<Student[]> {
-  await delay(200); 
-  
-  if (assessmentId === "asm_math_midterm_f1a") {
-    return [
-      { id: 'st1', studentIdNumber: 'S1001', firstName: 'Alice', lastName: 'Wonder', classId: 'c1_f1a', dateOfBirth: '2010-05-10', gender: 'Female' },
-      { id: 'st2', studentIdNumber: 'S1002', firstName: 'Bob', lastName: 'Builder', classId: 'c1_f1a', dateOfBirth: '2010-08-20', gender: 'Male' },
-      { id: 'st3', studentIdNumber: 'S1003', firstName: 'Charlie', lastName: 'Chaplin', classId: 'c1_f1a', dateOfBirth: '2010-03-15', gender: 'Male' },
-      { id: 'st_x_1', studentIdNumber: 'S1004', firstName: 'Brenda', lastName: 'Starr', classId: 'c1_f1a', dateOfBirth: '2010-01-01', gender: 'Female' },
-      { id: 'st_x_2', studentIdNumber: 'S1005', firstName: 'Clark', lastName: 'Kent', classId: 'c1_f1a', dateOfBirth: '2010-02-02', gender: 'Male' },
+  const parts = assessmentId.split('_');
+  if (parts.length !== 3) {
+      console.error(`Invalid assessmentId format for fetching students: ${assessmentId}`);
+      return [];
+  }
+  const classId = parts[1];
 
-    ];
-  }
-   if (assessmentId === "asm_physics_final_f2b") {
-    return [
-      { id: 'st4', studentIdNumber: 'S2001', firstName: 'Diana', lastName: 'Prince', classId: 'c2_f2b', dateOfBirth: '2009-05-10', gender: 'Female' },
-      { id: 'st5', studentIdNumber: 'S2002', firstName: 'Edward', lastName: 'Scissorhands', classId: 'c2_f2b', dateOfBirth: '2009-08-20', gender: 'Male' },
-    ];
-  }
-  if (assessmentId === "asm_english_quiz1_f3c") {
-    return [
-      { id: 'st6', studentIdNumber: 'S3001', firstName: 'Fiona', lastName: 'Gallagher', classId: 'c3_f3c', dateOfBirth: '2008-06-11', gender: 'Female' },
-      { id: 'st7', studentIdNumber: 'S3002', firstName: 'George', lastName: 'Michael', classId: 'c3_f3c', dateOfBirth: '2008-09-22', gender: 'Male' },
-      { id: 'st8', studentIdNumber: 'S3003', firstName: 'Harriet', lastName: 'Potter', classId: 'c3_f3c', dateOfBirth: '2008-04-18', gender: 'Female' },
-    ];
-  }
-  return []; 
+  const allStudents = await getAllStudents(); // Fetches all students from dos-actions
+  return allStudents.filter(student => student.classId === classId);
 }
 
 export async function getSubmittedMarksHistory(teacherId: string): Promise<any[]> {
     await delay(300);
+    // This remains mock data for now. In a real app, query Firestore for actual submissions.
     return [
         { 
             id: 'sub1_math_f1a', 
@@ -145,18 +141,68 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<any[]
 }
 
 export async function getTeacherAssessments(teacherId: string): Promise<Array<{id: string, name: string, maxMarks: number}>> {
-    await delay(100);
-    return [
-        { id: "asm_math_midterm_f1a", name: "Mathematics - Midterm (Form 1A)", maxMarks: 100 },
-        { id: "asm_physics_final_f2b", name: "Physics - Final (Form 2B)", maxMarks: 100 },
-        { id: "asm_english_quiz1_f3c", name: "English - Quiz 1 (Form 3C)", maxMarks: 20 },
-    ];
+    const teacher = await getTeacherById(teacherId);
+    if (!teacher) return [];
+
+    const [allExams, allClasses, generalSettings, allTerms] = await Promise.all([
+        getExams(),
+        getClasses(), // getClasses now includes subjects for each class
+        getGeneralSettings(),
+        getTerms(),
+    ]);
+
+    const currentTermId = generalSettings.currentTermId;
+    if (!currentTermId) return []; // No assessments if no current term is set
+
+    const currentTermExams = allExams.filter(exam => exam.termId === currentTermId);
+    if (currentTermExams.length === 0) return [];
+
+    const assessments: Array<{id: string, name: string, maxMarks: number}> = [];
+    const teacherAssignments = new Set<string>(); // Store as "classId-subjectId"
+
+    // Populate teacherAssignments based on class teacher role
+    allClasses.forEach(cls => {
+        if (cls.classTeacherId === teacherId) {
+            cls.subjects.forEach(subj => {
+                teacherAssignments.add(`${cls.id}-${subj.id}`);
+            });
+        }
+    });
+
+    // Populate teacherAssignments based on specific subject assignments
+    if (teacher.subjectsAssigned) {
+        teacher.subjectsAssigned.forEach(assignment => {
+            teacherAssignments.add(`${assignment.classId}-${assignment.subjectId}`);
+        });
+    }
+
+    // Generate assessments
+    teacherAssignments.forEach(assignmentKey => {
+        const [classId, subjectId] = assignmentKey.split('-');
+        const cls = allClasses.find(c => c.id === classId);
+        const subj = cls?.subjects.find(s => s.id === subjectId); // Subjects are nested in class
+
+        if (cls && subj) {
+            currentTermExams.forEach(exam => {
+                assessments.push({
+                    id: `${exam.id}_${cls.id}_${subj.id}`, // Composite ID
+                    name: `${cls.name} - ${subj.name} - ${exam.name}`,
+                    maxMarks: exam.maxMarks,
+                });
+            });
+        }
+    });
+    
+    // Sort assessments for consistent display
+    assessments.sort((a, b) => a.name.localeCompare(b.name));
+
+    return assessments;
 }
 
 export async function getTeacherDashboardData(teacherId: string): Promise<TeacherDashboardData> {
   const [teacher, allClasses, generalSettings, allTerms] = await Promise.all([
     getTeacherById(teacherId),
-    getClasses(), // This already fetches subjects for each class
+    getClasses(), 
     getGeneralSettings(),
     getTerms(),
   ]);
@@ -192,16 +238,15 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       }
     });
 
-    // Assignments from teacher.subjectsAssigned (specific subject/class combos)
+    // Assignments from teacher.subjectsAssigned
     if (teacher.subjectsAssigned) {
       for (const assigned of teacher.subjectsAssigned) {
         const cls = allClasses.find(c => c.id === assigned.classId);
-        // Subjects are already part of cls.subjects if fetched by getClasses correctly
         const subjDetails = cls?.subjects.find(s => s.id === assigned.subjectId);
 
         if (cls && subjDetails) {
           const assignmentId = `${cls.id}-${subjDetails.id}`;
-          if (!assignmentsMap.has(assignmentId)) { // Avoid duplicates
+          if (!assignmentsMap.has(assignmentId)) { 
             assignmentsMap.set(assignmentId, {
               id: assignmentId,
               className: cls.name,
@@ -245,8 +290,8 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
 
   if (deadlineDateToCompare) {
     const today = new Date();
-    today.setHours(0,0,0,0); // Normalize today
-    deadlineDateToCompare.setHours(0,0,0,0); // Normalize deadline
+    today.setHours(0,0,0,0); 
+    deadlineDateToCompare.setHours(0,0,0,0); 
 
     const diffTime = deadlineDateToCompare.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -260,7 +305,10 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     }
   }
   
-  notifications.push({ message: "System maintenance scheduled for July 22nd, 2 AM - 4 AM.", type: "warning", id: "system_maintenance" });
+  // Example static notification, can be made dynamic if needed
+  // notifications.push({ message: "System maintenance scheduled for July 22nd, 2 AM - 4 AM.", type: "warning", id: "system_maintenance" });
 
   return { assignments, notifications, teacherName, resourcesText };
 }
+
+    
