@@ -149,34 +149,36 @@ export async function getStudentsForAssessment(assessmentId: string): Promise<St
 
 export async function getSubmittedMarksHistory(teacherId: string): Promise<any[]> {
     await delay(300);
-    // This remains mock data for now. In a real app, query Firestore for actual submissions for this teacherId.
     console.log(`Fetching submission history for teacher: ${teacherId}`);
-    return [
+    // Simulate some variation or teacher-specific data in mock
+    const teacherIdSnippet = teacherId ? teacherId.slice(0,5) : "generic";
+    const baseHistory = [
         { 
-            id: 'sub1_math_f1a', 
-            assessmentName: 'Form 1A - Mathematics - Midterm', 
+            id: `sub1_math_f1a_for_${teacherIdSnippet}`, 
+            assessmentName: `Form 1A - Math (Teacher: ${teacherIdSnippet}) - Midterm`, 
             dateSubmitted: '2024-07-15', 
             studentCount: 25, 
             averageScore: 78.5,
             status: 'Accepted' 
         },
         { 
-            id: 'sub2_phy_f2b', 
-            assessmentName: 'Form 2B - Physics - Final', 
+            id: `sub2_phy_f2b_for_${teacherIdSnippet}`, 
+            assessmentName: `Form 2B - Physics (Teacher: ${teacherIdSnippet}) - Final`, 
             dateSubmitted: '2024-07-18', 
             studentCount: 22, 
             averageScore: 65.2,
             status: 'Pending Review (Anomaly Detected)'
         },
          { 
-            id: 'sub3_eng_f3c', 
-            assessmentName: 'Form 3C - English - Quiz 1', 
+            id: `sub3_eng_f3c_for_${teacherIdSnippet}`, 
+            assessmentName: `Form 3C - English (Teacher: ${teacherIdSnippet}) - Quiz 1`, 
             dateSubmitted: '2024-07-20', 
             studentCount: 30, 
             averageScore: 15.7, 
             status: 'Accepted' 
         },
     ];
+    return baseHistory;
 }
 
 export async function getTeacherAssessments(teacherId: string): Promise<Array<{id: string, name: string, maxMarks: number}>> {
@@ -357,3 +359,4 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
   
   return { assignments, notifications, teacherName, resourcesText };
 }
+
