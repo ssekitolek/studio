@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
@@ -18,7 +19,7 @@ import type { Student, AnomalyExplanation } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
 const markSchema = z.object({
-  studentId: z.string(),
+  studentId: z.string(), // This will hold studentIdNumber
   studentName: z.string(),
   score: z.preprocess(
     (val) => (val === "" || val === undefined || val === null ? null : Number(val)),
@@ -42,6 +43,7 @@ interface AssessmentOption {
 export default function SubmitMarksPage() {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [isLoadingAssessments, setIsLoadingAssessments] = useState(true);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [assessments, setAssessments] = useState<AssessmentOption[]>([]);
   const [selectedAssessment, setSelectedAssessment] = useState<AssessmentOption | null>(null);
@@ -61,9 +63,20 @@ export default function SubmitMarksPage() {
   });
 
   useEffect(() => {
-    // Fetch assessments for the teacher (dummy teacherId for now)
-    getTeacherAssessments("teacher123").then(setAssessments);
-  }, []);
+    async function fetchAssessments() {
+      setIsLoadingAssessments(true);
+      try {
+        // Teacher ID would come from auth in a real app
+        const assessmentData = await getTeacherAssessments("teacher123"); 
+        setAssessments(assessmentData);
+      } catch (error) {
+        toast({ title: "Error", description: "Failed to load assessments.", variant: "destructive" });
+      } finally {
+        setIsLoadingAssessments(false);
+      }
+    }
+    fetchAssessments();
+  }, [toast]);
 
   const handleAssessmentChange = async (assessmentId: string) => {
     form.setValue("assessmentId", assessmentId);
@@ -71,13 +84,14 @@ export default function SubmitMarksPage() {
     setSelectedAssessment(assessment || null);
     setAnomalies([]);
     setShowAnomalyWarning(false);
+    form.resetField("marks", { defaultValue: [] }); // Clear previous marks
 
     if (assessmentId) {
       setIsLoadingStudents(true);
       try {
-        const students = await getStudentsForAssessment(assessmentId);
+        const students: Student[] = await getStudentsForAssessment(assessmentId);
         const marksData = students.map(student => ({
-          studentId: student.studentIdNumber, // Use official ID for submission
+          studentId: student.studentIdNumber, 
           studentName: `${student.firstName} ${student.lastName}`,
           score: null,
         }));
@@ -99,23 +113,22 @@ export default function SubmitMarksPage() {
         return;
     }
 
-    // Filter out students with no scores entered if that's desired, or validate here
     const marksToSubmit = data.marks.map(m => ({
-        studentId: m.studentId, // This is studentIdNumber
+        studentId: m.studentId, 
         score: m.score
-    })).filter(m => m.score !== null && m.score !== undefined);
+    })).filter(m => m.score !== null && m.score !== undefined && m.score.toString().trim() !== '');
+
 
     if (marksToSubmit.length === 0) {
         toast({ title: "No marks entered", description: "Please enter marks for at least one student.", variant: "destructive"});
         return;
     }
     
-    // Validate scores against maxMarks
     let invalidScoreFound = false;
-    data.marks.forEach(mark => {
+    data.marks.forEach((mark, index) => { // Added index for form.setError
       if (mark.score !== null && mark.score !== undefined) {
         if (mark.score < 0 || mark.score > selectedAssessment.maxMarks) {
-          form.setError(`marks.${data.marks.indexOf(mark)}.score`, {
+          form.setError(`marks.${index}.score`, {
             type: "manual",
             message: `Score must be between 0 and ${selectedAssessment.maxMarks}.`
           });
@@ -129,18 +142,17 @@ export default function SubmitMarksPage() {
       return;
     }
 
-
     startTransition(async () => {
       try {
         const result = await submitMarks({
           assessmentId: data.assessmentId,
-          marks: marksToSubmit,
+          marks: marksToSubmit as Array<{ studentId: string; score: number }>, // Ensure score is number
         });
         if (result.success) {
           toast({
             title: result.anomalies?.hasAnomalies ? "Marks Submitted with Warnings" : "Success",
             description: result.message,
-            variant: result.anomalies?.hasAnomalies ? "default" : "default", // 'default' can have an icon.
+            variant: result.anomalies?.hasAnomalies ? "default" : "default", 
             action: result.anomalies?.hasAnomalies ? <ShieldAlert className="text-yellow-500" /> : <CheckCircle className="text-green-500" />,
           });
           if (result.anomalies?.hasAnomalies) {
@@ -149,7 +161,9 @@ export default function SubmitMarksPage() {
           } else {
             setAnomalies([]);
             setShowAnomalyWarning(false);
-            // Optionally reset form or navigate away
+            // Reset form after successful submission without anomalies
+            form.reset({ assessmentId: data.assessmentId, marks: fields.map(f => ({...f, score: null})) }); 
+            // Or clear selection:
             // form.reset({ assessmentId: "", marks: [] });
             // setSelectedAssessment(null);
             // replace([]);
@@ -158,7 +172,8 @@ export default function SubmitMarksPage() {
           toast({ title: "Error", description: result.message, variant: "destructive" });
         }
       } catch (error) {
-        toast({ title: "Submission Failed", description: "An unexpected error occurred.", variant: "destructive" });
+        const e = error as Error;
+        toast({ title: "Submission Failed", description: e.message || "An unexpected error occurred.", variant: "destructive" });
       }
     });
   };
@@ -185,10 +200,17 @@ export default function SubmitMarksPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Assessment</FormLabel>
-                    <Select onValueChange={handleAssessmentChange} defaultValue={field.value}>
+                    <Select 
+                        onValueChange={(value) => {
+                            field.onChange(value);
+                            handleAssessmentChange(value);
+                        }} 
+                        value={field.value}
+                        disabled={isLoadingAssessments}
+                    >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select an assessment" />
+                          <SelectValue placeholder={isLoadingAssessments ? "Loading assessments..." : "Select an assessment"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -197,6 +219,9 @@ export default function SubmitMarksPage() {
                             {assessment.name} (Out of {assessment.maxMarks})
                           </SelectItem>
                         ))}
+                         {assessments.length === 0 && !isLoadingAssessments && (
+                            <p className="p-4 text-sm text-muted-foreground">No assessments available.</p>
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -210,7 +235,7 @@ export default function SubmitMarksPage() {
             <Card className="shadow-md">
               <CardHeader>
                 <CardTitle className="font-headline text-xl text-primary">Enter Marks for {selectedAssessment.name}</CardTitle>
-                <CardDescription>Maximum possible score is {selectedAssessment.maxMarks}. Leave blank for no mark.</CardDescription>
+                <CardDescription>Maximum possible score is {selectedAssessment.maxMarks}. Leave blank or enter 0 for no mark if applicable.</CardDescription>
               </CardHeader>
               <CardContent>
                 {isLoadingStudents ? (
@@ -223,9 +248,9 @@ export default function SubmitMarksPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[100px]">Student ID</TableHead>
+                          <TableHead className="w-[120px]">Student ID</TableHead>
                           <TableHead>Student Name</TableHead>
-                          <TableHead className="w-[120px] text-right">Score</TableHead>
+                          <TableHead className="w-[150px] text-right">Score (0-{currentMaxMarks})</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -252,6 +277,7 @@ export default function SubmitMarksPage() {
                                         }}
                                         min="0"
                                         max={currentMaxMarks}
+                                        step="any" // Allows decimals if needed
                                       />
                                     </FormControl>
                                     <FormMessage className="text-xs text-left" />
@@ -284,13 +310,14 @@ export default function SubmitMarksPage() {
                     </li>
                   ))}
                 </ul>
+                <p className="mt-2">You can still proceed, or correct the marks and resubmit.</p>
               </AlertDescription>
             </Alert>
           )}
 
           {selectedAssessment && fields.length > 0 && (
             <div className="flex justify-end">
-              <Button type="submit" disabled={isPending || isLoadingStudents} size="lg">
+              <Button type="submit" disabled={isPending || isLoadingStudents || isLoadingAssessments} size="lg">
                 {isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -305,3 +332,5 @@ export default function SubmitMarksPage() {
     </div>
   );
 }
+
+    
