@@ -8,12 +8,17 @@ import Image from "next/image";
 import { getTeacherDashboardData } from "@/lib/actions/teacher-actions";
 import type { TeacherDashboardAssignment, TeacherNotification } from "@/lib/types";
 
+const defaultResourcesText = `Access your teaching schedule, submit student marks, and view historical submission data using the sidebar navigation. 
+Stay updated with notifications from the D.O.S. and ensure timely submission of grades. 
+If you encounter any issues, please contact the administration.`;
+
 export default async function TeacherDashboardPage() {
   // In a real app, teacherId would come from authentication.
   const teacherId = "teacher123"; // Placeholder for now
   const dashboardData = await getTeacherDashboardData(teacherId);
   const assignments: TeacherDashboardAssignment[] = dashboardData.assignments;
   const notifications: TeacherNotification[] = dashboardData.notifications;
+  const resourcesText = dashboardData.resourcesText || defaultResourcesText;
 
   return (
     <div className="space-y-8">
@@ -95,18 +100,16 @@ export default async function TeacherDashboardPage() {
         </CardHeader>
         <CardContent className="flex flex-col md:flex-row items-center gap-6">
             <div className="md:w-2/3">
-                <p className="text-foreground/90 mb-4">
-                    Access your teaching schedule, submit student marks, and view historical submission data using the sidebar navigation.
+              {resourcesText.split('\n').map((paragraph, index) => (
+                <p key={index} className="text-foreground/90 mb-2 last:mb-0">
+                  {paragraph}
                 </p>
-                <p className="text-foreground/90">
-                    Stay updated with notifications from the D.O.S. and ensure timely submission of grades. 
-                    If you encounter any issues, please contact the administration.
-                </p>
-                 <Button variant="default" className="mt-4" asChild>
-                    <Link href="/teacher/marks/submit">
-                      <BookOpenCheck className="mr-2 h-4 w-4" /> Go to Marks Submission
-                    </Link>
-                  </Button>
+              ))}
+              <Button variant="default" className="mt-4" asChild>
+                <Link href="/teacher/marks/submit">
+                  <BookOpenCheck className="mr-2 h-4 w-4" /> Go to Marks Submission
+                </Link>
+              </Button>
             </div>
             <div className="md:w-1/3 flex justify-center items-center">
                  <Image src="https://placehold.co/600x400.png" alt="Teacher at desk" width={250} height={167} className="rounded-lg" data-ai-hint="teacher classroom" />

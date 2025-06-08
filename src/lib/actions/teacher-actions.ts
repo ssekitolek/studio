@@ -164,6 +164,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
   const assignmentsMap = new Map<string, TeacherDashboardAssignment>();
   const notifications: TeacherNotification[] = [];
   const teacherName = teacher?.name;
+  const resourcesText = generalSettings.teacherDashboardResourcesText;
 
   const currentTerm = generalSettings.currentTermId ? allTerms.find(t => t.id === generalSettings.currentTermId) : null;
   let deadlineText = "No specific deadline set";
@@ -261,5 +262,5 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
   
   notifications.push({ message: "System maintenance scheduled for July 22nd, 2 AM - 4 AM.", type: "warning", id: "system_maintenance" });
 
-  return { assignments, notifications, teacherName };
+  return { assignments, notifications, teacherName, resourcesText };
 }

@@ -48,6 +48,7 @@ const generalSettingsSchema = z.object({
   globalMarksSubmissionDeadline: z.string().optional(), 
   dosGlobalAnnouncementText: z.string().optional(),
   dosGlobalAnnouncementType: z.enum(["info", "warning", ""]).optional(),
+  teacherDashboardResourcesText: z.string().optional(), // New schema field
 });
 
 type GeneralSettingsFormValues = z.infer<typeof generalSettingsSchema>;
@@ -67,6 +68,7 @@ export default function GeneralSettingsPage() {
       globalMarksSubmissionDeadline: undefined,
       dosGlobalAnnouncementText: "",
       dosGlobalAnnouncementType: "",
+      teacherDashboardResourcesText: "", // Default for new field
     },
   });
 
@@ -87,6 +89,7 @@ export default function GeneralSettingsPage() {
           globalMarksSubmissionDeadline: settings.globalMarksSubmissionDeadline || undefined,
           dosGlobalAnnouncementText: settings.dosGlobalAnnouncementText || "",
           dosGlobalAnnouncementType: settings.dosGlobalAnnouncementType || "",
+          teacherDashboardResourcesText: settings.teacherDashboardResourcesText || "", // Load new field
         });
         setTerms(termsData);
       } catch (error) {
@@ -104,6 +107,7 @@ export default function GeneralSettingsPage() {
         const settingsToSave: GeneralSettings = {
           ...data,
           dosGlobalAnnouncementType: data.dosGlobalAnnouncementType === "" ? undefined : data.dosGlobalAnnouncementType,
+          teacherDashboardResourcesText: data.teacherDashboardResourcesText || undefined, // Save new field
         };
         const result = await updateGeneralSettings(settingsToSave); 
         if (result.success) {
@@ -223,6 +227,24 @@ export default function GeneralSettingsPage() {
                       </SelectContent>
                     </Select>
                     <FormDescription>Visual style for the announcement.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="teacherDashboardResourcesText"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Teacher Dashboard Resources Text (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Enter text for the teacher resources section..."
+                        className="resize-y min-h-[120px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>This text will be shown in the 'Teacher Resources' card on the teacher dashboard.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

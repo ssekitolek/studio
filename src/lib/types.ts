@@ -89,6 +89,7 @@ export interface GeneralSettings {
     globalMarksSubmissionDeadline?: string; // Optional ISO date string YYYY-MM-DD
     dosGlobalAnnouncementText?: string;
     dosGlobalAnnouncementType?: 'info' | 'warning';
+    teacherDashboardResourcesText?: string; // New field for teacher dashboard resources
 }
 
 // Grading Policy specific types
@@ -124,4 +125,6 @@ export interface TeacherDashboardData {
   assignments: TeacherDashboardAssignment[];
   notifications: TeacherNotification[];
   teacherName?: string;
+  resourcesText?: string; // New field for teacher resources text
 }
+
