@@ -3,14 +3,49 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { UserCog, ArrowLeft, Edit3 } from "lucide-react";
-// import { TeacherForm } from "@/components/forms/TeacherForm"; // For editing
+import { UserCog, ArrowLeft, Edit3, AlertTriangle } from "lucide-react";
+import { TeacherForm } from "@/components/forms/TeacherForm";
+import { getTeacherById } from "@/lib/actions/dos-actions";
+import { Alert, AlertDescription } from "@/components/ui/alert"; // Added Alert imports
 
-export default function EditTeacherPage({ params }: { params: { teacherId: string } }) {
+interface EditTeacherPageProps {
+  params: { teacherId: string };
+}
+
+export default async function EditTeacherPage({ params }: EditTeacherPageProps) {
+  const teacher = await getTeacherById(params.teacherId);
+
+  if (!teacher) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Edit Teacher"
+          description="Update teacher account and roles."
+          icon={Edit3}
+           actionButton={
+            <Button variant="outline" asChild>
+                <Link href="/dos/teachers">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Teachers
+                </Link>
+            </Button>
+           }
+        />
+        <Alert variant="destructive" className="shadow-md">
+            <AlertTriangle className="h-4 w-4" />
+            <CardTitle>Teacher Not Found</CardTitle>
+            <AlertDescription>
+            The teacher with ID "{params.teacherId}" could not be found. They may have been deleted or the ID is incorrect.
+            </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Edit Teacher ${params.teacherId}`}
+        title={`Edit Teacher: ${teacher.name}`}
         description="Update teacher account and roles."
         icon={Edit3}
         actionButton={
@@ -28,10 +63,11 @@ export default function EditTeacherPage({ params }: { params: { teacherId: strin
           <CardDescription>Modify the teacher's information for ID: {params.teacherId}.</CardDescription>
         </CardHeader>
         <CardContent>
-          {/* <TeacherForm teacherId={params.teacherId} /> */}
-           <p className="text-muted-foreground">Teacher editing form for ID: {params.teacherId} will be here.</p>
+          <TeacherForm initialData={teacher} teacherId={params.teacherId} />
         </CardContent>
       </Card>
     </div>
   );
 }
+
+    

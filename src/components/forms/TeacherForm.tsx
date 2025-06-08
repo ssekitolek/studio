@@ -17,9 +17,10 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { createTeacher } from "@/lib/actions/dos-actions";
-import { Loader2, Save, UserPlus } from "lucide-react";
+import { createTeacher, updateTeacher } from "@/lib/actions/dos-actions";
+import { Loader2, Save, UserPlus, Edit3 } from "lucide-react";
 import type { Teacher } from "@/lib/types";
+import { useRouter } from "next/navigation"; // Added for redirect
 
 const teacherFormSchema = z.object({
   name: z.string().min(2, {
@@ -28,57 +29,91 @@ const teacherFormSchema = z.object({
   email: z.string().email({
     message: "Please enter a valid email address.",
   }),
+  // subjectsAssigned could be added here if you want to edit them directly in this form
 });
 
 type TeacherFormValues = z.infer<typeof teacherFormSchema>;
 
 interface TeacherFormProps {
+  initialData?: Teacher | null; // Changed to allow null
+  teacherId?: string;
   onSuccess?: () => void;
 }
 
-export function TeacherForm({ onSuccess }: TeacherFormProps) {
+export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormProps) {
   const { toast } = useToast();
+  const router = useRouter(); // Added for redirect
   const [isPending, startTransition] = React.useTransition();
+  const isEditMode = !!teacherId && !!initialData;
 
   const form = useForm<TeacherFormValues>({
     resolver: zodResolver(teacherFormSchema),
     defaultValues: {
-      name: "",
-      email: "",
+      name: initialData?.name || "",
+      email: initialData?.email || "",
     },
   });
+
+  React.useEffect(() => {
+    if (initialData) {
+      form.reset({
+        name: initialData.name,
+        email: initialData.email,
+      });
+    }
+  }, [initialData, form]);
 
   const onSubmit = (data: TeacherFormValues) => {
     startTransition(async () => {
       try {
-        // The subjectsAssigned field will be initialized as an empty array in the server action.
-        const teacherDataToSave: Omit<Teacher, 'id' | 'subjectsAssigned'> & { subjectsAssigned?: Array<{ classId: string; subjectId: string }> } = {
-          name: data.name,
-          email: data.email,
-          // subjectsAssigned is intentionally omitted here, will be handled by createTeacher action
-        };
-
-        const result = await createTeacher(teacherDataToSave as Omit<Teacher, 'id'>); // Cast as server action expects Omit<Teacher, 'id'>
-
-        if (result.success && result.teacher) {
-          toast({
-            title: "Teacher Created",
-            description: `Teacher "${result.teacher.name}" has been successfully added.`,
-          });
-          form.reset();
-          if (onSuccess) onSuccess();
-          // Consider redirecting or updating UI state here
+        let result;
+        if (isEditMode) {
+          const teacherDataToUpdate: Partial<Omit<Teacher, 'id' | 'subjectsAssigned'>> = {
+            name: data.name,
+            email: data.email,
+          };
+          result = await updateTeacher(teacherId!, teacherDataToUpdate);
+          if (result.success && result.teacher) {
+            toast({
+              title: "Teacher Updated",
+              description: `Teacher "${result.teacher.name}" has been successfully updated.`,
+            });
+            if (onSuccess) onSuccess();
+            else router.push("/dos/teachers"); // Redirect after successful update
+          } else {
+            toast({
+              title: "Error Updating Teacher",
+              description: result.message || "Failed to update teacher.",
+              variant: "destructive",
+            });
+          }
         } else {
-          toast({
-            title: "Error",
-            description: result.message || "Failed to create teacher.",
-            variant: "destructive",
-          });
+          const teacherDataToCreate: Omit<Teacher, 'id' | 'subjectsAssigned'> & { subjectsAssigned?: Array<{ classId: string; subjectId: string }> } = {
+            name: data.name,
+            email: data.email,
+            // subjectsAssigned is handled by createTeacher to initialize as empty array
+          };
+          result = await createTeacher(teacherDataToCreate as Omit<Teacher, 'id'>);
+          if (result.success && result.teacher) {
+            toast({
+              title: "Teacher Created",
+              description: `Teacher "${result.teacher.name}" has been successfully added.`,
+            });
+            form.reset(); // Reset form only on create
+            if (onSuccess) onSuccess();
+            else router.push("/dos/teachers"); // Redirect after successful creation
+          } else {
+            toast({
+              title: "Error Creating Teacher",
+              description: result.message || "Failed to create teacher.",
+              variant: "destructive",
+            });
+          }
         }
       } catch (error) {
         toast({
           title: "Submission Error",
-          description: "An unexpected error occurred while creating the teacher.",
+          description: "An unexpected error occurred.",
           variant: "destructive",
         });
       }
@@ -120,18 +155,22 @@ export function TeacherForm({ onSuccess }: TeacherFormProps) {
             </FormItem>
           )}
         />
-        {/* Future: Add subject/class assignment fields here */}
+        {/* Future: Add subject/class assignment fields here if needed for edit mode */}
         <div className="flex justify-end">
           <Button type="submit" disabled={isPending}>
             {isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : isEditMode ? (
+              <Edit3 className="mr-2 h-4 w-4" />
             ) : (
               <Save className="mr-2 h-4 w-4" />
             )}
-            Save Teacher
+            {isEditMode ? "Update Teacher" : "Save Teacher"}
           </Button>
         </div>
       </form>
     </Form>
   );
 }
+
+    
