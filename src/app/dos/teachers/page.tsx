@@ -1,16 +1,18 @@
+
 import Link from "next/link";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { BookUser, UserPlus, MoreHorizontal, Edit3, Trash2, Mail, ListChecks } from "lucide-react";
-import { getTeachers, getClasses, getSubjects } from "@/lib/actions/dos-actions"; // Placeholder actions
+import { BookUser, UserPlus, MoreHorizontal, Edit3, Trash2, Mail } from "lucide-react";
+import { getTeachers, getClasses, getSubjects } from "@/lib/actions/dos-actions";
 import type { Teacher, ClassInfo, Subject } from "@/lib/types";
 
-// Dummy delete action for client-side interaction
+// Dummy delete action for client-side interaction demonstration if direct delete button was used.
+// Actual delete is handled via the edit page with ?action=delete_prompt
 async function handleDeleteTeacher(teacherId: string) {
-  "use server"; // Or call a server action from lib/actions
+  "use server"; 
   console.log("Attempting to delete teacher:", teacherId);
   // const result = await deleteTeacher(teacherId); // This would be the actual server action
   // revalidatePath("/dos/teachers"); // if action doesn't do it
@@ -96,9 +98,7 @@ export default async function ManageTeachersPage() {
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem 
-                            // onClick={() => handleDeleteTeacher(teacher.id)} 
                             className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                            // For now, link to edit page as delete not fully implemented
                             asChild
                            >
                              <Link href={`/dos/teachers/${teacher.id}/edit?action=delete_prompt`}>
