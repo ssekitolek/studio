@@ -6,7 +6,7 @@ import Link from "next/link";
 import { UserCog, ArrowLeft, Edit3, AlertTriangle } from "lucide-react";
 import { TeacherForm } from "@/components/forms/TeacherForm";
 import { getTeacherById } from "@/lib/actions/dos-actions";
-import { Alert, AlertDescription } from "@/components/ui/alert"; // Added Alert imports
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Ensured AlertTitle is imported
 
 interface EditTeacherPageProps {
   params: { teacherId: string };
@@ -33,7 +33,7 @@ export default async function EditTeacherPage({ params }: EditTeacherPageProps) 
         />
         <Alert variant="destructive" className="shadow-md">
             <AlertTriangle className="h-4 w-4" />
-            <CardTitle>Teacher Not Found</CardTitle>
+            <AlertTitle>Teacher Not Found</AlertTitle> {/* Changed from CardTitle to AlertTitle */}
             <AlertDescription>
             The teacher with ID "{params.teacherId}" could not be found. They may have been deleted or the ID is incorrect.
             </AlertDescription>
@@ -69,5 +69,3 @@ export default async function EditTeacherPage({ params }: EditTeacherPageProps) 
     </div>
   );
 }
-
-    
