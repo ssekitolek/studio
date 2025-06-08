@@ -32,8 +32,6 @@ const subjectFormSchema = z.object({
 type SubjectFormValues = z.infer<typeof subjectFormSchema>;
 
 interface SubjectFormProps {
-  // If we were editing, we'd pass initialData here
-  // initialData?: Partial<SubjectFormValues>;
   onSuccess?: () => void;
 }
 
@@ -52,7 +50,6 @@ export function SubjectForm({ onSuccess }: SubjectFormProps) {
   const onSubmit = (data: SubjectFormValues) => {
     startTransition(async () => {
       try {
-        // Ensure code is uppercase if provided, or undefined if empty
         const subjectDataToSave = {
             ...data,
             code: data.code ? data.code.toUpperCase() : undefined,
