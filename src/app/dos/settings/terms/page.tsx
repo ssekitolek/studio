@@ -3,16 +3,13 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { CalendarDays, PlusCircle } from "lucide-react";
+import { CalendarDays, PlusCircle, CalendarPlus } from "lucide-react";
+import { getTerms } from "@/lib/actions/dos-actions";
+import type { Term } from "@/lib/types";
 
-// Mock data - replace with actual data fetching
-const termsData = [
-  { id: "term1", name: "Term 1 2024", startDate: "2024-01-15", endDate: "2024-04-15", year: 2024 },
-  { id: "term2", name: "Term 2 2024", startDate: "2024-05-10", endDate: "2024-08-10", year: 2024 },
-  { id: "term3", name: "Term 3 2024", startDate: "2024-09-05", endDate: "2024-12-05", year: 2024 },
-];
+export default async function ManageTermsPage() {
+  const terms: Term[] = await getTerms();
 
-export default function ManageTermsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
@@ -21,8 +18,8 @@ export default function ManageTermsPage() {
         icon={CalendarDays}
         actionButton={
           <Button asChild>
-            <Link href="/dos/settings/terms/new"> {/* Placeholder Link */}
-              <PlusCircle className="mr-2 h-4 w-4" /> Add New Term
+            <Link href="/dos/settings/terms/new">
+              <CalendarPlus className="mr-2 h-4 w-4" /> Add New Term
             </Link>
           </Button>
         }
@@ -34,9 +31,9 @@ export default function ManageTermsPage() {
           <CardDescription>All academic terms defined in the system.</CardDescription>
         </CardHeader>
         <CardContent>
-          {termsData.length > 0 ? (
+          {terms.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {termsData.map((term) => (
+              {terms.map((term) => (
                 <Card key={term.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <CardTitle>{term.name}</CardTitle>

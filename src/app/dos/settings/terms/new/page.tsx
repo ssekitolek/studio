@@ -3,10 +3,8 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { CalendarDays, ArrowLeft } from "lucide-react";
-
-// This will eventually be a form component
-// import { TermForm } from "@/components/forms/TermForm";
+import { CalendarDays, ArrowLeft, CalendarPlus } from "lucide-react";
+import { TermForm } from "@/components/forms/TermForm";
 
 export default function AddNewTermPage() {
   return (
@@ -14,7 +12,7 @@ export default function AddNewTermPage() {
       <PageHeader
         title="Add New Academic Term"
         description="Define a new term, its duration, and academic year."
-        icon={CalendarDays}
+        icon={CalendarPlus}
         actionButton={
           <Button variant="outline" asChild>
             <Link href="/dos/settings/terms">
@@ -30,9 +28,7 @@ export default function AddNewTermPage() {
           <CardDescription>Specify the details for the new academic term.</CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Placeholder for TermForm */}
-          <p className="text-muted-foreground">Term creation form will be here.</p>
-          {/* <TermForm /> */}
+          <TermForm />
         </CardContent>
       </Card>
     </div>

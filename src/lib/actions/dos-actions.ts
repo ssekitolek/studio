@@ -342,8 +342,13 @@ export async function createTerm(termData: Omit<Term, 'id'>): Promise<{ success:
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
-     const docRef = await addDoc(collection(db, "terms"), termData);
-    const newTerm: Term = { id: docRef.id, ...termData };
+    // Ensure year is a number
+    const termPayload = {
+      ...termData,
+      year: Number(termData.year),
+    };
+    const docRef = await addDoc(collection(db, "terms"), termPayload);
+    const newTerm: Term = { id: docRef.id, ...termPayload };
     revalidatePath("/dos/settings/terms");
     return { success: true, message: "Term created successfully.", term: newTerm };
   } catch (error) {
@@ -352,6 +357,43 @@ export async function createTerm(termData: Omit<Term, 'id'>): Promise<{ success:
     return { success: false, message: `Failed to create term: ${errorMessage}` };
   }
 }
+
+export async function updateTerm(termId: string, termData: Partial<Omit<Term, 'id'>>): Promise<{ success: boolean; message: string; term?: Term }> {
+  if (!db) {
+    return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
+  }
+  try {
+    const termRef = doc(db, "terms", termId);
+    const termPayload = { ...termData };
+    if (termPayload.year) {
+        termPayload.year = Number(termPayload.year);
+    }
+    await updateDoc(termRef, termPayload);
+    revalidatePath("/dos/settings/terms");
+    revalidatePath(`/dos/settings/terms/${termId}/edit`); // If an edit page exists
+    const updatedTerm = await getTermById(termId); // Assuming getTermById exists
+    return { success: true, message: "Term updated successfully.", term: updatedTerm ?? undefined };
+  } catch (error) {
+    console.error(`Error updating term ${termId}:`, error);
+    return { success: false, message: "Failed to update term." };
+  }
+}
+
+export async function getTermById(termId: string): Promise<Term | null> {
+    if (!db) return null;
+    try {
+        const termRef = doc(db, "terms", termId);
+        const termSnap = await getDoc(termRef);
+        if (termSnap.exists()) {
+            return { id: termSnap.id, ...termSnap.data() } as Term;
+        }
+        return null;
+    } catch (error) {
+        console.error(`Error fetching term ${termId}:`, error);
+        return null;
+    }
+}
+
 
 export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success: boolean; message: string; exam?: Exam }> {
   if (!db) {

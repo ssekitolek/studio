@@ -11,7 +11,7 @@ export interface Student {
   firstName: string;
   lastName: string;
   classId: string; 
-  dateOfBirth?: string;
+  dateOfBirth?: string; // Stored as YYYY-MM-DD string
   gender?: 'Male' | 'Female' | 'Other';
 }
 
@@ -34,8 +34,8 @@ export interface Term {
   id: string;
   name: string; // E.g., "Term 1 2024"
   year: number;
-  startDate: string; // ISO date string
-  endDate: string; // ISO date string
+  startDate: string; // ISO date string YYYY-MM-DD
+  endDate: string; // ISO date string YYYY-MM-DD
 }
 
 export interface Exam {
