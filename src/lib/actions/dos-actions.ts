@@ -26,7 +26,7 @@ export async function createTeacher(teacherData: Omit<Teacher, 'id'>): Promise<{
 
     const teacherPayload = {
       ...teacherData,
-      subjectsAssigned: teacherData.subjectsAssigned || [], 
+      subjectsAssigned: teacherData.subjectsAssigned || [],
     };
     const docRef = await addDoc(collection(db, "teachers"), teacherPayload);
     const newTeacher: Teacher = { id: docRef.id, ...teacherPayload };
@@ -66,7 +66,7 @@ export async function updateTeacher(teacherId: string, teacherData: Partial<Omit
     await updateDoc(teacherRef, teacherData);
     revalidatePath(`/dos/teachers`);
     revalidatePath(`/dos/teachers/${teacherId}/edit`);
-    const updatedTeacher = await getTeacherById(teacherId); 
+    const updatedTeacher = await getTeacherById(teacherId);
     return { success: true, message: "Teacher updated successfully.", teacher: updatedTeacher ?? undefined };
   } catch (error) {
     console.error(`Error in updateTeacher for ${teacherId}:`, error);
@@ -106,7 +106,7 @@ export async function createStudent(studentData: Omit<Student, 'id'>): Promise<{
 
     const studentPayload: Omit<Student, 'id'> = {
       ...studentData,
-      dateOfBirth: studentData.dateOfBirth || undefined, 
+      dateOfBirth: studentData.dateOfBirth || undefined,
       gender: studentData.gender || undefined,
     };
 
@@ -131,8 +131,8 @@ export async function getStudentById(studentId: string): Promise<Student | null>
     const studentSnap = await getDoc(studentRef);
     if (studentSnap.exists()) {
       const data = studentSnap.data();
-      return { 
-        id: studentSnap.id, 
+      return {
+        id: studentSnap.id,
         ...data,
         dateOfBirth: data.dateOfBirth ? data.dateOfBirth : undefined,
         gender: data.gender ? data.gender : undefined,
@@ -194,13 +194,13 @@ export async function createClass(
   }
   try {
     const { subjectIds, ...restOfClassData } = classData;
-    
+
     const subjectReferences: DocumentReference[] = subjectIds.map(id => doc(db, "subjects", id));
-    
+
     const classDataToSave = {
       ...restOfClassData,
-      classTeacherId: restOfClassData.classTeacherId || null, 
-      stream: restOfClassData.stream || null, 
+      classTeacherId: restOfClassData.classTeacherId || null,
+      stream: restOfClassData.stream || null,
       subjectReferences: subjectReferences
     };
 
@@ -216,9 +216,9 @@ export async function createClass(
             subjects.push({ id: subjectId, name: `Unknown Subject (${subjectId})` });
         }
     }
-    const newClass: ClassInfo = { 
-        ...restOfClassData, 
-        id: docRef.id, 
+    const newClass: ClassInfo = {
+        ...restOfClassData,
+        id: docRef.id,
         subjects,
         stream: classDataToSave.stream === null ? undefined : classDataToSave.stream,
         classTeacherId: classDataToSave.classTeacherId === null ? undefined : classDataToSave.classTeacherId,
@@ -322,11 +322,11 @@ export async function createSubject(subjectData: Omit<Subject, 'id'>): Promise<{
   try {
     const subjectDataToSave = {
         ...subjectData,
-        code: subjectData.code || null, 
+        code: subjectData.code || null,
     };
     const docRef = await addDoc(collection(db, "subjects"), subjectDataToSave);
     const newSubject: Subject = { id: docRef.id, ...subjectDataToSave, code: subjectDataToSave.code === null ? undefined : subjectDataToSave.code };
-    revalidatePath("/dos/classes"); 
+    revalidatePath("/dos/classes");
     return { success: true, message: "Subject created successfully.", subject: newSubject };
   } catch (error) {
     console.error("Error in createSubject:", error);
@@ -419,7 +419,7 @@ export async function updateGeneralSettings(settings: GeneralSettings): Promise<
     const settingsRef = doc(db, "settings", "general");
     const settingsToSave = {
         ...settings,
-        currentTermId: settings.currentTermId || null, 
+        currentTermId: settings.currentTermId || null,
     };
     await updateDoc(settingsRef, settingsToSave, { merge: true }); // Use updateDoc with merge: true or setDoc with merge: true
     revalidatePath("/dos/settings/general");
@@ -461,7 +461,7 @@ export async function getTeachers(): Promise<Teacher[]> {
         id: doc.id,
         name: data.name,
         email: data.email,
-        subjectsAssigned: data.subjectsAssigned || [] 
+        subjectsAssigned: data.subjectsAssigned || []
       } as Teacher;
     });
     return teachersList;
@@ -481,13 +481,13 @@ export async function getStudents(): Promise<Student[]> {
     const studentSnapshot = await getDocs(studentsCol);
     const studentsList = studentSnapshot.docs.map(docSnap => {
       const data = docSnap.data();
-      return { 
-        id: docSnap.id, 
+      return {
+        id: docSnap.id,
         studentIdNumber: data.studentIdNumber,
         firstName: data.firstName,
         lastName: data.lastName,
         classId: data.classId,
-        dateOfBirth: data.dateOfBirth, 
+        dateOfBirth: data.dateOfBirth,
         gender: data.gender,
        } as Student;
     });
@@ -512,15 +512,15 @@ export async function getClasses(): Promise<ClassInfo[]> {
 
             if (classData.subjectReferences && Array.isArray(classData.subjectReferences)) {
                 for (const subjectRef of classData.subjectReferences) {
-                    if (subjectRef && typeof subjectRef.id === 'string') { 
+                    if (subjectRef && typeof subjectRef.id === 'string') {
                         try {
                             const subjectDocSnap = await getDoc(doc(db, "subjects", subjectRef.id));
                             if (subjectDocSnap.exists()) {
                                 const subjData = subjectDocSnap.data();
-                                subjectsArray.push({ 
-                                    id: subjectDocSnap.id, 
-                                    name: subjData.name, 
-                                    code: subjData.code === null ? undefined : subjData.code 
+                                subjectsArray.push({
+                                    id: subjectDocSnap.id,
+                                    name: subjData.name,
+                                    code: subjData.code === null ? undefined : subjData.code
                                 } as Subject);
                             } else {
                                 subjectsArray.push({ id: subjectRef.id, name: `Unknown Subject (${subjectRef.id})` });
