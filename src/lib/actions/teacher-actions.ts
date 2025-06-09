@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { getClasses, getSubjects, getExams, getGeneralSettings, getTeacherById as getTeacherByIdFromDOS, getTerms, getStudents as getAllStudents } from '@/lib/actions/dos-actions';
 import type { ClassInfo, Subject as SubjectType, Exam, GeneralSettings, Term } from '@/lib/types';
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, limit, addDoc, orderBy, Timestamp } from "firebase/firestore";
+import { collection, query, where, getDocs, limit, addDoc, orderBy, Timestamp, doc } from "firebase/firestore"; // Added doc for getDoc
 
 // Simulate a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -99,6 +99,7 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
           subject: assessmentDetails.subjectName,
           exam: assessmentDetails.examName,
           grades: gradeEntries,
+          historicalAverage: assessmentDetails.historicalAverage,
         };
         
         console.log("Anomaly detection input:", JSON.stringify(anomalyInput, null, 2));
@@ -125,12 +126,12 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
     await addDoc(markSubmissionsRef, {
       teacherId,
       assessmentId: data.assessmentId,
-      assessmentName: assessmentDetails.name, // Use the full name from assessmentDetails
-      dateSubmitted: Timestamp.now(), // Use Firestore Timestamp for better querying
+      assessmentName: assessmentDetails.name, 
+      dateSubmitted: Timestamp.now(), 
       studentCount,
       averageScore,
       status: initialStatus,
-      submittedMarks: data.marks, // Store the actual marks
+      submittedMarks: data.marks, 
       anomalyExplanations: anomalyResult?.anomalies || [],
     });
   } catch (error) {
@@ -150,7 +151,7 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
 }
 
 
-async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName: string; examName: string; name: string; maxMarks: number }> {
+async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName: string; examName: string; name: string; maxMarks: number; historicalAverage?: number }> {
     const parts = assessmentId.split('_');
     if (parts.length !== 3) {
         console.error(`Invalid assessmentId format: ${assessmentId}`);
@@ -158,21 +159,29 @@ async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName
     }
     const [examId, classId, subjectId] = parts;
 
-    const allExams = await getExams();
-    const allSubjects = await getSubjects();
-    const allClasses = await getClasses(); // Need class name too
-
+    // Fetch all necessary data in parallel
+    const [allExams, allSubjects, allClasses] = await Promise.all([
+      getExams(),
+      getSubjects(),
+      getClasses()
+    ]);
+    
     const exam = allExams.find(e => e.id === examId);
     const subject = allSubjects.find(s => s.id === subjectId);
     const cls = allClasses.find(c => c.id === classId);
 
     const assessmentName = `${cls?.name || 'Unknown Class'} - ${subject?.name || 'Unknown Subject'} - ${exam?.name || 'Unknown Exam'}`;
     
+    // Placeholder for fetching historical average for this specific subject/exam combination
+    // This would typically involve another database query
+    const historicalAverage = undefined; // e.g., await getHistoricalAverage(examId, subjectId);
+
     return {
         subjectName: subject?.name || "Unknown Subject",
         examName: exam?.name || "Unknown Exam",
         name: assessmentName,
         maxMarks: exam?.maxMarks || 100,
+        historicalAverage: historicalAverage,
     };
 }
 
@@ -184,7 +193,7 @@ export async function getStudentsForAssessment(assessmentId: string): Promise<St
   }
   const classId = parts[1];
 
-  const allStudents = await getAllStudents(); // Fetches all students from dos-actions
+  const allStudents = await getAllStudents(); 
   return allStudents.filter(student => student.classId === classId);
 }
 
@@ -205,10 +214,10 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
             orderBy("dateSubmitted", "desc")
         );
         const querySnapshot = await getDocs(q);
-        const history: SubmissionHistoryItem[] = querySnapshot.docs.map(doc => {
-            const data = doc.data();
+        const history: SubmissionHistoryItem[] = querySnapshot.docs.map(docSnap => { // Renamed doc to docSnap
+            const data = docSnap.data();
             return {
-                id: doc.id,
+                id: docSnap.id,
                 assessmentName: data.assessmentName || "N/A",
                 dateSubmitted: (data.dateSubmitted as Timestamp).toDate().toISOString(),
                 studentCount: data.studentCount || 0,
@@ -259,7 +268,8 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
         }
     });
 
-    if (teacher.subjectsAssigned) {
+    // Ensure teacher.subjectsAssigned is an array before iterating
+    if (teacher.subjectsAssigned && Array.isArray(teacher.subjectsAssigned)) {
         teacher.subjectsAssigned.forEach(assignment => {
             teacherAssignments.add(`${assignment.classId}-${assignment.subjectId}`);
         });
@@ -268,7 +278,7 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
     teacherAssignments.forEach(assignmentKey => {
         const [classId, subjectId] = assignmentKey.split('-');
         const cls = allClasses.find(c => c.id === classId);
-        const allSubjectsMasterList = cls?.subjects; // Subjects configured for this class
+        const allSubjectsMasterList = cls?.subjects; 
         const subj = allSubjectsMasterList?.find(s => s.id === subjectId); 
 
 
@@ -292,8 +302,19 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
 }
 
 export async function getTeacherDashboardData(teacherId: string): Promise<TeacherDashboardData> {
-  const [teacher, allClasses, generalSettings, allTerms] = await Promise.all([
-    getTeacherByIdFromDOS(teacherId), 
+  const teacher = await getTeacherByIdFromDOS(teacherId);
+  
+  if (!teacher) {
+    console.warn(`Teacher not found for ID: ${teacherId} in getTeacherDashboardData.`);
+    return {
+      assignments: [],
+      notifications: [{ id: 'error', message: 'Could not load teacher data.', type: 'warning' }],
+      teacherName: undefined, // Will fallback to searchParams.teacherName on the page
+      resourcesText: "Could not load resources. Please ensure you are logged in correctly."
+    };
+  }
+
+  const [allClasses, generalSettings, allTerms] = await Promise.all([
     getClasses(), 
     getGeneralSettings(),
     getTerms(),
@@ -301,7 +322,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
 
   const assignmentsMap = new Map<string, TeacherDashboardAssignment>();
   const notifications: TeacherNotification[] = [];
-  const teacherName = teacher?.name;
+  const teacherName = teacher.name; // Authoritative name from DB
   const resourcesText = generalSettings.teacherDashboardResourcesText;
 
   const currentTerm = generalSettings.currentTermId ? allTerms.find(t => t.id === generalSettings.currentTermId) : null;
@@ -312,40 +333,38 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     deadlineText = `Term End: ${new Date(currentTerm.endDate).toLocaleDateString()}`;
   }
 
-  if (teacher) {
-    allClasses.forEach(cls => {
-      if (cls.classTeacherId === teacher.id && cls.subjects) {
-        cls.subjects.forEach(subj => {
-          const assignmentId = `${cls.id}-${subj.id}`;
-          if (!assignmentsMap.has(assignmentId)) {
-            assignmentsMap.set(assignmentId, {
-              id: assignmentId,
-              className: cls.name,
-              subjectName: subj.name,
-              nextDeadlineInfo: deadlineText,
-            });
-          }
-        });
-      }
-    });
+  // Class teacher assignments
+  allClasses.forEach(cls => {
+    if (cls.classTeacherId === teacher.id && cls.subjects) {
+      cls.subjects.forEach(subj => {
+        const assignmentId = `${cls.id}-${subj.id}`; // Using classId-subjectId as key
+        if (!assignmentsMap.has(assignmentId)) {
+          assignmentsMap.set(assignmentId, {
+            id: assignmentId,
+            className: cls.name,
+            subjectName: subj.name,
+            nextDeadlineInfo: deadlineText,
+          });
+        }
+      });
+    }
+  });
 
-    if (teacher.subjectsAssigned) {
-      for (const assigned of teacher.subjectsAssigned) {
-        const cls = allClasses.find(c => c.id === assigned.classId);
-        
-        // Find subject details from the class's subject list
-        const subjDetails = cls?.subjects.find(s => s.id === assigned.subjectId);
+  // Specific subject assignments
+  if (teacher.subjectsAssigned && Array.isArray(teacher.subjectsAssigned)) {
+    for (const assigned of teacher.subjectsAssigned) {
+      const cls = allClasses.find(c => c.id === assigned.classId);
+      const subjDetails = cls?.subjects.find(s => s.id === assigned.subjectId);
 
-        if (cls && subjDetails) {
-          const assignmentId = `${cls.id}-${subjDetails.id}`;
-          if (!assignmentsMap.has(assignmentId)) { 
-            assignmentsMap.set(assignmentId, {
-              id: assignmentId,
-              className: cls.name,
-              subjectName: subjDetails.name,
-              nextDeadlineInfo: deadlineText,
-            });
-          }
+      if (cls && subjDetails) {
+        const assignmentId = `${cls.id}-${subjDetails.id}`;
+        if (!assignmentsMap.has(assignmentId)) { 
+          assignmentsMap.set(assignmentId, {
+            id: assignmentId,
+            className: cls.name,
+            subjectName: subjDetails.name,
+            nextDeadlineInfo: deadlineText,
+          });
         }
       }
     }
@@ -398,4 +417,3 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
   
   return { assignments, notifications, teacherName, resourcesText };
 }
-
