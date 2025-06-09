@@ -1,13 +1,13 @@
 
 "use server";
 
-import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType } from "@/lib/types";
+import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation } from "@/lib/types";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
 import { revalidatePath } from "next/cache";
 import { getClasses, getSubjects, getExams, getGeneralSettings, getTeacherById as getTeacherByIdFromDOS, getTerms, getStudents as getAllStudents } from '@/lib/actions/dos-actions';
 import type { ClassInfo, Subject as SubjectType, Exam, GeneralSettings, Term } from '@/lib/types';
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, limit } from "firebase/firestore";
+import { collection, query, where, getDocs, limit, addDoc, orderBy, Timestamp } from "firebase/firestore";
 
 // Simulate a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -16,6 +16,16 @@ interface MarksSubmissionData {
   assessmentId: string;
   marks: Array<{ studentId: string; score: number }>; // score should be number by this point
 }
+
+interface SubmissionHistoryItem {
+  id: string;
+  assessmentName: string;
+  dateSubmitted: string;
+  studentCount: number;
+  averageScore: number | null;
+  status: "Pending Review (Anomaly Detected)" | "Accepted" | "Rejected";
+}
+
 
 export async function loginTeacherByEmailPassword(email: string, passwordToVerify: string): Promise<{ success: boolean; message: string; teacher?: { id: string; name: string; email: string; } }> {
   if (!db) {
@@ -54,9 +64,15 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
 }
 
 
-export async function submitMarks(data: MarksSubmissionData): Promise<{ success: boolean; message: string; anomalies?: GradeAnomalyDetectionOutput }> {
-  console.log("Submitting marks:", data);
+export async function submitMarks(teacherId: string, data: MarksSubmissionData): Promise<{ success: boolean; message: string; anomalies?: GradeAnomalyDetectionOutput }> {
+  console.log("Submitting marks for teacher:", teacherId, "Data:", data);
 
+  if (!db) {
+    return { success: false, message: "Database service not available." };
+  }
+  if (!teacherId) {
+    return { success: false, message: "Teacher ID is missing." };
+  }
   if (!data.assessmentId || !data.marks) {
     return { success: false, message: "Invalid submission data. Assessment ID and marks are required." };
   }
@@ -67,10 +83,9 @@ export async function submitMarks(data: MarksSubmissionData): Promise<{ success:
   }));
 
   let anomalyResult: GradeAnomalyDetectionOutput | undefined = undefined;
+  const assessmentDetails = await getAssessmentDetails(data.assessmentId);
 
   if (gradeEntries.length > 0) {
-    const assessmentDetails = await getAssessmentDetails(data.assessmentId); 
-
     if (!assessmentDetails.subjectName || !assessmentDetails.examName) {
         console.error("Could not retrieve subject name or exam name for anomaly detection for assessmentId:", data.assessmentId);
     } else {
@@ -78,7 +93,6 @@ export async function submitMarks(data: MarksSubmissionData): Promise<{ success:
           subject: assessmentDetails.subjectName,
           exam: assessmentDetails.examName,
           grades: gradeEntries,
-          // historicalAverage: assessmentDetails.historicalAverage, // Could be added in future
         };
         
         console.log("Anomaly detection input:", JSON.stringify(anomalyInput, null, 2));
@@ -87,22 +101,37 @@ export async function submitMarks(data: MarksSubmissionData): Promise<{ success:
             console.log("Anomaly detection result:", anomalyResult);
         } catch (error) {
             console.error("Error during anomaly detection:", error);
-            // Continue submission even if anomaly detection fails for some reason
             anomalyResult = { hasAnomalies: false, anomalies: [{studentId: "SYSTEM_ERROR", explanation: "Anomaly check failed to run."}] };
         }
     }
   }
   
-  await delay(1000); 
-  console.log(`Simulated saving ${data.marks.length} marks for assessment ${data.assessmentId} to database.`);
-  // In a real app, here you would interact with Firestore to save the marks.
-  // For example, for each mark in data.marks:
-  // await addDoc(collection(db, "marks"), { 
-  //   assessmentId: data.assessmentId, 
-  //   studentId: mark.studentId, // This is studentIdNumber
-  //   score: mark.score,
-  //   submittedAt: new Date().toISOString(),
-  // });
+  // Calculate stats for submission record
+  const studentCount = data.marks.length;
+  const totalScore = data.marks.reduce((sum, mark) => sum + (mark.score || 0), 0);
+  const averageScore = studentCount > 0 ? totalScore / studentCount : null;
+  
+  const initialStatus: SubmissionHistoryItem['status'] = anomalyResult?.hasAnomalies ? "Pending Review (Anomaly Detected)" : "Accepted";
+
+  // Save to markSubmissions collection
+  try {
+    const markSubmissionsRef = collection(db, "markSubmissions");
+    await addDoc(markSubmissionsRef, {
+      teacherId,
+      assessmentId: data.assessmentId,
+      assessmentName: assessmentDetails.name, // Use the full name from assessmentDetails
+      dateSubmitted: Timestamp.now(), // Use Firestore Timestamp for better querying
+      studentCount,
+      averageScore,
+      status: initialStatus,
+      submittedMarks: data.marks, // Store the actual marks
+      anomalyExplanations: anomalyResult?.anomalies || [],
+    });
+  } catch (error) {
+    console.error("Error saving mark submission to Firestore:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+    return { success: false, message: `Failed to save submission: ${errorMessage}` };
+  }
 
   revalidatePath("/teacher/marks/submit"); 
   revalidatePath("/teacher/marks/history"); 
@@ -115,23 +144,29 @@ export async function submitMarks(data: MarksSubmissionData): Promise<{ success:
 }
 
 
-async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName: string; examName: string }> {
+async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName: string; examName: string; name: string; maxMarks: number }> {
     const parts = assessmentId.split('_');
     if (parts.length !== 3) {
         console.error(`Invalid assessmentId format: ${assessmentId}`);
-        return { subjectName: "Unknown Subject", examName: "Unknown Exam" };
+        return { subjectName: "Unknown Subject", examName: "Unknown Exam", name: "Unknown Assessment", maxMarks: 100 };
     }
-    const [examId, , subjectId] = parts; // classId is also in parts[1] if needed
+    const [examId, classId, subjectId] = parts;
 
     const allExams = await getExams();
     const allSubjects = await getSubjects();
+    const allClasses = await getClasses(); // Need class name too
 
     const exam = allExams.find(e => e.id === examId);
     const subject = allSubjects.find(s => s.id === subjectId);
+    const cls = allClasses.find(c => c.id === classId);
 
+    const assessmentName = `${cls?.name || 'Unknown Class'} - ${subject?.name || 'Unknown Subject'} - ${exam?.name || 'Unknown Exam'}`;
+    
     return {
         subjectName: subject?.name || "Unknown Subject",
         examName: exam?.name || "Unknown Exam",
+        name: assessmentName,
+        maxMarks: exam?.maxMarks || 100,
     };
 }
 
@@ -147,52 +182,52 @@ export async function getStudentsForAssessment(assessmentId: string): Promise<St
   return allStudents.filter(student => student.classId === classId);
 }
 
-export async function getSubmittedMarksHistory(teacherId: string): Promise<any[]> {
-    await delay(300);
-    console.log(`Fetching submission history for teacher: ${teacherId}`);
-    // Simulate some variation or teacher-specific data in mock
-    const teacherIdSnippet = teacherId ? teacherId.slice(0,5) : "generic";
-    const baseHistory = [
-        { 
-            id: `sub1_math_f1a_for_${teacherIdSnippet}`, 
-            assessmentName: `Form 1A - Math (Teacher: ${teacherIdSnippet}) - Midterm`, 
-            dateSubmitted: '2024-07-15', 
-            studentCount: 25, 
-            averageScore: 78.5,
-            status: 'Accepted' 
-        },
-        { 
-            id: `sub2_phy_f2b_for_${teacherIdSnippet}`, 
-            assessmentName: `Form 2B - Physics (Teacher: ${teacherIdSnippet}) - Final`, 
-            dateSubmitted: '2024-07-18', 
-            studentCount: 22, 
-            averageScore: 65.2,
-            status: 'Pending Review (Anomaly Detected)'
-        },
-         { 
-            id: `sub3_eng_f3c_for_${teacherIdSnippet}`, 
-            assessmentName: `Form 3C - English (Teacher: ${teacherIdSnippet}) - Quiz 1`, 
-            dateSubmitted: '2024-07-20', 
-            studentCount: 30, 
-            averageScore: 15.7, 
-            status: 'Accepted' 
-        },
-    ];
-    return baseHistory;
+export async function getSubmittedMarksHistory(teacherId: string): Promise<SubmissionHistoryItem[]> {
+    if (!db) {
+        console.error("Firestore is not initialized.");
+        return [];
+    }
+    if (!teacherId) {
+        console.warn("Teacher ID not provided for fetching submission history.");
+        return [];
+    }
+    try {
+        const submissionsRef = collection(db, "markSubmissions");
+        const q = query(
+            submissionsRef,
+            where("teacherId", "==", teacherId),
+            orderBy("dateSubmitted", "desc")
+        );
+        const querySnapshot = await getDocs(q);
+        const history: SubmissionHistoryItem[] = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                assessmentName: data.assessmentName || "N/A",
+                dateSubmitted: (data.dateSubmitted as Timestamp).toDate().toISOString(),
+                studentCount: data.studentCount || 0,
+                averageScore: data.averageScore !== undefined ? data.averageScore : null,
+                status: data.status || "Unknown",
+            } as SubmissionHistoryItem;
+        });
+        return history;
+    } catch (error) {
+        console.error("Error fetching submission history:", error);
+        return [];
+    }
 }
 
 export async function getTeacherAssessments(teacherId: string): Promise<Array<{id: string, name: string, maxMarks: number}>> {
-    const teacher = await getTeacherByIdFromDOS(teacherId); // Use the action from dos-actions
+    const teacher = await getTeacherByIdFromDOS(teacherId); 
     if (!teacher) {
         console.warn(`Teacher not found for ID: ${teacherId}`);
         return [];
     }
 
-    const [allExams, allClasses, generalSettings, allTerms] = await Promise.all([
+    const [allExams, allClasses, generalSettings] = await Promise.all([
         getExams(),
         getClasses(), 
         getGeneralSettings(),
-        getTerms(),
     ]);
 
     const currentTermId = generalSettings.currentTermId;
@@ -208,9 +243,8 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
     }
 
     const assessments: Array<{id: string, name: string, maxMarks: number}> = [];
-    const teacherAssignments = new Set<string>(); // Store as "classId-subjectId"
+    const teacherAssignments = new Set<string>(); 
 
-    // Populate teacherAssignments based on class teacher role
     allClasses.forEach(cls => {
         if (cls.classTeacherId === teacherId) {
             cls.subjects.forEach(subj => {
@@ -219,23 +253,23 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
         }
     });
 
-    // Populate teacherAssignments based on specific subject assignments
     if (teacher.subjectsAssigned) {
         teacher.subjectsAssigned.forEach(assignment => {
             teacherAssignments.add(`${assignment.classId}-${assignment.subjectId}`);
         });
     }
 
-    // Generate assessments
     teacherAssignments.forEach(assignmentKey => {
         const [classId, subjectId] = assignmentKey.split('-');
         const cls = allClasses.find(c => c.id === classId);
-        const subj = cls?.subjects.find(s => s.id === subjectId); 
+        const allSubjectsMasterList = cls?.subjects; // Subjects configured for this class
+        const subj = allSubjectsMasterList?.find(s => s.id === subjectId); 
+
 
         if (cls && subj) {
             currentTermExams.forEach(exam => {
                 assessments.push({
-                    id: `${exam.id}_${cls.id}_${subj.id}`, // Composite ID
+                    id: `${exam.id}_${cls.id}_${subj.id}`, 
                     name: `${cls.name} - ${subj.name} - ${exam.name}`,
                     maxMarks: exam.maxMarks,
                 });
@@ -253,7 +287,7 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
 
 export async function getTeacherDashboardData(teacherId: string): Promise<TeacherDashboardData> {
   const [teacher, allClasses, generalSettings, allTerms] = await Promise.all([
-    getTeacherByIdFromDOS(teacherId), // Use action from dos-actions
+    getTeacherByIdFromDOS(teacherId), 
     getClasses(), 
     getGeneralSettings(),
     getTerms(),
@@ -273,7 +307,6 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
   }
 
   if (teacher) {
-    // Assignments where the teacher is the class teacher
     allClasses.forEach(cls => {
       if (cls.classTeacherId === teacher.id && cls.subjects) {
         cls.subjects.forEach(subj => {
@@ -290,10 +323,11 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       }
     });
 
-    // Assignments from teacher.subjectsAssigned
     if (teacher.subjectsAssigned) {
       for (const assigned of teacher.subjectsAssigned) {
         const cls = allClasses.find(c => c.id === assigned.classId);
+        
+        // Find subject details from the class's subject list
         const subjDetails = cls?.subjects.find(s => s.id === assigned.subjectId);
 
         if (cls && subjDetails) {
@@ -320,7 +354,6 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
   });
 
 
-  // Notifications
   if (generalSettings.dosGlobalAnnouncementText) {
     notifications.push({
       id: 'dos_announcement',

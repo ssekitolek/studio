@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { History, Eye, Download, Loader2, AlertTriangle } from "lucide-react";
 import { getSubmittedMarksHistory } from "@/lib/actions/teacher-actions"; 
 import { useToast } from "@/hooks/use-toast";
-import { useSearchParams, useRouter } from "next/navigation"; // Added useRouter
+import { useSearchParams, useRouter } from "next/navigation"; 
 import Link from "next/link";
 
 interface SubmissionHistoryItem {
@@ -26,7 +26,7 @@ interface SubmissionHistoryItem {
 export default function MarksHistoryPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
-  const router = useRouter(); // For redirecting if no teacherId
+  const router = useRouter(); 
   const teacherId = searchParams.get("teacherId");
 
   const [isLoading, startLoadingTransition] = useTransition();
@@ -35,7 +35,7 @@ export default function MarksHistoryPage() {
   useEffect(() => {
     if (!teacherId) {
       toast({ title: "Access Denied", description: "No teacher ID provided. Please login.", variant: "destructive" });
-      router.push("/login/teacher"); // Redirect to login
+      router.push("/login/teacher"); 
       return;
     }
     startLoadingTransition(async () => {
@@ -54,8 +54,16 @@ export default function MarksHistoryPage() {
     if (status === "Rejected") return "destructive";
     return "secondary";
   };
+  
+  const getStatusClass = (status: SubmissionHistoryItem['status']) => {
+    if (status.includes("Anomaly Detected")) return "bg-yellow-500 hover:bg-yellow-600 text-black";
+    if (status === "Accepted") return "bg-green-500 hover:bg-green-600 text-white";
+    if (status === "Rejected") return "bg-destructive hover:bg-destructive/90 text-destructive-foreground";
+    return "bg-secondary hover:bg-secondary/80 text-secondary-foreground";
+  }
 
-  if (!teacherId && !isLoading) { // Render message if teacherId is missing after initial checks
+
+  if (!teacherId && !isLoading) { 
      return (
       <div className="space-y-6">
         <PageHeader
@@ -119,9 +127,7 @@ export default function MarksHistoryPage() {
                     <TableCell className="text-center">{item.studentCount}</TableCell>
                     <TableCell className="text-center">{item.averageScore !== null ? item.averageScore.toFixed(1) : 'N/A'}</TableCell>
                     <TableCell className="text-center">
-                      <Badge variant={getStatusVariant(item.status)} 
-                             className={item.status.includes("Anomaly") ? "bg-yellow-500 hover:bg-yellow-600 text-black" : 
-                                        item.status === "Accepted" ? "bg-green-500 hover:bg-green-600 text-white" : ""}>
+                       <Badge variant={getStatusVariant(item.status)} className={getStatusClass(item.status)}>
                         {item.status}
                       </Badge>
                     </TableCell>
@@ -158,3 +164,4 @@ export default function MarksHistoryPage() {
     </div>
   );
 }
+
