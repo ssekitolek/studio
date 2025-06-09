@@ -17,7 +17,7 @@ import { BookOpenCheck, Loader2, AlertTriangle, CheckCircle, ShieldAlert, FileWa
 import { getTeacherAssessments, getStudentsForAssessment, submitMarks } from "@/lib/actions/teacher-actions";
 import type { Student, AnomalyExplanation } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { useSearchParams, useRouter } from "next/navigation"; // Added useRouter
+import { useSearchParams, useRouter } from "next/navigation"; 
 import Link from "next/link";
 
 const markSchema = z.object({
@@ -45,7 +45,7 @@ interface AssessmentOption {
 export default function SubmitMarksPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
-  const router = useRouter(); // For redirecting if no teacherId
+  const router = useRouter(); 
   const teacherId = searchParams.get("teacherId");
 
   const [isPending, startTransition] = useTransition();
@@ -71,7 +71,7 @@ export default function SubmitMarksPage() {
   useEffect(() => {
     if (!teacherId) {
       toast({ title: "Access Denied", description: "No teacher ID provided. Please login.", variant: "destructive" });
-      router.push("/login/teacher"); // Redirect to login if no teacherId
+      router.push("/login/teacher"); 
       return;
     }
     async function fetchAssessments() {
@@ -94,12 +94,11 @@ export default function SubmitMarksPage() {
     setSelectedAssessment(assessment || null);
     setAnomalies([]);
     setShowAnomalyWarning(false);
-    form.resetField("marks", { defaultValue: [] }); // Clear previous marks
+    form.resetField("marks", { defaultValue: [] }); 
 
     if (assessmentId) {
       setIsLoadingStudents(true);
       try {
-        // getStudentsForAssessment does not need teacherId if assessmentId is unique enough (e.g., examId_classId_subjectId)
         const students: Student[] = await getStudentsForAssessment(assessmentId);
         const marksData = students.map(student => ({
           studentId: student.studentIdNumber, 
@@ -121,6 +120,10 @@ export default function SubmitMarksPage() {
   const onSubmit = async (data: MarksSubmissionFormValues) => {
     if (!selectedAssessment) {
         toast({ title: "Error", description: "No assessment selected.", variant: "destructive"});
+        return;
+    }
+    if (!teacherId) {
+        toast({ title: "Authentication Error", description: "Teacher ID is missing. Please re-login.", variant: "destructive" });
         return;
     }
 
@@ -155,7 +158,7 @@ export default function SubmitMarksPage() {
 
     startTransition(async () => {
       try {
-        const result = await submitMarks({
+        const result = await submitMarks(teacherId, {
           assessmentId: data.assessmentId,
           marks: marksToSubmit as Array<{ studentId: string; score: number }>, 
         });
@@ -186,7 +189,7 @@ export default function SubmitMarksPage() {
   
   const currentMaxMarks = selectedAssessment?.maxMarks ?? 100;
 
-  if (!teacherId && !isLoadingAssessments) { // Check if teacherId is still missing after initial load attempt
+  if (!teacherId && !isLoadingAssessments) { 
     return (
       <div className="space-y-6">
         <PageHeader
