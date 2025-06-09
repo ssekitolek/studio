@@ -7,7 +7,7 @@ import { LayoutDashboard, BookOpenCheck, CalendarClock, Bell, ListChecks, AlertC
 import Image from "next/image";
 import { getTeacherDashboardData } from "@/lib/actions/teacher-actions";
 import type { TeacherDashboardAssignment, TeacherNotification } from "@/lib/types";
-import { Alert } from "@/components/ui/alert"; // For displaying error if no teacherId
+import { Alert, AlertDescription, AlertTitle as UIAlertTitle } from "@/components/ui/alert"; // Renamed AlertTitle import to avoid conflict
 
 const defaultResourcesText = `Access your teaching schedule, submit student marks, and view historical submission data using the sidebar navigation. 
 Stay updated with notifications from the D.O.S. and ensure timely submission of grades. 
@@ -30,8 +30,8 @@ export default async function TeacherDashboardPage({
         />
         <Alert variant="destructive" className="shadow-md">
             <AlertTriangle className="h-4 w-4" />
-            <CardTitle>Access Denied</CardTitle>
-            <CardDescription>No teacher ID provided. Please <Link href="/login/teacher" className="underline">login</Link> to access your dashboard.</CardDescription>
+            <UIAlertTitle>Access Denied</UIAlertTitle>
+            <AlertDescription>No teacher ID provided. Please <Link href="/login/teacher" className="underline">login</Link> to access your dashboard.</AlertDescription>
         </Alert>
       </div>
     );

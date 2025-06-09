@@ -43,7 +43,13 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
     const teacherDoc = querySnapshot.docs[0];
     const teacherData = teacherDoc.data() as TeacherType;
 
-    if (teacherData.password === passwordToVerify) {
+    // Ensure essential fields exist for a successful login response
+    if (!teacherDoc.id || !teacherData.name || !teacherData.email) {
+        console.error("Teacher document is missing id, name, or email for login.", {id: teacherDoc.id, name: teacherData.name, email: teacherData.email});
+        return { success: false, message: "Teacher data incomplete in database. Cannot log in." };
+    }
+
+    if (teacherData.password && teacherData.password === passwordToVerify) {
       return {
         success: true,
         message: "Login successful.",
