@@ -12,8 +12,7 @@ interface EditExamTypePageProps {
   params: { examId: string };
 }
 
-export default async function EditExamTypePage({ params: paramsInput }: EditExamTypePageProps) {
-  const params = await paramsInput; // Ensure params are awaited
+export default async function EditExamTypePage({ params }: EditExamTypePageProps) {
   const examData = await getExamById(params.examId);
 
   if (!examData) {

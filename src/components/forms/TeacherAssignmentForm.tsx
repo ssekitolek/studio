@@ -20,7 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { updateTeacherAssignments } from "@/lib/actions/dos-actions";
-import type { Teacher, ClassInfo, Subject as SubjectType } from "@/lib/types";
+import type { Teacher, ClassInfo } from "@/lib/types";
 import { Loader2, Save, Users } from "lucide-react";
 
 const teacherAssignmentFormSchema = z.object({
@@ -38,14 +38,12 @@ type TeacherAssignmentFormValues = z.infer<typeof teacherAssignmentFormSchema>;
 interface TeacherAssignmentFormProps {
   teacher: Teacher;
   allClasses: ClassInfo[];
-  allSubjects: SubjectType[]; // Not directly used if subjects are nested in ClassInfo
   onSuccess?: () => void;
 }
 
 export function TeacherAssignmentForm({
   teacher,
   allClasses,
-  allSubjects,
   onSuccess,
 }: TeacherAssignmentFormProps) {
   const { toast } = useToast();

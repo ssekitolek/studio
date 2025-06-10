@@ -8,8 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Users, RefreshCw } from "lucide-react";
 import { TeacherAssignmentForm } from "@/components/forms/TeacherAssignmentForm";
-import { getTeachers, getClasses, getSubjects, getTeacherById } from "@/lib/actions/dos-actions";
-import type { Teacher, ClassInfo, Subject as SubjectType } from "@/lib/types";
+import { getTeachers, getClasses, getTeacherById } from "@/lib/actions/dos-actions";
+import type { Teacher, ClassInfo } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
 export default function TeacherAssignmentsPage() {
@@ -19,7 +19,6 @@ export default function TeacherAssignmentsPage() {
   
   const [allTeachers, setAllTeachers] = React.useState<Teacher[]>([]);
   const [allClasses, setAllClasses] = React.useState<ClassInfo[]>([]);
-  const [allSubjects, setAllSubjects] = React.useState<SubjectType[]>([]);
   
   const [selectedTeacherId, setSelectedTeacherId] = React.useState<string | null>(null);
   const [selectedTeacherDetails, setSelectedTeacherDetails] = React.useState<Teacher | null>(null);
@@ -27,14 +26,12 @@ export default function TeacherAssignmentsPage() {
   const fetchInitialData = React.useCallback(async () => {
     setIsLoadingInitialData(true);
     try {
-      const [teachersData, classesData, subjectsData] = await Promise.all([
+      const [teachersData, classesData] = await Promise.all([
         getTeachers(),
         getClasses(),
-        getSubjects(),
       ]);
       setAllTeachers(teachersData);
       setAllClasses(classesData);
-      setAllSubjects(subjectsData);
     } catch (error) {
       toast({ title: "Error", description: "Failed to load initial data for assignments.", variant: "destructive" });
     } finally {
@@ -51,7 +48,7 @@ export default function TeacherAssignmentsPage() {
     if (teacherId) {
       setIsLoadingTeacherDetails(true);
       try {
-        const teacherDetails = await getTeacherById(teacherId); // Fetch full details including subjectsAssigned
+        const teacherDetails = await getTeacherById(teacherId); 
         setSelectedTeacherDetails(teacherDetails);
       } catch (error) {
         toast({ title: "Error", description: "Failed to load teacher details.", variant: "destructive" });
@@ -66,12 +63,16 @@ export default function TeacherAssignmentsPage() {
 
   const handleFormSuccess = async () => {
     toast({ title: "Assignments Updated", description: "Teacher assignments have been successfully updated."});
-    // Optionally re-fetch selected teacher details to reflect changes immediately
     if (selectedTeacherId) {
       setIsLoadingTeacherDetails(true);
-      const teacherDetails = await getTeacherById(selectedTeacherId);
-      setSelectedTeacherDetails(teacherDetails);
-      setIsLoadingTeacherDetails(false);
+      try {
+        const teacherDetails = await getTeacherById(selectedTeacherId);
+        setSelectedTeacherDetails(teacherDetails);
+      } catch (error) {
+         toast({ title: "Error", description: "Failed to reload teacher details after update.", variant: "destructive" });
+      } finally {
+        setIsLoadingTeacherDetails(false);
+      }
     }
   }
 
@@ -132,10 +133,9 @@ export default function TeacherAssignmentsPage() {
 
       {!isLoadingTeacherDetails && selectedTeacherId && selectedTeacherDetails && (
         <TeacherAssignmentForm
-          key={selectedTeacherId} // Ensure form re-renders with new initial data when teacher changes
+          key={selectedTeacherId} 
           teacher={selectedTeacherDetails}
           allClasses={allClasses}
-          allSubjects={allSubjects}
           onSuccess={handleFormSuccess}
         />
       )}
