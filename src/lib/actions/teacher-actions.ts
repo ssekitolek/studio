@@ -231,9 +231,13 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
 }
 
 export async function getTeacherAssessments(teacherId: string): Promise<Array<{id: string, name: string, maxMarks: number}>> {
+    if (!db) {
+      console.error("CRITICAL_ERROR_DB_NULL: Firestore db object is null in getTeacherAssessments.");
+      return [];
+    }
     const teacher = await getTeacherByIdFromDOS(teacherId); 
     if (!teacher) {
-        console.warn(`Teacher not found for ID: ${teacherId}`);
+        console.warn(`Teacher not found for ID: ${teacherId} in getTeacherAssessments.`);
         return [];
     }
 
@@ -246,13 +250,13 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
 
     const currentTermId = generalSettings.currentTermId;
     if (!currentTermId) {
-        console.warn("No current term ID set in general settings.");
+        console.warn("No current term ID set in general settings for getTeacherAssessments.");
         return []; 
     }
 
     const currentTermExams = allExams.filter(exam => exam.termId === currentTermId);
     if (currentTermExams.length === 0) {
-        console.warn(`No exams found for current term ID: ${currentTermId}`);
+        console.warn(`No exams found for current term ID: ${currentTermId} in getTeacherAssessments.`);
         return [];
     }
 
@@ -289,8 +293,8 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
                 });
             });
         } else {
-            if (!cls) console.warn(`Class not found for ID: ${classId} in assignmentKey: ${assignmentKey}`);
-            if (cls && !subj) console.warn(`Subject not found for ID: ${subjectId} (globally) for assignmentKey: ${assignmentKey}`);
+            if (!cls) console.warn(`Class not found for ID: ${classId} in assignmentKey: ${assignmentKey} (getTeacherAssessments)`);
+            if (cls && !subj) console.warn(`Subject not found for ID: ${subjectId} (globally) for assignmentKey: ${assignmentKey} (getTeacherAssessments)`);
         }
     });
     
@@ -300,6 +304,16 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
 }
 
 export async function getTeacherDashboardData(teacherId: string): Promise<TeacherDashboardData> {
+  if (!db) {
+    console.error("CRITICAL_ERROR_DB_NULL: Firestore db object is null in getTeacherDashboardData. Dashboard will not load. Check Firebase config.");
+    return {
+      assignments: [],
+      notifications: [{ id: 'critical_error_db_null', message: "Critical Error: Database connection failed. Dashboard data cannot be loaded. Please contact an administrator.", type: 'warning' }],
+      teacherName: undefined,
+      resourcesText: "Could not load resources due to a database connection error."
+    };
+  }
+
   const teacher = await getTeacherByIdFromDOS(teacherId);
   
   if (!teacher) {
@@ -422,7 +436,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     let noAssignmentMessage = 'No teaching assignments found for the current term.';
     if (!currentTermId) {
       noAssignmentMessage = 'No current academic term is set by the D.O.S. Assignments cannot be determined.';
-    } else if (currentTermExams.length === 0) {
+    } else if (currentTermExams.length === 0 && currentTermId) { // Added check for currentTermId here
       noAssignmentMessage = 'No exams are scheduled for the current academic term. Assignments cannot be determined.';
     }
     notifications.push({
@@ -434,5 +448,3 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
   
   return { assignments, notifications, teacherName, resourcesText };
 }
-
-    
