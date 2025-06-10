@@ -6,38 +6,45 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Download, Loader2, AlertTriangle } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { downloadAllMarks } from "@/lib/actions/dos-actions"; // Assuming this action exists
+import { downloadAllMarks } from "@/lib/actions/dos-actions";
 
 export default function DownloadMarksPage() {
   const { toast } = useToast();
   const [isDownloading, startTransition] = useTransition();
-  const [selectedFormat, setSelectedFormat] = useState<string>("csv");
+  const [selectedFormat, setSelectedFormat] = useState<"csv" | "xlsx" | "pdf">("csv");
   // Add more state for filters if needed, e.g., term, class, exam
 
   const handleDownload = async () => {
     startTransition(async () => {
       try {
-        // In a real app, you might pass filters to downloadAllMarks
-        // And the action would need to respect selectedFormat
-        if (selectedFormat !== "csv") {
-          toast({
-            title: "Format Not Yet Supported",
-            description: `Downloading as ${selectedFormat.toUpperCase()} is not yet implemented. Placeholder for future functionality.`,
-            variant: "default", 
-          });
-          return;
-        }
-
-        const result = await downloadAllMarks(); 
+        const result = await downloadAllMarks(selectedFormat); 
+        
         if (result.success && result.data) {
-          // Trigger browser download
-          const blob = new Blob([result.data], { type: `text/${selectedFormat};charset=utf-8;` });
+          let blobType: string;
+          let fileName: string;
+
+          switch (selectedFormat) {
+            case "xlsx":
+              blobType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+              fileName = "all_marks.xlsx";
+              break;
+            case "pdf":
+              blobType = "application/pdf"; // Or "text/plain" if it's just text
+              fileName = "all_marks.pdf";
+              break;
+            case "csv":
+            default:
+              blobType = "text/csv;charset=utf-8;";
+              fileName = "all_marks.csv";
+              break;
+          }
+
+          const blob = new Blob([result.data], { type: blobType });
           const link = document.createElement("a");
           link.href = URL.createObjectURL(blob);
-          link.setAttribute("download", `all_marks.${selectedFormat}`);
+          link.setAttribute("download", fileName);
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
@@ -63,52 +70,21 @@ export default function DownloadMarksPage() {
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle className="font-headline text-xl text-primary">Report Configuration</CardTitle>
-          <CardDescription>Select filters and format for your report.</CardDescription>
+          <CardDescription>Select format for your report. Filters will be added in the future.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Add filter selection here - e.g., Term, Class, Exam */}
-          {/* 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Select>
-              <SelectTrigger><SelectValue placeholder="Select Term" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="term1">Term 1 2024</SelectItem>
-              </SelectContent>
-            </Select>
-             <Select>
-              <SelectTrigger><SelectValue placeholder="Select Class (Optional)" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="class1">Form 1A</SelectItem>
-              </SelectContent>
-            </Select>
-             <Select>
-              <SelectTrigger><SelectValue placeholder="Select Exam (Optional)" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="exam1">Midterm</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          */}
+          {/* Add filter selection here - e.g., Term, Class, Exam (Future implementation) */}
           
-          <Select value={selectedFormat} onValueChange={setSelectedFormat}>
+          <Select value={selectedFormat} onValueChange={(value: "csv" | "xlsx" | "pdf") => setSelectedFormat(value)}>
             <SelectTrigger className="w-full md:w-1/3">
               <SelectValue placeholder="Select Format" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="csv">CSV (Comma Separated Values)</SelectItem>
               <SelectItem value="xlsx">Excel (XLSX)</SelectItem>
-              <SelectItem value="pdf">PDF</SelectItem>
+              <SelectItem value="pdf">PDF (Basic Text)</SelectItem>
             </SelectContent>
           </Select>
-
-          <Alert variant="default" className="bg-accent/10 border-accent/30">
-            <AlertTriangle className="h-4 w-4 text-accent-foreground/80" />
-            <AlertTitle className="text-accent-foreground/90">Note</AlertTitle>
-            <AlertDescription className="text-accent-foreground/80">
-              Currently, only CSV download of all marks is fully supported.
-              Selecting other formats is a placeholder for future functionality.
-            </AlertDescription>
-          </Alert>
         </CardContent>
         <CardContent className="flex justify-end">
           <Button onClick={handleDownload} disabled={isDownloading} size="lg">
@@ -124,4 +100,3 @@ export default function DownloadMarksPage() {
     </div>
   );
 }
-

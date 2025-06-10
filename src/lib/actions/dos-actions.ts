@@ -4,7 +4,8 @@
 import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference, runTransaction, writeBatch } from "firebase/firestore";
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference, runTransaction, writeBatch, Timestamp } from "firebase/firestore";
+import * as XLSX from 'xlsx';
 
 // Simulate a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -149,32 +150,20 @@ export async function updateTeacherAssignments(
       transaction.update(teacherRef, { subjectsAssigned: data.specificSubjectAssignments });
 
       // 2. Handle class teacher assignments
-      // Fetch all classes. Note: reading many docs inside a transaction can be slow.
-      // If there are many classes, consider fetching them outside and then passing refs.
       const classesCol = collection(db, "classes");
-      const classesQuerySnapshot = await getDocs(classesCol); // This read is outside transaction in this version for simplicity
-                                                              // but for strict atomicity on reads too, it should be inside.
-                                                              // However, Firestore transactions have limits on reads.
+      const classesQuerySnapshot = await getDocs(classesCol); 
 
       for (const classDoc of classesQuerySnapshot.docs) {
-        const classRef = doc(db, "classes", classDoc.id); // Get a fresh ref for the transaction
-        const classData = classDoc.data(); // Use data from outside transaction read
+        const classRef = doc(db, "classes", classDoc.id); 
+        const classData = classDoc.data(); 
         const classId = classDoc.id;
 
         if (data.classTeacherForClassIds.includes(classId)) {
-          // This class should be taught by the target teacher
           if (classData.classTeacherId !== teacherId) {
-            // If it's currently taught by someone else OR no one, assign it.
-            // No need to explicitly unassign the *other* teacher from the class here,
-            // as the classTeacherId field on the class will simply be overwritten.
-            // The old teacher's 'classTeacher' status for this class is implicitly removed
-            // by no longer being the classTeacherId on this class.
             transaction.update(classRef, { classTeacherId: teacherId });
           }
         } else {
-          // This class should NOT be taught by the target teacher
           if (classData.classTeacherId === teacherId) {
-            // If they are currently the class teacher, unassign them
             transaction.update(classRef, { classTeacherId: null });
           }
         }
@@ -760,20 +749,134 @@ export async function updateGeneralSettings(settings: GeneralSettings): Promise<
   }
 }
 
-export async function downloadAllMarks(): Promise<{ success: boolean; message: string; data?: string }> {
+interface MarkSubmissionRecord {
+  teacherId: string;
+  assessmentId: string;
+  assessmentName: string;
+  dateSubmitted: Timestamp;
+  studentCount: number;
+  averageScore: number | null;
+  status: string;
+  submittedMarks: Array<{ studentId: string; score: number }>; // studentId is studentIdNumber
+  anomalyExplanations: Array<any>; // Consider defining a type for anomaly explanations
+}
+
+interface ReportRow {
+  'Student ID': string;
+  'Student Name': string;
+  'Class': string;
+  'Subject': string;
+  'Exam': string;
+  'Score': number | string;
+  'Date Submitted': string;
+  'Submitted By (Teacher ID)': string;
+}
+
+
+async function getAllSubmittedMarksData(): Promise<ReportRow[]> {
+  if (!db) {
+    console.error("Firestore is not initialized for report generation.");
+    return [];
+  }
+  try {
+    const markSubmissionsRef = collection(db, "markSubmissions");
+    const submissionsSnapshot = await getDocs(markSubmissionsRef);
+
+    if (submissionsSnapshot.empty) {
+      return [];
+    }
+
+    const allStudents = await getStudents();
+    const studentsMap = new Map(allStudents.map(s => [s.studentIdNumber, `${s.firstName} ${s.lastName}`]));
+
+    const reportRows: ReportRow[] = [];
+
+    for (const submissionDoc of submissionsSnapshot.docs) {
+      const submission = submissionDoc.data() as MarkSubmissionRecord;
+      const dateSubmitted = submission.dateSubmitted.toDate().toLocaleDateString();
+      
+      // Basic parsing of assessmentName, assuming "ClassName - SubjectName - ExamName"
+      const assessmentParts = submission.assessmentName.split(' - ');
+      const className = assessmentParts[0] || 'N/A';
+      const subjectName = assessmentParts[1] || 'N/A';
+      const examName = assessmentParts[2] || 'N/A';
+
+      submission.submittedMarks.forEach(mark => {
+        reportRows.push({
+          'Student ID': mark.studentId,
+          'Student Name': studentsMap.get(mark.studentId) || 'Unknown Student',
+          'Class': className,
+          'Subject': subjectName,
+          'Exam': examName,
+          'Score': mark.score,
+          'Date Submitted': dateSubmitted,
+          'Submitted By (Teacher ID)': submission.teacherId,
+        });
+      });
+    }
+    return reportRows;
+  } catch (error) {
+    console.error("Error fetching all submitted marks data for report:", error);
+    return [];
+  }
+}
+
+export async function downloadAllMarks(format: 'csv' | 'xlsx' | 'pdf' = 'csv'): Promise<{ success: boolean; message: string; data?: string | Uint8Array }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
-    await delay(1000);
-    const csvData = "StudentID,StudentName,Class,Subject,Exam,Score\nS1001,John Doe,Form 1A,Math,Midterm,85\nS1002,Jane Smith,Form 1A,Math,Midterm,92";
-    return { success: true, message: "Marks data prepared for download (mock).", data: csvData };
+    const reportData = await getAllSubmittedMarksData();
+
+    if (reportData.length === 0) {
+      return { success: false, message: "No marks data found to generate a report." };
+    }
+
+    if (format === 'csv') {
+      const header = Object.keys(reportData[0]).join(',');
+      const rows = reportData.map(row => 
+        Object.values(row).map(value => {
+          const stringValue = String(value);
+          // Escape commas and quotes for CSV
+          if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+            return `"${stringValue.replace(/"/g, '""')}"`;
+          }
+          return stringValue;
+        }).join(',')
+      );
+      const csvData = `${header}\n${rows.join('\n')}`;
+      return { success: true, message: "CSV data prepared.", data: csvData };
+    } else if (format === 'xlsx') {
+      const worksheet = XLSX.utils.json_to_sheet(reportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Marks Report");
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      return { success: true, message: "XLSX data prepared.", data: new Uint8Array(excelBuffer) };
+    } else if (format === 'pdf') {
+      // Basic text-based PDF content
+      let pdfTextContent = "Marks Report\n";
+      pdfTextContent += "====================================\n\n";
+      const header = Object.keys(reportData[0]).join('\t|\t');
+      pdfTextContent += header + '\n';
+      pdfTextContent += "-".repeat(header.length * 1.5) + '\n';
+
+      reportData.forEach(row => {
+        pdfTextContent += Object.values(row).map(val => String(val).padEnd(15)).join('\t|\t') + '\n';
+      });
+      
+      pdfTextContent += "\nGenerated by GradeCentral";
+      return { success: true, message: "Basic PDF data prepared.", data: pdfTextContent };
+    }
+
+    return { success: false, message: "Invalid format selected." };
+
   } catch (error) {
     console.error("Error in downloadAllMarks:", error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
     return { success: false, message: `Failed to prepare marks data: ${errorMessage}` };
   }
 }
+
 
 // Data fetch functions
 export async function getTeachers(): Promise<Teacher[]> {
