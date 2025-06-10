@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { LayoutDashboard, Users, BookUser, ClipboardList, Settings2, CalendarCheck2, AlertTriangle, UserPlus, PlusCircle, FileWarning } from "lucide-react";
 import Image from "next/image";
-import { getTeachers, getStudents, getClasses, getSubjects, getExams, getGeneralSettings, getTerms, getTermById } from "@/lib/actions/dos-actions";
-import type { Term } from "@/lib/types";
+import { getTeachers, getStudents, getClasses, getSubjects, getExams, getGeneralSettings, getTerms } from "@/lib/actions/dos-actions";
+import type { Term, GeneralSettings, Teacher, Student, ClassInfo, Subject as SubjectType, Exam } from "@/lib/types";
+import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from "@/components/ui/alert";
 
 const quickActions = [
   { label: "Add New Teacher", href: "/dos/teachers/new", icon: UserPlus },
@@ -19,9 +20,9 @@ const quickActions = [
 function calculateDaysRemaining(deadline?: string): string {
   if (!deadline) return "Not set";
   const today = new Date();
-  today.setHours(0, 0, 0, 0); // Normalize today to start of day
+  today.setHours(0, 0, 0, 0); 
   const deadlineDate = new Date(deadline);
-  deadlineDate.setHours(0,0,0,0); // Normalize deadline to start of day
+  deadlineDate.setHours(0,0,0,0); 
 
   const diffTime = deadlineDate.getTime() - today.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -33,15 +34,52 @@ function calculateDaysRemaining(deadline?: string): string {
 }
 
 export default async function DosDashboardPage() {
-  const [teachers, students, classes, subjectsData, exams, generalSettings, terms] = await Promise.all([
-    getTeachers(),
-    getStudents(),
-    getClasses(),
-    getSubjects(),
-    getExams(),
-    getGeneralSettings(),
-    getTerms(),
-  ]);
+  let teachers: Teacher[] = [];
+  let students: Student[] = [];
+  let classes: ClassInfo[] = [];
+  let subjectsData: SubjectType[] = [];
+  let exams: Exam[] = [];
+  let generalSettings: GeneralSettings | null = null;
+  let terms: Term[] = [];
+  let fetchError: string | null = null;
+
+  try {
+    [teachers, students, classes, subjectsData, exams, generalSettings, terms] = await Promise.all([
+      getTeachers(),
+      getStudents(),
+      getClasses(),
+      getSubjects(),
+      getExams(),
+      getGeneralSettings(),
+      getTerms(),
+    ]);
+  } catch (error) {
+    console.error("CRITICAL ERROR fetching data for DOS Dashboard:", error);
+    fetchError = error instanceof Error ? error.message : "An unknown error occurred while loading dashboard data. The system might be offline or experiencing issues.";
+    // Initialize with defaults to prevent rendering errors for undefined variables
+    generalSettings = {
+        defaultGradingScale: [{ grade: 'N/A', minScore: 0, maxScore: 0 }],
+        markSubmissionTimeZone: 'UTC',
+        currentTermId: undefined,
+        globalMarksSubmissionDeadline: undefined,
+        dosGlobalAnnouncementText: "Dashboard data could not be loaded.",
+        dosGlobalAnnouncementType: "warning",
+        teacherDashboardResourcesText: "Resources could not be loaded.",
+    };
+  }
+  
+  if (!generalSettings) {
+    // This case should ideally be covered by the catch block, but as a safeguard
+    generalSettings = {
+        defaultGradingScale: [{ grade: 'Error', minScore: 0, maxScore: 0 }],
+        markSubmissionTimeZone: 'UTC',
+        dosGlobalAnnouncementText: "Failed to load system settings.",
+        dosGlobalAnnouncementType: "warning",
+        teacherDashboardResourcesText: "Failed to load resources text.",
+    };
+    if (!fetchError) fetchError = "System settings could not be loaded. Dashboard may be incomplete.";
+  }
+
 
   const totalTeachers = teachers.length;
   const totalStudents = students.length;
@@ -71,7 +109,7 @@ export default async function DosDashboardPage() {
 
 
   const stats = [
-    { title: "Total Teachers", value: totalTeachers, icon: BookUser, description: "" }, // Description can be dynamic later
+    { title: "Total Teachers", value: totalTeachers, icon: BookUser, description: "" },
     { title: "Total Students", value: totalStudents, icon: Users, description: "" },
     { title: "Classes Managed", value: totalClassesManaged, icon: ClipboardList, description: `Covering ${totalSubjectsCovered} subjects` },
     { title: "Pending Submissions", value: pendingSubmissionsCount, icon: CalendarCheck2, description: pendingSubmissionsDeadlineText },
@@ -84,6 +122,15 @@ export default async function DosDashboardPage() {
         description="Overview of GradeCentral activities and management tools."
         icon={LayoutDashboard}
       />
+      {fetchError && (
+        <Alert variant="destructive" className="shadow-md">
+          <AlertTriangle className="h-4 w-4" />
+          <ShadcnAlertTitle>Dashboard Loading Error</ShadcnAlertTitle>
+          <AlertDescription>
+            {fetchError} Please check your internet connection and ensure Firebase services are reachable. Some data may be missing or outdated.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
