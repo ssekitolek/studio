@@ -10,8 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LogIn, User, AlertTriangle, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { loginTeacherByEmailPassword } from "@/lib/actions/teacher-actions";
 import { useToast } from "@/hooks/use-toast";
+
+// Hardcoded credentials for prototype login
+const HARDCODED_TEACHER_EMAIL = "teacher@example.com";
+const HARDCODED_TEACHER_PASSWORD = "password123";
+const HARDCODED_TEACHER_ID = "dummyTeacherId";
+const HARDCODED_TEACHER_NAME = "Demo Teacher";
 
 export default function TeacherLoginPage() {
   const router = useRouter();
@@ -21,29 +26,23 @@ export default function TeacherLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMessage(null);
 
-    try {
-      const result = await loginTeacherByEmailPassword(email, password);
-      if (result.success && result.teacher) {
-        toast({ title: "Login Successful", description: `Welcome back, ${result.teacher.name}!`});
-        router.push(`/teacher/dashboard?teacherId=${result.teacher.id}&teacherName=${encodeURIComponent(result.teacher.name)}`);
-      } else {
-        setErrorMessage(result.message || "Invalid email or password.");
-        toast({ title: "Login Failed", description: result.message || "Invalid email or password.", variant: "destructive"});
-      }
-    } catch (err) {
-        const error = err instanceof Error ? err : new Error("An unexpected error occurred");
-        console.error("Login submission error:", error);
-        setErrorMessage(error.message);
-        toast({ title: "Login Error", description: error.message, variant: "destructive"});
-    } finally {
-        setIsLoading(false);
+    // Simulate network delay for user experience
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    if (email === HARDCODED_TEACHER_EMAIL && password === HARDCODED_TEACHER_PASSWORD) {
+      toast({ title: "Login Successful", description: `Welcome back, ${HARDCODED_TEACHER_NAME}!` });
+      router.push(`/teacher/dashboard?teacherId=${HARDCODED_TEACHER_ID}&teacherName=${encodeURIComponent(HARDCODED_TEACHER_NAME)}`);
+    } else {
+      const message = "Invalid email or password.";
+      setErrorMessage(message);
+      toast({ title: "Login Failed", description: message, variant: "destructive" });
     }
+    setIsLoading(false);
   };
 
   return (
