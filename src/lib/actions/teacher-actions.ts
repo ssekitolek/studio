@@ -68,10 +68,8 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
       return { success: false, message: "Invalid email or password. Credentials do not match." };
     }
   } catch (error) {
-    // Log the entire error object for detailed diagnostics on the server.
     console.error("FATAL ERROR during teacher login action:", error); 
     const errorMessage = error instanceof Error ? error.message : "An unknown internal server error occurred.";
-    // Return a structured error message to the client.
     return { success: false, message: `Login failed due to a server error: ${errorMessage}. Please try again or contact support if the issue persists.` };
   }
 }
@@ -457,4 +455,3 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
   
   return { assignments, notifications, teacherName, resourcesText };
 }
-

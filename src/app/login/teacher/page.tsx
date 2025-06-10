@@ -16,8 +16,8 @@ import { loginTeacherByEmailPassword } from "@/lib/actions/teacher-actions";
 export default function TeacherLoginPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [email, setEmail] = useState("ssekitoleko.mathius@gmail.com"); // Pre-fill for user convenience
-  const [password, setPassword] = useState("password123"); // Pre-fill for user convenience - CHANGE THIS
+  const [email, setEmail] = useState("ssekitoleko.mathius@gmail.com"); // Pre-fill email for convenience
+  const [password, setPassword] = useState(""); // Password is not pre-filled
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
