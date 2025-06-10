@@ -54,17 +54,26 @@ export default async function DosDashboardPage() {
       getTerms(),
     ]);
   } catch (error) {
-    console.error("CRITICAL ERROR fetching data for DOS Dashboard:", error);
-    fetchError = error instanceof Error ? error.message : "An unknown error occurred while loading dashboard data. The system might be offline or experiencing issues.";
+    // Enhanced error logging
+    console.error("CRITICAL ERROR in DosDashboardPage Promise.all data fetching:", error);
+    // Attempt to stringify the error for more detailed logging, including non-standard properties
+    try {
+      console.error("Detailed error object (DosDashboardPage):", JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    } catch (stringifyError) {
+      console.error("Could not stringify the error object:", stringifyError);
+    }
+    
+    fetchError = `Dashboard loading failed: ${error instanceof Error ? error.message : String(error)}. Please check server logs and ensure Firebase services are reachable.`;
+    
     // Initialize with defaults to prevent rendering errors for undefined variables
     generalSettings = {
         defaultGradingScale: [{ grade: 'N/A', minScore: 0, maxScore: 0 }],
         markSubmissionTimeZone: 'UTC',
         currentTermId: undefined,
         globalMarksSubmissionDeadline: undefined,
-        dosGlobalAnnouncementText: "Dashboard data could not be loaded.",
+        dosGlobalAnnouncementText: "Dashboard data could not be loaded due to an error.",
         dosGlobalAnnouncementType: "warning",
-        teacherDashboardResourcesText: "Resources could not be loaded.",
+        teacherDashboardResourcesText: "Resources could not be loaded due to an error.",
     };
   }
   
@@ -73,9 +82,9 @@ export default async function DosDashboardPage() {
     generalSettings = {
         defaultGradingScale: [{ grade: 'Error', minScore: 0, maxScore: 0 }],
         markSubmissionTimeZone: 'UTC',
-        dosGlobalAnnouncementText: "Failed to load system settings.",
+        dosGlobalAnnouncementText: "Failed to load system settings. Dashboard may be incomplete.",
         dosGlobalAnnouncementType: "warning",
-        teacherDashboardResourcesText: "Failed to load resources text.",
+        teacherDashboardResourcesText: "Failed to load resources text due to settings issue.",
     };
     if (!fetchError) fetchError = "System settings could not be loaded. Dashboard may be incomplete.";
   }
@@ -127,7 +136,7 @@ export default async function DosDashboardPage() {
           <AlertTriangle className="h-4 w-4" />
           <ShadcnAlertTitle>Dashboard Loading Error</ShadcnAlertTitle>
           <AlertDescription>
-            {fetchError} Please check your internet connection and ensure Firebase services are reachable. Some data may be missing or outdated.
+            {fetchError} Some data may be missing or outdated.
           </AlertDescription>
         </Alert>
       )}
