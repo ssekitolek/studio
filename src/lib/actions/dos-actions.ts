@@ -66,26 +66,46 @@ export async function getTeacherById(teacherId: string): Promise<Teacher | null>
   }
 }
 
-export async function updateTeacher(teacherId: string, teacherData: Partial<Omit<Teacher, 'id' | 'subjectsAssigned'>>): Promise<{ success: boolean; message: string; teacher?: Teacher }> {
+export async function updateTeacher(teacherId: string, teacherData: Partial<Omit<Teacher, 'id'>>): Promise<{ success: boolean; message: string; teacher?: Teacher }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
     const teacherRef = doc(db, "teachers", teacherId);
     
-    // Create a new object for update to avoid passing undefined password if not changing
-    const dataToUpdate: Partial<Omit<Teacher, 'id' | 'subjectsAssigned'>> = {
-      name: teacherData.name,
-      email: teacherData.email,
-    };
+    // Construct the update payload carefully, only including fields that are actually provided
+    const updatePayload: { [key: string]: any } = {};
 
-    if (teacherData.password) { // Only include password in update if it's provided
-      dataToUpdate.password = teacherData.password;
+    if (teacherData.name !== undefined) {
+      updatePayload.name = teacherData.name;
     }
-    // If password is not in teacherData, it won't be sent in the updateDoc, preserving the old one.
-    // To clear a password, teacherData.password would need to be explicitly set to null or Firestore.FieldValue.delete()
+    if (teacherData.email !== undefined) {
+      updatePayload.email = teacherData.email;
+    }
+    // Only update password if a new one is explicitly provided and is not an empty string
+    if (teacherData.password && teacherData.password.trim() !== "") {
+      updatePayload.password = teacherData.password;
+    }
+    // If subjectsAssigned is part of teacherData, include it in the update.
+    // This allows a more advanced UI or direct data manipulation to set these assignments.
+    // The current TeacherForm does not send this field, so it won't be accidentally cleared.
+    if (teacherData.subjectsAssigned !== undefined) {
+      if (Array.isArray(teacherData.subjectsAssigned)) {
+        // Ensure each item in subjectsAssigned has classId and subjectId
+        updatePayload.subjectsAssigned = teacherData.subjectsAssigned.filter(
+          (assignment: any) => assignment && typeof assignment.classId === 'string' && typeof assignment.subjectId === 'string'
+        ).map((assignment: any) => ({ classId: assignment.classId, subjectId: assignment.subjectId }));
+      } else {
+        console.warn(`updateTeacher: subjectsAssigned for teacher ${teacherId} was provided but not as an array. Ignoring subjectsAssigned update.`);
+      }
+    }
 
-    await updateDoc(teacherRef, dataToUpdate);
+    if (Object.keys(updatePayload).length === 0) {
+      const currentTeacher = await getTeacherById(teacherId);
+      return { success: true, message: "No changes provided to update teacher.", teacher: currentTeacher ?? undefined };
+    }
+
+    await updateDoc(teacherRef, updatePayload);
     revalidatePath(`/dos/teachers`);
     revalidatePath(`/dos/teachers/${teacherId}/edit`);
     const updatedTeacher = await getTeacherById(teacherId);
@@ -863,3 +883,6 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
         };
     }
 }
+
+
+    
