@@ -6,8 +6,8 @@ import Link from "next/link";
 import { LayoutDashboard, BookOpenCheck, CalendarClock, Bell, ListChecks, AlertCircle, AlertTriangle } from "lucide-react";
 import Image from "next/image";
 import { getTeacherDashboardData } from "@/lib/actions/teacher-actions";
-import type { TeacherDashboardAssignment, TeacherNotification } from "@/lib/types";
-import { Alert, AlertDescription, AlertTitle as UIAlertTitle } from "@/components/ui/alert"; // Renamed AlertTitle import to avoid conflict
+import type { TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification } from "@/lib/types";
+import { Alert, AlertDescription, AlertTitle as UIAlertTitle } from "@/components/ui/alert";
 
 const defaultResourcesText = `Access your teaching schedule, submit student marks, and view historical submission data using the sidebar navigation. 
 Stay updated with notifications from the D.O.S. and ensure timely submission of grades. 
@@ -19,29 +19,54 @@ export default async function TeacherDashboardPage({
   searchParams?: { teacherId?: string; teacherName?: string };
 }) {
   const teacherId = searchParams?.teacherId;
+  const teacherNameFromParams = searchParams?.teacherName ? decodeURIComponent(searchParams.teacherName) : "Teacher";
 
   if (!teacherId) {
     return (
       <div className="space-y-8">
         <PageHeader
             title="Teacher Dashboard"
-            description="Please log in to view your dashboard."
+            description="Access Denied"
             icon={LayoutDashboard}
         />
         <Alert variant="destructive" className="shadow-md">
             <AlertTriangle className="h-4 w-4" />
-            <UIAlertTitle>Access Denied</UIAlertTitle>
-            <AlertDescription>No teacher ID provided. Please <Link href="/login/teacher" className="underline">login</Link> to access your dashboard.</AlertDescription>
+            <UIAlertTitle>Authentication Error</UIAlertTitle>
+            <AlertDescription>
+                Teacher ID is missing. Please <Link href="/login/teacher" className="underline">log in again</Link>.
+            </AlertDescription>
         </Alert>
       </div>
     );
   }
 
-  const dashboardData = await getTeacherDashboardData(teacherId);
+  let dashboardData: TeacherDashboardData;
+  let fetchError: string | null = null;
+
+  try {
+    dashboardData = await getTeacherDashboardData(teacherId);
+  } catch (error) {
+    console.error(`Critical error fetching teacher dashboard data for ${teacherId}:`, error);
+    fetchError = error instanceof Error ? error.message : "An unknown error occurred while loading dashboard data.";
+    // Provide default structure for dashboardData to prevent further rendering errors
+    dashboardData = {
+      assignments: [],
+      notifications: [], // Error will be added below
+      teacherName: undefined, 
+      resourcesText: "Could not load resources due to an error."
+    };
+  }
+
   const assignments: TeacherDashboardAssignment[] = dashboardData.assignments;
-  const notifications: TeacherNotification[] = dashboardData.notifications;
+  const notifications: TeacherNotification[] = [...dashboardData.notifications]; // Make a mutable copy
   const resourcesText = dashboardData.resourcesText || defaultResourcesText;
-  const teacherDisplayName = dashboardData.teacherName || (searchParams?.teacherName ? decodeURIComponent(searchParams.teacherName) : "Teacher");
+  const teacherDisplayName = dashboardData.teacherName || teacherNameFromParams;
+
+  // If fetchError occurred, ensure it's the primary notification
+  if (fetchError && !notifications.find(n => n.id === 'critical_error_dashboard_load')) {
+     notifications.unshift({ id: 'critical_error_dashboard_load', message: `Failed to load dashboard content: ${fetchError}`, type: 'warning' });
+  }
+
 
   return (
     <div className="space-y-8">
@@ -78,9 +103,12 @@ export default async function TeacherDashboardPage({
                 </div>
               </Card>
             ))}
-             {assignments.length === 0 && (
+             {assignments.length === 0 && !fetchError && (
               <p className="text-muted-foreground text-center py-4">No classes assigned yet for the current term.</p>
             )}
+             {fetchError && assignments.length === 0 && (
+                 <p className="text-destructive text-center py-4">Could not load assignments due to an error.</p>
+             )}
           </CardContent>
         </Card>
 
@@ -98,7 +126,7 @@ export default async function TeacherDashboardPage({
                 className={`flex items-start p-3 rounded-lg ${
                   notification.type === 'deadline' ? 'bg-accent/10 text-accent-foreground' :
                   notification.type === 'warning' ? 'bg-destructive/10 text-destructive-foreground' :
-                  'bg-blue-500/10 text-blue-700 dark:text-blue-300' // default to info style
+                  'bg-blue-500/10 text-blue-700 dark:text-blue-300'
                 }`}
               >
                 {notification.type === 'warning' || notification.type === 'deadline' ? (
@@ -109,9 +137,12 @@ export default async function TeacherDashboardPage({
                 <p className="text-sm">{notification.message}</p>
               </div>
             ))}
-            {notifications.length === 0 && (
+            {notifications.length === 0 && !fetchError && (
               <p className="text-muted-foreground text-center py-4">No new notifications.</p>
             )}
+            {fetchError && notifications.length === 0 && ( // Should not happen due to unshift logic above, but as a safeguard
+                 <p className="text-destructive text-center py-4">Could not load notifications due to an error.</p>
+             )}
           </CardContent>
         </Card>
       </div>
@@ -134,7 +165,7 @@ export default async function TeacherDashboardPage({
               </Button>
             </div>
             <div className="md:w-1/3 flex justify-center items-center">
-                 <Image src="https://placehold.co/600x400.png" alt="Teacher at desk" width={250} height={167} className="rounded-lg" data-ai-hint="teacher classroom" />
+                 <Image src="https://placehold.co/600x400.png" alt="Teacher at desk" width={250} height={167} className="rounded-lg" data-ai-hint="teacher classroom"/>
             </div>
         </CardContent>
       </Card>
