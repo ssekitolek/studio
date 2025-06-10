@@ -21,6 +21,16 @@ export default function DownloadMarksPage() {
     startTransition(async () => {
       try {
         // In a real app, you might pass filters to downloadAllMarks
+        // And the action would need to respect selectedFormat
+        if (selectedFormat !== "csv") {
+          toast({
+            title: "Format Not Yet Supported",
+            description: `Downloading as ${selectedFormat.toUpperCase()} is not yet implemented. Placeholder for future functionality.`,
+            variant: "default", 
+          });
+          return;
+        }
+
         const result = await downloadAllMarks(); 
         if (result.success && result.data) {
           // Trigger browser download
@@ -86,8 +96,8 @@ export default function DownloadMarksPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="csv">CSV (Comma Separated Values)</SelectItem>
-              <SelectItem value="xlsx" disabled>Excel (XLSX) - Coming Soon</SelectItem>
-              <SelectItem value="pdf" disabled>PDF - Coming Soon</SelectItem>
+              <SelectItem value="xlsx">Excel (XLSX)</SelectItem>
+              <SelectItem value="pdf">PDF</SelectItem>
             </SelectContent>
           </Select>
 
@@ -95,7 +105,8 @@ export default function DownloadMarksPage() {
             <AlertTriangle className="h-4 w-4 text-accent-foreground/80" />
             <AlertTitle className="text-accent-foreground/90">Note</AlertTitle>
             <AlertDescription className="text-accent-foreground/80">
-              For now, only CSV download of all marks is supported. More filters and formats are coming soon.
+              Currently, only CSV download of all marks is fully supported.
+              Selecting other formats is a placeholder for future functionality.
             </AlertDescription>
           </Alert>
         </CardContent>
