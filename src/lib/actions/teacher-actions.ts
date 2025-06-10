@@ -32,26 +32,32 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
     console.error("CRITICAL: Firestore database (db) is not initialized in loginTeacherByEmailPassword. Check Firebase configuration.");
     return { success: false, message: "Authentication service is currently unavailable. Please try again later." };
   }
+
   try {
     const teachersRef = collection(db, "teachers");
     const q = query(teachersRef, where("email", "==", email), limit(1));
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
-      return { success: false, message: "Invalid email or password." };
+      return { success: false, message: "Invalid email or password. Teacher not found." };
     }
 
     const teacherDoc = querySnapshot.docs[0];
-    const teacherData = teacherDoc.data() as TeacherType; // Cast to TeacherType
+    const teacherData = teacherDoc.data() as TeacherType;
 
-    // Ensure essential fields exist for a successful login response
+    // Verify essential teacher data is present for login to proceed
     if (!teacherDoc.id || !teacherData.name || !teacherData.email) {
         console.error("Teacher document is missing id, name, or email for login.", {id: teacherDoc.id, name: teacherData.name, email: teacherData.email});
-        return { success: false, message: "Teacher data incomplete. Cannot log in." };
+        return { success: false, message: "Teacher account data is incomplete. Cannot log in." };
+    }
+    
+    if (!teacherData.password) {
+        console.error(`Teacher with email ${email} (ID: ${teacherDoc.id}) does not have a password set.`);
+        return { success: false, message: "Password not set for this account. Please contact D.O.S." };
     }
 
     // Directly compare plain text passwords (NOT FOR PRODUCTION)
-    if (teacherData.password && teacherData.password === passwordToVerify) {
+    if (teacherData.password === passwordToVerify) {
       return {
         success: true,
         message: "Login successful.",
@@ -62,7 +68,7 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
         }
       };
     } else {
-      return { success: false, message: "Invalid email or password." };
+      return { success: false, message: "Invalid email or password. Credentials do not match." };
     }
   } catch (error) {
     console.error("Error during teacher login:", error);
@@ -351,7 +357,8 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     if (Array.isArray(teacher.subjectsAssigned)) {
       for (const assigned of teacher.subjectsAssigned) {
         const cls = allClasses.find(c => c.id === assigned.classId);
-        const subjDetails = (cls && Array.isArray(cls.subjects)) ? cls.subjects.find(s => s.id === assigned.subjectId) : undefined;
+        // Ensure subject is found directly from allSubjectsGlobal, not nested cls.subjects which might be out of date or incomplete
+        const subjDetails = allSubjectsGlobal.find(s => s.id === assigned.subjectId); 
 
         if (cls && subjDetails) {
           const assignmentId = `${cls.id}-${subjDetails.id}`;

@@ -19,23 +19,28 @@ export default function TeacherLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage(null);
 
     try {
       const result = await loginTeacherByEmailPassword(email, password);
       if (result.success && result.teacher) {
         toast({ title: "Login Successful", description: `Welcome back, ${result.teacher.name}!`});
-        // Redirect to dashboard, passing teacherId and teacherName
         router.push(`/teacher/dashboard?teacherId=${result.teacher.id}&teacherName=${encodeURIComponent(result.teacher.name)}`);
       } else {
+        setErrorMessage(result.message || "Invalid email or password.");
         toast({ title: "Login Failed", description: result.message || "Invalid email or password.", variant: "destructive"});
       }
     } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred during login.";
-        toast({ title: "Login Error", description: errorMessage, variant: "destructive"});
+        const error = err instanceof Error ? err : new Error("An unexpected error occurred");
+        console.error("Login submission error:", error);
+        setErrorMessage(error.message);
+        toast({ title: "Login Error", description: error.message, variant: "destructive"});
     } finally {
         setIsLoading(false);
     }
@@ -75,6 +80,14 @@ export default function TeacherLoginPage() {
                 disabled={isLoading}
               />
             </div>
+            
+            {errorMessage && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Login Failed</AlertTitle>
+                <AlertDescription>{errorMessage}</AlertDescription>
+              </Alert>
+            )}
 
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
