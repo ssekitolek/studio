@@ -32,10 +32,15 @@ export default function TeacherLoginPage() {
       if (result && typeof result === 'object') {
         if (result.success && result.teacher) {
           toast({ title: "Login Successful", description: `Welcome back, ${result.teacher.name}!` });
-          router.push(`/teacher/dashboard?teacherId=${result.teacher.id}&teacherName=${encodeURIComponent(result.teacher.name)}`);
+          // Ensure teacherId and teacherName are properly encoded for URL
+          const teacherIdParam = encodeURIComponent(result.teacher.id);
+          const teacherNameParam = encodeURIComponent(result.teacher.name);
+          router.push(`/teacher/dashboard?teacherId=${teacherIdParam}&teacherName=${teacherNameParam}`);
         } else {
-          setErrorMessage(result.message || "Login failed. Please check your credentials.");
-          toast({ title: "Login Failed", description: result.message || "Please check your credentials.", variant: "destructive" });
+          // Display the message from the server action (e.g., "Invalid email or password")
+          const messageFromServer = result.message || "Login failed. Please check your credentials.";
+          setErrorMessage(messageFromServer);
+          toast({ title: "Login Failed", description: messageFromServer, variant: "destructive" });
         }
       } else {
         // This case handles if 'result' is not a valid object (e.g. server action crashed without returning JSON)
@@ -44,6 +49,8 @@ export default function TeacherLoginPage() {
         toast({ title: "Login Error", description: unexpectedErrorMsg, variant: "destructive" });
       }
     } catch (error) {
+      // This catch block is for client-side errors during the fetch/call itself,
+      // not for application-level errors returned by the server action.
       console.error("Client-side login error:", error);
       const message = error instanceof Error ? error.message : "An unexpected error occurred during login.";
       setErrorMessage(message);
@@ -118,3 +125,4 @@ export default function TeacherLoginPage() {
     </main>
   );
 }
+

@@ -28,27 +28,23 @@ interface SubmissionHistoryItem {
 
 
 export async function loginTeacherByEmailPassword(email: string, passwordToVerify: string): Promise<{ success: boolean; message: string; teacher?: { id: string; name: string; email: string; } }> {
-  if (!db) {
-    console.error("CRITICAL: Firestore database (db) is not initialized in loginTeacherByEmailPassword. Check Firebase configuration.");
-    return { success: false, message: "Authentication service is currently unavailable. Please try again later." };
-  }
-
   try {
-    // console.log(`Attempting login for email: ${email}`); // Optional: for seeing if the action starts
+    if (!db) {
+      console.error("CRITICAL: Firestore database (db) is not initialized in loginTeacherByEmailPassword. Check Firebase configuration.");
+      return { success: false, message: "Authentication service is currently unavailable. Please try again later." };
+    }
 
     const teachersRef = collection(db, "teachers");
     const q = query(teachersRef, where("email", "==", email), limit(1));
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
-      // console.log(`Login attempt failed: Teacher not found for email ${email}`);
       return { success: false, message: "Invalid email or password. Teacher not found." };
     }
 
     const teacherDoc = querySnapshot.docs[0];
     const teacherData = teacherDoc.data() as TeacherType;
 
-    // Check for essential data
     if (!teacherData.password) {
         console.error(`Login attempt failed: Password not set for teacher with email ${email} (ID: ${teacherDoc.id}).`);
         return { success: false, message: "Password not set for this account. Please contact D.O.S." };
@@ -58,9 +54,7 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
         return { success: false, message: "Teacher account data is incomplete. Cannot log in." };
     }
 
-    // Directly compare plain text passwords (NOT FOR PRODUCTION)
     if (teacherData.password === passwordToVerify) {
-      // console.log(`Login successful for teacher: ${teacherData.name} (ID: ${teacherDoc.id})`);
       return {
         success: true,
         message: "Login successful.",
@@ -71,13 +65,13 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
         }
       };
     } else {
-      // console.log(`Login attempt failed: Password mismatch for teacher ${teacherData.name} (ID: ${teacherDoc.id})`);
       return { success: false, message: "Invalid email or password. Credentials do not match." };
     }
   } catch (error) {
-    console.error("FATAL ERROR during teacher login action:", error); // This will log the actual error object
+    // Log the entire error object for detailed diagnostics on the server.
+    console.error("FATAL ERROR during teacher login action:", error); 
     const errorMessage = error instanceof Error ? error.message : "An unknown internal server error occurred.";
-    // Return a generic error message to the client, but the detailed one is logged above.
+    // Return a structured error message to the client.
     return { success: false, message: `Login failed due to a server error: ${errorMessage}. Please try again or contact support if the issue persists.` };
   }
 }
@@ -162,7 +156,6 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
 async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName: string; examName: string; name: string; maxMarks: number; historicalAverage?: number }> {
     if (!db) {
       console.error("CRITICAL: Firestore 'db' is null in getAssessmentDetails. Firebase not initialized.");
-      // Return a default/error structure to prevent further crashes, though functionality will be broken.
       return { subjectName: "Error: DB Uninitialized", examName: "Error: DB Uninitialized", name: "Error: DB Uninitialized", maxMarks: 100 };
     }
     const parts = assessmentId.split('_');
@@ -464,3 +457,4 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
   
   return { assignments, notifications, teacherName, resourcesText };
 }
+
