@@ -11,12 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LogIn, User, AlertTriangle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-
-// Hardcoded credentials for prototype login
-const HARDCODED_TEACHER_EMAIL = "teacher@example.com";
-const HARDCODED_TEACHER_PASSWORD = "password123";
-const HARDCODED_TEACHER_ID = "dummyTeacherId";
-const HARDCODED_TEACHER_NAME = "Demo Teacher";
+import { loginTeacherByEmailPassword } from "@/lib/actions/teacher-actions";
 
 export default function TeacherLoginPage() {
   const router = useRouter();
@@ -31,18 +26,23 @@ export default function TeacherLoginPage() {
     setIsLoading(true);
     setErrorMessage(null);
 
-    // Simulate network delay for user experience
-    await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      const result = await loginTeacherByEmailPassword(email, password);
 
-    if (email === HARDCODED_TEACHER_EMAIL && password === HARDCODED_TEACHER_PASSWORD) {
-      toast({ title: "Login Successful", description: `Welcome back, ${HARDCODED_TEACHER_NAME}!` });
-      router.push(`/teacher/dashboard?teacherId=${HARDCODED_TEACHER_ID}&teacherName=${encodeURIComponent(HARDCODED_TEACHER_NAME)}`);
-    } else {
-      const message = "Invalid email or password.";
+      if (result.success && result.teacher) {
+        toast({ title: "Login Successful", description: `Welcome back, ${result.teacher.name}!` });
+        router.push(`/teacher/dashboard?teacherId=${result.teacher.id}&teacherName=${encodeURIComponent(result.teacher.name)}`);
+      } else {
+        setErrorMessage(result.message);
+        toast({ title: "Login Failed", description: result.message, variant: "destructive" });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "An unexpected error occurred during login.";
       setErrorMessage(message);
-      toast({ title: "Login Failed", description: message, variant: "destructive" });
+      toast({ title: "Login Error", description: message, variant: "destructive" });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (
@@ -110,3 +110,5 @@ export default function TeacherLoginPage() {
     </main>
   );
 }
+
+    

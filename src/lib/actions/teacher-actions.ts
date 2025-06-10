@@ -44,12 +44,6 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
 
     const teacherDoc = querySnapshot.docs[0];
     const teacherData = teacherDoc.data() as TeacherType;
-
-    // Verify essential teacher data is present for login to proceed
-    if (!teacherDoc.id || !teacherData.name || !teacherData.email) {
-        console.error("Teacher document is missing id, name, or email for login.", {id: teacherDoc.id, name: teacherData.name, email: teacherData.email});
-        return { success: false, message: "Teacher account data is incomplete. Cannot log in." };
-    }
     
     if (!teacherData.password) {
         console.error(`Teacher with email ${email} (ID: ${teacherDoc.id}) does not have a password set.`);
@@ -58,6 +52,11 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
 
     // Directly compare plain text passwords (NOT FOR PRODUCTION)
     if (teacherData.password === passwordToVerify) {
+      // Verify essential teacher data is present for login to proceed
+      if (!teacherDoc.id || !teacherData.name || !teacherData.email) {
+          console.error("Teacher document is missing id, name, or email for login.", {id: teacherDoc.id, name: teacherData.name, email: teacherData.email});
+          return { success: false, message: "Teacher account data is incomplete. Cannot log in." };
+      }
       return {
         success: true,
         message: "Login successful.",
@@ -313,11 +312,12 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     };
   }
 
-  const [allClasses, generalSettings, allTerms, allExams] = await Promise.all([ 
+  const [allClasses, generalSettings, allTerms, allExams, allSubjectsGlobal] = await Promise.all([ 
     getClasses(), 
     getGeneralSettings(),
     getTerms(),
     getExams(),
+    getSubjects(),
   ]);
 
   const assignmentsMap = new Map<string, TeacherDashboardAssignment>();
@@ -357,7 +357,6 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     if (Array.isArray(teacher.subjectsAssigned)) {
       for (const assigned of teacher.subjectsAssigned) {
         const cls = allClasses.find(c => c.id === assigned.classId);
-        // Ensure subject is found directly from allSubjectsGlobal, not nested cls.subjects which might be out of date or incomplete
         const subjDetails = allSubjectsGlobal.find(s => s.id === assigned.subjectId); 
 
         if (cls && subjDetails) {
@@ -435,3 +434,5 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
   
   return { assignments, notifications, teacherName, resourcesText };
 }
+
+    
