@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { getClasses, getSubjects, getExams, getGeneralSettings, getTeacherById as getTeacherByIdFromDOS, getTerms, getStudents as getAllStudents } from '@/lib/actions/dos-actions';
 import type { ClassInfo, Subject as SubjectType, Exam, GeneralSettings, Term } from '@/lib/types';
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, limit, addDoc, orderBy, Timestamp, doc } from "firebase/firestore"; // Added doc for getDoc
+import { collection, query, where, getDocs, limit, addDoc, orderBy, Timestamp, doc } from "firebase/firestore";
 
 // Simulate a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -29,7 +29,8 @@ interface SubmissionHistoryItem {
 
 export async function loginTeacherByEmailPassword(email: string, passwordToVerify: string): Promise<{ success: boolean; message: string; teacher?: { id: string; name: string; email: string; } }> {
   if (!db) {
-    return { success: false, message: "Database service is not available." };
+    console.error("CRITICAL: Firestore database (db) is not initialized in loginTeacherByEmailPassword. Check Firebase configuration.");
+    return { success: false, message: "Authentication service is currently unavailable. Please try again later." };
   }
   try {
     const teachersRef = collection(db, "teachers");
@@ -41,12 +42,12 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
     }
 
     const teacherDoc = querySnapshot.docs[0];
-    const teacherData = teacherDoc.data() as TeacherType;
+    const teacherData = teacherDoc.data() as TeacherType; // Cast to TeacherType
 
     // Ensure essential fields exist for a successful login response
     if (!teacherDoc.id || !teacherData.name || !teacherData.email) {
         console.error("Teacher document is missing id, name, or email for login.", {id: teacherDoc.id, name: teacherData.name, email: teacherData.email});
-        return { success: false, message: "Teacher data incomplete in database. Cannot log in." };
+        return { success: false, message: "Teacher data incomplete. Cannot log in." };
     }
 
     // Directly compare plain text passwords (NOT FOR PRODUCTION)
@@ -65,15 +66,13 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
     }
   } catch (error) {
     console.error("Error during teacher login:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred during login.";
     return { success: false, message: `Login failed: ${errorMessage}` };
   }
 }
 
 
 export async function submitMarks(teacherId: string, data: MarksSubmissionData): Promise<{ success: boolean; message: string; anomalies?: GradeAnomalyDetectionOutput }> {
-  console.log("Submitting marks for teacher:", teacherId, "Data:", data);
-
   if (!db) {
     return { success: false, message: "Database service not available." };
   }
@@ -85,7 +84,7 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
   }
 
   const gradeEntries: GradeEntry[] = data.marks.map(mark => ({
-    studentId: mark.studentId, // This is studentIdNumber
+    studentId: mark.studentId,
     grade: mark.score,
   }));
 
@@ -103,26 +102,21 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
           historicalAverage: assessmentDetails.historicalAverage,
         };
         
-        console.log("Anomaly detection input:", JSON.stringify(anomalyInput, null, 2));
         try {
             anomalyResult = await gradeAnomalyDetection(anomalyInput);
-            console.log("Anomaly detection result:", anomalyResult);
         } catch (error) {
             console.error("Error during anomaly detection:", error);
-            // Create a minimal anomaly result to indicate failure if the check itself failed
             anomalyResult = { hasAnomalies: true, anomalies: [{studentId: "SYSTEM_ERROR", explanation: `Anomaly check failed: ${error instanceof Error ? error.message : String(error)}`}] };
         }
     }
   }
   
-  // Calculate stats for submission record
   const studentCount = data.marks.length;
   const totalScore = data.marks.reduce((sum, mark) => sum + (mark.score || 0), 0);
   const averageScore = studentCount > 0 ? totalScore / studentCount : null;
   
   const initialStatus: SubmissionHistoryItem['status'] = anomalyResult?.hasAnomalies ? "Pending Review (Anomaly Detected)" : "Accepted";
 
-  // Save to markSubmissions collection
   try {
     const markSubmissionsRef = collection(db, "markSubmissions");
     await addDoc(markSubmissionsRef, {
@@ -133,7 +127,7 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
       studentCount,
       averageScore,
       status: initialStatus,
-      submittedMarks: data.marks, // These are { studentId: string (studentIdNumber), score: number }
+      submittedMarks: data.marks,
       anomalyExplanations: anomalyResult?.anomalies || [],
     });
   } catch (error) {
@@ -161,7 +155,6 @@ async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName
     }
     const [examId, classId, subjectId] = parts;
 
-    // Fetch all necessary data in parallel
     const [allExams, allSubjects, allClasses] = await Promise.all([
       getExams(),
       getSubjects(),
@@ -174,9 +167,7 @@ async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName
 
     const assessmentName = `${cls?.name || 'Unknown Class'} - ${subject?.name || 'Unknown Subject'} - ${exam?.name || 'Unknown Exam'}`;
     
-    // Placeholder for fetching historical average for this specific subject/exam combination
-    // This would typically involve another database query
-    const historicalAverage = undefined; // e.g., await getHistoricalAverage(examId, subjectId);
+    const historicalAverage = undefined; 
 
     return {
         subjectName: subject?.name || "Unknown Subject",
@@ -241,10 +232,11 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
         return [];
     }
 
-    const [allExams, allClasses, generalSettings] = await Promise.all([
+    const [allExams, allClasses, generalSettings, allSubjectsGlobal] = await Promise.all([
         getExams(),
         getClasses(), 
         getGeneralSettings(),
+        getSubjects()
     ]);
 
     const currentTermId = generalSettings.currentTermId;
@@ -260,9 +252,8 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
     }
 
     const assessments: Array<{id: string, name: string, maxMarks: number}> = [];
-    const teacherAssignments = new Set<string>(); // Stores "classId-subjectId"
+    const teacherAssignments = new Set<string>(); 
 
-    // Add assignments where the teacher is a classTeacher
     allClasses.forEach(cls => {
         if (cls.classTeacherId === teacherId && Array.isArray(cls.subjects)) {
             cls.subjects.forEach(subj => {
@@ -271,7 +262,6 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
         }
     });
 
-    // Add assignments from teacher.subjectsAssigned
     if (teacher.subjectsAssigned && Array.isArray(teacher.subjectsAssigned)) {
         teacher.subjectsAssigned.forEach(assignment => {
             if (assignment.classId && assignment.subjectId) {
@@ -283,20 +273,7 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
     teacherAssignments.forEach(assignmentKey => {
         const [classId, subjectId] = assignmentKey.split('-');
         const cls = allClasses.find(c => c.id === classId);
-        
-        // Find subject details from the class's subjects list or the global subject list
-        let subj: SubjectType | undefined;
-        if (cls && Array.isArray(cls.subjects)) {
-             subj = cls.subjects.find(s => s.id === subjectId);
-        }
-        // Fallback if subject not found in class's list (should ideally not happen if data is consistent)
-        if (!subj) {
-            const allSubjectsGlobal = getSubjects(); // This is an async call, ideally pre-fetched or passed if performance critical
-            allSubjectsGlobal.then(globalSubjects => {
-                subj = globalSubjects.find(s => s.id === subjectId);
-            });
-        }
-
+        let subj = allSubjectsGlobal.find(s => s.id === subjectId);
 
         if (cls && subj) {
             currentTermExams.forEach(exam => {
@@ -308,7 +285,7 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
             });
         } else {
             if (!cls) console.warn(`Class not found for ID: ${classId} in assignmentKey: ${assignmentKey}`);
-            if (cls && !subj) console.warn(`Subject not found for ID: ${subjectId} in class ${cls.name} (ID: ${cls.id}) for assignmentKey: ${assignmentKey}`);
+            if (cls && !subj) console.warn(`Subject not found for ID: ${subjectId} (globally) for assignmentKey: ${assignmentKey}`);
         }
     });
     
@@ -451,4 +428,3 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
   
   return { assignments, notifications, teacherName, resourcesText };
 }
-

@@ -18,12 +18,10 @@ export default function TeacherLoginPage() {
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null); // Kept for potential direct error display if needed
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setIsLoading(true);
 
     try {
@@ -33,14 +31,11 @@ export default function TeacherLoginPage() {
         // Redirect to dashboard, passing teacherId and teacherName
         router.push(`/teacher/dashboard?teacherId=${result.teacher.id}&teacherName=${encodeURIComponent(result.teacher.name)}`);
       } else {
-        // Use toast for error messages
         toast({ title: "Login Failed", description: result.message || "Invalid email or password.", variant: "destructive"});
-        setError(result.message || "Invalid email or password."); // Optionally still set local error state
       }
     } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred during login.";
         toast({ title: "Login Error", description: errorMessage, variant: "destructive"});
-        setError(errorMessage); // Optionally still set local error state
     } finally {
         setIsLoading(false);
     }
@@ -80,15 +75,6 @@ export default function TeacherLoginPage() {
                 disabled={isLoading}
               />
             </div>
-
-            {/* Error display can be removed if toasts are sufficient, or kept for specific inline errors */}
-            {error && !isLoading && ( // Only show if not loading and error exists
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Login Failed</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
 
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
