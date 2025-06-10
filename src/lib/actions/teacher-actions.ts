@@ -1,3 +1,4 @@
+
 "use server";
 
 import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation } from "@/lib/types";
@@ -48,6 +49,7 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
         return { success: false, message: "Teacher data incomplete in database. Cannot log in." };
     }
 
+    // Directly compare plain text passwords (NOT FOR PRODUCTION)
     if (teacherData.password && teacherData.password === passwordToVerify) {
       return {
         success: true,
@@ -83,7 +85,7 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
   }
 
   const gradeEntries: GradeEntry[] = data.marks.map(mark => ({
-    studentId: mark.studentId,
+    studentId: mark.studentId, // This is studentIdNumber
     grade: mark.score,
   }));
 
@@ -107,7 +109,8 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
             console.log("Anomaly detection result:", anomalyResult);
         } catch (error) {
             console.error("Error during anomaly detection:", error);
-            anomalyResult = { hasAnomalies: false, anomalies: [{studentId: "SYSTEM_ERROR", explanation: "Anomaly check failed to run."}] };
+            // Create a minimal anomaly result to indicate failure if the check itself failed
+            anomalyResult = { hasAnomalies: true, anomalies: [{studentId: "SYSTEM_ERROR", explanation: `Anomaly check failed: ${error instanceof Error ? error.message : String(error)}`}] };
         }
     }
   }
@@ -130,7 +133,7 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
       studentCount,
       averageScore,
       status: initialStatus,
-      submittedMarks: data.marks, 
+      submittedMarks: data.marks, // These are { studentId: string (studentIdNumber), score: number }
       anomalyExplanations: anomalyResult?.anomalies || [],
     });
   } catch (error) {
@@ -139,8 +142,8 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
     return { success: false, message: `Failed to save submission: ${errorMessage}` };
   }
 
-  revalidatePath("/teacher/marks/submit"); 
-  revalidatePath("/teacher/marks/history"); 
+  revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}`); 
+  revalidatePath(`/teacher/marks/history?teacherId=${teacherId}`); 
   
   if (anomalyResult?.hasAnomalies) {
     return { success: true, message: "Marks submitted. Potential anomalies were detected and logged.", anomalies: anomalyResult };
@@ -257,28 +260,42 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
     }
 
     const assessments: Array<{id: string, name: string, maxMarks: number}> = [];
-    const teacherAssignments = new Set<string>(); 
+    const teacherAssignments = new Set<string>(); // Stores "classId-subjectId"
 
+    // Add assignments where the teacher is a classTeacher
     allClasses.forEach(cls => {
-        if (cls.classTeacherId === teacherId) {
+        if (cls.classTeacherId === teacherId && Array.isArray(cls.subjects)) {
             cls.subjects.forEach(subj => {
                 teacherAssignments.add(`${cls.id}-${subj.id}`);
             });
         }
     });
 
-    // Ensure teacher.subjectsAssigned is an array before iterating
+    // Add assignments from teacher.subjectsAssigned
     if (teacher.subjectsAssigned && Array.isArray(teacher.subjectsAssigned)) {
         teacher.subjectsAssigned.forEach(assignment => {
-            teacherAssignments.add(`${assignment.classId}-${assignment.subjectId}`);
+            if (assignment.classId && assignment.subjectId) {
+                 teacherAssignments.add(`${assignment.classId}-${assignment.subjectId}`);
+            }
         });
     }
-
+    
     teacherAssignments.forEach(assignmentKey => {
         const [classId, subjectId] = assignmentKey.split('-');
         const cls = allClasses.find(c => c.id === classId);
-        const allSubjectsMasterList = cls?.subjects; 
-        const subj = allSubjectsMasterList?.find(s => s.id === subjectId); 
+        
+        // Find subject details from the class's subjects list or the global subject list
+        let subj: SubjectType | undefined;
+        if (cls && Array.isArray(cls.subjects)) {
+             subj = cls.subjects.find(s => s.id === subjectId);
+        }
+        // Fallback if subject not found in class's list (should ideally not happen if data is consistent)
+        if (!subj) {
+            const allSubjectsGlobal = getSubjects(); // This is an async call, ideally pre-fetched or passed if performance critical
+            allSubjectsGlobal.then(globalSubjects => {
+                subj = globalSubjects.find(s => s.id === subjectId);
+            });
+        }
 
 
         if (cls && subj) {
@@ -307,17 +324,17 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     console.warn(`Teacher not found for ID: ${teacherId} in getTeacherDashboardData.`);
     return {
       assignments: [],
-      notifications: [{ id: 'error_teacher_not_found', message: `Could not load data for teacher ID: ${teacherId}. Please check if the teacher ID is correct or contact support.`, type: 'warning' }],
+      notifications: [{ id: 'error_teacher_not_found', message: `Could not load data. Teacher record not found for ID: ${teacherId}. Please ensure the ID is correct or contact support.`, type: 'warning' }],
       teacherName: undefined,
       resourcesText: "Could not load resources. Teacher data missing or ID is incorrect."
     };
   }
 
-  const [allClasses, generalSettings, allTerms, allExams] = await Promise.all([ // Added allExams here
+  const [allClasses, generalSettings, allTerms, allExams] = await Promise.all([ 
     getClasses(), 
     getGeneralSettings(),
     getTerms(),
-    getExams(), // Fetch exams to check if any exist for the current term
+    getExams(),
   ]);
 
   const assignmentsMap = new Map<string, TeacherDashboardAssignment>();
@@ -335,13 +352,11 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     deadlineText = `Term End: ${new Date(currentTerm.endDate).toLocaleDateString()}`;
   }
 
-  // Determine if there are any exams for the current term
   const currentTermExams = currentTermId ? allExams.filter(exam => exam.termId === currentTermId) : [];
 
   if (currentTermId && currentTermExams.length > 0) {
-    // Class teacher assignments
     allClasses.forEach(cls => {
-      if (cls.classTeacherId === teacher.id && cls.subjects && Array.isArray(cls.subjects)) {
+      if (cls.classTeacherId === teacher.id && Array.isArray(cls.subjects)) {
         cls.subjects.forEach(subj => {
           const assignmentId = `${cls.id}-${subj.id}`;
           if (!assignmentsMap.has(assignmentId)) {
@@ -356,12 +371,10 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       }
     });
 
-    // Specific subject assignments
-    if (teacher.subjectsAssigned && Array.isArray(teacher.subjectsAssigned)) {
+    if (Array.isArray(teacher.subjectsAssigned)) {
       for (const assigned of teacher.subjectsAssigned) {
         const cls = allClasses.find(c => c.id === assigned.classId);
-        // Check if class exists and has subjects array
-        const subjDetails = (cls && cls.subjects && Array.isArray(cls.subjects)) ? cls.subjects.find(s => s.id === assigned.subjectId) : undefined;
+        const subjDetails = (cls && Array.isArray(cls.subjects)) ? cls.subjects.find(s => s.id === assigned.subjectId) : undefined;
 
         if (cls && subjDetails) {
           const assignmentId = `${cls.id}-${subjDetails.id}`;
@@ -422,7 +435,6 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     }
   }
   
-  // Add specific notification if no assignments are found
   if (assignments.length === 0) {
     let noAssignmentMessage = 'No teaching assignments found for the current term.';
     if (!currentTermId) {
