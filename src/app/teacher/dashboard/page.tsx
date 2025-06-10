@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { LayoutDashboard, BookOpenCheck, CalendarClock, Bell, ListChecks, AlertCircle, AlertTriangle } from "lucide-react";
+import { LayoutDashboard, BookOpenCheck, CalendarClock, Bell, ListChecks, AlertCircle, AlertTriangle, Info } from "lucide-react";
 import Image from "next/image";
 import { getTeacherDashboardData } from "@/lib/actions/teacher-actions";
 import type { TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification } from "@/lib/types";
@@ -33,7 +33,7 @@ export default async function TeacherDashboardPage({
             <AlertTriangle className="h-4 w-4" />
             <UIAlertTitle>Authentication Error</UIAlertTitle>
             <AlertDescription>
-                Teacher ID is missing. Please <Link href="/login/teacher" className="underline">log in again</Link>.
+                Teacher ID is missing. Please use the main portal to access the teacher section. <Link href="/" className="underline">Go to Portal</Link>.
             </AlertDescription>
         </Alert>
       </div>
@@ -46,25 +46,31 @@ export default async function TeacherDashboardPage({
   try {
     dashboardData = await getTeacherDashboardData(teacherId);
   } catch (error) {
-    console.error(`Critical error fetching teacher dashboard data for ${teacherId}:`, error);
-    fetchError = error instanceof Error ? error.message : "An unknown error occurred while loading dashboard data.";
-    // Provide default structure for dashboardData to prevent further rendering errors
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while loading dashboard data.";
+    console.error(`CRITICAL_ERROR_TEACHER_DASHBOARD_FETCH for teacher ${teacherId}:`, error);
+    fetchError = errorMessage;
+    // Provide a robust default structure for dashboardData to prevent further rendering errors
     dashboardData = {
       assignments: [],
-      notifications: [], // Error will be added below
+      notifications: [], // Error notification will be added below
       teacherName: undefined, 
-      resourcesText: "Could not load resources due to an error."
+      resourcesText: "Could not load resources due to a critical error. Please contact an administrator."
     };
   }
 
-  const assignments: TeacherDashboardAssignment[] = dashboardData.assignments;
-  const notifications: TeacherNotification[] = [...dashboardData.notifications]; // Make a mutable copy
+  // Ensure assignments and notifications are always arrays
+  const assignments: TeacherDashboardAssignment[] = dashboardData.assignments || [];
+  const notifications: TeacherNotification[] = [...(dashboardData.notifications || [])]; // Make a mutable copy
   const resourcesText = dashboardData.resourcesText || defaultResourcesText;
   const teacherDisplayName = dashboardData.teacherName || teacherNameFromParams;
 
   // If fetchError occurred, ensure it's the primary notification
   if (fetchError && !notifications.find(n => n.id === 'critical_error_dashboard_load')) {
-     notifications.unshift({ id: 'critical_error_dashboard_load', message: `Failed to load dashboard content: ${fetchError}`, type: 'warning' });
+     notifications.unshift({ 
+       id: 'critical_error_dashboard_load', 
+       message: `Failed to load essential dashboard content: ${fetchError}. Some information may be missing or outdated. Please try refreshing or contact support if the issue persists.`, 
+       type: 'warning' 
+      });
   }
 
 
@@ -76,6 +82,17 @@ export default async function TeacherDashboardPage({
         icon={LayoutDashboard}
       />
 
+      {/* Display fetch error prominently if it occurred */}
+      {fetchError && notifications.find(n => n.id === 'critical_error_dashboard_load') && (
+         <Alert variant="destructive" className="shadow-md">
+            <AlertTriangle className="h-4 w-4" />
+            <UIAlertTitle>Dashboard Loading Error</UIAlertTitle>
+            <AlertDescription>
+                {notifications.find(n => n.id === 'critical_error_dashboard_load')?.message}
+            </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 shadow-md hover:shadow-lg transition-shadow">
           <CardHeader>
@@ -85,30 +102,32 @@ export default async function TeacherDashboardPage({
             <CardDescription>Your current teaching assignments and upcoming deadlines.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {assignments.map((item) => (
-              <Card key={item.id} className="bg-secondary/50 p-4 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-semibold text-primary">{item.className} - {item.subjectName}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      <CalendarClock className="inline-block mr-1 h-4 w-4" />
-                      Next Deadline: {item.nextDeadlineInfo}
-                    </p>
+            {assignments.length > 0 ? (
+              assignments.map((item) => (
+                <Card key={item.id} className="bg-secondary/50 p-4 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="font-semibold text-primary">{item.className} - {item.subjectName}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        <CalendarClock className="inline-block mr-1 h-4 w-4" />
+                        Next Deadline: {item.nextDeadlineInfo}
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/teacher/marks/submit?teacherId=${teacherId}`}>
+                        <BookOpenCheck className="mr-2 h-4 w-4" /> Enter Marks
+                      </Link>
+                    </Button>
                   </div>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/teacher/marks/submit?teacherId=${teacherId}`}>
-                      <BookOpenCheck className="mr-2 h-4 w-4" /> Enter Marks
-                    </Link>
-                  </Button>
-                </div>
-              </Card>
-            ))}
-             {assignments.length === 0 && !fetchError && (
-              <p className="text-muted-foreground text-center py-4">No classes assigned yet for the current term.</p>
+                </Card>
+              ))
+            ) : (
+              <div className="text-center py-6 text-muted-foreground">
+                <Info className="mx-auto h-8 w-8 mb-2" />
+                <p>No classes or subjects are currently assigned to you for the active term.</p>
+                <p className="text-xs mt-1">If you believe this is an error, please contact the D.O.S. office.</p>
+              </div>
             )}
-             {fetchError && assignments.length === 0 && (
-                 <p className="text-destructive text-center py-4">Could not load assignments due to an error.</p>
-             )}
           </CardContent>
         </Card>
 
@@ -120,29 +139,32 @@ export default async function TeacherDashboardPage({
             <CardDescription>Important updates and reminders.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 max-h-96 overflow-y-auto">
-            {notifications.map((notification) => (
-              <div
-                key={notification.id}
-                className={`flex items-start p-3 rounded-lg ${
-                  notification.type === 'deadline' ? 'bg-accent/10 text-accent-foreground' :
-                  notification.type === 'warning' ? 'bg-destructive/10 text-destructive-foreground' :
-                  'bg-blue-500/10 text-blue-700 dark:text-blue-300'
-                }`}
-              >
-                {notification.type === 'warning' || notification.type === 'deadline' ? (
-                    <AlertCircle className={`h-5 w-5 mr-3 mt-0.5 shrink-0 ${notification.type === 'deadline' ? 'text-accent' : 'text-destructive' }`} />
-                ): (
-                    <Bell className="h-5 w-5 text-blue-500 mr-3 mt-0.5 shrink-0" />
-                )}
-                <p className="text-sm">{notification.message}</p>
+            {notifications.length > 0 ? (
+              notifications.map((notification) => (
+                <div
+                  key={notification.id}
+                  className={`flex items-start p-3 rounded-lg ${
+                    notification.type === 'deadline' ? 'bg-accent/10 text-accent-foreground' :
+                    notification.type === 'warning' ? 'bg-destructive/10 text-destructive-foreground' :
+                    'bg-blue-500/10 text-blue-700 dark:text-blue-300'
+                  }`}
+                >
+                  {notification.type === 'warning' ? (
+                      <AlertTriangle className={`h-5 w-5 mr-3 mt-0.5 shrink-0 text-destructive`} />
+                  ): notification.type === 'deadline' ? (
+                      <AlertCircle className={`h-5 w-5 mr-3 mt-0.5 shrink-0 text-accent`} />
+                  ) : (
+                      <Info className="h-5 w-5 text-blue-500 mr-3 mt-0.5 shrink-0" />
+                  )}
+                  <p className="text-sm">{notification.message}</p>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-6 text-muted-foreground">
+                 <Info className="mx-auto h-8 w-8 mb-2" />
+                <p>No new notifications at this time.</p>
               </div>
-            ))}
-            {notifications.length === 0 && !fetchError && (
-              <p className="text-muted-foreground text-center py-4">No new notifications.</p>
             )}
-            {fetchError && notifications.length === 0 && ( // Should not happen due to unshift logic above, but as a safeguard
-                 <p className="text-destructive text-center py-4">Could not load notifications due to an error.</p>
-             )}
           </CardContent>
         </Card>
       </div>

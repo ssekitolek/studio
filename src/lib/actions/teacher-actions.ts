@@ -321,137 +321,149 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     };
   }
 
-  const teacher = await getTeacherByIdFromDOS(teacherId);
-  
-  if (!teacher) {
-    console.warn(`Teacher not found for ID: ${teacherId} in getTeacherDashboardData.`);
-    return {
-      assignments: [],
-      notifications: [{ id: 'error_teacher_not_found', message: `Could not load data. Teacher record not found for ID: ${teacherId}. Please ensure the ID is correct or contact support.`, type: 'warning' }],
-      teacherName: undefined,
-      resourcesText: "Could not load resources. Teacher data missing or ID is incorrect."
-    };
-  }
+  try {
+    const teacher = await getTeacherByIdFromDOS(teacherId); 
+    
+    if (!teacher) {
+      console.warn(`Teacher not found for ID: ${teacherId} in getTeacherDashboardData.`);
+      return {
+        assignments: [],
+        notifications: [{ id: 'error_teacher_not_found', message: `Could not load data. Teacher record not found for ID: ${teacherId}. Please ensure the ID is correct or contact support.`, type: 'warning' }],
+        teacherName: undefined,
+        resourcesText: "Could not load resources. Teacher data missing or ID is incorrect."
+      };
+    }
 
-  const [allClasses, generalSettings, allTerms, allExams, allSubjectsGlobal] = await Promise.all([ 
-    getClasses(), 
-    getGeneralSettings(),
-    getTerms(),
-    getExams(),
-    getSubjects(),
-  ]);
+    const [allClasses, generalSettings, allTerms, allExams, allSubjectsGlobal] = await Promise.all([ 
+      getClasses(), 
+      getGeneralSettings(),
+      getTerms(),
+      getExams(),
+      getSubjects(),
+    ]);
 
-  const assignmentsMap = new Map<string, TeacherDashboardAssignment>();
-  const notifications: TeacherNotification[] = [];
-  const teacherName = teacher.name;
-  const resourcesText = generalSettings.teacherDashboardResourcesText;
+    const assignmentsMap = new Map<string, TeacherDashboardAssignment>();
+    const notifications: TeacherNotification[] = [];
+    const teacherName = teacher.name;
+    const resourcesText = generalSettings.teacherDashboardResourcesText;
 
-  const currentTermId = generalSettings.currentTermId;
-  const currentTerm = currentTermId ? allTerms.find(t => t.id === currentTermId) : null;
-  
-  let deadlineText = "No specific deadline set";
-  if (generalSettings.globalMarksSubmissionDeadline) {
-    deadlineText = `Global: ${new Date(generalSettings.globalMarksSubmissionDeadline).toLocaleDateString()}`;
-  } else if (currentTerm?.endDate) {
-    deadlineText = `Term End: ${new Date(currentTerm.endDate).toLocaleDateString()}`;
-  }
+    const currentTermId = generalSettings.currentTermId;
+    const currentTerm = currentTermId ? allTerms.find(t => t.id === currentTermId) : null;
+    
+    let deadlineText = "No specific deadline set";
+    if (generalSettings.globalMarksSubmissionDeadline) {
+      deadlineText = `Global: ${new Date(generalSettings.globalMarksSubmissionDeadline).toLocaleDateString()}`;
+    } else if (currentTerm?.endDate) {
+      deadlineText = `Term End: ${new Date(currentTerm.endDate).toLocaleDateString()}`;
+    }
 
-  const currentTermExams = currentTermId ? allExams.filter(exam => exam.termId === currentTermId) : [];
+    const currentTermExams = currentTermId ? allExams.filter(exam => exam.termId === currentTermId) : [];
 
-  if (currentTermId && currentTermExams.length > 0) {
-    allClasses.forEach(cls => {
-      if (cls.classTeacherId === teacher.id && Array.isArray(cls.subjects)) {
-        cls.subjects.forEach(subj => {
-          const assignmentId = `${cls.id}-${subj.id}`;
-          if (!assignmentsMap.has(assignmentId)) {
-            assignmentsMap.set(assignmentId, {
-              id: assignmentId,
-              className: cls.name,
-              subjectName: subj.name,
-              nextDeadlineInfo: deadlineText,
-            });
-          }
-        });
-      }
-    });
+    if (currentTermId && currentTermExams.length > 0) {
+      allClasses.forEach(cls => {
+        if (cls.classTeacherId === teacher.id && Array.isArray(cls.subjects)) {
+          cls.subjects.forEach(subj => {
+            const assignmentId = `${cls.id}-${subj.id}`;
+            if (!assignmentsMap.has(assignmentId)) {
+              assignmentsMap.set(assignmentId, {
+                id: assignmentId,
+                className: cls.name,
+                subjectName: subj.name,
+                nextDeadlineInfo: deadlineText,
+              });
+            }
+          });
+        }
+      });
 
-    if (Array.isArray(teacher.subjectsAssigned)) {
-      for (const assigned of teacher.subjectsAssigned) {
-        const cls = allClasses.find(c => c.id === assigned.classId);
-        const subjDetails = allSubjectsGlobal.find(s => s.id === assigned.subjectId); 
+      if (Array.isArray(teacher.subjectsAssigned)) {
+        for (const assigned of teacher.subjectsAssigned) {
+          const cls = allClasses.find(c => c.id === assigned.classId);
+          const subjDetails = allSubjectsGlobal.find(s => s.id === assigned.subjectId); 
 
-        if (cls && subjDetails) {
-          const assignmentId = `${cls.id}-${subjDetails.id}`;
-          if (!assignmentsMap.has(assignmentId)) { 
-            assignmentsMap.set(assignmentId, {
-              id: assignmentId,
-              className: cls.name,
-              subjectName: subjDetails.name,
-              nextDeadlineInfo: deadlineText,
-            });
+          if (cls && subjDetails) {
+            const assignmentId = `${cls.id}-${subjDetails.id}`;
+            if (!assignmentsMap.has(assignmentId)) { 
+              assignmentsMap.set(assignmentId, {
+                id: assignmentId,
+                className: cls.name,
+                subjectName: subjDetails.name,
+                nextDeadlineInfo: deadlineText,
+              });
+            }
           }
         }
       }
     }
-  }
-  
-  const assignments = Array.from(assignmentsMap.values()).sort((a, b) => {
-    if (a.className < b.className) return -1;
-    if (a.className > b.className) return 1;
-    if (a.subjectName < b.subjectName) return -1;
-    if (a.subjectName > b.subjectName) return 1;
-    return 0;
-  });
-
-  if (generalSettings.dosGlobalAnnouncementText) {
-    notifications.push({
-      id: 'dos_announcement',
-      message: generalSettings.dosGlobalAnnouncementText,
-      type: generalSettings.dosGlobalAnnouncementType || 'info',
+    
+    const assignments = Array.from(assignmentsMap.values()).sort((a, b) => {
+      if (a.className < b.className) return -1;
+      if (a.className > b.className) return 1;
+      if (a.subjectName < b.subjectName) return -1;
+      if (a.subjectName > b.subjectName) return 1;
+      return 0;
     });
-  }
 
-  let deadlineDateToCompare: Date | null = null;
-  let deadlineMessagePrefix = "";
-
-  if (generalSettings.globalMarksSubmissionDeadline) {
-    deadlineDateToCompare = new Date(generalSettings.globalMarksSubmissionDeadline);
-    deadlineMessagePrefix = "Global marks submission deadline";
-  } else if (currentTerm?.endDate) {
-    deadlineDateToCompare = new Date(currentTerm.endDate);
-    deadlineMessagePrefix = "Current term submission deadline (term end)";
-  }
-
-  if (deadlineDateToCompare) {
-    const today = new Date();
-    today.setHours(0,0,0,0); 
-    deadlineDateToCompare.setHours(0,0,0,0); 
-
-    const diffTime = deadlineDateToCompare.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays >= 0 && diffDays <= 7) { 
+    if (generalSettings.dosGlobalAnnouncementText) {
       notifications.push({
-        id: 'deadline_reminder',
-        message: `${deadlineMessagePrefix} is ${diffDays === 0 ? 'today' : diffDays === 1 ? 'tomorrow' : `in ${diffDays} days`} (${deadlineDateToCompare.toLocaleDateString()}).`,
-        type: 'deadline',
+        id: 'dos_announcement',
+        message: generalSettings.dosGlobalAnnouncementText,
+        type: generalSettings.dosGlobalAnnouncementType || 'info',
       });
     }
-  }
-  
-  if (assignments.length === 0) {
-    let noAssignmentMessage = 'No teaching assignments found for the current term.';
-    if (!currentTermId) {
-      noAssignmentMessage = 'No current academic term is set by the D.O.S. Assignments cannot be determined.';
-    } else if (currentTermExams.length === 0 && currentTermId) { // Added check for currentTermId here
-      noAssignmentMessage = 'No exams are scheduled for the current academic term. Assignments cannot be determined.';
+
+    let deadlineDateToCompare: Date | null = null;
+    let deadlineMessagePrefix = "";
+
+    if (generalSettings.globalMarksSubmissionDeadline) {
+      deadlineDateToCompare = new Date(generalSettings.globalMarksSubmissionDeadline);
+      deadlineMessagePrefix = "Global marks submission deadline";
+    } else if (currentTerm?.endDate) {
+      deadlineDateToCompare = new Date(currentTerm.endDate);
+      deadlineMessagePrefix = "Current term submission deadline (term end)";
     }
-    notifications.push({
-      id: 'no_assignments',
-      message: noAssignmentMessage,
-      type: 'info',
-    });
+
+    if (deadlineDateToCompare) {
+      const today = new Date();
+      today.setHours(0,0,0,0); 
+      deadlineDateToCompare.setHours(0,0,0,0); 
+
+      const diffTime = deadlineDateToCompare.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays >= 0 && diffDays <= 7) { 
+        notifications.push({
+          id: 'deadline_reminder',
+          message: `${deadlineMessagePrefix} is ${diffDays === 0 ? 'today' : diffDays === 1 ? 'tomorrow' : `in ${diffDays} days`} (${deadlineDateToCompare.toLocaleDateString()}).`,
+          type: 'deadline',
+        });
+      }
+    }
+    
+    if (assignments.length === 0 && (!currentTermId || currentTermExams.length === 0)) {
+      let noAssignmentMessage = 'No teaching assignments found for the current term.';
+      if (!currentTermId) {
+        noAssignmentMessage = 'No current academic term is set by the D.O.S. Assignments cannot be determined.';
+      } else if (currentTermExams.length === 0 && currentTermId) {
+        noAssignmentMessage = 'No exams are scheduled for the current academic term. Assignments cannot be determined.';
+      }
+      notifications.push({
+        id: 'no_assignments_info',
+        message: noAssignmentMessage,
+        type: 'info',
+      });
+    }
+    
+    return { assignments, notifications, teacherName, resourcesText };
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while processing dashboard data.";
+    console.error(`ERROR_IN_GET_TEACHER_DASHBOARD_DATA for teacher ${teacherId}:`, error);
+    return {
+      assignments: [],
+      notifications: [{ id: 'processing_error_dashboard', message: `Error processing dashboard data: ${errorMessage}`, type: 'warning' }],
+      teacherName: (await getTeacherByIdFromDOS(teacherId))?.name || undefined, // Attempt to get name even on error
+      resourcesText: "Could not load resources due to an internal error."
+    };
   }
-  
-  return { assignments, notifications, teacherName, resourcesText };
 }
