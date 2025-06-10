@@ -28,12 +28,12 @@ interface SubmissionHistoryItem {
 
 
 export async function loginTeacherByEmailPassword(email: string, passwordToVerify: string): Promise<{ success: boolean; message: string; teacher?: { id: string; name: string; email: string; } }> {
-  if (!db) {
-    console.error("CRITICAL: Firestore database (db) is not initialized in loginTeacherByEmailPassword. Check Firebase configuration.");
-    return { success: false, message: "Authentication service is currently unavailable. Please try again later." };
-  }
-
   try {
+    if (!db) {
+      console.error("CRITICAL: Firestore database (db) is not initialized in loginTeacherByEmailPassword. Check Firebase configuration.");
+      return { success: false, message: "Authentication service is currently unavailable. Please try again later." };
+    }
+
     const teachersRef = collection(db, "teachers");
     const q = query(teachersRef, where("email", "==", email), limit(1));
     const querySnapshot = await getDocs(q);
@@ -52,9 +52,8 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
 
     // Directly compare plain text passwords (NOT FOR PRODUCTION)
     if (teacherData.password === passwordToVerify) {
-      // Verify essential teacher data is present for login to proceed
       if (!teacherDoc.id || !teacherData.name || !teacherData.email) {
-          console.error("Teacher document is missing id, name, or email for login.", {id: teacherDoc.id, name: teacherData.name, email: teacherData.email});
+          console.error("Teacher document (ID:", teacherDoc.id, ") is missing id, name, or email for login.", {id: teacherDoc.id, name: teacherData.name, email: teacherData.email});
           return { success: false, message: "Teacher account data is incomplete. Cannot log in." };
       }
       return {
@@ -70,9 +69,10 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
       return { success: false, message: "Invalid email or password. Credentials do not match." };
     }
   } catch (error) {
-    console.error("Error during teacher login:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred during login.";
-    return { success: false, message: `Login failed: ${errorMessage}` };
+    console.error("FATAL ERROR during teacher login action:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown internal server error occurred.";
+    // Ensure a generic error message is returned to the client for unexpected errors
+    return { success: false, message: `Login failed due to a server error: ${errorMessage}. Please try again or contact support if the issue persists.` };
   }
 }
 

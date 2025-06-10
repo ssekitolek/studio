@@ -29,14 +29,22 @@ export default function TeacherLoginPage() {
     try {
       const result = await loginTeacherByEmailPassword(email, password);
 
-      if (result.success && result.teacher) {
-        toast({ title: "Login Successful", description: `Welcome back, ${result.teacher.name}!` });
-        router.push(`/teacher/dashboard?teacherId=${result.teacher.id}&teacherName=${encodeURIComponent(result.teacher.name)}`);
+      if (result && typeof result === 'object') {
+        if (result.success && result.teacher) {
+          toast({ title: "Login Successful", description: `Welcome back, ${result.teacher.name}!` });
+          router.push(`/teacher/dashboard?teacherId=${result.teacher.id}&teacherName=${encodeURIComponent(result.teacher.name)}`);
+        } else {
+          setErrorMessage(result.message || "Login failed. Please check your credentials.");
+          toast({ title: "Login Failed", description: result.message || "Please check your credentials.", variant: "destructive" });
+        }
       } else {
-        setErrorMessage(result.message);
-        toast({ title: "Login Failed", description: result.message, variant: "destructive" });
+        // This case handles if 'result' is not a valid object (e.g. server action crashed without returning JSON)
+        const unexpectedErrorMsg = "An unexpected response was received from the server. Please try again.";
+        setErrorMessage(unexpectedErrorMsg);
+        toast({ title: "Login Error", description: unexpectedErrorMsg, variant: "destructive" });
       }
     } catch (error) {
+      console.error("Client-side login error:", error);
       const message = error instanceof Error ? error.message : "An unexpected error occurred during login.";
       setErrorMessage(message);
       toast({ title: "Login Error", description: message, variant: "destructive" });
@@ -110,5 +118,3 @@ export default function TeacherLoginPage() {
     </main>
   );
 }
-
-    
