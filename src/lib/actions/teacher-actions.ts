@@ -28,34 +28,39 @@ interface SubmissionHistoryItem {
 
 
 export async function loginTeacherByEmailPassword(email: string, passwordToVerify: string): Promise<{ success: boolean; message: string; teacher?: { id: string; name: string; email: string; } }> {
+  if (!db) {
+    console.error("CRITICAL: Firestore database (db) is not initialized in loginTeacherByEmailPassword. Check Firebase configuration.");
+    return { success: false, message: "Authentication service is currently unavailable. Please try again later." };
+  }
+
   try {
-    if (!db) {
-      console.error("CRITICAL: Firestore database (db) is not initialized in loginTeacherByEmailPassword. Check Firebase configuration.");
-      return { success: false, message: "Authentication service is currently unavailable. Please try again later." };
-    }
+    // console.log(`Attempting login for email: ${email}`); // Optional: for seeing if the action starts
 
     const teachersRef = collection(db, "teachers");
     const q = query(teachersRef, where("email", "==", email), limit(1));
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
+      // console.log(`Login attempt failed: Teacher not found for email ${email}`);
       return { success: false, message: "Invalid email or password. Teacher not found." };
     }
 
     const teacherDoc = querySnapshot.docs[0];
     const teacherData = teacherDoc.data() as TeacherType;
-    
+
+    // Check for essential data
     if (!teacherData.password) {
-        console.error(`Teacher with email ${email} (ID: ${teacherDoc.id}) does not have a password set.`);
+        console.error(`Login attempt failed: Password not set for teacher with email ${email} (ID: ${teacherDoc.id}).`);
         return { success: false, message: "Password not set for this account. Please contact D.O.S." };
+    }
+    if (!teacherDoc.id || !teacherData.name || !teacherData.email) {
+        console.error("Login attempt failed: Teacher document (ID:", teacherDoc.id, ") is missing id, name, or email.", {id: teacherDoc.id, name: teacherData.name, email: teacherData.email});
+        return { success: false, message: "Teacher account data is incomplete. Cannot log in." };
     }
 
     // Directly compare plain text passwords (NOT FOR PRODUCTION)
     if (teacherData.password === passwordToVerify) {
-      if (!teacherDoc.id || !teacherData.name || !teacherData.email) {
-          console.error("Teacher document (ID:", teacherDoc.id, ") is missing id, name, or email for login.", {id: teacherDoc.id, name: teacherData.name, email: teacherData.email});
-          return { success: false, message: "Teacher account data is incomplete. Cannot log in." };
-      }
+      // console.log(`Login successful for teacher: ${teacherData.name} (ID: ${teacherDoc.id})`);
       return {
         success: true,
         message: "Login successful.",
@@ -66,12 +71,13 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
         }
       };
     } else {
+      // console.log(`Login attempt failed: Password mismatch for teacher ${teacherData.name} (ID: ${teacherDoc.id})`);
       return { success: false, message: "Invalid email or password. Credentials do not match." };
     }
   } catch (error) {
-    console.error("FATAL ERROR during teacher login action:", error);
+    console.error("FATAL ERROR during teacher login action:", error); // This will log the actual error object
     const errorMessage = error instanceof Error ? error.message : "An unknown internal server error occurred.";
-    // Ensure a generic error message is returned to the client for unexpected errors
+    // Return a generic error message to the client, but the detailed one is logged above.
     return { success: false, message: `Login failed due to a server error: ${errorMessage}. Please try again or contact support if the issue persists.` };
   }
 }
@@ -79,6 +85,7 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
 
 export async function submitMarks(teacherId: string, data: MarksSubmissionData): Promise<{ success: boolean; message: string; anomalies?: GradeAnomalyDetectionOutput }> {
   if (!db) {
+    console.error("CRITICAL: Firestore database (db) is not initialized in submitMarks.");
     return { success: false, message: "Database service not available." };
   }
   if (!teacherId) {
@@ -153,6 +160,11 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
 
 
 async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName: string; examName: string; name: string; maxMarks: number; historicalAverage?: number }> {
+    if (!db) {
+      console.error("CRITICAL: Firestore 'db' is null in getAssessmentDetails. Firebase not initialized.");
+      // Return a default/error structure to prevent further crashes, though functionality will be broken.
+      return { subjectName: "Error: DB Uninitialized", examName: "Error: DB Uninitialized", name: "Error: DB Uninitialized", maxMarks: 100 };
+    }
     const parts = assessmentId.split('_');
     if (parts.length !== 3) {
         console.error(`Invalid assessmentId format: ${assessmentId}`);
@@ -184,6 +196,10 @@ async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName
 }
 
 export async function getStudentsForAssessment(assessmentId: string): Promise<Student[]> {
+  if (!db) {
+    console.error("CRITICAL: Firestore 'db' is null in getStudentsForAssessment. Firebase not initialized.");
+    return [];
+  }
   const parts = assessmentId.split('_');
   if (parts.length !== 3) {
       console.error(`Invalid assessmentId format for fetching students: ${assessmentId}`);
@@ -197,7 +213,7 @@ export async function getStudentsForAssessment(assessmentId: string): Promise<St
 
 export async function getSubmittedMarksHistory(teacherId: string): Promise<SubmissionHistoryItem[]> {
     if (!db) {
-        console.error("Firestore is not initialized.");
+        console.error("CRITICAL: Firestore 'db' is null in getSubmittedMarksHistory. Firebase not initialized.");
         return [];
     }
     if (!teacherId) {
