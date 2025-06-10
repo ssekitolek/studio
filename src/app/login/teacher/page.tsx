@@ -16,8 +16,8 @@ import { loginTeacherByEmailPassword } from "@/lib/actions/teacher-actions";
 export default function TeacherLoginPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("ssekitoleko.mathius@gmail.com"); // Pre-fill for user convenience
+  const [password, setPassword] = useState("password123"); // Pre-fill for user convenience - CHANGE THIS
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -40,7 +40,7 @@ export default function TeacherLoginPage() {
           // Display the message from the server action (e.g., "Invalid email or password")
           const messageFromServer = result.message || "Login failed. Please check your credentials.";
           setErrorMessage(messageFromServer);
-          toast({ title: "Login Failed", description: messageFromServer, variant: "destructive" });
+          // toast({ title: "Login Failed", description: messageFromServer, variant: "destructive" });
         }
       } else {
         // This case handles if 'result' is not a valid object (e.g. server action crashed without returning JSON)
@@ -125,4 +125,3 @@ export default function TeacherLoginPage() {
     </main>
   );
 }
-
