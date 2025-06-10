@@ -32,7 +32,8 @@ import {
   GanttChartSquare,
   BookUser,
   CalendarDays,
-  ShieldAlert
+  ShieldAlert,
+  UserCheck // New icon for assignments
 } from "lucide-react";
 
 const dosNavItems = [
@@ -43,6 +44,7 @@ const dosNavItems = [
     isSection: true,
     subItems: [
       { href: "/dos/teachers", label: "Teachers", icon: BookUser },
+      { href: "/dos/teachers/assignments", label: "Teacher Assignments", icon: UserCheck },
       { href: "/dos/students", label: "Students", icon: Users },
       { href: "/dos/classes", label: "Classes & Subjects", icon: ClipboardList },
     ],
@@ -143,4 +145,3 @@ export function DosSidebar() {
     </Sidebar>
   );
 }
-

@@ -73,7 +73,6 @@ export async function updateTeacher(teacherId: string, teacherData: Partial<Omit
   try {
     const teacherRef = doc(db, "teachers", teacherId);
     
-    // Construct the update payload carefully, only including fields that are actually provided
     const updatePayload: { [key: string]: any } = {};
 
     if (teacherData.name !== undefined) {
@@ -82,14 +81,11 @@ export async function updateTeacher(teacherId: string, teacherData: Partial<Omit
     if (teacherData.email !== undefined) {
       updatePayload.email = teacherData.email;
     }
-    // Only update password if a new one is explicitly provided and is not an empty string
     if (teacherData.password && teacherData.password.trim() !== "") {
       updatePayload.password = teacherData.password;
     }
-    // If subjectsAssigned is part of teacherData, include it in the update.
     if (teacherData.subjectsAssigned !== undefined) {
       if (Array.isArray(teacherData.subjectsAssigned)) {
-        // Ensure each item in subjectsAssigned has classId and subjectId
         updatePayload.subjectsAssigned = teacherData.subjectsAssigned.filter(
           (assignment: any) => assignment && typeof assignment.classId === 'string' && typeof assignment.subjectId === 'string'
         ).map((assignment: any) => ({ classId: assignment.classId, subjectId: assignment.subjectId }));
@@ -130,6 +126,72 @@ export async function deleteTeacher(teacherId: string): Promise<{ success: boole
     return { success: false, message: `Failed to delete teacher: ${errorMessage}` };
   }
 }
+
+export async function updateTeacherAssignments(
+  teacherId: string,
+  data: {
+    classTeacherForClassIds: string[];
+    specificSubjectAssignments: Array<{ classId: string; subjectId: string }>;
+  }
+): Promise<{ success: boolean; message: string }> {
+  if (!db) {
+    return { success: false, message: "Firestore is not initialized." };
+  }
+  try {
+    await runTransaction(db, async (transaction) => {
+      const teacherRef = doc(db, "teachers", teacherId);
+      const teacherSnap = await transaction.get(teacherRef);
+      if (!teacherSnap.exists()) {
+        throw new Error(`Teacher with ID ${teacherId} not found.`);
+      }
+
+      // 1. Update teacher's specific subject assignments
+      transaction.update(teacherRef, { subjectsAssigned: data.specificSubjectAssignments });
+
+      // 2. Handle class teacher assignments
+      // Fetch all classes. Note: reading many docs inside a transaction can be slow.
+      // If there are many classes, consider fetching them outside and then passing refs.
+      const classesCol = collection(db, "classes");
+      const classesQuerySnapshot = await getDocs(classesCol); // This read is outside transaction in this version for simplicity
+                                                              // but for strict atomicity on reads too, it should be inside.
+                                                              // However, Firestore transactions have limits on reads.
+
+      for (const classDoc of classesQuerySnapshot.docs) {
+        const classRef = doc(db, "classes", classDoc.id); // Get a fresh ref for the transaction
+        const classData = classDoc.data(); // Use data from outside transaction read
+        const classId = classDoc.id;
+
+        if (data.classTeacherForClassIds.includes(classId)) {
+          // This class should be taught by the target teacher
+          if (classData.classTeacherId !== teacherId) {
+            // If it's currently taught by someone else OR no one, assign it.
+            // No need to explicitly unassign the *other* teacher from the class here,
+            // as the classTeacherId field on the class will simply be overwritten.
+            // The old teacher's 'classTeacher' status for this class is implicitly removed
+            // by no longer being the classTeacherId on this class.
+            transaction.update(classRef, { classTeacherId: teacherId });
+          }
+        } else {
+          // This class should NOT be taught by the target teacher
+          if (classData.classTeacherId === teacherId) {
+            // If they are currently the class teacher, unassign them
+            transaction.update(classRef, { classTeacherId: null });
+          }
+        }
+      }
+    });
+
+    revalidatePath("/dos/teachers/assignments");
+    revalidatePath("/dos/teachers");
+    revalidatePath("/dos/classes");
+    return { success: true, message: "Teacher assignments updated successfully." };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+    console.error("Error in updateTeacherAssignments:", error);
+    return { success: false, message: `Failed to update assignments: ${errorMessage}` };
+  }
+}
+
 
 // --- Student Management ---
 export async function createStudent(studentData: Omit<Student, 'id'>): Promise<{ success: boolean; message: string; student?: Student }> {
@@ -927,6 +989,3 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
         };
     }
 }
-
-
-    
