@@ -17,8 +17,10 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { createSubject } from "@/lib/actions/dos-actions";
-import { Loader2, Save } from "lucide-react";
+import { createSubject, updateSubject } from "@/lib/actions/dos-actions";
+import type { Subject } from "@/lib/types";
+import { Loader2, Save, PlusCircle, Edit3 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const subjectFormSchema = z.object({
   name: z.string().min(2, {
@@ -32,48 +34,79 @@ const subjectFormSchema = z.object({
 type SubjectFormValues = z.infer<typeof subjectFormSchema>;
 
 interface SubjectFormProps {
+  initialData?: Subject | null;
+  subjectId?: string;
   onSuccess?: () => void;
 }
 
-export function SubjectForm({ onSuccess }: SubjectFormProps) {
+export function SubjectForm({ initialData, subjectId, onSuccess }: SubjectFormProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
+  const isEditMode = !!subjectId && !!initialData;
 
   const form = useForm<SubjectFormValues>({
     resolver: zodResolver(subjectFormSchema),
     defaultValues: {
-      name: "",
-      code: "",
+      name: initialData?.name || "",
+      code: initialData?.code || "",
     },
   });
+
+  React.useEffect(() => {
+    if (initialData) {
+      form.reset({
+        name: initialData.name,
+        code: initialData.code || "",
+      });
+    }
+  }, [initialData, form]);
 
   const onSubmit = (data: SubjectFormValues) => {
     startTransition(async () => {
       try {
         const subjectDataToSave = {
-            ...data,
-            code: data.code ? data.code.toUpperCase() : undefined,
+          ...data,
+          code: data.code ? data.code.toUpperCase() : undefined,
         };
 
-        const result = await createSubject(subjectDataToSave);
-        if (result.success && result.subject) {
-          toast({
-            title: "Subject Created",
-            description: `Subject "${result.subject.name}" has been successfully added.`,
-          });
-          form.reset();
-          if (onSuccess) onSuccess();
+        if (isEditMode && subjectId) {
+          const result = await updateSubject(subjectId, subjectDataToSave as Partial<Omit<Subject, 'id'>>);
+          if (result.success && result.subject) {
+            toast({
+              title: "Subject Updated",
+              description: `Subject "${result.subject.name}" has been successfully updated.`,
+            });
+            if (onSuccess) onSuccess(); else router.push("/dos/classes");
+          } else {
+            toast({
+              title: "Error Updating Subject",
+              description: result.message || "Failed to update subject.",
+              variant: "destructive",
+            });
+          }
         } else {
-          toast({
-            title: "Error",
-            description: result.message || "Failed to create subject.",
-            variant: "destructive",
-          });
+          const result = await createSubject(subjectDataToSave as Omit<Subject, 'id'>);
+          if (result.success && result.subject) {
+            toast({
+              title: "Subject Created",
+              description: `Subject "${result.subject.name}" has been successfully added.`,
+            });
+            form.reset({ name: "", code: "" });
+            if (onSuccess) onSuccess(); else router.push("/dos/classes");
+          } else {
+            toast({
+              title: "Error Creating Subject",
+              description: result.message || "Failed to create subject.",
+              variant: "destructive",
+            });
+          }
         }
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
         toast({
           title: "Submission Error",
-          description: "An unexpected error occurred.",
+          description: errorMessage,
           variant: "destructive",
         });
       }
@@ -116,13 +149,15 @@ export function SubjectForm({ onSuccess }: SubjectFormProps) {
           )}
         />
         <div className="flex justify-end">
-          <Button type="submit" disabled={isPending}>
+          <Button type="submit" disabled={isPending} size="lg">
             {isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : isEditMode ? (
+              <Edit3 className="mr-2 h-4 w-4" />
             ) : (
-              <Save className="mr-2 h-4 w-4" />
+              <PlusCircle className="mr-2 h-4 w-4" />
             )}
-            Save Subject
+            {isEditMode ? "Update Subject" : "Create Subject"}
           </Button>
         </div>
       </form>

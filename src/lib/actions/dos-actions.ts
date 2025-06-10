@@ -87,8 +87,6 @@ export async function updateTeacher(teacherId: string, teacherData: Partial<Omit
       updatePayload.password = teacherData.password;
     }
     // If subjectsAssigned is part of teacherData, include it in the update.
-    // This allows a more advanced UI or direct data manipulation to set these assignments.
-    // The current TeacherForm does not send this field, so it won't be accidentally cleared.
     if (teacherData.subjectsAssigned !== undefined) {
       if (Array.isArray(teacherData.subjectsAssigned)) {
         // Ensure each item in subjectsAssigned has classId and subjectId
@@ -99,6 +97,7 @@ export async function updateTeacher(teacherId: string, teacherData: Partial<Omit
         console.warn(`updateTeacher: subjectsAssigned for teacher ${teacherId} was provided but not as an array. Ignoring subjectsAssigned update.`);
       }
     }
+
 
     if (Object.keys(updatePayload).length === 0) {
       const currentTeacher = await getTeacherById(teacherId);
@@ -363,7 +362,7 @@ export async function createSubject(subjectData: Omit<Subject, 'id'>): Promise<{
   try {
     const subjectDataToSave = {
         ...subjectData,
-        code: subjectData.code || null,
+        code: subjectData.code || null, // Ensure code is null if undefined/empty for Firestore
     };
     const docRef = await addDoc(collection(db, "subjects"), subjectDataToSave);
     const newSubject: Subject = { id: docRef.id, ...subjectDataToSave, code: subjectDataToSave.code === null ? undefined : subjectDataToSave.code };
@@ -373,6 +372,51 @@ export async function createSubject(subjectData: Omit<Subject, 'id'>): Promise<{
     console.error("Error in createSubject:", error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
     return { success: false, message: `Failed to create subject: ${errorMessage}` };
+  }
+}
+
+export async function getSubjectById(subjectId: string): Promise<Subject | null> {
+  if (!db) {
+    console.error("Firestore is not initialized. Check Firebase configuration.");
+    return null;
+  }
+  try {
+    const subjectRef = doc(db, "subjects", subjectId);
+    const subjectSnap = await getDoc(subjectRef);
+    if (subjectSnap.exists()) {
+      const data = subjectSnap.data();
+      return {
+        id: subjectSnap.id,
+        name: data.name,
+        code: data.code === null ? undefined : data.code,
+      } as Subject;
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error fetching subject ${subjectId}:`, error);
+    return null;
+  }
+}
+
+export async function updateSubject(subjectId: string, subjectData: Partial<Omit<Subject, 'id'>>): Promise<{ success: boolean; message: string; subject?: Subject }> {
+  if (!db) {
+    return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
+  }
+  try {
+    const subjectRef = doc(db, "subjects", subjectId);
+    const dataToUpdate = {
+        ...subjectData,
+        code: subjectData.code || null, // Ensure code is null if undefined/empty for Firestore
+    };
+    await updateDoc(subjectRef, dataToUpdate);
+    revalidatePath("/dos/classes"); // Revalidate page listing subjects
+    revalidatePath(`/dos/subjects/${subjectId}/edit`); // Revalidate this specific edit page
+    const updatedSubject = await getSubjectById(subjectId);
+    return { success: true, message: "Subject updated successfully.", subject: updatedSubject ?? undefined };
+  } catch (error) {
+    console.error(`Error in updateSubject for ${subjectId}:`, error);
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+    return { success: false, message: `Failed to update subject: ${errorMessage}` };
   }
 }
 
