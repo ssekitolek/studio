@@ -9,12 +9,13 @@ export const dynamic = 'force-dynamic'; // Ensure dynamic rendering
 // Define a more standard LayoutProps interface
 interface LayoutProps {
   children: React.ReactNode;
-  params: { [key: string]: string | string[] | undefined }; // Standard prop, though not directly used for teacherId/Name here
-  searchParams: { [key: string]: string | string[] | undefined }; // This should contain URL query parameters
+  params: { [key: string]: string | string[] | undefined }; // Added params
+  searchParams?: { [key: string]: string | string[] | undefined };
 }
 
-export default function TeacherLayout({ children, searchParams }: LayoutProps) {
+export default function TeacherLayout({ children, params, searchParams }: LayoutProps) {
   // Log the received searchParams object itself more clearly
+  console.log('[TeacherLayout] Entry. Received params:', JSON.stringify(params, null, 2));
   console.log('[TeacherLayout] Entry. Received searchParams:', searchParams === undefined ? "undefined" : JSON.stringify(searchParams, null, 2));
 
   const teacherId = searchParams?.teacherId as string | undefined;
