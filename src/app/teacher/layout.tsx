@@ -17,14 +17,25 @@ export default async function TeacherLayout({
   console.log('[TeacherLayout] Received searchParams:', searchParams);
 
   const teacherId = searchParams?.teacherId;
-  let teacherName = searchParams?.teacherName ? decodeURIComponent(searchParams.teacherName) : "Teacher";
+  let teacherName = "Teacher"; // Default value
+
+  if (searchParams?.teacherName) {
+    try {
+      teacherName = decodeURIComponent(searchParams.teacherName);
+    } catch (e) {
+      console.warn(`[TeacherLayout] Failed to decode teacherName: "${searchParams.teacherName}". Using default. Error: ${e}`);
+      // teacherName remains "Teacher"
+    }
+  } else {
+    console.warn('[TeacherLayout] teacherName is missing from searchParams. Using default name "Teacher".');
+  }
+
 
   if (!teacherId) {
     console.warn('[TeacherLayout] teacherId is missing from searchParams. Redirecting to /login/teacher. Current searchParams:', searchParams);
-    redirect('/login/teacher'); // Critical: redirect if teacherId is not present
+    redirect('/login/teacher'); 
   }
 
-  // If teacherId is present, log it for confirmation
   console.log(`[TeacherLayout] Proceeding with teacherId: ${teacherId}, teacherName: ${teacherName}`);
 
   return (

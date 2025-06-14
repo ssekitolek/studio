@@ -207,6 +207,7 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
         return [];
     }
     if (!teacherId) {
+        console.warn("getSubmittedMarksHistory called without teacherId.");
         return [];
     }
     try {
@@ -230,7 +231,7 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
         });
         return history;
     } catch (error) {
-        console.error("Error fetching submission history:", error);
+        console.error("Error fetching submission history for teacherId", teacherId, ":", error);
         return [];
     }
 }
@@ -240,8 +241,13 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
       console.error("CRITICAL_ERROR_DB_NULL: Firestore db object is null in getTeacherAssessments.");
       return [];
     }
+    if (!teacherId) {
+      console.warn("getTeacherAssessments called without teacherId.");
+      return [];
+    }
     const teacher = await getTeacherByIdFromDOS(teacherId); 
     if (!teacher) {
+        console.warn(`Teacher not found for ID: ${teacherId} in getTeacherAssessments.`);
         return [];
     }
 
@@ -254,37 +260,41 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
 
     const currentTermId = generalSettings.currentTermId;
     if (!currentTermId) {
+        console.warn("No current term ID set in general settings for getTeacherAssessments.");
         return []; 
     }
 
     const currentTermExams = allExams.filter(exam => exam.termId === currentTermId);
     if (currentTermExams.length === 0) {
+        console.warn(`No exams found for current term ID: ${currentTermId} in getTeacherAssessments.`);
         return [];
     }
 
     const assessments: Array<{id: string, name: string, maxMarks: number}> = [];
-    const teacherAssignments = new Set<string>(); 
+    const teacherAssignmentsSet = new Set<string>(); // Use a Set to store unique "classId-subjectId" strings
 
+    // Add assignments where the teacher is a class teacher
     allClasses.forEach(cls => {
         if (cls.classTeacherId === teacherId && Array.isArray(cls.subjects)) {
             cls.subjects.forEach(subj => {
-                teacherAssignments.add(`${cls.id}-${subj.id}`);
+                teacherAssignmentsSet.add(`${cls.id}-${subj.id}`);
             });
         }
     });
 
+    // Add specific subject assignments
     if (teacher.subjectsAssigned && Array.isArray(teacher.subjectsAssigned)) {
         teacher.subjectsAssigned.forEach(assignment => {
             if (assignment.classId && assignment.subjectId) {
-                 teacherAssignments.add(`${assignment.classId}-${assignment.subjectId}`);
+                 teacherAssignmentsSet.add(`${assignment.classId}-${assignment.subjectId}`);
             }
         });
     }
     
-    teacherAssignments.forEach(assignmentKey => {
+    teacherAssignmentsSet.forEach(assignmentKey => {
         const [classId, subjectId] = assignmentKey.split('-');
         const cls = allClasses.find(c => c.id === classId);
-        let subj = allSubjectsGlobal.find(s => s.id === subjectId);
+        const subj = allSubjectsGlobal.find(s => s.id === subjectId);
 
         if (cls && subj) {
             currentTermExams.forEach(exam => {
@@ -306,29 +316,39 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
 }
 
 export async function getTeacherDashboardData(teacherId: string): Promise<TeacherDashboardData> {
-  const defaultErrorResponse: TeacherDashboardData = {
+  const defaultResponse: TeacherDashboardData = {
     assignments: [],
     notifications: [],
     teacherName: undefined,
-    resourcesText: "Could not load resources due to an error. Please contact support."
+    resourcesText: "Default resources text: Please refer to the school guidelines for teaching materials and policies."
   };
 
   if (!db) {
-    console.error("CRITICAL_ERROR_DB_NULL: Firestore db object is null in getTeacherDashboardData. Dashboard will not load. Check Firebase config.");
+    console.error("CRITICAL_ERROR_DB_NULL: Firestore db object is null in getTeacherDashboardData.");
     return {
-      ...defaultErrorResponse,
-      notifications: [{ id: 'critical_error_db_null', message: "Critical Error: Database connection failed. Dashboard data cannot be loaded. Please contact an administrator.", type: 'warning' }],
+      ...defaultResponse,
+      notifications: [{ id: 'critical_error_db_null', message: "Critical Error: Database connection failed. Dashboard data cannot be loaded.", type: 'warning' }],
     };
   }
 
+  if (!teacherId) {
+    console.warn("getTeacherDashboardData called without teacherId.");
+    return {
+      ...defaultResponse,
+      notifications: [{ id: 'error_no_teacher_id', message: "Teacher ID not provided. Cannot load dashboard.", type: 'warning' }],
+    };
+  }
+  
   try {
     const teacherDocument = await getTeacherByIdFromDOS(teacherId); 
     
     if (!teacherDocument) {
+      // Removed console.warn here as per previous request to reduce log noise for this specific case.
+      // The dashboard page will handle displaying an appropriate message based on this return.
       return {
-        ...defaultErrorResponse,
-        notifications: [{ id: 'error_teacher_not_found', message: `Teacher record not found for ID: ${teacherId}. Dashboard may not display correctly.`, type: 'warning' }],
-        teacherName: undefined, // Explicitly set as undefined
+        ...defaultResponse,
+        notifications: [{ id: 'error_teacher_not_found', message: `Teacher record not found for ID: ${teacherId}.`, type: 'warning' }],
+        teacherName: undefined,
       };
     }
 
@@ -343,12 +363,12 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     const assignmentsMap = new Map<string, TeacherDashboardAssignment>();
     const notifications: TeacherNotification[] = [];
     const teacherName = teacherDocument.name; 
-    const resourcesText = generalSettings.teacherDashboardResourcesText;
+    const resourcesText = generalSettings.teacherDashboardResourcesText || defaultResponse.resourcesText;
 
     const currentTermId = generalSettings.currentTermId;
     const currentTerm = currentTermId ? allTerms.find(t => t.id === currentTermId) : null;
     
-    let deadlineText = "No specific deadline set";
+    let deadlineText = "Not set";
     if (generalSettings.globalMarksSubmissionDeadline) {
       deadlineText = `Global: ${new Date(generalSettings.globalMarksSubmissionDeadline).toLocaleDateString()}`;
     } else if (currentTerm?.endDate) {
@@ -358,10 +378,11 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     const currentTermExams = currentTermId ? allExams.filter(exam => exam.termId === currentTermId) : [];
 
     if (currentTermId && currentTermExams.length > 0) {
+      // Assignments where the teacher is a class teacher
       allClasses.forEach(cls => {
         if (cls.classTeacherId === teacherDocument.id && Array.isArray(cls.subjects)) {
           cls.subjects.forEach(subj => {
-            const assignmentId = `${cls.id}-${subj.id}`;
+            const assignmentId = `${cls.id}-${subj.id}`; // Unique key for class-subject pair
             if (!assignmentsMap.has(assignmentId)) {
               assignmentsMap.set(assignmentId, {
                 id: assignmentId,
@@ -374,6 +395,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
         }
       });
 
+      // Explicit subject assignments from teacher document
       if (Array.isArray(teacherDocument.subjectsAssigned)) {
         for (const assigned of teacherDocument.subjectsAssigned) {
           const cls = allClasses.find(c => c.id === assigned.classId);
@@ -395,11 +417,9 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     }
     
     const assignments = Array.from(assignmentsMap.values()).sort((a, b) => {
-      if (a.className < b.className) return -1;
-      if (a.className > b.className) return 1;
-      if (a.subjectName < b.subjectName) return -1;
-      if (a.subjectName > b.subjectName) return 1;
-      return 0;
+      const classCompare = a.className.localeCompare(b.className);
+      if (classCompare !== 0) return classCompare;
+      return a.subjectName.localeCompare(b.subjectName);
     });
 
     if (generalSettings.dosGlobalAnnouncementText) {
@@ -438,7 +458,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       }
     }
     
-    if (assignments.length === 0 && (!currentTermId || currentTermExams.length === 0)) {
+    if (assignments.length === 0) {
       let noAssignmentMessage = 'No teaching assignments found for the current term.';
       if (!currentTermId) {
         noAssignmentMessage = 'No current academic term is set by the D.O.S. Assignments cannot be determined.';
@@ -457,12 +477,11 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while processing dashboard data.";
     console.error(`ERROR_IN_GET_TEACHER_DASHBOARD_DATA for teacher ${teacherId}:`, error);
-    const existingTeacherDoc = await getTeacherByIdFromDOS(teacherId); // Attempt to get name even on error
+    const existingTeacherDoc = await getTeacherByIdFromDOS(teacherId); 
     return {
-      ...defaultErrorResponse,
+      ...defaultResponse,
       notifications: [{ id: 'processing_error_dashboard', message: `Error processing dashboard data: ${errorMessage}`, type: 'warning' }],
       teacherName: existingTeacherDoc?.name || undefined, 
     };
   }
 }
-

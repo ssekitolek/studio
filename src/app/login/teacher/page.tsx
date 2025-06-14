@@ -26,7 +26,7 @@ export default function TeacherLoginPage() {
 
     try {
       const result = await loginTeacherByEmailPassword(email, password);
-      if (result.success && result.teacher) {
+      if (result.success && result.teacher && result.teacher.id && result.teacher.name) {
         const teacherIdParam = encodeURIComponent(result.teacher.id);
         const teacherNameParam = encodeURIComponent(result.teacher.name);
         router.push(`/teacher/dashboard?teacherId=${teacherIdParam}&teacherName=${teacherNameParam}`);

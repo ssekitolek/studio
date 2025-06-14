@@ -56,7 +56,7 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
   ];
 
   const isItemActive = (href: string) => {
-    const baseHref = href.split('?')[0]; // Compare only base path, ignore query params for active state
+    const baseHref = href.split('?')[0]; 
     return pathname === baseHref || (baseHref !== "/teacher/dashboard" && pathname.startsWith(baseHref));
   };
 
@@ -64,7 +64,7 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
     <Sidebar collapsible="icon" side="left" variant="sidebar" className="border-r">
       <SidebarHeader className="flex items-center justify-between p-2 h-16">
         {state === 'expanded' && (
-          <Link href={`/teacher/dashboard?teacherId=${encodeURIComponent(teacherIdParam)}&teacherName=${encodeURIComponent(teacherNameParam)}`}>
+          <Link href={`/teacher/dashboard?teacherId=${encodeURIComponent(teacherIdParam)}&teacherName=${encodeURIComponent(teacherNameParam)}`} className="ml-2">
             <span className="text-lg font-headline font-semibold text-sidebar-foreground">
               Grade<span className="text-sidebar-primary">Central</span> <span className="text-xs text-sidebar-foreground/70">Teacher</span>
             </span>
