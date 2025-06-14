@@ -18,7 +18,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DatePicker } from "@/components/ui/date-picker"; // Import DatePicker
+import { DatePicker } from "@/components/ui/date-picker";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Added imports
 import { useToast } from "@/hooks/use-toast";
 import { createExam, getTerms, updateExam, getClasses, getSubjects, getTeachers } from "@/lib/actions/dos-actions";
 import type { Term, Exam, ClassInfo, Subject, Teacher } from "@/lib/types";
@@ -37,7 +38,10 @@ const examTypeFormSchema = z.object({
   teacherId: z.string().optional(),
   marksSubmissionDeadline: z.date().optional(),
 }).refine(data => {
-  if (data.classId && !data.subjectId) return false; // If class is selected, subject must be selected
+  // If classId is selected (and not the EMPTY_OPTION_VALUE) and subjectId is not selected (or is EMPTY_OPTION_VALUE), then it's an error.
+  if (data.classId && data.classId !== EMPTY_OPTION_VALUE && (!data.subjectId || data.subjectId === EMPTY_OPTION_VALUE)) {
+    return false;
+  }
   return true;
 }, {
   message: "If a class is assigned, a subject must also be assigned.",
