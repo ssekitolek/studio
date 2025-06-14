@@ -325,8 +325,6 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     const teacherDocument = await getTeacherByIdFromDOS(teacherId); 
     
     if (!teacherDocument) {
-      // Removed console.warn here as per previous request for this specific case.
-      // The UI will still get a notification.
       return {
         ...defaultErrorResponse,
         notifications: [{ id: 'error_teacher_not_found', message: `Teacher record not found for ID: ${teacherId}. Dashboard may not display correctly.`, type: 'warning' }],
@@ -467,3 +465,4 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     };
   }
 }
+
