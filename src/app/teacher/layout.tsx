@@ -6,18 +6,16 @@ import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic'; // Ensure dynamic rendering
 
-// Directly define the expected props structure for the layout
-interface TeacherLayoutProps {
+// Define a more standard LayoutProps interface
+interface LayoutProps {
   children: React.ReactNode;
-  searchParams?: { [key: string]: string | string[] | undefined };
+  params: { [key: string]: string | string[] | undefined }; // Standard prop, though not directly used for teacherId/Name here
+  searchParams: { [key: string]: string | string[] | undefined }; // This should contain URL query parameters
 }
 
-export default function TeacherLayout({
-  children,
-  searchParams, // Destructure searchParams directly
-}: TeacherLayoutProps) {
-
-  console.log('[TeacherLayout] Received searchParams:', JSON.stringify(searchParams, null, 2));
+export default function TeacherLayout({ children, searchParams }: LayoutProps) {
+  // Log the received searchParams object itself more clearly
+  console.log('[TeacherLayout] Entry. Received searchParams:', searchParams === undefined ? "undefined" : JSON.stringify(searchParams, null, 2));
 
   const teacherId = searchParams?.teacherId as string | undefined;
   let teacherName = "Teacher"; // Default value
@@ -26,19 +24,25 @@ export default function TeacherLayout({
     try {
       teacherName = decodeURIComponent(searchParams.teacherName as string);
     } catch (e) {
-      console.warn(`[TeacherLayout] Failed to decode teacherName: "${searchParams.teacherName}". Using default. Error: ${e}`);
+      console.warn(`[TeacherLayout] WARN: Failed to decode teacherName: "${searchParams.teacherName}". Using default. Error: ${e}`);
       // teacherName remains "Teacher"
     }
   } else {
-    console.warn('[TeacherLayout] teacherName is missing from searchParams. Using default name "Teacher".');
+    // Only warn if searchParams itself is defined but teacherName is missing
+    if (searchParams !== undefined) {
+        console.warn('[TeacherLayout] WARN: teacherName is missing from searchParams, using default. SearchParams received:', JSON.stringify(searchParams, null, 2));
+    } else {
+        // This case is handled by the teacherId check below
+    }
   }
 
   if (!teacherId) {
-    console.warn(`[TeacherLayout] teacherId is missing from searchParams. Redirecting to /login/teacher. Current searchParams object: ${JSON.stringify(searchParams, null, 2)}`);
+    // This is the critical check. If searchParams is undefined, teacherId will be undefined.
+    console.error(`[TeacherLayout] CRITICAL_ERROR: teacherId is missing. Redirecting to /login/teacher. searchParams object was: ${searchParams === undefined ? "undefined" : JSON.stringify(searchParams, null, 2)}`);
     redirect('/login/teacher');
   }
 
-  console.log(`[TeacherLayout] Proceeding with teacherId: ${teacherId}, teacherName: ${teacherName}`);
+  console.log(`[TeacherLayout] INFO: Proceeding with teacherId: "${teacherId}", teacherName: "${teacherName}"`);
 
   return (
     <SidebarProvider defaultOpen={true}>
