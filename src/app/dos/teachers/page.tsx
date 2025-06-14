@@ -107,12 +107,12 @@ export default async function ManageTeachersPage() {
                       <TableCell>
                         {displayedAssignments.length > 0 ? (
                           <ul className="list-disc list-inside text-sm">
-                            {displayedAssignments.slice(0, 2).map(assignment => (
+                            {displayedAssignments.slice(0, 3).map(assignment => (
                               <li key={`${assignment.classId}-${assignment.subjectId}`}>
                                 {assignment.subjectName} ({assignment.className})
                               </li>
                             ))}
-                            {displayedAssignments.length > 2 && <li>...and {displayedAssignments.length - 2} more</li>}
+                            {displayedAssignments.length > 3 && <li>...and {displayedAssignments.length - 3} more</li>}
                           </ul>
                         ) : (
                           <span className="text-muted-foreground italic">No assignments</span>
