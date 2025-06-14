@@ -6,17 +6,18 @@ import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic'; // Ensure dynamic rendering
 
+// Directly define the expected props structure for the layout
 interface TeacherLayoutProps {
   children: React.ReactNode;
-  // searchParams should be automatically provided by Next.js
   searchParams?: { [key: string]: string | string[] | undefined };
 }
 
-export default function TeacherLayout(props: TeacherLayoutProps) {
-  const { children, searchParams } = props;
+export default function TeacherLayout({
+  children,
+  searchParams, // Destructure searchParams directly
+}: TeacherLayoutProps) {
 
-  // Log the received searchParams object itself
-  console.log('[TeacherLayout] Received props.searchParams:', JSON.stringify(searchParams, null, 2));
+  console.log('[TeacherLayout] Received searchParams:', JSON.stringify(searchParams, null, 2));
 
   const teacherId = searchParams?.teacherId as string | undefined;
   let teacherName = "Teacher"; // Default value
