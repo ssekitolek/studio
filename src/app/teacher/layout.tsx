@@ -4,7 +4,7 @@ import { TeacherSidebar } from "@/components/layout/TeacherSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { redirect } from 'next/navigation';
 
-export const dynamic = 'force-dynamic'; // Ensure dynamic rendering
+export const dynamic = 'force-dynamic';
 
 interface LayoutProps {
   children: React.ReactNode;
