@@ -4,12 +4,19 @@ import { TeacherSidebar } from "@/components/layout/TeacherSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { redirect } from 'next/navigation';
 
-// Interface for the layout props, explicitly including children, params, and searchParams
+// interface LayoutProps {
+//   children: React.ReactNode;
+//   params: { [key: string]: string | string[] | undefined };
+//   searchParams?: { [key: string]: string | string[] | undefined };
+// }
+
+// Use the more general props signature often seen in Next.js docs for pages/layouts
 interface LayoutProps {
   children: React.ReactNode;
-  params: { [key: string]: string | string[] | undefined };
-  searchParams?: { [key: string]: string | string[] | undefined }; // Optional as it might be undefined
+  params: Record<string, string | string[] | undefined>;
+  searchParams?: Record<string, string | string[] | undefined>;
 }
+
 
 export default function TeacherLayout({ children, params, searchParams }: LayoutProps) {
   // Log the received objects clearly
