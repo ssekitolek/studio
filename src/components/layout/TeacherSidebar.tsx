@@ -47,12 +47,12 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
       icon: History, 
       tooltip: "View past mark submissions" 
     },
-    // { 
-    //   href: `/teacher/profile?teacherId=${encodeURIComponent(teacherIdParam)}&teacherName=${encodeURIComponent(teacherNameParam)}`, 
-    //   label: "My Profile", 
-    //   icon: UserCircle, 
-    //   tooltip: "View your profile" 
-    // },
+    { 
+      href: `/teacher/profile?teacherId=${encodeURIComponent(teacherIdParam)}&teacherName=${encodeURIComponent(teacherNameParam)}`, 
+      label: "My Profile", 
+      icon: UserCircle, 
+      tooltip: "View your profile" 
+    },
   ];
 
   const isItemActive = (href: string) => {
@@ -107,3 +107,4 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
     </Sidebar>
   );
 }
+
