@@ -39,7 +39,7 @@ export default function TeacherLayout({ children, params, searchParams }: Layout
 
   if (!teacherId) {
     // This is the critical check. If searchParams is undefined, teacherId will be undefined.
-    console.error(`[TeacherLayout] CRITICAL_ERROR: teacherId is missing. Redirecting to /login/teacher. searchParams object was: ${searchParams === undefined ? "undefined" : JSON.stringify(searchParams, null, 2)}`);
+    console.error(`[TeacherLayout] DIAGNOSTIC: Critical state detected - teacherId is missing due to 'searchParams' being undefined. Initiating redirect to /login/teacher. Details: searchParams object received as: ${searchParams === undefined ? "undefined" : JSON.stringify(searchParams, null, 2)}`);
     redirect('/login/teacher');
   }
 
@@ -62,3 +62,4 @@ export default function TeacherLayout({ children, params, searchParams }: Layout
     </SidebarProvider>
   );
 }
+
