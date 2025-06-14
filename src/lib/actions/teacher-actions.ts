@@ -650,11 +650,18 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while processing dashboard data.";
     console.error(`[LOG] getTeacherDashboardData ERROR for teacher ${teacherId}:`, error);
-    const existingTeacherDoc = await getTeacherByIdFromDOS(teacherId); 
+    let teacherNameOnError: string | undefined = undefined;
+    try {
+      // Best effort to get teacher name, but don't let this fail the error handling.
+      const existingTeacherDoc = await getTeacherByIdFromDOS(teacherId);
+      teacherNameOnError = existingTeacherDoc?.name;
+    } catch (nestedError) {
+      console.error(`[LOG] getTeacherDashboardData: Nested error while trying to get teacher name during error handling:`, nestedError);
+    }
     return {
       ...defaultResponse,
       notifications: [{ id: 'processing_error_dashboard', message: `Error processing dashboard data: ${errorMessage}`, type: 'warning' }],
-      teacherName: existingTeacherDoc?.name || undefined, 
+      teacherName: teacherNameOnError, // Use the fetched name or undefined
     };
   }
 }
