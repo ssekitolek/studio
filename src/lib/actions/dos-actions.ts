@@ -138,20 +138,20 @@ export async function updateTeacherAssignments(
   if (!db) {
     return { success: false, message: "Firestore is not initialized." };
   }
+  console.log(`[DOS Action - updateTeacherAssignments] Teacher ID: ${teacherId}, Received specificSubjectAssignments:`, JSON.stringify(data.specificSubjectAssignments, null, 2));
+  
+  const validSpecificAssignments = Array.isArray(data.specificSubjectAssignments)
+  ? data.specificSubjectAssignments.filter(
+      (assignment) =>
+        assignment &&
+        typeof assignment.classId === 'string' &&
+        assignment.classId.trim() !== '' &&
+        typeof assignment.subjectId === 'string' &&
+        assignment.subjectId.trim() !== ''
+    )
+  : [];
+
   try {
-    console.log(`[DOS Action - updateTeacherAssignments] Teacher ID: ${teacherId}, Received specificSubjectAssignments:`, JSON.stringify(data.specificSubjectAssignments, null, 2));
-
-    const validSpecificAssignments = Array.isArray(data.specificSubjectAssignments)
-      ? data.specificSubjectAssignments.filter(
-          (assignment) =>
-            assignment &&
-            typeof assignment.classId === 'string' &&
-            assignment.classId.trim() !== '' &&
-            typeof assignment.subjectId === 'string' &&
-            assignment.subjectId.trim() !== ''
-        )
-      : [];
-
     await runTransaction(db, async (transaction) => {
       const teacherRef = doc(db, "teachers", teacherId);
       const teacherSnap = await transaction.get(teacherRef);
@@ -161,20 +161,30 @@ export async function updateTeacherAssignments(
 
       transaction.update(teacherRef, { subjectsAssigned: validSpecificAssignments });
 
-      const classesCol = collection(db, "classes");
+      const classesColRef = collection(db, "classes");
       
-      const previousAssignmentsQuery = query(classesCol, where("classTeacherId", "==", teacherId));
-      const previousAssignmentsSnapshot = await getDocs(previousAssignmentsQuery); // Use getDocs directly in transaction for reads
-      
-      for (const classDoc of previousAssignmentsSnapshot.docs) {
-        if (!data.classTeacherForClassIds.includes(classDoc.id)) {
+      // Get all classes to check current assignments
+      const allClassDocs = await getDocs(classesColRef); // Read outside transaction for this pattern, or pass refs
+
+      for (const classDoc of allClassDocs.docs) {
+        const classData = classDoc.data();
+        const currentClassTeacherId = classData.classTeacherId;
+
+        // If this class was previously assigned to the current teacher, but no longer is
+        if (currentClassTeacherId === teacherId && !data.classTeacherForClassIds.includes(classDoc.id)) {
           transaction.update(classDoc.ref, { classTeacherId: null });
         }
-      }
-      
-      for (const classId of data.classTeacherForClassIds) {
-        const classRef = doc(db, "classes", classId);
-        transaction.update(classRef, { classTeacherId: teacherId });
+        // If this class IS NOW assigned to the current teacher
+        else if (data.classTeacherForClassIds.includes(classDoc.id) && currentClassTeacherId !== teacherId) {
+          // If another teacher was previously assigned, unassign them first (optional, depends on business logic)
+          if (currentClassTeacherId && currentClassTeacherId !== teacherId) {
+            // This part is tricky in a single transaction if you don't know the other teacher.
+            // For simplicity, direct assignment is often preferred.
+            // Or, this step can be handled by ensuring only one teacher can be assigned at a time.
+            // The current D.O.S. form doesn't directly unassign others, it just assigns the selected one.
+          }
+          transaction.update(classDoc.ref, { classTeacherId: teacherId });
+        }
       }
     });
 
@@ -1095,15 +1105,15 @@ export async function getExams(): Promise<Exam[]> {
 
 export async function getGeneralSettings(): Promise<GeneralSettings> {
   if (!db) {
-    console.error("Firestore is not initialized. Check Firebase configuration.");
+    console.error("Firestore is not initialized. Check Firebase configuration. Returning placeholder settings.");
      return {
         defaultGradingScale: [{ grade: 'N/A', minScore: 0, maxScore: 0 }],
         markSubmissionTimeZone: 'UTC',
         currentTermId: undefined,
         globalMarksSubmissionDeadline: undefined,
-        dosGlobalAnnouncementText: undefined,
-        dosGlobalAnnouncementType: undefined,
-        teacherDashboardResourcesText: undefined, 
+        dosGlobalAnnouncementText: "Error: System settings could not be loaded. DB uninitialized.",
+        dosGlobalAnnouncementType: "warning",
+        teacherDashboardResourcesText: "Error: Resources text could not be loaded. DB uninitialized.", 
     };
   }
     try {
@@ -1113,6 +1123,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
         if (settingsSnap.exists()) {
             const data = settingsSnap.data();
             const defaultGradingScale = Array.isArray(data.defaultGradingScale) ? data.defaultGradingScale : [];
+            console.log("[DOS Action - getGeneralSettings] Successfully fetched 'settings/general' document.");
             return {
                 currentTermId: data.currentTermId === null ? undefined : data.currentTermId,
                 defaultGradingScale,
@@ -1123,25 +1134,26 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
                 teacherDashboardResourcesText: data.teacherDashboardResourcesText === null ? undefined : data.teacherDashboardResourcesText, 
             } as GeneralSettings;
         }
+        console.warn("[DOS Action - getGeneralSettings] 'settings/general' document does not exist. Returning default template settings.");
         return {
             defaultGradingScale: [{ grade: 'A', minScore: 80, maxScore: 100 }, { grade: 'B', minScore: 70, maxScore: 79 }],
             markSubmissionTimeZone: 'UTC',
             currentTermId: undefined,
             globalMarksSubmissionDeadline: undefined,
-            dosGlobalAnnouncementText: "Welcome to GradeCentral! Please ensure all marks are submitted on time.",
+            dosGlobalAnnouncementText: "Welcome to GradeCentral! Please configure system settings via the D.O.S. portal.",
             dosGlobalAnnouncementType: "info",
             teacherDashboardResourcesText: "Access your teaching schedule, submit student marks, and view historical submission data using the sidebar navigation. Stay updated with notifications from the D.O.S. and ensure timely submission of grades. If you encounter any issues, please contact the administration.", 
         };
     } catch (error) {
-        console.error("Error fetching general settings:", error);
+        console.error("[DOS Action - getGeneralSettings] Error fetching general settings:", error);
         return { 
             defaultGradingScale: [], 
             markSubmissionTimeZone: 'UTC', 
             currentTermId: undefined,
             globalMarksSubmissionDeadline: undefined,
-            dosGlobalAnnouncementText: "Error fetching announcements.",
+            dosGlobalAnnouncementText: "Error fetching announcements due to a server error.",
             dosGlobalAnnouncementType: "warning",
-            teacherDashboardResourcesText: "Could not load teacher resources text. Please contact support.", 
+            teacherDashboardResourcesText: "Could not load teacher resources text due to a server error. Please contact support.", 
         };
     }
 }

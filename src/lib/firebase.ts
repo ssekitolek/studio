@@ -76,6 +76,7 @@ if (db === null) {
     }
 } else {
     console.log(`Firebase and Firestore (db) initialized successfully. Project ID: ${firebaseConfigValues.projectId || 'NOT_CONFIGURED_CORRECTLY'}`);
+    console.info("APP_INFO: For full functionality, ensure your Firestore database contains the 'markSubmissions' collection and a 'settings' collection with a 'general' document.");
 }
 
 
