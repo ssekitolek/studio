@@ -76,15 +76,19 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
 
 export async function submitMarks(teacherId: string, data: MarksSubmissionData): Promise<{ success: boolean; message: string; anomalies?: GradeAnomalyDetectionOutput }> {
   if (!db) {
-    console.error("CRITICAL: Firestore database (db) is not initialized in submitMarks.");
-    return { success: false, message: "Database service not available." };
+    console.error("CRITICAL_ERROR_DB_NULL: Firestore database (db) is not initialized in submitMarks.");
+    return { success: false, message: "Database service not available. Marks could not be saved." };
   }
   if (!teacherId) {
-    return { success: false, message: "Teacher ID is missing." };
+    console.error("SUBMIT_MARKS_ERROR: Teacher ID is missing.");
+    return { success: false, message: "Teacher ID is missing. Marks could not be saved." };
   }
   if (!data.assessmentId || !data.marks) {
-    return { success: false, message: "Invalid submission data. Assessment ID and marks are required." };
+    console.error("SUBMIT_MARKS_ERROR: Invalid submission data. Assessment ID and marks are required.");
+    return { success: false, message: "Invalid submission data. Assessment ID and marks are required. Marks could not be saved." };
   }
+
+  console.log(`[Teacher Action - submitMarks] Attempting to submit marks for teacherId: ${teacherId}, assessmentId: ${data.assessmentId}`);
 
   const gradeEntries: GradeEntry[] = data.marks.map(mark => ({
     studentId: mark.studentId,
@@ -96,7 +100,7 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
 
   if (gradeEntries.length > 0) {
     if (!assessmentDetails.subjectName || !assessmentDetails.examName) {
-        console.error("Could not retrieve subject name or exam name for anomaly detection for assessmentId:", data.assessmentId);
+        console.error("SUBMIT_MARKS_WARNING: Could not retrieve subject name or exam name for anomaly detection for assessmentId:", data.assessmentId);
     } else {
         const anomalyInput: GradeAnomalyDetectionInput = {
           subject: assessmentDetails.subjectName,
@@ -108,7 +112,7 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
         try {
             anomalyResult = await gradeAnomalyDetection(anomalyInput);
         } catch (error) {
-            console.error("Error during anomaly detection:", error);
+            console.error("SUBMIT_MARKS_ERROR: Error during anomaly detection:", error);
             anomalyResult = { hasAnomalies: true, anomalies: [{studentId: "SYSTEM_ERROR", explanation: `Anomaly check failed: ${error instanceof Error ? error.message : String(error)}`}] };
         }
     }
@@ -120,27 +124,33 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
   
   const initialStatus: SubmissionHistoryItem['status'] = anomalyResult?.hasAnomalies ? "Pending Review (Anomaly Detected)" : "Accepted";
 
+  const submissionPayload = {
+    teacherId,
+    assessmentId: data.assessmentId,
+    assessmentName: assessmentDetails.name, 
+    dateSubmitted: Timestamp.now(), 
+    studentCount,
+    averageScore,
+    status: initialStatus,
+    submittedMarks: data.marks, // data.marks is already Array<{ studentId: string; score: number }>
+    anomalyExplanations: anomalyResult?.anomalies || [],
+  };
+
+  console.log("[Teacher Action - submitMarks] Payload to be saved to Firestore 'markSubmissions':", JSON.stringify(submissionPayload, null, 2));
+
   try {
     const markSubmissionsRef = collection(db, "markSubmissions");
-    await addDoc(markSubmissionsRef, {
-      teacherId,
-      assessmentId: data.assessmentId,
-      assessmentName: assessmentDetails.name, 
-      dateSubmitted: Timestamp.now(), 
-      studentCount,
-      averageScore,
-      status: initialStatus,
-      submittedMarks: data.marks,
-      anomalyExplanations: anomalyResult?.anomalies || [],
-    });
+    const docRef = await addDoc(markSubmissionsRef, submissionPayload);
+    console.log(`[Teacher Action - submitMarks] Marks successfully saved to Firestore. Document ID: ${docRef.id}`);
   } catch (error) {
-    console.error("Error saving mark submission to Firestore:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+    console.error("[Teacher Action - submitMarks] CRITICAL_ERROR_FIRESTORE_SAVE: Error saving mark submission to Firestore:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred while saving.";
     return { success: false, message: `Failed to save submission: ${errorMessage}` };
   }
 
   revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}`); 
   revalidatePath(`/teacher/marks/history?teacherId=${teacherId}`); 
+  revalidatePath(`/dos/marks-review`); // D.O.S. review page might need revalidation
   
   if (anomalyResult?.hasAnomalies) {
     return { success: true, message: "Marks submitted. Potential anomalies were detected and logged.", anomalies: anomalyResult };
@@ -174,6 +184,7 @@ async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName
 
     const assessmentName = `${cls?.name || 'Unknown Class'} - ${subject?.name || 'Unknown Subject'} - ${exam?.name || 'Unknown Exam'}`;
     
+    // Placeholder for actual historical average calculation if needed in future
     const historicalAverage = undefined; 
 
     return {
@@ -218,6 +229,12 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
             orderBy("dateSubmitted", "desc")
         );
         const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            console.log(`[Teacher Action - getSubmittedMarksHistory] No submission history found for teacherId: ${teacherId}`);
+            return [];
+        }
+
         const history: SubmissionHistoryItem[] = querySnapshot.docs.map(docSnap => {
             const data = docSnap.data();
             return {
@@ -271,9 +288,8 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
     }
 
     const assessments: Array<{id: string, name: string, maxMarks: number}> = [];
-    const teacherAssignmentsSet = new Set<string>(); // Use a Set to store unique "classId-subjectId" strings
+    const teacherAssignmentsSet = new Set<string>(); 
 
-    // Add assignments where the teacher is a class teacher
     allClasses.forEach(cls => {
         if (cls.classTeacherId === teacherId && Array.isArray(cls.subjects)) {
             cls.subjects.forEach(subj => {
@@ -282,7 +298,6 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
         }
     });
 
-    // Add specific subject assignments
     const specificAssignments = Array.isArray(teacher.subjectsAssigned) ? teacher.subjectsAssigned : [];
     specificAssignments.forEach(assignment => {
         if (assignment.classId && assignment.subjectId) {
@@ -331,7 +346,6 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
   }
 
   if (!teacherId) {
-    // console.warn("getTeacherDashboardData called without teacherId."); // Already handled by redirect in layout
     return {
       ...defaultResponse,
       notifications: [{ id: 'error_no_teacher_id', message: "Teacher ID not provided. Cannot load dashboard.", type: 'warning' }],
@@ -345,7 +359,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       return {
         ...defaultResponse,
         notifications: [{ id: 'error_teacher_not_found', message: `Teacher record not found for ID: ${teacherId}. Ensure this teacher exists in the database.`, type: 'warning' }],
-        teacherName: undefined, // Explicitly undefined
+        teacherName: undefined, 
       };
     }
 
@@ -375,11 +389,10 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     const currentTermExams = currentTermId ? allExams.filter(exam => exam.termId === currentTermId) : [];
 
     if (currentTermId && currentTermExams.length > 0) {
-      // Assignments where the teacher is a class teacher
       allClasses.forEach(cls => {
         if (cls.classTeacherId === teacherDocument.id && Array.isArray(cls.subjects)) {
           cls.subjects.forEach(subj => {
-            const assignmentId = `${cls.id}-${subj.id}`; // Unique key for class-subject pair
+            const assignmentId = `${cls.id}-${subj.id}`; 
             if (!assignmentsMap.has(assignmentId)) {
               assignmentsMap.set(assignmentId, {
                 id: assignmentId,
@@ -392,7 +405,6 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
         }
       });
 
-      // Explicit subject assignments from teacher document
       const specificAssignments = Array.isArray(teacherDocument.subjectsAssigned) ? teacherDocument.subjectsAssigned : [];
       for (const assigned of specificAssignments) {
         if (assigned.classId && assigned.subjectId) {
@@ -483,6 +495,4 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     };
   }
 }
-
-
     
