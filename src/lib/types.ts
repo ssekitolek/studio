@@ -129,10 +129,18 @@ export interface TeacherNotification {
   link?: string;
 }
 
+export interface TeacherStats {
+  assignedClassesCount: number;
+  subjectsTaughtCount: number;
+  recentSubmissionsCount: number;
+}
+
 export interface TeacherDashboardData {
   assignments: TeacherDashboardAssignment[];
   notifications: TeacherNotification[];
   teacherName?: string;
   resourcesText?: string; 
+  stats: TeacherStats; // Added stats
 }
+
 

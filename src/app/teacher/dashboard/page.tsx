@@ -6,33 +6,41 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { LayoutDashboard, BookOpenCheck, CalendarClock, Bell, ListChecks, AlertCircle, AlertTriangle, Info, Loader2 } from "lucide-react";
+import { LayoutDashboard, BookOpenCheck, CalendarClock, Bell, ListChecks, AlertCircle, AlertTriangle, Info, Loader2, BarChart3, BookCopy, CheckSquare } from "lucide-react";
 import Image from "next/image";
 import { getTeacherDashboardData } from "@/lib/actions/teacher-actions";
-import type { TeacherDashboardData, TeacherNotification } from "@/lib/types";
+import type { TeacherDashboardData, TeacherNotification, TeacherStats } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle as UIAlertTitle } from "@/components/ui/alert";
+import { StatCard } from "@/components/shared/StatCard";
 import { useSearchParams } from "next/navigation";
 
 export const dynamic = 'force-dynamic';
 
-const DEFAULT_FALLBACK_TEACHER_ID = "default-teacher-for-open-access"; // Used if teacherId is missing from params
-const DEFAULT_FALLBACK_TEACHER_NAME = "Teacher"; // Used if teacherName is missing or decoding fails
+const DEFAULT_FALLBACK_TEACHER_ID = "default-teacher-for-open-access"; 
+const DEFAULT_FALLBACK_TEACHER_NAME = "Teacher"; 
 
 export default function TeacherDashboardPage() {
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  
+  const defaultStats: TeacherStats = {
+    assignedClassesCount: 0,
+    subjectsTaughtCount: 0,
+    recentSubmissionsCount: 0,
+  };
+
   const [dashboardData, setDashboardData] = useState<TeacherDashboardData>({
     assignments: [],
     notifications: [],
     teacherName: DEFAULT_FALLBACK_TEACHER_NAME,
     resourcesText: "Loading resources...",
+    stats: defaultStats,
   });
 
   let teacherId: string;
   let teacherNameFromParams: string;
 
-  // Safely get teacherId and teacherName from searchParams
   try {
     const idFromParams = searchParams.get("teacherId");
     if (!idFromParams) {
@@ -70,29 +78,27 @@ export default function TeacherDashboardPage() {
         const data = await getTeacherDashboardData(teacherId);
         setDashboardData(data);
         if (data.teacherName === undefined && !data.notifications.some(n => n.id === 'error_teacher_not_found')) {
-          // This case implies teacher was not found by getTeacherDashboardData, but it didn't add a notification for it.
-          // This can happen if getTeacherByIdFromDOS itself returns null before getTeacherDashboardData can process.
           setFetchError(prev => prev ? `${prev} Teacher record could not be loaded.` : "Teacher record could not be loaded.");
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
         console.error(`[TeacherDashboardPage] CRITICAL_ERROR_FETCHING_DASHBOARD_DATA for teacher ${teacherId}:`, error);
         setFetchError(errorMessage);
-        // Ensure dashboardData is reset to a safe default state on critical fetch error
         setDashboardData({
             assignments: [],
             notifications: [{id: 'critical_fetch_error_page', message: `Failed to load dashboard: ${errorMessage}`, type: 'warning'}],
-            teacherName: teacherNameFromParams, // Use name from params as a fallback
-            resourcesText: "Could not load resources due to an error."
+            teacherName: teacherNameFromParams, 
+            resourcesText: "Could not load resources due to an error.",
+            stats: defaultStats,
         });
       } finally {
         setIsLoading(false);
       }
     }
     loadData();
-  }, [teacherId, teacherNameFromParams]); // Rerun if teacherId changes
+  }, [teacherId, teacherNameFromParams]); 
 
-  const { assignments, notifications, teacherName, resourcesText } = dashboardData;
+  const { assignments, notifications, teacherName, resourcesText, stats } = dashboardData;
   const displayTeacherName = teacherName || teacherNameFromParams;
 
 
@@ -105,11 +111,17 @@ export default function TeacherDashboardPage() {
     );
   }
 
+  const dashboardStats = [
+    { title: "Assigned Classes", value: stats.assignedClassesCount, icon: BookCopy, description: "Unique classes you manage." },
+    { title: "Subjects Taught", value: stats.subjectsTaughtCount, icon: ListChecks, description: "Unique subjects you teach." },
+    { title: "Recent Submissions", value: stats.recentSubmissionsCount, icon: CheckSquare, description: "Marks submitted in last 7 days." },
+  ];
+
   return (
     <div className="space-y-8">
       <PageHeader
         title="Teacher Dashboard"
-        description={`Welcome back, ${displayTeacherName}! Here's an overview of your tasks and classes.`}
+        description={`Welcome back, ${displayTeacherName}!`}
         icon={LayoutDashboard}
       />
 
@@ -123,7 +135,6 @@ export default function TeacherDashboardPage() {
         </Alert>
       )}
       
-      {/* Display specific notifications from dashboardData that might indicate data loading issues */}
       {notifications.filter(n => n.id.startsWith('critical_error_') || n.id.startsWith('error_') || n.id.startsWith('processing_error_')).map(notification => (
          <Alert variant="destructive" className="shadow-md" key={notification.id}>
             <AlertTriangle className="h-4 w-4" />
@@ -132,8 +143,28 @@ export default function TeacherDashboardPage() {
         </Alert>
       ))}
 
+      <Card className="shadow-md">
+        <CardHeader>
+          <CardTitle className="font-headline text-xl text-primary flex items-center">
+            <BarChart3 className="mr-2 h-6 w-6" /> Quick Stats
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-3">
+          {dashboardStats.map((stat) => (
+            <StatCard
+              key={stat.title}
+              title={stat.title}
+              value={stat.value}
+              icon={stat.icon}
+              description={stat.description}
+              className="shadow-sm hover:shadow-md transition-shadow border"
+            />
+          ))}
+        </CardContent>
+      </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 shadow-md hover:shadow-lg transition-shadow">
           <CardHeader>
             <CardTitle className="font-headline text-xl text-primary flex items-center">
@@ -147,7 +178,7 @@ export default function TeacherDashboardPage() {
                 <Card key={item.id} className="bg-secondary/50 p-4 rounded-lg">
                   <div className="flex justify-between items-center">
                     <div>
-                      <h3 className="font-semibold text-primary">{item.className || "N/A"} - {item.subjectName || "N/A"}</h3>
+                      <h3 className="font-semibold text-primary">{item.className} - {item.subjectName} - {item.examName}</h3>
                       <p className="text-sm text-muted-foreground">
                         <CalendarClock className="inline-block mr-1 h-4 w-4" />
                         Next Deadline: {item.nextDeadlineInfo || "Not set"}
@@ -234,3 +265,4 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
+
