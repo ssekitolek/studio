@@ -4,12 +4,11 @@ import { TeacherSidebar } from "@/components/layout/TeacherSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { redirect } from 'next/navigation';
 
-// REMOVED: export const dynamic = 'force-dynamic';
-
+// Interface for the layout props, explicitly including children, params, and searchParams
 interface LayoutProps {
   children: React.ReactNode;
   params: { [key: string]: string | string[] | undefined };
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams?: { [key: string]: string | string[] | undefined }; // Optional as it might be undefined
 }
 
 export default function TeacherLayout({ children, params, searchParams }: LayoutProps) {
@@ -30,10 +29,9 @@ export default function TeacherLayout({ children, params, searchParams }: Layout
   } else {
     // Log warning if searchParams is defined but teacherName is missing,
     // or if searchParams is undefined entirely (which implies teacherName is also missing)
-    if (searchParams !== undefined) {
+    if (searchParams !== undefined) { // searchParams object exists but no teacherName
         console.warn(`[TeacherLayout] WARN: teacherName is missing from searchParams (but searchParams object exists). Using default name "Teacher". SearchParams received: ${JSON.stringify(searchParams, null, 2)}`);
-    } else {
-        // This case is covered by the teacherId check mostly, but good to be explicit
+    } else { // searchParams object itself is undefined
         console.warn('[TeacherLayout] WARN: searchParams object is undefined, so teacherName is also missing. Using default name "Teacher".');
     }
   }
