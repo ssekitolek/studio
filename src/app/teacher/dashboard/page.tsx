@@ -46,7 +46,7 @@ export default function TeacherDashboardPage() {
     if (!idFromParams) {
       console.warn("[TeacherDashboardPage] teacherId is missing from searchParams. Using fallback.");
       teacherId = DEFAULT_FALLBACK_TEACHER_ID;
-      if(!fetchError) setFetchError("Teacher ID not found in URL. Displaying default data if possible.");
+      if(!fetchError && !isLoading) setFetchError("Teacher ID not found in URL. Displaying default data if possible.");
     } else {
       teacherId = idFromParams;
     }
@@ -66,19 +66,34 @@ export default function TeacherDashboardPage() {
     console.error("[TeacherDashboardPage] Error accessing searchParams:", e);
     teacherId = DEFAULT_FALLBACK_TEACHER_ID;
     teacherNameFromParams = DEFAULT_FALLBACK_TEACHER_NAME;
-    if(!fetchError) setFetchError("Error reading URL parameters. Displaying default data if possible.");
+    if(!fetchError && !isLoading) setFetchError("Error reading URL parameters. Displaying default data if possible.");
   }
 
 
   useEffect(() => {
     setIsLoading(true);
-    setFetchError(null);
+    setFetchError(null); // Reset fetch error on new load
     async function loadData() {
+      if (teacherId === DEFAULT_FALLBACK_TEACHER_ID) {
+        console.warn("[TeacherDashboardPage] loadData: teacherId is fallback. Not fetching real data.");
+        setFetchError("Teacher ID is missing or invalid. Cannot load dashboard data.");
+        setDashboardData(prev => ({
+          ...prev,
+          teacherName: teacherNameFromParams, // Use param name if available
+          notifications: [{id: 'error_fallback_id', message: "Your dashboard cannot be loaded because of an ID issue. Please log in again.", type: 'warning'}],
+          resourcesText: "Resources cannot be loaded due to an ID issue.",
+          stats: defaultStats,
+        }));
+        setIsLoading(false);
+        return;
+      }
+
       try {
         const data = await getTeacherDashboardData(teacherId);
         setDashboardData(data);
+        // Further refine error check: if teacherName from data is still undefined BUT there wasn't a specific 'teacher_not_found' notification, it implies a more general issue.
         if (data.teacherName === undefined && !data.notifications.some(n => n.id === 'error_teacher_not_found')) {
-          setFetchError(prev => prev ? `${prev} Teacher record could not be loaded.` : "Teacher record could not be loaded.");
+          setFetchError(prev => prev ? `${prev} Teacher record could not be loaded, or data is incomplete.` : "Teacher record could not be loaded, or data is incomplete.");
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
@@ -130,12 +145,12 @@ export default function TeacherDashboardPage() {
             <AlertTriangle className="h-4 w-4" />
             <UIAlertTitle>Dashboard Loading Issue</UIAlertTitle>
             <AlertDescription>
-                {fetchError} Some information may be missing or outdated.
+                {fetchError} Some information may be missing or outdated. Please try refreshing, or log out and log in again.
             </AlertDescription>
         </Alert>
       )}
       
-      {notifications.filter(n => n.id.startsWith('critical_error_') || n.id.startsWith('error_') || n.id.startsWith('processing_error_')).map(notification => (
+      {notifications.filter(n => n.id.startsWith('critical_error_') || n.id.startsWith('error_') || n.id.startsWith('processing_error_') || n.id.startsWith('error_fallback_id')).map(notification => (
          <Alert variant="destructive" className="shadow-md" key={notification.id}>
             <AlertTriangle className="h-4 w-4" />
             <UIAlertTitle>Important Alert</UIAlertTitle>
@@ -168,9 +183,9 @@ export default function TeacherDashboardPage() {
         <Card className="lg:col-span-2 shadow-md hover:shadow-lg transition-shadow">
           <CardHeader>
             <CardTitle className="font-headline text-xl text-primary flex items-center">
-              <ListChecks className="mr-2 h-6 w-6" /> Assigned Classes & Subjects
+              <ListChecks className="mr-2 h-6 w-6" /> Assigned Classes & Subjects for Assessment
             </CardTitle>
-            <CardDescription>Your current teaching assignments and upcoming deadlines.</CardDescription>
+            <CardDescription>Your current teaching assignments and upcoming deadlines for the active term.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {assignments && assignments.length > 0 ? (
@@ -195,7 +210,7 @@ export default function TeacherDashboardPage() {
             ) : (
               <div className="text-center py-6 text-muted-foreground">
                 <Info className="mx-auto h-8 w-8 mb-2" />
-                <p>No classes or subjects are currently assigned to you for the active term, or data could not be loaded.</p>
+                <p>No classes or subjects are currently assigned to you for assessment in the active term, or data could not be loaded.</p>
                 <p className="text-xs mt-1">If you believe this is an error, please contact the D.O.S. office.</p>
               </div>
             )}
@@ -210,8 +225,8 @@ export default function TeacherDashboardPage() {
             <CardDescription>Important updates and reminders.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 max-h-96 overflow-y-auto">
-            {notifications && notifications.filter(n => !n.id.startsWith('critical_error_') && !n.id.startsWith('error_') && !n.id.startsWith('processing_error_')).length > 0 ? (
-              notifications.filter(n => !n.id.startsWith('critical_error_') && !n.id.startsWith('error_') && !n.id.startsWith('processing_error_')).map((notification) => (
+            {notifications && notifications.filter(n => !n.id.startsWith('critical_error_') && !n.id.startsWith('error_') && !n.id.startsWith('processing_error_') && !n.id.startsWith('error_fallback_id')).length > 0 ? (
+              notifications.filter(n => !n.id.startsWith('critical_error_') && !n.id.startsWith('error_') && !n.id.startsWith('processing_error_') && !n.id.startsWith('error_fallback_id')).map((notification) => (
                 <div
                   key={notification.id}
                   className={`flex items-start p-3 rounded-lg ${
@@ -265,4 +280,3 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
-

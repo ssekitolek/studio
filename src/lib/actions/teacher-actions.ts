@@ -259,166 +259,165 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
     }
 }
 
+// This is the core logic for determining a teacher's responsibilities
 async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<Map<string, { classObj: ClassInfo; subjectObj: SubjectType; examObj: ExamTypeFirebase }>> {
-    const responsibilitiesMap = new Map<string, { classObj: ClassInfo; subjectObj: SubjectType; examObj: ExamTypeFirebase }>();
-    if (!db) {
-        console.error("CRITICAL_ERROR_DB_NULL: Firestore db object is null in getTeacherAssessmentResponsibilities.");
-        return responsibilitiesMap;
-    }
-    console.log(`[getTeacherAssessmentResponsibilities] Starting for teacherId: ${teacherId}`);
-
-    const teacherDocument = await getTeacherByIdFromDOS(teacherId);
-    if (!teacherDocument) {
-        console.warn(`[getTeacherAssessmentResponsibilities] Teacher not found for ID: ${teacherId}. Returning empty map.`);
-        return responsibilitiesMap;
-    }
-
-    const [allClasses, generalSettings, allExamsFromSystem, allSubjectsGlobal] = await Promise.all([
-        getClasses(), getGeneralSettings(), getAllExamsFromDOS(), getSubjects(),
-    ]);
-
-    const currentTermId = generalSettings.currentTermId;
-    if (!currentTermId) {
-        console.warn("[getTeacherAssessmentResponsibilities] No current term ID set. Cannot determine responsibilities.");
-        return responsibilitiesMap;
-    }
-
-    const examsForCurrentTerm = allExamsFromSystem.filter(exam => exam.termId === currentTermId);
-    if (examsForCurrentTerm.length === 0) {
-        console.warn(`[getTeacherAssessmentResponsibilities] No exams found for current term ID: ${currentTermId}.`);
-        return responsibilitiesMap;
-    }
-    console.log(`[getTeacherAssessmentResponsibilities] Exams for current term (${currentTermId}): ${examsForCurrentTerm.length}`);
-
-    // 1. Process Specific Subject Assignments from teacher.subjectsAssigned array (most explicit)
-    const specificAssignments = Array.isArray(teacherDocument.subjectsAssigned) ? teacherDocument.subjectsAssigned : [];
-    console.log(`[getTeacherAssessmentResponsibilities] Processing ${specificAssignments.length} specific assignments from teacher doc.`);
-    specificAssignments.forEach(assignment => {
-        const classObj = allClasses.find(c => c.id === assignment.classId);
-        const subjectObj = allSubjectsGlobal.find(s => s.id === assignment.subjectId);
-        if (classObj && subjectObj && Array.isArray(assignment.examIds)) {
-            assignment.examIds.forEach(assignedExamId => {
-                const examObj = examsForCurrentTerm.find(e => e.id === assignedExamId);
-                if (examObj) {
-                    const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`;
-                    responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
-                    console.log(`[getTeacherAssessmentResponsibilities] Added via specific assignment: ${key}`);
-                }
-            });
-        }
-    });
-
-    // 2. Process Class Teacher Role
-    console.log(`[getTeacherAssessmentResponsibilities] Processing Class Teacher roles for teacher ${teacherId}.`);
-    allClasses.forEach(classObj => {
-        if (classObj.classTeacherId === teacherId && Array.isArray(classObj.subjects)) {
-            classObj.subjects.forEach(subjectObj => {
-                examsForCurrentTerm.forEach(examObj => {
-                    // Check if this exam is overly specific and shouldn't apply via class teacher role
-                    if (examObj.teacherId && examObj.teacherId !== teacherId) return; 
-                    if (examObj.classId && examObj.classId !== classObj.id) return; 
-                    if (examObj.subjectId && examObj.subjectId !== subjectObj.id) return;
-
-                    const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`;
-                     // Specific assignments take precedence
-                    if (!responsibilitiesMap.has(key)) {
-                        responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
-                        console.log(`[getTeacherAssessmentResponsibilities] Added via Class Teacher role: ${key}`);
-                    }
-                });
-            });
-        }
-    });
-    
-    // 3. Process Exams directly assigned to this teacher on the Exam document itself
-    console.log(`[getTeacherAssessmentResponsibilities] Processing exams directly assigned to teacher ${teacherId}.`);
-    examsForCurrentTerm.forEach(examObj => {
-        if (examObj.teacherId === teacherId) {
-            const classForExam = examObj.classId ? allClasses.find(c => c.id === examObj.classId) : null;
-            const subjectForExam = examObj.subjectId ? allSubjectsGlobal.find(s => s.id === examObj.subjectId) : null;
-
-            if (classForExam && subjectForExam) { // Most specific: exam assigned to teacher, class, and subject
-                const key = `${examObj.id}_${classForExam.id}_${subjectForExam.id}`;
-                responsibilitiesMap.set(key, { classObj: classForExam, subjectObj: subjectForExam, examObj }); 
-                console.log(`[getTeacherAssessmentResponsibilities] Added/Overridden via direct exam assignment (TCS): ${key}`);
-            } else if (classForExam && !subjectForExam) { // Exam assigned to teacher and class (applies to all subjects they teach in that class)
-                 const subjectsTeacherIsResponsibleForInThisClass = new Set<string>();
-                 if(classForExam.classTeacherId === teacherId) {
-                    classForExam.subjects.forEach(s => subjectsTeacherIsResponsibleForInThisClass.add(s.id));
-                 }
-                 specificAssignments.forEach(sa => {
-                    if (sa.classId === classForExam.id) subjectsTeacherIsResponsibleForInThisClass.add(sa.subjectId);
-                 });
-                 subjectsTeacherIsResponsibleForInThisClass.forEach(subId => {
-                    const actualSubjectObj = allSubjectsGlobal.find(s => s.id === subId);
-                    if (actualSubjectObj) {
-                        const key = `${examObj.id}_${classForExam.id}_${actualSubjectObj.id}`;
-                        responsibilitiesMap.set(key, { classObj: classForExam, subjectObj: actualSubjectObj, examObj });
-                        console.log(`[getTeacherAssessmentResponsibilities] Added/Overridden via direct exam assignment (TC - for subject ${actualSubjectObj.name}): ${key}`);
-                    }
-                 });
-            } else if (!classForExam && subjectForExam) { // Exam assigned to teacher and subject (applies to all classes they teach that subject in)
-                 allClasses.forEach(c => {
-                    let teacherTeachesThisSubjectInThisClass = false;
-                    if (c.classTeacherId === teacherId && c.subjects.some(s => s.id === subjectForExam.id)) {
-                        teacherTeachesThisSubjectInThisClass = true;
-                    } else {
-                        if (specificAssignments.some(sa => sa.classId === c.id && sa.subjectId === subjectForExam.id)) {
-                            teacherTeachesThisSubjectInThisClass = true;
-                        }
-                    }
-                    if (teacherTeachesThisSubjectInThisClass) {
-                        const key = `${examObj.id}_${c.id}_${subjectForExam.id}`;
-                        responsibilitiesMap.set(key, { classObj: c, subjectObj: subjectForExam, examObj });
-                        console.log(`[getTeacherAssessmentResponsibilities] Added/Overridden via direct exam assignment (TS - for class ${c.name}): ${key}`);
-                    }
-                 });
-            } else if (!classForExam && !subjectForExam) { // Exam assigned only to this teacher (general for them)
-                 // This exam applies to ALL class-subject pairs the teacher is ALREADY known to be responsible for
-                 // This means it will apply to things derived from Class Teacher role and specific assignments
-                 const existingClassSubjectPairs = new Map<string, {classObj: ClassInfo, subjectObj: SubjectType}>();
-                 responsibilitiesMap.forEach((resp, key) => {
-                    if (key.startsWith(examObj.id + "_")) return; // Don't process for this same exam
-                     const [_eId, cId, sId] = key.split("_");
-                     if (cId && sId) {
-                        const pairKey = `${cId}_${sId}`;
-                        if(!existingClassSubjectPairs.has(pairKey) && resp.classObj && resp.subjectObj) {
-                           existingClassSubjectPairs.set(pairKey, {classObj: resp.classObj, subjectObj: resp.subjectObj});
-                        }
-                     }
-                 });
-                 allClasses.forEach(cls => { // Iterate through classes the teacher is a class teacher for
-                    if (cls.classTeacherId === teacherId) {
-                        cls.subjects.forEach(sub => {
-                             const pairKey = `${cls.id}_${sub.id}`;
-                             if(!existingClassSubjectPairs.has(pairKey)) {
-                                existingClassSubjectPairs.set(pairKey, {classObj: cls, subjectObj: sub});
-                             }
-                        });
-                    }
-                 });
-                 specificAssignments.forEach(sa => { // Iterate through specific assignments
-                    const cls = allClasses.find(c => c.id === sa.classId);
-                    const sub = allSubjectsGlobal.find(s => s.id === sa.subjectId);
-                    if (cls && sub) {
-                        const pairKey = `${cls.id}_${sub.id}`;
-                        if(!existingClassSubjectPairs.has(pairKey)) {
-                           existingClassSubjectPairs.set(pairKey, {classObj: cls, subjectObj: sub});
-                        }
-                    }
-                 });
-
-
-                 existingClassSubjectPairs.forEach(pair => {
-                    const key = `${examObj.id}_${pair.classObj.id}_${pair.subjectObj.id}`;
-                    responsibilitiesMap.set(key, { classObj: pair.classObj, subjectObj: pair.subjectObj, examObj });
-                    console.log(`[getTeacherAssessmentResponsibilities] Added/Overridden via direct exam assignment (T-General - for ${pair.classObj.name} - ${pair.subjectObj.name}): ${key}`);
-                 });
-            }
-        }
-    });
-    console.log(`[getTeacherAssessmentResponsibilities] Total unique responsibilities for teacher ${teacherId}: ${responsibilitiesMap.size}`);
+  const responsibilitiesMap = new Map<string, { classObj: ClassInfo; subjectObj: SubjectType; examObj: ExamTypeFirebase }>();
+  if (!db) {
+    console.error("CRITICAL_ERROR_DB_NULL: Firestore db object is null in getTeacherAssessmentResponsibilities.");
     return responsibilitiesMap;
+  }
+  console.log(`[getTeacherAssessmentResponsibilities] Starting for teacherId: ${teacherId}`);
+
+  const teacherDocument = await getTeacherByIdFromDOS(teacherId);
+  if (!teacherDocument) {
+    console.warn(`[getTeacherAssessmentResponsibilities] Teacher not found for ID: ${teacherId}. Returning empty map.`);
+    return responsibilitiesMap;
+  }
+
+  const [allClasses, allSubjects, allExamsFromSystem, generalSettings] = await Promise.all([
+    getClasses(), getSubjects(), getAllExamsFromDOS(), getGeneralSettings(),
+  ]);
+
+  const currentTermId = generalSettings.currentTermId;
+  if (!currentTermId) {
+    console.warn("[getTeacherAssessmentResponsibilities] No current term ID set. Cannot determine responsibilities.");
+    return responsibilitiesMap;
+  }
+
+  const examsForCurrentTerm = allExamsFromSystem.filter(exam => exam.termId === currentTermId);
+  if (examsForCurrentTerm.length === 0) {
+    console.warn(`[getTeacherAssessmentResponsibilities] No exams found for current term ID: ${currentTermId}.`);
+    return responsibilitiesMap;
+  }
+  console.log(`[getTeacherAssessmentResponsibilities] Processing ${examsForCurrentTerm.length} exams for current term (${currentTermId}) for teacher ${teacherId}`);
+
+  // 1. Process `teacher.subjectsAssigned` (explicit assignments by D.O.S.)
+  const specificAssignments = Array.isArray(teacherDocument.subjectsAssigned) ? teacherDocument.subjectsAssigned : [];
+  console.log(`[getTeacherAssessmentResponsibilities] Teacher ${teacherId} has ${specificAssignments.length} specific assignments in their document.`);
+  specificAssignments.forEach(assignment => {
+    const classObj = allClasses.find(c => c.id === assignment.classId);
+    const subjectObj = allSubjects.find(s => s.id === assignment.subjectId);
+    if (classObj && subjectObj && Array.isArray(assignment.examIds)) {
+      assignment.examIds.forEach(assignedExamId => {
+        const examObj = examsForCurrentTerm.find(e => e.id === assignedExamId);
+        if (examObj) {
+          const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`;
+          responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
+          console.log(`[getTeacherAssessmentResponsibilities] Teacher ${teacherId} - Added via specific assignment (subjectsAssigned): ${key}`);
+        }
+      });
+    }
+  });
+
+  // 2. Process "Class Teacher" role
+  console.log(`[getTeacherAssessmentResponsibilities] Processing Class Teacher roles for teacher ${teacherId}.`);
+  allClasses.forEach(classObj => {
+    if (classObj.classTeacherId === teacherId && Array.isArray(classObj.subjects)) {
+      console.log(`[getTeacherAssessmentResponsibilities] Teacher ${teacherId} is Class Teacher for ${classObj.name} (ID: ${classObj.id}).`);
+      classObj.subjects.forEach(subjectObj => {
+        examsForCurrentTerm.forEach(examObj => {
+          // An exam applies if it's "general" for the term, or specific to this context but not a *different* teacher
+          const isGeneralExamForContext = (!examObj.classId || examObj.classId === classObj.id) &&
+                                         (!examObj.subjectId || examObj.subjectId === subjectObj.id) &&
+                                         (!examObj.teacherId || examObj.teacherId === teacherId);
+          if (isGeneralExamForContext) {
+            const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`;
+            // Specific assignments from teacher.subjectsAssigned take precedence
+            if (!responsibilitiesMap.has(key)) {
+              responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
+              console.log(`[getTeacherAssessmentResponsibilities] Teacher ${teacherId} - Added via Class Teacher role for ${classObj.name} - ${subjectObj.name} - ${examObj.name}: ${key}`);
+            }
+          }
+        });
+      });
+    }
+  });
+  
+  // 3. Process Exams directly assigned to this teacher on the Exam document itself
+  // These direct assignments on the exam document can override or add to the above.
+  console.log(`[getTeacherAssessmentResponsibilities] Processing exams directly assigned to teacher ${teacherId} on Exam documents.`);
+  examsForCurrentTerm.forEach(examObj => {
+    if (examObj.teacherId === teacherId) {
+      const classForExam = examObj.classId ? allClasses.find(c => c.id === examObj.classId) : null;
+      const subjectForExam = examObj.subjectId ? allSubjects.find(s => s.id === examObj.subjectId) : null;
+
+      if (classForExam && subjectForExam) { // Most specific: exam assigned to teacher, class, AND subject on exam doc
+        const key = `${examObj.id}_${classForExam.id}_${subjectForExam.id}`;
+        responsibilitiesMap.set(key, { classObj: classForExam, subjectObj: subjectForExam, examObj }); 
+        console.log(`[getTeacherAssessmentResponsibilities] Teacher ${teacherId} - Added/Overridden via direct exam assignment (TCS - Exam Doc): ${key}`);
+      } else if (classForExam && !subjectForExam) { // Exam assigned to teacher AND class on exam doc (applies to all subjects they teach in that class)
+         const subjectsTeacherIsResponsibleForInThisClass = new Set<string>();
+         // From being Class Teacher for this class
+         if(classForExam.classTeacherId === teacherId) {
+            classForExam.subjects.forEach(s => subjectsTeacherIsResponsibleForInThisClass.add(s.id));
+         }
+         // From specific assignments in this class
+         specificAssignments.forEach(sa => {
+            if (sa.classId === classForExam.id && Array.isArray(sa.examIds) && sa.examIds.includes(examObj.id)) {
+                 subjectsTeacherIsResponsibleForInThisClass.add(sa.subjectId);
+            }
+         });
+         subjectsTeacherIsResponsibleForInThisClass.forEach(subId => {
+            const actualSubjectObj = allSubjects.find(s => s.id === subId);
+            if (actualSubjectObj) {
+                const key = `${examObj.id}_${classForExam.id}_${actualSubjectObj.id}`;
+                responsibilitiesMap.set(key, { classObj: classForExam, subjectObj: actualSubjectObj, examObj });
+                console.log(`[getTeacherAssessmentResponsibilities] Teacher ${teacherId} - Added/Overridden via direct exam assignment (TC on Exam Doc - for subject ${actualSubjectObj.name}): ${key}`);
+            }
+         });
+      } else if (!classForExam && subjectForExam) { // Exam assigned to teacher AND subject on exam doc (applies to all classes they teach that subject in)
+          allClasses.forEach(c => {
+            let teacherTeachesThisSubjectInThisClass = false;
+            if (c.classTeacherId === teacherId && c.subjects.some(s => s.id === subjectForExam.id)) {
+                teacherTeachesThisSubjectInThisClass = true;
+            } else {
+                if (specificAssignments.some(sa => sa.classId === c.id && sa.subjectId === subjectForExam.id && Array.isArray(sa.examIds) && sa.examIds.includes(examObj.id))) {
+                    teacherTeachesThisSubjectInThisClass = true;
+                }
+            }
+            if (teacherTeachesThisSubjectInThisClass) {
+                const key = `${examObj.id}_${c.id}_${subjectForExam.id}`;
+                responsibilitiesMap.set(key, { classObj: c, subjectObj: subjectForExam, examObj });
+                console.log(`[getTeacherAssessmentResponsibilities] Teacher ${teacherId} - Added/Overridden via direct exam assignment (TS on Exam Doc - for class ${c.name}): ${key}`);
+            }
+          });
+      } else if (!classForExam && !subjectForExam) { // Exam assigned only to this teacher on exam doc (general for them)
+         // Applies to ALL class-subject pairs the teacher is ALREADY known to be responsible for due to
+         // Class Teacher role or specific entries in teacher.subjectsAssigned that include this exam.
+         const applicableClassSubjectPairs = new Set<string>(); // "classId_subjectId"
+
+         // From being Class Teacher
+         allClasses.forEach(cls => {
+            if (cls.classTeacherId === teacherId) {
+                cls.subjects.forEach(sub => applicableClassSubjectPairs.add(`${cls.id}_${sub.id}`));
+            }
+         });
+         // From specific assignments that explicitly list this exam
+         specificAssignments.forEach(sa => {
+            if (Array.isArray(sa.examIds) && sa.examIds.includes(examObj.id)) {
+                applicableClassSubjectPairs.add(`${sa.classId}_${sa.subjectId}`);
+            }
+         });
+
+         applicableClassSubjectPairs.forEach(pairKey => {
+            const [cId, sId] = pairKey.split("_");
+            const cObj = allClasses.find(c => c.id === cId);
+            const sObj = allSubjects.find(s => s.id === sId);
+            if (cObj && sObj) {
+                const key = `${examObj.id}_${cObj.id}_${sObj.id}`;
+                responsibilitiesMap.set(key, { classObj: cObj, subjectObj: sObj, examObj });
+                console.log(`[getTeacherAssessmentResponsibilities] Teacher ${teacherId} - Added/Overridden via direct exam assignment (T-General on Exam Doc - for ${cObj.name} - ${sObj.name}): ${key}`);
+            }
+         });
+      }
+    }
+  });
+
+  console.log(`[getTeacherAssessmentResponsibilities] Total unique responsibilities determined for teacher ${teacherId}: ${responsibilitiesMap.size}`);
+  responsibilitiesMap.forEach((value, key) => {
+    console.log(`[getTeacherAssessmentResponsibilities] Final Responsibility for ${teacherId}: ${key} -> C: ${value.classObj.name}, S: ${value.subjectObj.name}, E: ${value.examObj.name}`);
+  });
+  return responsibilitiesMap;
 }
 
 
@@ -654,5 +653,3 @@ export async function getTeacherProfileData(teacherId: string): Promise<{ name?:
     return null;
   }
 }
-    
-

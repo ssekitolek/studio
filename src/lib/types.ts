@@ -142,5 +142,3 @@ export interface TeacherDashboardData {
   resourcesText?: string; 
   stats: TeacherStats; // Added stats
 }
-
-
