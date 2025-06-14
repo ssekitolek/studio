@@ -6,7 +6,8 @@ import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic'; // Ensure dynamic rendering for layout and its children
 
-export default async function TeacherLayout({
+// Changed from async function to a regular function
+export default function TeacherLayout({
   children,
   searchParams,
 }: {
