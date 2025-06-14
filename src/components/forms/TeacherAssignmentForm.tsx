@@ -26,7 +26,7 @@ import { Loader2, Save, Users, BookOpen } from "lucide-react";
 const specificSubjectAssignmentSchema = z.object({
   classId: z.string(),
   subjectId: z.string(),
-  examIds: z.array(z.string()), // examIds is an array of exam type IDs
+  examIds: z.array(z.string()),
 });
 
 const teacherAssignmentFormSchema = z.object({
@@ -61,7 +61,7 @@ export function TeacherAssignmentForm({
       specificSubjectAssignments: teacher.subjectsAssigned?.map(sa => ({
         classId: sa.classId,
         subjectId: sa.subjectId,
-        examIds: Array.isArray(sa.examIds) ? sa.examIds : []
+        examIds: Array.isArray(sa.examIds) ? sa.examIds : [] // Ensure examIds is initialized as array
       })) || [],
     },
   });
@@ -89,7 +89,7 @@ export function TeacherAssignmentForm({
       specificSubjectAssignments: teacher.subjectsAssigned?.map(sa => ({
         classId: sa.classId,
         subjectId: sa.subjectId,
-        examIds: Array.isArray(sa.examIds) ? sa.examIds : []
+        examIds: Array.isArray(sa.examIds) ? sa.examIds : [] // Ensure examIds is initialized as array
       })) || [],
     });
   }, [teacher, allClasses, form]);
@@ -104,11 +104,9 @@ export function TeacherAssignmentForm({
     examId: string,
     checked: boolean
   ) => {
-    // Get a deep copy of the current assignments to avoid direct state mutation issues.
-    // This ensures that when we modify the examIds array, we're working with a fresh copy.
     const currentAssignments = (specificSubjectAssignments || []).map(a => ({
       ...a,
-      examIds: Array.isArray(a.examIds) ? [...a.examIds] : [], // Explicitly copy the examIds array.
+      examIds: Array.isArray(a.examIds) ? [...a.examIds] : [],
     }));
 
     let existingAssignmentEntry = currentAssignments.find(
@@ -117,28 +115,19 @@ export function TeacherAssignmentForm({
 
     if (checked) {
       if (existingAssignmentEntry) {
-        // Assignment for this class-subject combination already exists.
-        // Add the examId to its examIds array if it's not already included.
         if (!existingAssignmentEntry.examIds.includes(examId)) {
           existingAssignmentEntry.examIds.push(examId);
         }
       } else {
-        // No assignment for this class-subject combination yet.
-        // Create a new entry with the current classId, subjectId, and the selected examId.
         currentAssignments.push({ classId, subjectId, examIds: [examId] });
       }
     } else {
-      // The checkbox was unchecked.
       if (existingAssignmentEntry) {
-        // If an assignment exists for this class-subject, filter out the unchecked examId.
         existingAssignmentEntry.examIds = existingAssignmentEntry.examIds.filter(
           (id) => id !== examId
         );
-        // Note: The onSubmit logic filters out assignments where examIds becomes empty.
-        // So, we don't need to remove the entire 'existingAssignmentEntry' here if examIds is empty.
       }
     }
-    // Update the form state with the modified assignments.
     setValue("specificSubjectAssignments", currentAssignments, { shouldValidate: true, shouldDirty: true });
   };
 
@@ -146,7 +135,6 @@ export function TeacherAssignmentForm({
   const onSubmit = (data: TeacherAssignmentFormValues) => {
     startTransition(async () => {
       try {
-        // Filter out any specific assignments where no exam types ended up being selected.
         const filteredSpecificAssignments = data.specificSubjectAssignments.filter(
           assignment => assignment.examIds && assignment.examIds.length > 0
         );
@@ -183,8 +171,6 @@ export function TeacherAssignmentForm({
             </CardTitle>
             <CardDescription>
               Select classes and subjects this teacher is responsible for.
-              Being a Class Teacher implicitly assigns them to all exams for all subjects in that class for the current term.
-              Use "Specific Subject & Exam Assignments" for more granular control or additional assignments.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -196,8 +182,8 @@ export function TeacherAssignmentForm({
                   <div className="mb-4">
                     <FormLabel className="text-lg font-semibold text-primary">Class Teacher Role</FormLabel>
                     <FormDescription>
-                      Select classes for which {teacher.name} will be the main class teacher.
-                      Assigning a class here will unassign any previous class teacher.
+                      Select classes where {teacher.name} is the main Class Teacher. This role automatically assigns them to all subjects taught in this class and all associated exam types for the current academic term.
+                      Assigning a class here will unassign any previous class teacher for that class.
                     </FormDescription>
                   </div>
                   <div className="space-y-2">
@@ -249,7 +235,7 @@ export function TeacherAssignmentForm({
                   <div className="mb-4">
                     <FormLabel className="text-lg font-semibold text-primary">Specific Subject & Exam Assignments</FormLabel>
                     <FormDescription>
-                      Assign {teacher.name} to teach specific subjects and exam types within classes.
+                      Assign {teacher.name} to teach specific subjects and exam types within classes. This is for assignments not covered by the Class Teacher role, or for more granular control.
                     </FormDescription>
                   </div>
                   <Accordion type="multiple" className="w-full">
@@ -294,13 +280,13 @@ export function TeacherAssignmentForm({
                                                 </FormItem>
                                             ))}
                                             </div>
-                                        ) : <p className="text-xs text-muted-foreground italic">No exam types defined.</p>}
+                                        ) : <p className="text-xs text-muted-foreground italic">No exam types defined. Please create exam types in Settings -&gt; Exams & Grading.</p>}
                                     </div>
                                 );
                               })}
                             </div>
                           ) : (
-                            <p className="text-sm text-muted-foreground italic px-4 py-2">No subjects assigned to this class.</p>
+                            <p className="text-sm text-muted-foreground italic px-4 py-2">No subjects assigned to this class. Edit the class to add subjects.</p>
                           )}
                         </AccordionContent>
                       </AccordionItem>
@@ -328,3 +314,4 @@ export function TeacherAssignmentForm({
   );
 }
 
+    
