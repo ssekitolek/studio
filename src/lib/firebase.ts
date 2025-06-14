@@ -65,7 +65,6 @@ if (!isConfigurationValid) {
       app = getApp();
     }
     db = getFirestore(app);
-    // console.log("Firebase initialized successfully with projectId:", firebaseConfigValues.projectId); // Keep this commented unless actively debugging
   } catch (error) {
     const initErrorMsg = `Firebase SDK Initialization Error: ${error instanceof Error ? error.message : String(error)}. This occurred even with seemingly valid config. Firestore (db) will be NULL. Config used: ${JSON.stringify(firebaseConfigValues)}`;
     console.error(`SERVER_SDK_INIT_ERROR: ${initErrorMsg}`);
@@ -85,7 +84,10 @@ if (db === null) {
         // This case is expected: config was bad, so db is null.
         console.warn("POST_INIT_CHECK_INFO: Firestore 'db' instance is null due to prior configuration errors. This is expected. Firebase operations will fail.");
     }
+} else {
+    console.log(`Firebase and Firestore (db) initialized successfully. Project ID: ${firebaseConfigValues.projectId || 'NOT_CONFIGURED'}`);
 }
 
 
 export { app, db };
+
