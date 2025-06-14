@@ -11,15 +11,20 @@ export default async function TeacherLayout({
   children: React.ReactNode;
   searchParams?: { teacherId?: string; teacherName?: string };
 }) {
+  // Server-side log to check what searchParams are received
+  console.log('[TeacherLayout] Received searchParams:', searchParams);
+
   const teacherId = searchParams?.teacherId;
   let teacherName = searchParams?.teacherName ? decodeURIComponent(searchParams.teacherName) : "Teacher";
 
   if (!teacherId) {
-    // If teacherId is missing, redirect to the login page.
+    console.warn('[TeacherLayout] teacherId is missing from searchParams. Redirecting to /login/teacher. Current searchParams:', searchParams);
     redirect('/login/teacher');
+    // Note: redirect() will throw an error to stop further execution, so no return is needed here.
   }
-  // Note: The authoritative teacherName will be fetched by individual pages like the dashboard if needed.
-  // The name from searchParams is used for the AppHeader as an initial display.
+
+  // If teacherId is present, log it for confirmation
+  console.log(`[TeacherLayout] Proceeding with teacherId: ${teacherId}, teacherName: ${teacherName}`);
 
   return (
     <SidebarProvider defaultOpen={true}>
@@ -33,3 +38,4 @@ export default async function TeacherLayout({
     </SidebarProvider>
   );
 }
+
