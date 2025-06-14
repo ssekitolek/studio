@@ -4,7 +4,7 @@ import { TeacherSidebar } from "@/components/layout/TeacherSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { redirect } from 'next/navigation';
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'; // Ensure dynamic rendering
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -28,7 +28,7 @@ export default function TeacherLayout({ children, params, searchParams }: Layout
       // teacherName remains "Teacher"
     }
   } else {
-    // Only log warning if searchParams is defined but teacherName is missing,
+    // Log warning if searchParams is defined but teacherName is missing,
     // or if searchParams is undefined entirely (which implies teacherName is also missing)
     if (searchParams !== undefined) {
         console.warn('[TeacherLayout] WARN: teacherName is missing from searchParams (but searchParams object exists). Using default name "Teacher". SearchParams received:', JSON.stringify(searchParams, null, 2));
