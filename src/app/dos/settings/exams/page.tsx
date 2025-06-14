@@ -3,14 +3,22 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { FileText, PlusCircle, Scale } from "lucide-react";
-import { getExams, getGradingPolicies } from "@/lib/actions/dos-actions";
-import type { Exam, GradingPolicy } from "@/lib/types";
+import { FileText, PlusCircle, Scale, CalendarClock, UserCircle, BookOpen, Tag } from "lucide-react";
+import { getExams, getGradingPolicies, getTeachers, getClasses, getSubjects } from "@/lib/actions/dos-actions";
+import type { Exam, GradingPolicy, Teacher, ClassInfo, Subject } from "@/lib/types";
 
 export default async function ManageExamsAndGradingPage() {
-  const gradingPolicies: GradingPolicy[] = await getGradingPolicies();
-  const exams: Exam[] = await getExams();
+  const [exams, gradingPolicies, teachers, classes, subjects] = await Promise.all([
+    getExams(),
+    getGradingPolicies(),
+    getTeachers(),
+    getClasses(),
+    getSubjects(),
+  ]);
 
+  const getTeacherName = (teacherId?: string) => teachers.find(t => t.id === teacherId)?.name || 'N/A';
+  const getClassName = (classId?: string) => classes.find(c => c.id === classId)?.name || 'N/A';
+  const getSubjectName = (subjectId?: string) => subjects.find(s => s.id === subjectId)?.name || 'N/A';
 
   return (
     <div className="space-y-6">
@@ -27,7 +35,7 @@ export default async function ManageExamsAndGradingPage() {
             </Button>
             <Button asChild>
                 <Link href="/dos/settings/exams/new"> 
-                <PlusCircle className="mr-2 h-4 w-4" /> Add New Exam Type
+                <PlusCircle className="mr-2 h-4 w-4" /> Add New Exam
                 </Link>
             </Button>
           </div>
@@ -36,29 +44,57 @@ export default async function ManageExamsAndGradingPage() {
 
       <Card className="shadow-md">
         <CardHeader>
-          <CardTitle className="font-headline text-xl text-primary">Exam Types</CardTitle>
-          <CardDescription>All defined examination types in the system.</CardDescription>
+          <CardTitle className="font-headline text-xl text-primary">Exam List</CardTitle>
+          <CardDescription>All defined exams in the system. Click 'Edit Exam' to see full details or modify.</CardDescription>
         </CardHeader>
         <CardContent>
           {exams.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {exams.map((exam) => (
-                <Card key={exam.id} className="hover:shadow-lg transition-shadow">
+                <Card key={exam.id} className="hover:shadow-lg transition-shadow flex flex-col justify-between">
                   <CardHeader>
                     <CardTitle>{exam.name}</CardTitle>
                     <CardDescription>Term ID: {exam.termId} - Max Marks: {exam.maxMarks}</CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-2">{exam.description || "No description."}</p>
-                    <Button variant="outline" size="sm" className="w-full" asChild>
+                  <CardContent className="space-y-2 text-sm">
+                    {exam.description && <p className="text-muted-foreground italic text-xs line-clamp-2">{exam.description}</p>}
+                    {exam.examDate && (
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                            <CalendarClock className="h-4 w-4"/> Exam Date: {new Date(exam.examDate).toLocaleDateString()}
+                        </div>
+                    )}
+                    {exam.marksSubmissionDeadline && (
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                            <CalendarClock className="h-4 w-4 text-accent"/> Marks Deadline: {new Date(exam.marksSubmissionDeadline).toLocaleDateString()}
+                        </div>
+                    )}
+                     {exam.classId && (
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                            <Tag className="h-4 w-4"/> Class: {getClassName(exam.classId)} (ID: {exam.classId})
+                        </div>
+                    )}
+                    {exam.subjectId && (
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                            <BookOpen className="h-4 w-4"/> Subject: {getSubjectName(exam.subjectId)} (ID: {exam.subjectId})
+                        </div>
+                    )}
+                    {exam.teacherId && (
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                            <UserCircle className="h-4 w-4"/> Teacher: {getTeacherName(exam.teacherId)} (ID: {exam.teacherId})
+                        </div>
+                    )}
+                   
+                  </CardContent>
+                   <CardContent>
+                     <Button variant="outline" size="sm" className="w-full mt-2" asChild>
                         <Link href={`/dos/settings/exams/${exam.id}/edit`}>Edit Exam</Link>
                     </Button>
-                  </CardContent>
+                   </CardContent>
                 </Card>
               ))}
             </div>
           ) : (
-            <p className="text-center text-muted-foreground py-8">No exam types found. Add a new exam type to get started.</p>
+            <p className="text-center text-muted-foreground py-8">No exams found. Add a new exam to get started.</p>
           )}
         </CardContent>
       </Card>

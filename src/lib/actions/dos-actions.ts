@@ -159,9 +159,9 @@ export async function updateTeacherAssignments(
         assignment.classId.trim() !== '' &&
         typeof assignment.subjectId === 'string' &&
         assignment.subjectId.trim() !== '' &&
-        Array.isArray(assignment.examIds) && // Ensure examIds is an array
-        assignment.examIds.every(id => typeof id === 'string' && id.trim() !== '') && // Ensure all examIds are non-empty strings
-        assignment.examIds.length > 0 // Only save if there's at least one exam assigned
+        Array.isArray(assignment.examIds) && 
+        assignment.examIds.every(id => typeof id === 'string' && id.trim() !== '') && 
+        assignment.examIds.length > 0 
     ).map(a => ({ classId: a.classId, subjectId: a.subjectId, examIds: a.examIds }))
   : [];
   
@@ -178,22 +178,26 @@ export async function updateTeacherAssignments(
 
       transaction.update(teacherRef, { subjectsAssigned: validSpecificAssignments });
 
-      const classesColRef = collection(db, "classes");
-      const allClassDocsSnapshot = await getDocs(classesColRef); // Fetch outside, or pass refs if very large
+      // Update classTeacherId on class documents
+      const classesQuery = query(collection(db, "classes"));
+      const classesSnapshot = await getDocs(classesQuery); // Fetch outside transaction if it's too large
 
-      allClassDocsSnapshot.forEach(classDoc => {
-          const classData = classDoc.data();
-          const currentClassTeacherId = classData.classTeacherId;
-          const classDocRef = doc(db, "classes", classDoc.id); // Get ref for transaction
+      classesSnapshot.forEach(classDoc => {
+        const classRef = doc(db, "classes", classDoc.id);
+        const currentClassTeacher = classDoc.data().classTeacherId;
 
-          // If this class was previously assigned to the current teacher, but no longer is
-          if (currentClassTeacherId === teacherId && !data.classTeacherForClassIds.includes(classDoc.id)) {
-              transaction.update(classDocRef, { classTeacherId: null });
+        if (data.classTeacherForClassIds.includes(classDoc.id)) {
+          // This class is now assigned to the current teacher
+          if (currentClassTeacher !== teacherId) {
+            transaction.update(classRef, { classTeacherId: teacherId });
           }
-          // If this class IS NOW assigned to the current teacher AND it wasn't before
-          else if (data.classTeacherForClassIds.includes(classDoc.id) && currentClassTeacherId !== teacherId) {
-              transaction.update(classDocRef, { classTeacherId: teacherId });
+        } else {
+          // This class is not assigned to the current teacher
+          if (currentClassTeacher === teacherId) {
+            // If it was previously assigned to this teacher, unassign it
+            transaction.update(classRef, { classTeacherId: null });
           }
+        }
       });
     });
 
@@ -574,7 +578,11 @@ export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success:
       ...examData,
       maxMarks: Number(examData.maxMarks), 
       description: examData.description || null,
-      date: examData.date || null, 
+      examDate: examData.examDate || null, 
+      classId: examData.classId || null,
+      subjectId: examData.subjectId || null,
+      teacherId: examData.teacherId || null,
+      marksSubmissionDeadline: examData.marksSubmissionDeadline || null,
     };
     const docRef = await addDoc(collection(db, "exams"), examPayload);
     const newExam: Exam = { 
@@ -583,14 +591,18 @@ export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success:
         termId: examPayload.termId,
         maxMarks: examPayload.maxMarks,
         description: examPayload.description === null ? undefined : examPayload.description,
-        date: examPayload.date === null ? undefined : examPayload.date,
+        examDate: examPayload.examDate === null ? undefined : examPayload.examDate,
+        classId: examPayload.classId === null ? undefined : examPayload.classId,
+        subjectId: examPayload.subjectId === null ? undefined : examPayload.subjectId,
+        teacherId: examPayload.teacherId === null ? undefined : examPayload.teacherId,
+        marksSubmissionDeadline: examPayload.marksSubmissionDeadline === null ? undefined : examPayload.marksSubmissionDeadline,
     };
     revalidatePath("/dos/settings/exams");
-    return { success: true, message: "Exam type created successfully.", exam: newExam };
+    return { success: true, message: "Exam created successfully.", exam: newExam };
   } catch (error) {
     console.error("Error in createExam:", error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
-    return { success: false, message: `Failed to create exam type: ${errorMessage}` };
+    return { success: false, message: `Failed to create exam: ${errorMessage}` };
   }
 }
 
@@ -610,7 +622,11 @@ export async function getExamById(examId: string): Promise<Exam | null> {
         termId: data.termId,
         maxMarks: data.maxMarks,
         description: data.description === null ? undefined : data.description,
-        date: data.date === null ? undefined : data.date,
+        examDate: data.examDate === null ? undefined : data.examDate,
+        classId: data.classId === null ? undefined : data.classId,
+        subjectId: data.subjectId === null ? undefined : data.subjectId,
+        teacherId: data.teacherId === null ? undefined : data.teacherId,
+        marksSubmissionDeadline: data.marksSubmissionDeadline === null ? undefined : data.marksSubmissionDeadline,
       } as Exam;
     }
     return null;
@@ -631,22 +647,23 @@ export async function updateExam(examId: string, examData: Partial<Omit<Exam, 'i
     if (examPayload.maxMarks !== undefined) {
       examPayload.maxMarks = Number(examPayload.maxMarks);
     }
-    if (examPayload.hasOwnProperty('description')) {
-        examPayload.description = examPayload.description || null;
-    }
-    if (examPayload.hasOwnProperty('date')) {
-        examPayload.date = examPayload.date || null;
-    }
+    // Ensure null for optional fields if they are cleared, or keep existing value if not provided
+    const fieldsToPotentiallyNullify = ['description', 'examDate', 'classId', 'subjectId', 'teacherId', 'marksSubmissionDeadline'];
+    fieldsToPotentiallyNullify.forEach(field => {
+        if (examPayload.hasOwnProperty(field)) {
+            examPayload[field] = examPayload[field] || null;
+        }
+    });
     
     await updateDoc(examRef, examPayload);
     revalidatePath("/dos/settings/exams");
     revalidatePath(`/dos/settings/exams/${examId}/edit`);
     const updatedExam = await getExamById(examId);
-    return { success: true, message: "Exam type updated successfully.", exam: updatedExam ?? undefined };
+    return { success: true, message: "Exam updated successfully.", exam: updatedExam ?? undefined };
   } catch (error) {
     console.error(`Error updating exam ${examId}:`, error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
-    return { success: false, message: `Failed to update exam type: ${errorMessage}` };
+    return { success: false, message: `Failed to update exam: ${errorMessage}` };
   }
 }
 
@@ -1102,7 +1119,11 @@ export async function getExams(): Promise<Exam[]> {
                 termId: data.termId,
                 maxMarks: data.maxMarks,
                 description: data.description === null ? undefined : data.description,
-                date: data.date === null ? undefined : data.date,
+                examDate: data.examDate === null ? undefined : data.examDate,
+                classId: data.classId === null ? undefined : data.classId,
+                subjectId: data.subjectId === null ? undefined : data.subjectId,
+                teacherId: data.teacherId === null ? undefined : data.teacherId,
+                marksSubmissionDeadline: data.marksSubmissionDeadline === null ? undefined : data.marksSubmissionDeadline,
             } as Exam;
         });
         return examsList;

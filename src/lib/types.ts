@@ -41,13 +41,18 @@ export interface Term {
   endDate: string; // ISO date string YYYY-MM-DD
 }
 
-export interface Exam { // Represents an Exam Type
+export interface Exam { // Represents an Exam Type or a specific instance
   id: string;
-  name: string; // E.g., "Midterm Exam", "Final Exam"
+  name: string; // E.g., "Midterm Exam", "Final Assessment"
   termId: string; // Links to an academic term
-  date?: string; // Optional: General date or deadline for this exam type
+  examDate?: string; // Date the exam takes place (YYYY-MM-DD)
   maxMarks: number; // Default max marks for this exam type
   description?: string;
+  // New fields for specific assignment
+  classId?: string;
+  subjectId?: string;
+  teacherId?: string;
+  marksSubmissionDeadline?: string; // Specific deadline for marks submission (YYYY-MM-DD)
 }
 
 // Represents a specific assessment instance for a subject in a class for an exam type
