@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -18,9 +19,11 @@ interface AppHeaderProps {
   userName: string;
   userRole: "D.O.S." | "Teacher";
   userAvatarUrl?: string;
+  teacherId?: string; // Added for teacher dashboard link
+  teacherNameParam?: string; // Added for teacher dashboard link
 }
 
-export function AppHeader({ userName, userRole, userAvatarUrl }: AppHeaderProps) {
+export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teacherNameParam }: AppHeaderProps) {
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -29,11 +32,24 @@ export function AppHeader({ userName, userRole, userAvatarUrl }: AppHeaderProps)
       .toUpperCase();
   };
 
+  const dashboardLink = userRole === "D.O.S." 
+    ? "/dos/dashboard" 
+    : (teacherId && teacherNameParam 
+        ? `/teacher/dashboard?teacherId=${encodeURIComponent(teacherId)}&teacherName=${encodeURIComponent(teacherNameParam)}`
+        : "/teacher/dashboard"); // Fallback, though ideally params should always be present for teacher
+
+  const settingsLink = userRole === "D.O.S."
+    ? "/dos/settings/general"
+    : (teacherId && teacherNameParam
+        ? `/teacher/profile?teacherId=${encodeURIComponent(teacherId)}&teacherName=${encodeURIComponent(teacherNameParam)}`
+        : "/teacher/profile");
+
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6 shadow-sm">
       <SidebarTrigger className="md:hidden" />
       <div className="flex-1">
-        <Link href={userRole === "D.O.S." ? "/dos/dashboard" : "/teacher/dashboard"} className="flex items-center gap-2">
+        <Link href={dashboardLink} className="flex items-center gap-2">
            <span className="text-xl font-headline font-semibold text-primary">
             Grade<span className="text-accent">Central</span>
            </span>
@@ -59,7 +75,7 @@ export function AppHeader({ userName, userRole, userAvatarUrl }: AppHeaderProps)
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <Link href={userRole === "D.O.S." ? "/dos/settings/general" : "/teacher/profile" /* Placeholder for teacher profile */}>
+            <Link href={settingsLink}>
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
             </Link>

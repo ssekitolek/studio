@@ -42,7 +42,12 @@ export default async function TeacherLayout({
     <SidebarProvider defaultOpen={true}>
         <TeacherSidebar teacherIdParam={teacherId} teacherNameParam={teacherName} />
         <SidebarInset className="flex flex-col min-h-screen">
-          <AppHeader userName={teacherName} userRole="Teacher" />
+          <AppHeader 
+            userName={teacherName} 
+            userRole="Teacher" 
+            teacherId={teacherId} 
+            teacherNameParam={teacherName} 
+          />
           <main className="flex-1 p-4 md:p-6 lg:p-8 bg-background">
             {children}
           </main>
