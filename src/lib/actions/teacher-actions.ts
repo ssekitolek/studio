@@ -80,6 +80,7 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
 
 
 export async function submitMarks(teacherId: string, data: MarksSubmissionData): Promise<{ success: boolean; message: string; anomalies?: GradeAnomalyDetectionOutput }> {
+  console.log(`[Teacher Action - submitMarks] Called for teacherId: ${teacherId}, assessmentId: ${data.assessmentId}`);
   if (!db) {
     console.error("CRITICAL_ERROR_DB_NULL: Firestore database (db) is not initialized in submitMarks.");
     return { success: false, message: "Database service not available. Marks could not be saved." };
@@ -271,7 +272,7 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
         return new Map();
     }
 
-    const [allClasses, generalSettings, allExams, allSubjectsGlobal] = await Promise.all([
+    const [allClasses, generalSettings, allExamsFromDB, allSubjectsGlobal] = await Promise.all([
         getClasses(),
         getGeneralSettings(),
         getExams(),
@@ -284,12 +285,12 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
         return new Map();
     }
 
-    const currentTermExams = allExams.filter(exam => exam.termId === currentTermId);
+    const currentTermExams = allExamsFromDB.filter(exam => exam.termId === currentTermId);
     if (currentTermExams.length === 0) {
         console.warn(`[getTeacherAssessmentResponsibilities] No exams found for current term ID: ${currentTermId}.`);
         return new Map();
     }
-
+    
     const responsibilitiesMap = new Map<string, { classObj: ClassInfo; subjectObj: SubjectType; examObj: Exam }>();
 
     // 1. Process Class Teacher assignments
@@ -297,16 +298,28 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
         if (classObj.classTeacherId === teacherId && Array.isArray(classObj.subjects)) {
             classObj.subjects.forEach(subjectObj => {
                 currentTermExams.forEach(examObj => {
-                    const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`;
-                    if (!responsibilitiesMap.has(key)) {
-                        responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
+                    // For Class Teacher role, exam must NOT have specific class/subject/teacher assignments
+                    // that contradict this broad assignment, or it should be a general exam.
+                    // If an exam is highly specific (e.g., specific teacher, class, subject all set on exam doc),
+                    // it's handled by direct assignment logic later.
+                    if (!examObj.classId && !examObj.subjectId && !examObj.teacherId) { // General exam for the term
+                         const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`;
+                         if (!responsibilitiesMap.has(key)) {
+                            responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
+                        }
+                    } else if (examObj.classId === classObj.id && examObj.subjectId === subjectObj.id && !examObj.teacherId) {
+                        // Exam specific to this class & subject, but not a specific teacher (so class teacher handles it)
+                        const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`;
+                         if (!responsibilitiesMap.has(key)) {
+                            responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
+                        }
                     }
                 });
             });
         }
     });
 
-    // 2. Process Specific Subject Assignments (including specific examIds)
+    // 2. Process Specific Subject Assignments from teacher.subjectsAssigned array
     const specificAssignments = Array.isArray(teacherDocument.subjectsAssigned) ? teacherDocument.subjectsAssigned : [];
     specificAssignments.forEach(assignment => {
         const classObj = allClasses.find(c => c.id === assignment.classId);
@@ -314,16 +327,89 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
 
         if (classObj && subjectObj && Array.isArray(assignment.examIds)) {
             assignment.examIds.forEach(assignedExamId => {
-                const examObj = currentTermExams.find(e => e.id === assignedExamId); // Ensure exam is for current term
+                const examObj = currentTermExams.find(e => e.id === assignedExamId);
                 if (examObj) {
                     const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`;
-                    if (!responsibilitiesMap.has(key)) { // Add if not already covered by class teacher role (or duplicate specific)
+                    if (!responsibilitiesMap.has(key)) {
                         responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
                     }
                 }
             });
         }
     });
+    
+    // 3. Process Exams directly assigned to this teacher on the Exam document itself
+    currentTermExams.forEach(examObj => {
+        if (examObj.teacherId === teacherId) {
+            if (examObj.classId && examObj.subjectId) {
+                // Exam is specifically for this teacher, class, and subject
+                const classObj = allClasses.find(c => c.id === examObj.classId);
+                const subjectObj = allSubjectsGlobal.find(s => s.id === examObj.subjectId);
+                if (classObj && subjectObj) {
+                    const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`;
+                    responsibilitiesMap.set(key, { classObj, subjectObj, examObj }); // Override if set by other means
+                }
+            } else if (examObj.classId && !examObj.subjectId) {
+                // Exam is for this teacher and a specific class (applies to all subjects they teach in that class)
+                const classObj = allClasses.find(c => c.id === examObj.classId);
+                if (classObj) {
+                    // Find subjects this teacher teaches in this class (either as class teacher or via specific subject assignment)
+                    let subjectsInClassForTeacher: SubjectType[] = [];
+                    if (classObj.classTeacherId === teacherId) {
+                        subjectsInClassForTeacher = classObj.subjects;
+                    } else {
+                        specificAssignments.forEach(sa => {
+                            if (sa.classId === classObj.id) {
+                                const sub = allSubjectsGlobal.find(s => s.id === sa.subjectId);
+                                if (sub && !subjectsInClassForTeacher.find(s_ => s_.id === sub.id)) subjectsInClassForTeacher.push(sub);
+                            }
+                        });
+                    }
+                    subjectsInClassForTeacher.forEach(subjectObj => {
+                        const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`;
+                        responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
+                    });
+                }
+            } else if (!examObj.classId && examObj.subjectId) {
+                // Exam is for this teacher and a specific subject (applies to all classes where they teach this subject)
+                // This is a bit more complex - find all classes where this teacher teaches this subject
+                 allClasses.forEach(classObj => {
+                    const teachesThisSubjectInThisClass = 
+                        (classObj.classTeacherId === teacherId && classObj.subjects.some(s => s.id === examObj.subjectId)) ||
+                        specificAssignments.some(sa => sa.classId === classObj.id && sa.subjectId === examObj.subjectId);
+                    
+                    if(teachesThisSubjectInThisClass) {
+                        const subjectObj = allSubjectsGlobal.find(s => s.id === examObj.subjectId);
+                        if (subjectObj) {
+                            const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`;
+                            responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
+                        }
+                    }
+                 });
+
+            } else {
+                // Exam is assigned to this teacher generally (applies to all subjects in all classes they teach)
+                // Iterate through responsibilities already established by Class Teacher or specific subject assignments
+                const existingClassSubjectPairs = new Set<string>();
+                responsibilitiesMap.forEach((val, key) => {
+                     const [_eId, cId, sId] = key.split('_');
+                     existingClassSubjectPairs.add(`${cId}_${sId}`);
+                });
+
+                existingClassSubjectPairs.forEach(csPair => {
+                    const [cId, sId] = csPair.split('_');
+                    const classObj = allClasses.find(c => c.id === cId);
+                    const subjectObj = allSubjectsGlobal.find(s => s.id === sId);
+                    if (classObj && subjectObj) {
+                         const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`;
+                         responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
+                    }
+                });
+            }
+        }
+    });
+
+
     return responsibilitiesMap;
 }
 
@@ -403,23 +489,53 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     const currentTermId = generalSettings.currentTermId;
     const currentTerm = currentTermId ? allTerms.find(t => t.id === currentTermId) : null;
     
-    let deadlineText = "Not set";
-    if (generalSettings.globalMarksSubmissionDeadline) {
-      deadlineText = `Global: ${new Date(generalSettings.globalMarksSubmissionDeadline).toLocaleDateString()}`;
-    } else if (currentTerm?.endDate) {
-      deadlineText = `Term End: ${new Date(currentTerm.endDate).toLocaleDateString()}`;
+    let deadlineText = "Not set"; // Default
+    let deadlineDateForComparison: Date | null = null;
+
+    // Determine the most relevant deadline for display and comparison
+    if (currentTerm) { // Only proceed if there's a current term
+        const examsForCurrentTerm = (await getExams()).filter(e => e.termId === currentTerm.id);
+        
+        // Find if any exam specifically assigned to this teacher (via any method) has its own deadline
+        const responsibilities = await getTeacherAssessmentResponsibilities(teacherId);
+        let specificExamDeadline: string | undefined;
+        responsibilities.forEach(resp => {
+            if (resp.examObj.marksSubmissionDeadline) {
+                if (!specificExamDeadline || new Date(resp.examObj.marksSubmissionDeadline) < new Date(specificExamDeadline)) {
+                    specificExamDeadline = resp.examObj.marksSubmissionDeadline;
+                }
+            }
+        });
+
+        if (specificExamDeadline) {
+            deadlineText = `Specific Exam: ${new Date(specificExamDeadline).toLocaleDateString()}`;
+            deadlineDateForComparison = new Date(specificExamDeadline);
+        } else if (generalSettings.globalMarksSubmissionDeadline) {
+            deadlineText = `Global: ${new Date(generalSettings.globalMarksSubmissionDeadline).toLocaleDateString()}`;
+            deadlineDateForComparison = new Date(generalSettings.globalMarksSubmissionDeadline);
+        } else if (currentTerm.endDate) {
+            deadlineText = `Term End: ${new Date(currentTerm.endDate).toLocaleDateString()}`;
+            deadlineDateForComparison = new Date(currentTerm.endDate);
+        }
     }
+
 
     const responsibilitiesMap = await getTeacherAssessmentResponsibilities(teacherId);
     const dashboardAssignments: TeacherDashboardAssignment[] = [];
 
     responsibilitiesMap.forEach(({ classObj, subjectObj, examObj }, key) => {
+        // Use the most specific deadline available for this assignment
+        let assignmentDeadlineText = deadlineText; // Default to general/term deadline
+        if (examObj.marksSubmissionDeadline) {
+            assignmentDeadlineText = `Exam Deadline: ${new Date(examObj.marksSubmissionDeadline).toLocaleDateString()}`;
+        }
+
         dashboardAssignments.push({
             id: key, // examId_classId_subjectId
             className: classObj.name,
             subjectName: subjectObj.name,
             examName: examObj.name,
-            nextDeadlineInfo: deadlineText, // This could be enhanced to be exam-specific if deadlines are set per exam
+            nextDeadlineInfo: assignmentDeadlineText, 
         });
     });
     
@@ -438,30 +554,22 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
         type: generalSettings.dosGlobalAnnouncementType || 'info',
       });
     }
-
-    let deadlineDateToCompare: Date | null = null;
-    let deadlineMessagePrefix = "";
-
-    if (generalSettings.globalMarksSubmissionDeadline) {
-      deadlineDateToCompare = new Date(generalSettings.globalMarksSubmissionDeadline);
-      deadlineMessagePrefix = "Global marks submission deadline";
-    } else if (currentTerm?.endDate) {
-      deadlineDateToCompare = new Date(currentTerm.endDate);
-      deadlineMessagePrefix = "Current term submission deadline (term end)";
-    }
-
-    if (deadlineDateToCompare) {
+    
+    if (deadlineDateForComparison) { // Use the determined overall deadline for notification
       const today = new Date();
       today.setHours(0,0,0,0); 
-      deadlineDateToCompare.setHours(0,0,0,0); 
+      deadlineDateForComparison.setHours(0,0,0,0); 
 
-      const diffTime = deadlineDateToCompare.getTime() - today.getTime();
+      const diffTime = deadlineDateForComparison.getTime() - today.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
       if (diffDays >= 0 && diffDays <= 7) { 
+        const deadlineTypeForMessage = deadlineText.startsWith("Specific Exam") ? "A specific exam submission deadline" 
+                                     : deadlineText.startsWith("Global") ? "The global marks submission deadline"
+                                     : "The current term submission deadline";
         notifications.push({
           id: 'deadline_reminder',
-          message: `${deadlineMessagePrefix} is ${diffDays === 0 ? 'today' : diffDays === 1 ? 'tomorrow' : `in ${diffDays} days`} (${deadlineDateToCompare.toLocaleDateString()}).`,
+          message: `${deadlineTypeForMessage} is ${diffDays === 0 ? 'today' : diffDays === 1 ? 'tomorrow' : `in ${diffDays} days`} (${deadlineDateForComparison.toLocaleDateString()}). Please ensure all marks are submitted.`,
           type: 'deadline',
         });
       }
@@ -471,7 +579,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       let noAssignmentMessage = 'No teaching assignments found for the current term.';
       if (!currentTermId) {
         noAssignmentMessage = 'No current academic term is set by the D.O.S. Assignments cannot be determined.';
-      } else if (!(await getExams()).filter(e => e.termId === currentTermId).length) { // Check exams for current term directly
+      } else if (!(await getExams()).filter(e => e.termId === currentTermId).length) { 
          noAssignmentMessage = 'No exams are scheduled for the current academic term. Assignments cannot be determined.';
       }
       notifications.push({
@@ -496,3 +604,4 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
   }
 }
     
+
