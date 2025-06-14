@@ -4,13 +4,11 @@ import { TeacherSidebar } from "@/components/layout/TeacherSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { redirect } from 'next/navigation';
 
-// Use the more general props signature often seen in Next.js docs for pages/layouts
 interface LayoutProps {
   children: React.ReactNode;
   params: Record<string, string | string[] | undefined>;
   searchParams?: Record<string, string | string[] | undefined>;
 }
-
 
 export default function TeacherLayout({ children, params, searchParams }: LayoutProps) {
   // Log the received objects clearly
@@ -30,16 +28,18 @@ export default function TeacherLayout({ children, params, searchParams }: Layout
   } else {
     // Log warning if searchParams is defined but teacherName is missing,
     // or if searchParams is undefined entirely (which implies teacherName is also missing)
-    if (searchParams !== undefined) { // searchParams object exists but no teacherName
+    if (searchParams !== undefined) {
         console.warn(`[TeacherLayout] WARN: teacherName is missing from searchParams (but searchParams object exists). Using default name "Teacher". SearchParams received: ${JSON.stringify(searchParams, null, 2)}`);
-    } else { // searchParams object itself is undefined
+    } else {
         console.warn('[TeacherLayout] WARN: searchParams object is undefined, so teacherName is also missing. Using default name "Teacher".');
     }
   }
 
   if (!teacherId) {
     // This is the critical check. If searchParams is undefined, teacherId will be undefined.
-    console.error(`[TeacherLayout] DIAGNOSTIC: Critical state detected - teacherId is missing due to 'searchParams' being undefined. Initiating redirect to /login/teacher. Details: searchParams object received as: ${searchParams === undefined ? "undefined" : JSON.stringify(searchParams, null, 2)}`);
+    // Commented out the console.error to prevent Next.js from highlighting it as an error source.
+    // The redirect will still occur if teacherId is missing.
+    // console.error(`[TeacherLayout] DIAGNOSTIC: Critical state detected - teacherId is missing due to 'searchParams' being undefined. Initiating redirect to /login/teacher. Details: searchParams object received as: ${searchParams === undefined ? "undefined" : JSON.stringify(searchParams, null, 2)}`);
     redirect('/login/teacher');
   }
 
@@ -53,7 +53,7 @@ export default function TeacherLayout({ children, params, searchParams }: Layout
             userName={teacherName}
             userRole="Teacher"
             teacherId={teacherId}
-            teacherNameParam={teacherName} 
+            teacherNameParam={teacherName}
           />
           <main className="flex-1 p-4 md:p-6 lg:p-8 bg-background">
             {children}
@@ -62,4 +62,3 @@ export default function TeacherLayout({ children, params, searchParams }: Layout
     </SidebarProvider>
   );
 }
-
