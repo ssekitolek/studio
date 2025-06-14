@@ -28,12 +28,11 @@ interface SubmissionHistoryItem {
 
 
 export async function loginTeacherByEmailPassword(email: string, passwordToVerify: string): Promise<{ success: boolean; message: string; teacher?: { id: string; name: string; email: string; } }> {
+  if (!db) {
+    console.error("CRITICAL: Firestore database (db) is not initialized in loginTeacherByEmailPassword. Check Firebase configuration.");
+    return { success: false, message: "Authentication service is currently unavailable. Please try again later." };
+  }
   try {
-    if (!db) {
-      console.error("CRITICAL: Firestore database (db) is not initialized in loginTeacherByEmailPassword. Check Firebase configuration.");
-      return { success: false, message: "Authentication service is currently unavailable. Please try again later." };
-    }
-
     const teachersRef = collection(db, "teachers");
     const q = query(teachersRef, where("email", "==", email), limit(1));
     const querySnapshot = await getDocs(q);
@@ -68,7 +67,7 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
       return { success: false, message: "Invalid email or password. Credentials do not match." };
     }
   } catch (error) {
-    console.error("FATAL ERROR during teacher login action:", error); 
+    console.error("FATAL ERROR during teacher login action:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown internal server error occurred.";
     return { success: false, message: `Login failed due to a server error: ${errorMessage}. Please try again or contact support if the issue persists.` };
   }
@@ -208,7 +207,7 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
         return [];
     }
     if (!teacherId) {
-        console.warn("Teacher ID not provided for fetching submission history.");
+        // console.warn removed for consistency if UI handles this
         return [];
     }
     try {
@@ -244,7 +243,7 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
     }
     const teacher = await getTeacherByIdFromDOS(teacherId); 
     if (!teacher) {
-        console.warn(`Teacher not found for ID: ${teacherId} in getTeacherAssessments.`);
+        // console.warn removed
         return [];
     }
 
@@ -257,13 +256,13 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
 
     const currentTermId = generalSettings.currentTermId;
     if (!currentTermId) {
-        console.warn("No current term ID set in general settings for getTeacherAssessments.");
+        // console.warn removed
         return []; 
     }
 
     const currentTermExams = allExams.filter(exam => exam.termId === currentTermId);
     if (currentTermExams.length === 0) {
-        console.warn(`No exams found for current term ID: ${currentTermId} in getTeacherAssessments.`);
+        // console.warn removed
         return [];
     }
 
@@ -322,10 +321,11 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
   }
 
   try {
-    const teacher = await getTeacherByIdFromDOS(teacherId); 
+    const teacherDocument = await getTeacherByIdFromDOS(teacherId); 
     
-    if (!teacher) {
-      console.warn(`Teacher not found for ID: ${teacherId} in getTeacherDashboardData.`);
+    if (!teacherDocument) {
+      // console.warn removed: `Teacher not found for ID: ${teacherId} in getTeacherDashboardData.`
+      // The notification below will inform the user.
       return {
         assignments: [],
         notifications: [{ id: 'error_teacher_not_found', message: `Could not load data. Teacher record not found for ID: ${teacherId}. Please ensure the ID is correct or contact support.`, type: 'warning' }],
@@ -344,7 +344,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
 
     const assignmentsMap = new Map<string, TeacherDashboardAssignment>();
     const notifications: TeacherNotification[] = [];
-    const teacherName = teacher.name;
+    const teacherName = teacherDocument.name; // Use name from the fetched document
     const resourcesText = generalSettings.teacherDashboardResourcesText;
 
     const currentTermId = generalSettings.currentTermId;
@@ -361,7 +361,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
 
     if (currentTermId && currentTermExams.length > 0) {
       allClasses.forEach(cls => {
-        if (cls.classTeacherId === teacher.id && Array.isArray(cls.subjects)) {
+        if (cls.classTeacherId === teacherDocument.id && Array.isArray(cls.subjects)) {
           cls.subjects.forEach(subj => {
             const assignmentId = `${cls.id}-${subj.id}`;
             if (!assignmentsMap.has(assignmentId)) {
@@ -376,8 +376,8 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
         }
       });
 
-      if (Array.isArray(teacher.subjectsAssigned)) {
-        for (const assigned of teacher.subjectsAssigned) {
+      if (Array.isArray(teacherDocument.subjectsAssigned)) {
+        for (const assigned of teacherDocument.subjectsAssigned) {
           const cls = allClasses.find(c => c.id === assigned.classId);
           const subjDetails = allSubjectsGlobal.find(s => s.id === assigned.subjectId); 
 
@@ -462,8 +462,11 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     return {
       assignments: [],
       notifications: [{ id: 'processing_error_dashboard', message: `Error processing dashboard data: ${errorMessage}`, type: 'warning' }],
-      teacherName: (await getTeacherByIdFromDOS(teacherId))?.name || undefined, // Attempt to get name even on error
+      teacherName: (await getTeacherByIdFromDOS(teacherId))?.name || undefined, 
       resourcesText: "Could not load resources due to an internal error."
     };
   }
 }
+
+
+    
