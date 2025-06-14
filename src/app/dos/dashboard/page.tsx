@@ -54,18 +54,15 @@ export default async function DosDashboardPage() {
       getTerms(),
     ]);
   } catch (error) {
-    // Enhanced error logging
     console.error("CRITICAL ERROR in DosDashboardPage Promise.all data fetching:", error);
-    // Attempt to stringify the error for more detailed logging, including non-standard properties
     try {
       console.error("Detailed error object (DosDashboardPage):", JSON.stringify(error, Object.getOwnPropertyNames(error)));
     } catch (stringifyError) {
       console.error("Could not stringify the error object:", stringifyError);
     }
     
-    fetchError = `Dashboard loading failed: ${error instanceof Error ? error.message : String(error)}. Please check server logs and ensure Firebase services are reachable.`;
+    fetchError = `Dashboard loading failed: ${error instanceof Error ? error.message : String(error)}. Please check server logs and ensure Firebase services are reachable. The system might be offline or experiencing issues.`;
     
-    // Initialize with defaults to prevent rendering errors for undefined variables
     generalSettings = {
         defaultGradingScale: [{ grade: 'N/A', minScore: 0, maxScore: 0 }],
         markSubmissionTimeZone: 'UTC',
@@ -78,7 +75,6 @@ export default async function DosDashboardPage() {
   }
   
   if (!generalSettings) {
-    // This case should ideally be covered by the catch block, but as a safeguard
     generalSettings = {
         defaultGradingScale: [{ grade: 'Error', minScore: 0, maxScore: 0 }],
         markSubmissionTimeZone: 'UTC',
@@ -227,3 +223,5 @@ export default async function DosDashboardPage() {
     </div>
   );
 }
+
+    

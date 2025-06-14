@@ -33,12 +33,12 @@ if (unconfiguredKeys.length > 0) {
 // Check specifically for placeholder projectId
 if (firebaseConfigValues.projectId && placeholderProjectIds.includes(firebaseConfigValues.projectId.toLowerCase())) {
   isConfigurationValid = false;
-  configErrorMessage = (configErrorMessage ? configErrorMessage + " " : "") + // Append to existing message if any
+  configErrorMessage = (configErrorMessage ? configErrorMessage + " " : "") + 
                        `CRITICAL_CONFIG_ERROR: Your Firebase projectId ('${firebaseConfigValues.projectId}') is a placeholder. You MUST replace NEXT_PUBLIC_FIREBASE_PROJECT_ID with your actual Firebase Project ID from the Firebase Console.`;
 } else if (!firebaseConfigValues.projectId && !unconfiguredKeys.includes("projectId")) {
   // This case handles if projectId was initially set but then cleared, or if the env var name is misspelled
   isConfigurationValid = false;
-  configErrorMessage = (configErrorMessage ? configErrorMessage + " " : "") + // Append
+  configErrorMessage = (configErrorMessage ? configErrorMessage + " " : "") +
                        `CRITICAL_CONFIG_ERROR: Firebase projectId (NEXT_PUBLIC_FIREBASE_PROJECT_ID) is missing or invalid. Please ensure it is correctly set in your .env file.`;
 }
 
@@ -49,12 +49,7 @@ let db: Firestore | null = null; // Initialize as null, explicitly
 if (!isConfigurationValid) {
   const fullErrorMessage = `Firebase Initialization Failed due to Configuration Issues: ${configErrorMessage} Firebase features will be unavailable. Ensure all NEXT_PUBLIC_FIREBASE_... variables are correctly set in your .env file. Without correct configuration, the application cannot connect to your database.`;
   
-  console.error(`SERVER_FATAL_CONFIG_ERROR: ${fullErrorMessage}`); // Log this regardless of environment for visibility
-
-  // On the server, if config is invalid, `db` will remain null.
-  // Actions should check for `db === null` and handle it.
-  // Throwing an error here might stop the server prematurely during development.
-  // The key is that `db` remains null, and subsequent operations fail predictably.
+  console.error(`SERVER_FATAL_CONFIG_ERROR: ${fullErrorMessage}`); 
 
 } else {
   // Proceed with initialization only if configuration is valid
@@ -68,26 +63,22 @@ if (!isConfigurationValid) {
   } catch (error) {
     const initErrorMsg = `Firebase SDK Initialization Error: ${error instanceof Error ? error.message : String(error)}. This occurred even with seemingly valid config. Firestore (db) will be NULL. Config used: ${JSON.stringify(firebaseConfigValues)}`;
     console.error(`SERVER_SDK_INIT_ERROR: ${initErrorMsg}`);
-    app = null; // Ensure app and db are null on error
+    app = null; 
     db = null;
-    // Server will continue, but `db` is null. Client-side also gets null `db`.
   }
 }
 
-// Add a final check and log if db is still null after attempting initialization
-// This helps confirm the state of `db` post-attempt.
 if (db === null) {
     if (isConfigurationValid) {
-        // This case is bad: config seemed ok, but SDK init failed or didn't set db.
         console.error("POST_INIT_CHECK_FAIL: Firestore 'db' instance is unexpectedly null after initialization attempt, despite configuration appearing valid. This indicates a deeper issue with Firebase SDK or setup.");
     } else {
-        // This case is expected: config was bad, so db is null.
         console.warn("POST_INIT_CHECK_INFO: Firestore 'db' instance is null due to prior configuration errors. This is expected. Firebase operations will fail.");
     }
 } else {
-    console.log(`Firebase and Firestore (db) initialized successfully. Project ID: ${firebaseConfigValues.projectId || 'NOT_CONFIGURED'}`);
+    console.log(`Firebase and Firestore (db) initialized successfully. Project ID: ${firebaseConfigValues.projectId || 'NOT_CONFIGURED_CORRECTLY'}`);
 }
 
 
 export { app, db };
 
+    

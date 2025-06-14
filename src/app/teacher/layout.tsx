@@ -20,7 +20,6 @@ export default async function TeacherLayout({
   if (!teacherId) {
     console.warn('[TeacherLayout] teacherId is missing from searchParams. Redirecting to /login/teacher. Current searchParams:', searchParams);
     redirect('/login/teacher');
-    // Note: redirect() will throw an error to stop further execution, so no return is needed here.
   }
 
   // If teacherId is present, log it for confirmation
@@ -39,3 +38,4 @@ export default async function TeacherLayout({
   );
 }
 
+    

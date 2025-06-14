@@ -49,22 +49,19 @@ export default async function TeacherDashboardPage({
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while loading dashboard data.";
     console.error(`CRITICAL_ERROR_TEACHER_DASHBOARD_FETCH for teacher ${teacherId}:`, error);
     fetchError = errorMessage;
-    // Provide a robust default structure for dashboardData to prevent further rendering errors
     dashboardData = {
       assignments: [],
-      notifications: [], // Error notification will be added below
-      teacherName: undefined, 
+      notifications: [], 
+      teacherName: teacherNameFromParams, // Use param as fallback
       resourcesText: "Could not load resources due to a critical error. Please contact an administrator."
     };
   }
 
-  // Ensure assignments and notifications are always arrays
   const assignments: TeacherDashboardAssignment[] = dashboardData.assignments || [];
-  const notifications: TeacherNotification[] = [...(dashboardData.notifications || [])]; // Make a mutable copy
+  let notifications: TeacherNotification[] = [...(dashboardData.notifications || [])]; 
   const resourcesText = dashboardData.resourcesText || defaultResourcesText;
   const teacherDisplayName = dashboardData.teacherName || teacherNameFromParams;
 
-  // If fetchError occurred, ensure it's the primary notification
   if (fetchError && !notifications.find(n => n.id === 'critical_error_dashboard_load')) {
      notifications.unshift({ 
        id: 'critical_error_dashboard_load', 
@@ -82,13 +79,12 @@ export default async function TeacherDashboardPage({
         icon={LayoutDashboard}
       />
 
-      {/* Display fetch error prominently if it occurred */}
-      {fetchError && notifications.find(n => n.id === 'critical_error_dashboard_load') && (
+      {notifications.find(n => n.id === 'critical_error_db_null' || n.id === 'critical_error_dashboard_load' || n.id === 'error_teacher_not_found' || n.id === 'processing_error_dashboard') && (
          <Alert variant="destructive" className="shadow-md">
             <AlertTriangle className="h-4 w-4" />
             <UIAlertTitle>Dashboard Loading Error</UIAlertTitle>
             <AlertDescription>
-                {notifications.find(n => n.id === 'critical_error_dashboard_load')?.message}
+                {notifications.find(n => n.id === 'critical_error_db_null' || n.id === 'critical_error_dashboard_load' || n.id === 'error_teacher_not_found' || n.id === 'processing_error_dashboard')?.message}
             </AlertDescription>
         </Alert>
       )}
@@ -114,7 +110,7 @@ export default async function TeacherDashboardPage({
                       </p>
                     </div>
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/teacher/marks/submit?teacherId=${teacherId}`}>
+                      <Link href={`/teacher/marks/submit?teacherId=${encodeURIComponent(teacherId)}`}>
                         <BookOpenCheck className="mr-2 h-4 w-4" /> Enter Marks
                       </Link>
                     </Button>
@@ -140,7 +136,7 @@ export default async function TeacherDashboardPage({
           </CardHeader>
           <CardContent className="space-y-3 max-h-96 overflow-y-auto">
             {notifications.length > 0 ? (
-              notifications.map((notification) => (
+              notifications.filter(n => !(n.id === 'critical_error_db_null' || n.id === 'critical_error_dashboard_load' || n.id === 'error_teacher_not_found' || n.id === 'processing_error_dashboard')).map((notification) => ( // Filter out already displayed critical errors
                 <div
                   key={notification.id}
                   className={`flex items-start p-3 rounded-lg ${
@@ -159,11 +155,17 @@ export default async function TeacherDashboardPage({
                   <p className="text-sm">{notification.message}</p>
                 </div>
               ))
-            ) : (
+            ) : !fetchError ? ( // Only show "no new notifications" if there wasn't a major fetch error already displayed
               <div className="text-center py-6 text-muted-foreground">
                  <Info className="mx-auto h-8 w-8 mb-2" />
                 <p>No new notifications at this time.</p>
               </div>
+            ) : null}
+            {notifications.length > 0 && !notifications.filter(n => !(n.id === 'critical_error_db_null' || n.id === 'critical_error_dashboard_load' || n.id === 'error_teacher_not_found' || n.id === 'processing_error_dashboard')).length && !fetchError && (
+                <div className="text-center py-6 text-muted-foreground">
+                    <Info className="mx-auto h-8 w-8 mb-2" />
+                    <p>No new notifications at this time.</p>
+                </div>
             )}
           </CardContent>
         </Card>
@@ -181,7 +183,7 @@ export default async function TeacherDashboardPage({
                 </p>
               ))}
               <Button variant="default" className="mt-4" asChild>
-                <Link href={`/teacher/marks/submit?teacherId=${teacherId}`}>
+                <Link href={`/teacher/marks/submit?teacherId=${encodeURIComponent(teacherId)}`}>
                   <BookOpenCheck className="mr-2 h-4 w-4" /> Go to Marks Submission
                 </Link>
               </Button>
@@ -194,3 +196,5 @@ export default async function TeacherDashboardPage({
     </div>
   );
 }
+
+    
