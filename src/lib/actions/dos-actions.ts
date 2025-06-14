@@ -142,7 +142,18 @@ export async function updateTeacherAssignments(
     // Server-side log to inspect incoming specificSubjectAssignments
     console.log(`[DOS Action - updateTeacherAssignments] Teacher ID: ${teacherId}, Received specificSubjectAssignments:`, JSON.stringify(data.specificSubjectAssignments, null, 2));
 
-    const assignmentsToSave = Array.isArray(data.specificSubjectAssignments) ? data.specificSubjectAssignments : [];
+    // Filter specificSubjectAssignments to ensure only valid objects are processed and saved.
+    // A valid assignment object must have non-empty string classId and subjectId.
+    const validSpecificAssignments = Array.isArray(data.specificSubjectAssignments)
+      ? data.specificSubjectAssignments.filter(
+          (assignment) =>
+            assignment &&
+            typeof assignment.classId === 'string' &&
+            assignment.classId.trim() !== '' &&
+            typeof assignment.subjectId === 'string' &&
+            assignment.subjectId.trim() !== ''
+        )
+      : [];
 
     await runTransaction(db, async (transaction) => {
       const teacherRef = doc(db, "teachers", teacherId);
@@ -151,30 +162,28 @@ export async function updateTeacherAssignments(
         throw new Error(`Teacher with ID ${teacherId} not found.`);
       }
 
-      // 1. Update teacher's specific subject assignments
-      transaction.update(teacherRef, { subjectsAssigned: assignmentsToSave });
+      // 1. Update teacher's specific subject assignments on the teacher document.
+      // This directly writes the `subjectsAssigned` array to the teacher's document.
+      transaction.update(teacherRef, { subjectsAssigned: validSpecificAssignments });
 
-      // 2. Handle class teacher assignments
+      // 2. Handle class teacher assignments (updates `classTeacherId` on class documents)
       const classesCol = collection(db, "classes");
-      // No need to await getDocs here if we iterate classTeacherForClassIds and then unassign others.
-      // This approach is more efficient:
       
-      // Get all classes to find previously assigned ones
-      const allPreviouslyAssignedClassesToThisTeacherQuery = query(classesCol, where("classTeacherId", "==", teacherId));
-      const previouslyAssignedSnapshot = await transaction.get(allPreviouslyAssignedClassesToThisTeacherQuery);
+      // Unassign this teacher from any classes they were previously Class Teacher for,
+      // but are NOT in the new `data.classTeacherForClassIds` list.
+      const previousAssignmentsQuery = query(classesCol, where("classTeacherId", "==", teacherId));
+      const previousAssignmentsSnapshot = await transaction.get(previousAssignmentsQuery);
       
-      // Unassign from classes not in the new list
-      for (const classDoc of previouslyAssignedSnapshot.docs) {
+      for (const classDoc of previousAssignmentsSnapshot.docs) {
         if (!data.classTeacherForClassIds.includes(classDoc.id)) {
           transaction.update(classDoc.ref, { classTeacherId: null });
         }
       }
       
-      // Assign to classes in the new list
+      // Assign this teacher as Class Teacher for all classes in the new list.
+      // This will overwrite any existing classTeacherId on those classes.
       for (const classId of data.classTeacherForClassIds) {
         const classRef = doc(db, "classes", classId);
-        // We could get the doc to check current classTeacherId, but simply setting it is often fine.
-        // If another teacher was classTeacher, this overwrites it, which is intended.
         transaction.update(classRef, { classTeacherId: teacherId });
       }
     });
