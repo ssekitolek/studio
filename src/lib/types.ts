@@ -5,7 +5,7 @@ export interface Teacher {
   name: string;
   email: string;
   password?: string; // Password assigned by D.O.S.
-  subjectsAssigned: Array<{ classId: string; subjectId: string }>; // Tracks which subjects in which classes
+  subjectsAssigned: Array<{ classId: string; subjectId: string; examIds: string[] }>; // Tracks which exams for which subjects in which classes
 }
 
 export interface Student {
@@ -41,18 +41,18 @@ export interface Term {
   endDate: string; // ISO date string YYYY-MM-DD
 }
 
-export interface Exam {
+export interface Exam { // Represents an Exam Type
   id: string;
-  name: string; // E.g., "Midterm Exam"
-  termId: string;
-  date?: string; // ISO date string - Can be used as the exam date or a specific deadline
-  maxMarks: number; // Default max marks, can be overridden per subject
+  name: string; // E.g., "Midterm Exam", "Final Exam"
+  termId: string; // Links to an academic term
+  date?: string; // Optional: General date or deadline for this exam type
+  maxMarks: number; // Default max marks for this exam type
   description?: string;
 }
 
 // Represents a specific assessment instance for a subject in a class for an exam type
 export interface Assessment {
-    id: string;
+    id: string; // Typically examId_classId_subjectId
     examId: string;
     classId: string;
     subjectId: string;
@@ -85,13 +85,13 @@ export interface AnomalyExplanation {
 
 // General settings
 export interface GeneralSettings {
-    defaultGradingScale: Array<GradingScaleItem>; // Now uses GradingScaleItem
+    defaultGradingScale: Array<GradingScaleItem>; 
     currentTermId?: string;
-    markSubmissionTimeZone: string; // e.g., "Africa/Nairobi"
-    globalMarksSubmissionDeadline?: string; // Optional ISO date string YYYY-MM-DD
+    markSubmissionTimeZone: string; 
+    globalMarksSubmissionDeadline?: string; 
     dosGlobalAnnouncementText?: string;
     dosGlobalAnnouncementType?: 'info' | 'warning';
-    teacherDashboardResourcesText?: string; // New field for teacher dashboard resources
+    teacherDashboardResourcesText?: string; 
 }
 
 // Grading Policy specific types
@@ -110,9 +110,10 @@ export interface GradingPolicy {
 
 // Teacher Dashboard specific types
 export interface TeacherDashboardAssignment {
-  id: string; 
+  id: string; // Now examId_classId_subjectId
   className: string;
   subjectName: string; 
+  examName: string; // Added exam name
   nextDeadlineInfo: string;
 }
 
@@ -127,5 +128,6 @@ export interface TeacherDashboardData {
   assignments: TeacherDashboardAssignment[];
   notifications: TeacherNotification[];
   teacherName?: string;
-  resourcesText?: string; // New field for teacher resources text
+  resourcesText?: string; 
 }
+

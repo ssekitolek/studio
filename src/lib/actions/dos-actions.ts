@@ -57,7 +57,7 @@ export async function getTeacherById(teacherId: string): Promise<Teacher | null>
         name: data.name,
         email: data.email,
         password: data.password, 
-        subjectsAssigned: data.subjectsAssigned || [],
+        subjectsAssigned: data.subjectsAssigned || [], // Ensure subjectsAssigned is always an array
       } as Teacher;
     }
     return null;
@@ -87,11 +87,21 @@ export async function updateTeacher(teacherId: string, teacherData: Partial<Omit
     }
     if (teacherData.subjectsAssigned !== undefined) {
       if (Array.isArray(teacherData.subjectsAssigned)) {
+         // Ensure structure is { classId: string, subjectId: string, examIds: string[] }
         updatePayload.subjectsAssigned = teacherData.subjectsAssigned.filter(
-          (assignment: any) => assignment && typeof assignment.classId === 'string' && typeof assignment.subjectId === 'string'
-        ).map((assignment: any) => ({ classId: assignment.classId, subjectId: assignment.subjectId }));
+          (assignment: any) => 
+            assignment && 
+            typeof assignment.classId === 'string' && 
+            typeof assignment.subjectId === 'string' &&
+            Array.isArray(assignment.examIds) && 
+            assignment.examIds.every((id: any) => typeof id === 'string')
+        ).map((assignment: any) => ({ 
+            classId: assignment.classId, 
+            subjectId: assignment.subjectId,
+            examIds: assignment.examIds 
+        }));
       } else {
-        console.warn(`updateTeacher: subjectsAssigned for teacher ${teacherId} was provided but not as an array. Ignoring subjectsAssigned update.`);
+        console.warn(`updateTeacher: subjectsAssigned for teacher ${teacherId} was provided but not as a valid array. Ignoring subjectsAssigned update.`);
       }
     }
 
@@ -132,14 +142,15 @@ export async function updateTeacherAssignments(
   teacherId: string,
   data: {
     classTeacherForClassIds: string[];
-    specificSubjectAssignments: Array<{ classId: string; subjectId: string }>;
+    specificSubjectAssignments: Array<{ classId: string; subjectId: string; examIds: string[] }>;
   }
 ): Promise<{ success: boolean; message: string }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized." };
   }
-  console.log(`[DOS Action - updateTeacherAssignments] Teacher ID: ${teacherId}, Received specificSubjectAssignments:`, JSON.stringify(data.specificSubjectAssignments, null, 2));
   
+  console.log(`[DOS Action - updateTeacherAssignments] Teacher ID: ${teacherId}, Received specificSubjectAssignments:`, JSON.stringify(data.specificSubjectAssignments, null, 2));
+
   const validSpecificAssignments = Array.isArray(data.specificSubjectAssignments)
   ? data.specificSubjectAssignments.filter(
       (assignment) =>
@@ -147,9 +158,15 @@ export async function updateTeacherAssignments(
         typeof assignment.classId === 'string' &&
         assignment.classId.trim() !== '' &&
         typeof assignment.subjectId === 'string' &&
-        assignment.subjectId.trim() !== ''
-    )
+        assignment.subjectId.trim() !== '' &&
+        Array.isArray(assignment.examIds) && // Ensure examIds is an array
+        assignment.examIds.every(id => typeof id === 'string' && id.trim() !== '') && // Ensure all examIds are non-empty strings
+        assignment.examIds.length > 0 // Only save if there's at least one exam assigned
+    ).map(a => ({ classId: a.classId, subjectId: a.subjectId, examIds: a.examIds }))
   : [];
+  
+  console.log(`[DOS Action - updateTeacherAssignments] Validated and Mapped specificSubjectAssignments to save:`, JSON.stringify(validSpecificAssignments, null, 2));
+
 
   try {
     await runTransaction(db, async (transaction) => {
@@ -162,30 +179,22 @@ export async function updateTeacherAssignments(
       transaction.update(teacherRef, { subjectsAssigned: validSpecificAssignments });
 
       const classesColRef = collection(db, "classes");
-      
-      // Get all classes to check current assignments
-      const allClassDocs = await getDocs(classesColRef); // Read outside transaction for this pattern, or pass refs
+      const allClassDocsSnapshot = await getDocs(classesColRef); // Fetch outside, or pass refs if very large
 
-      for (const classDoc of allClassDocs.docs) {
-        const classData = classDoc.data();
-        const currentClassTeacherId = classData.classTeacherId;
+      allClassDocsSnapshot.forEach(classDoc => {
+          const classData = classDoc.data();
+          const currentClassTeacherId = classData.classTeacherId;
+          const classDocRef = doc(db, "classes", classDoc.id); // Get ref for transaction
 
-        // If this class was previously assigned to the current teacher, but no longer is
-        if (currentClassTeacherId === teacherId && !data.classTeacherForClassIds.includes(classDoc.id)) {
-          transaction.update(classDoc.ref, { classTeacherId: null });
-        }
-        // If this class IS NOW assigned to the current teacher
-        else if (data.classTeacherForClassIds.includes(classDoc.id) && currentClassTeacherId !== teacherId) {
-          // If another teacher was previously assigned, unassign them first (optional, depends on business logic)
-          if (currentClassTeacherId && currentClassTeacherId !== teacherId) {
-            // This part is tricky in a single transaction if you don't know the other teacher.
-            // For simplicity, direct assignment is often preferred.
-            // Or, this step can be handled by ensuring only one teacher can be assigned at a time.
-            // The current D.O.S. form doesn't directly unassign others, it just assigns the selected one.
+          // If this class was previously assigned to the current teacher, but no longer is
+          if (currentClassTeacherId === teacherId && !data.classTeacherForClassIds.includes(classDoc.id)) {
+              transaction.update(classDocRef, { classTeacherId: null });
           }
-          transaction.update(classDoc.ref, { classTeacherId: teacherId });
-        }
-      }
+          // If this class IS NOW assigned to the current teacher AND it wasn't before
+          else if (data.classTeacherForClassIds.includes(classDoc.id) && currentClassTeacherId !== teacherId) {
+              transaction.update(classDocRef, { classTeacherId: teacherId });
+          }
+      });
     });
 
     revalidatePath("/dos/teachers/assignments");
@@ -958,7 +967,7 @@ export async function getTeachers(): Promise<Teacher[]> {
         name: data.name,
         email: data.email,
         password: data.password, 
-        subjectsAssigned: data.subjectsAssigned || []
+        subjectsAssigned: data.subjectsAssigned || [] // Ensure subjectsAssigned is always an array
       } as Teacher;
     });
     return teachersList;
