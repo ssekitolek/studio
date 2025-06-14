@@ -36,8 +36,8 @@ export default function TeacherOpenAccessPage() {
           </div>
           <p className="text-sm text-muted-foreground">
             If you are not redirected automatically, please ensure JavaScript is enabled or{" "}
-            <Link 
-              href={`/teacher/dashboard?teacherId=${encodeURIComponent(DEFAULT_TEACHER_ID)}&teacherName=${encodeURIComponent(DEFAULT_TEACHER_NAME)}`} 
+            <Link
+              href={`/teacher/dashboard?teacherId=${encodeURIComponent(DEFAULT_TEACHER_ID)}&teacherName=${encodeURIComponent(DEFAULT_TEACHER_NAME)}`}
               className="underline hover:text-primary"
             >
               click here
