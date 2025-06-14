@@ -19,14 +19,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
-import { updateTeacherAssignments, getExams } from "@/lib/actions/dos-actions"; // Added getExams
-import type { Teacher, ClassInfo, Exam as ExamType } from "@/lib/types"; // Added ExamType
+import { updateTeacherAssignments, getExams } from "@/lib/actions/dos-actions";
+import type { Teacher, ClassInfo, Exam as ExamType } from "@/lib/types";
 import { Loader2, Save, Users, BookOpen } from "lucide-react";
 
 const specificSubjectAssignmentSchema = z.object({
   classId: z.string(),
   subjectId: z.string(),
-  examIds: z.array(z.string()), // Array of selected Exam Type IDs
+  examIds: z.array(z.string()),
 });
 
 const teacherAssignmentFormSchema = z.object({
@@ -58,7 +58,10 @@ export function TeacherAssignmentForm({
       classTeacherForClassIds: allClasses
         .filter((cls) => cls.classTeacherId === teacher.id)
         .map((cls) => cls.id),
-      specificSubjectAssignments: teacher.subjectsAssigned || [],
+      specificSubjectAssignments: teacher.subjectsAssigned?.map(sa => ({
+        ...sa,
+        examIds: Array.isArray(sa.examIds) ? sa.examIds : [] // Ensure examIds is always an array
+      })) || [],
     },
   });
   
@@ -77,13 +80,15 @@ export function TeacherAssignmentForm({
     fetchExamsData();
   }, [toast]);
 
-  // Update defaultValues when teacher prop changes (e.g., selecting a different teacher)
   React.useEffect(() => {
     form.reset({
       classTeacherForClassIds: allClasses
         .filter((cls) => cls.classTeacherId === teacher.id)
         .map((cls) => cls.id),
-      specificSubjectAssignments: teacher.subjectsAssigned || [],
+      specificSubjectAssignments: teacher.subjectsAssigned?.map(sa => ({
+        ...sa,
+        examIds: Array.isArray(sa.examIds) ? sa.examIds : [] // Ensure examIds is always an array
+      })) || [],
     });
   }, [teacher, allClasses, form]);
 
@@ -91,7 +96,6 @@ export function TeacherAssignmentForm({
   const onSubmit = (data: TeacherAssignmentFormValues) => {
     startTransition(async () => {
       try {
-        // Filter out specific assignments where no examIds are selected, as these are not meaningful
         const filteredSpecificAssignments = data.specificSubjectAssignments.filter(
           assignment => assignment.examIds && assignment.examIds.length > 0
         );
@@ -131,10 +135,14 @@ export function TeacherAssignmentForm({
       (a) => a.classId === classId && a.subjectId === subjectId
     );
 
+    if (existingAssignment && !Array.isArray(existingAssignment.examIds)) {
+        existingAssignment.examIds = []; // Ensure examIds is an array
+    }
+
     if (checked) {
       if (existingAssignment) {
-        if (!existingAssignment.examIds.includes(examId)) {
-          existingAssignment.examIds.push(examId);
+        if (!(existingAssignment.examIds || []).includes(examId)) {
+          existingAssignment.examIds = [...(existingAssignment.examIds || []), examId];
         }
       } else {
         existingAssignment = { classId, subjectId, examIds: [examId] };
@@ -142,12 +150,9 @@ export function TeacherAssignmentForm({
       }
     } else {
       if (existingAssignment) {
-        existingAssignment.examIds = existingAssignment.examIds.filter(
+        existingAssignment.examIds = (existingAssignment.examIds || []).filter(
           (id) => id !== examId
         );
-        // If no exams are selected for this class-subject, we might remove the entry later during submit
-        // or keep it with empty examIds to signify the D.O.S. reviewed it but assigned no exams.
-        // For now, we'll filter out assignments with no examIds on submit.
       }
     }
     setValue("specificSubjectAssignments", [...currentAssignments], { shouldValidate: true, shouldDirty: true });
@@ -258,7 +263,7 @@ export function TeacherAssignmentForm({
                                                 <FormItem key={exam.id} className="flex flex-row items-center space-x-2 space-y-0">
                                                     <FormControl>
                                                     <Checkbox
-                                                        checked={currentAssignmentForSubject?.examIds.includes(exam.id) || false}
+                                                        checked={(currentAssignmentForSubject?.examIds || []).includes(exam.id) || false}
                                                         onCheckedChange={(checked) => {
                                                             handleSpecificAssignmentChange(
                                                                 cls.id,
@@ -308,4 +313,3 @@ export function TeacherAssignmentForm({
     </Form>
   );
 }
-
