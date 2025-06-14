@@ -26,7 +26,7 @@ import { Loader2, Save, Users, BookOpen } from "lucide-react";
 const specificSubjectAssignmentSchema = z.object({
   classId: z.string(),
   subjectId: z.string(),
-  examIds: z.array(z.string()),
+  examIds: z.array(z.string()), // examIds is an array of exam type IDs
 });
 
 const teacherAssignmentFormSchema = z.object({
@@ -59,8 +59,9 @@ export function TeacherAssignmentForm({
         .filter((cls) => cls.classTeacherId === teacher.id)
         .map((cls) => cls.id),
       specificSubjectAssignments: teacher.subjectsAssigned?.map(sa => ({
-        ...sa,
-        examIds: Array.isArray(sa.examIds) ? sa.examIds : [] // Ensure examIds is always an array
+        classId: sa.classId,
+        subjectId: sa.subjectId,
+        examIds: Array.isArray(sa.examIds) ? sa.examIds : []
       })) || [],
     },
   });
@@ -86,16 +87,66 @@ export function TeacherAssignmentForm({
         .filter((cls) => cls.classTeacherId === teacher.id)
         .map((cls) => cls.id),
       specificSubjectAssignments: teacher.subjectsAssigned?.map(sa => ({
-        ...sa,
-        examIds: Array.isArray(sa.examIds) ? sa.examIds : [] // Ensure examIds is always an array
+        classId: sa.classId,
+        subjectId: sa.subjectId,
+        examIds: Array.isArray(sa.examIds) ? sa.examIds : []
       })) || [],
     });
   }, [teacher, allClasses, form]);
 
 
+  const { control, watch, setValue } = form;
+  const specificSubjectAssignments = watch("specificSubjectAssignments");
+
+  const handleSpecificAssignmentChange = (
+    classId: string,
+    subjectId: string,
+    examId: string,
+    checked: boolean
+  ) => {
+    // Get a deep copy of the current assignments to avoid direct state mutation issues.
+    // This ensures that when we modify the examIds array, we're working with a fresh copy.
+    const currentAssignments = (specificSubjectAssignments || []).map(a => ({
+      ...a,
+      examIds: Array.isArray(a.examIds) ? [...a.examIds] : [], // Explicitly copy the examIds array.
+    }));
+
+    let existingAssignmentEntry = currentAssignments.find(
+      (a) => a.classId === classId && a.subjectId === subjectId
+    );
+
+    if (checked) {
+      if (existingAssignmentEntry) {
+        // Assignment for this class-subject combination already exists.
+        // Add the examId to its examIds array if it's not already included.
+        if (!existingAssignmentEntry.examIds.includes(examId)) {
+          existingAssignmentEntry.examIds.push(examId);
+        }
+      } else {
+        // No assignment for this class-subject combination yet.
+        // Create a new entry with the current classId, subjectId, and the selected examId.
+        currentAssignments.push({ classId, subjectId, examIds: [examId] });
+      }
+    } else {
+      // The checkbox was unchecked.
+      if (existingAssignmentEntry) {
+        // If an assignment exists for this class-subject, filter out the unchecked examId.
+        existingAssignmentEntry.examIds = existingAssignmentEntry.examIds.filter(
+          (id) => id !== examId
+        );
+        // Note: The onSubmit logic filters out assignments where examIds becomes empty.
+        // So, we don't need to remove the entire 'existingAssignmentEntry' here if examIds is empty.
+      }
+    }
+    // Update the form state with the modified assignments.
+    setValue("specificSubjectAssignments", currentAssignments, { shouldValidate: true, shouldDirty: true });
+  };
+
+
   const onSubmit = (data: TeacherAssignmentFormValues) => {
     startTransition(async () => {
       try {
+        // Filter out any specific assignments where no exam types ended up being selected.
         const filteredSpecificAssignments = data.specificSubjectAssignments.filter(
           assignment => assignment.examIds && assignment.examIds.length > 0
         );
@@ -121,43 +172,6 @@ export function TeacherAssignmentForm({
     });
   };
   
-  const { control, watch, setValue } = form;
-  const specificSubjectAssignments = watch("specificSubjectAssignments");
-
-  const handleSpecificAssignmentChange = (
-    classId: string,
-    subjectId: string,
-    examId: string,
-    checked: boolean
-  ) => {
-    const currentAssignments = specificSubjectAssignments || [];
-    let existingAssignment = currentAssignments.find(
-      (a) => a.classId === classId && a.subjectId === subjectId
-    );
-
-    if (existingAssignment && !Array.isArray(existingAssignment.examIds)) {
-        existingAssignment.examIds = []; // Ensure examIds is an array
-    }
-
-    if (checked) {
-      if (existingAssignment) {
-        if (!(existingAssignment.examIds || []).includes(examId)) {
-          existingAssignment.examIds = [...(existingAssignment.examIds || []), examId];
-        }
-      } else {
-        existingAssignment = { classId, subjectId, examIds: [examId] };
-        currentAssignments.push(existingAssignment);
-      }
-    } else {
-      if (existingAssignment) {
-        existingAssignment.examIds = (existingAssignment.examIds || []).filter(
-          (id) => id !== examId
-        );
-      }
-    }
-    setValue("specificSubjectAssignments", [...currentAssignments], { shouldValidate: true, shouldDirty: true });
-  };
-
 
   return (
     <Form {...form}>
@@ -263,7 +277,7 @@ export function TeacherAssignmentForm({
                                                 <FormItem key={exam.id} className="flex flex-row items-center space-x-2 space-y-0">
                                                     <FormControl>
                                                     <Checkbox
-                                                        checked={(currentAssignmentForSubject?.examIds || []).includes(exam.id) || false}
+                                                        checked={(currentAssignmentForSubject?.examIds || []).includes(exam.id)}
                                                         onCheckedChange={(checked) => {
                                                             handleSpecificAssignmentChange(
                                                                 cls.id,
@@ -313,3 +327,4 @@ export function TeacherAssignmentForm({
     </Form>
   );
 }
+
