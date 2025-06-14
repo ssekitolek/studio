@@ -283,13 +283,12 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
     });
 
     // Add specific subject assignments
-    if (teacher.subjectsAssigned && Array.isArray(teacher.subjectsAssigned)) {
-        teacher.subjectsAssigned.forEach(assignment => {
-            if (assignment.classId && assignment.subjectId) {
-                 teacherAssignmentsSet.add(`${assignment.classId}-${assignment.subjectId}`);
-            }
-        });
-    }
+    const specificAssignments = Array.isArray(teacher.subjectsAssigned) ? teacher.subjectsAssigned : [];
+    specificAssignments.forEach(assignment => {
+        if (assignment.classId && assignment.subjectId) {
+             teacherAssignmentsSet.add(`${assignment.classId}-${assignment.subjectId}`);
+        }
+    });
     
     teacherAssignmentsSet.forEach(assignmentKey => {
         const [classId, subjectId] = assignmentKey.split('-');
@@ -332,7 +331,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
   }
 
   if (!teacherId) {
-    console.warn("getTeacherDashboardData called without teacherId.");
+    // console.warn("getTeacherDashboardData called without teacherId."); // Already handled by redirect in layout
     return {
       ...defaultResponse,
       notifications: [{ id: 'error_no_teacher_id', message: "Teacher ID not provided. Cannot load dashboard.", type: 'warning' }],
@@ -343,12 +342,10 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     const teacherDocument = await getTeacherByIdFromDOS(teacherId); 
     
     if (!teacherDocument) {
-      // Removed console.warn here as per previous request to reduce log noise for this specific case.
-      // The dashboard page will handle displaying an appropriate message based on this return.
       return {
         ...defaultResponse,
-        notifications: [{ id: 'error_teacher_not_found', message: `Teacher record not found for ID: ${teacherId}.`, type: 'warning' }],
-        teacherName: undefined,
+        notifications: [{ id: 'error_teacher_not_found', message: `Teacher record not found for ID: ${teacherId}. Ensure this teacher exists in the database.`, type: 'warning' }],
+        teacherName: undefined, // Explicitly undefined
       };
     }
 
@@ -396,22 +393,23 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       });
 
       // Explicit subject assignments from teacher document
-      if (Array.isArray(teacherDocument.subjectsAssigned)) {
-        for (const assigned of teacherDocument.subjectsAssigned) {
-          const cls = allClasses.find(c => c.id === assigned.classId);
-          const subjDetails = allSubjectsGlobal.find(s => s.id === assigned.subjectId); 
+      const specificAssignments = Array.isArray(teacherDocument.subjectsAssigned) ? teacherDocument.subjectsAssigned : [];
+      for (const assigned of specificAssignments) {
+        if (assigned.classId && assigned.subjectId) {
+            const cls = allClasses.find(c => c.id === assigned.classId);
+            const subjDetails = allSubjectsGlobal.find(s => s.id === assigned.subjectId); 
 
-          if (cls && subjDetails) {
+            if (cls && subjDetails) {
             const assignmentId = `${cls.id}-${subjDetails.id}`;
             if (!assignmentsMap.has(assignmentId)) { 
-              assignmentsMap.set(assignmentId, {
+                assignmentsMap.set(assignmentId, {
                 id: assignmentId,
                 className: cls.name,
                 subjectName: subjDetails.name,
                 nextDeadlineInfo: deadlineText,
-              });
+                });
             }
-          }
+            }
         }
       }
     }
@@ -485,3 +483,6 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     };
   }
 }
+
+
+    

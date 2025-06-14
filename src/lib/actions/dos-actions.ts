@@ -139,6 +139,11 @@ export async function updateTeacherAssignments(
     return { success: false, message: "Firestore is not initialized." };
   }
   try {
+    // Server-side log to inspect incoming specificSubjectAssignments
+    console.log(`[DOS Action - updateTeacherAssignments] Teacher ID: ${teacherId}, Received specificSubjectAssignments:`, JSON.stringify(data.specificSubjectAssignments, null, 2));
+
+    const assignmentsToSave = Array.isArray(data.specificSubjectAssignments) ? data.specificSubjectAssignments : [];
+
     await runTransaction(db, async (transaction) => {
       const teacherRef = doc(db, "teachers", teacherId);
       const teacherSnap = await transaction.get(teacherRef);
@@ -147,26 +152,30 @@ export async function updateTeacherAssignments(
       }
 
       // 1. Update teacher's specific subject assignments
-      transaction.update(teacherRef, { subjectsAssigned: data.specificSubjectAssignments });
+      transaction.update(teacherRef, { subjectsAssigned: assignmentsToSave });
 
       // 2. Handle class teacher assignments
       const classesCol = collection(db, "classes");
-      const classesQuerySnapshot = await getDocs(classesCol); 
-
-      for (const classDoc of classesQuerySnapshot.docs) {
-        const classRef = doc(db, "classes", classDoc.id); 
-        const classData = classDoc.data(); 
-        const classId = classDoc.id;
-
-        if (data.classTeacherForClassIds.includes(classId)) {
-          if (classData.classTeacherId !== teacherId) {
-            transaction.update(classRef, { classTeacherId: teacherId });
-          }
-        } else {
-          if (classData.classTeacherId === teacherId) {
-            transaction.update(classRef, { classTeacherId: null });
-          }
+      // No need to await getDocs here if we iterate classTeacherForClassIds and then unassign others.
+      // This approach is more efficient:
+      
+      // Get all classes to find previously assigned ones
+      const allPreviouslyAssignedClassesToThisTeacherQuery = query(classesCol, where("classTeacherId", "==", teacherId));
+      const previouslyAssignedSnapshot = await transaction.get(allPreviouslyAssignedClassesToThisTeacherQuery);
+      
+      // Unassign from classes not in the new list
+      for (const classDoc of previouslyAssignedSnapshot.docs) {
+        if (!data.classTeacherForClassIds.includes(classDoc.id)) {
+          transaction.update(classDoc.ref, { classTeacherId: null });
         }
+      }
+      
+      // Assign to classes in the new list
+      for (const classId of data.classTeacherForClassIds) {
+        const classRef = doc(db, "classes", classId);
+        // We could get the doc to check current classTeacherId, but simply setting it is often fine.
+        // If another teacher was classTeacher, this overwrites it, which is intended.
+        transaction.update(classRef, { classTeacherId: teacherId });
       }
     });
 
@@ -1141,3 +1150,6 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
         };
     }
 }
+
+
+    
