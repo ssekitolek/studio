@@ -9,6 +9,8 @@ import { getTeacherDashboardData } from "@/lib/actions/teacher-actions";
 import type { TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle as UIAlertTitle } from "@/components/ui/alert";
 
+export const dynamic = 'force-dynamic'; // Force dynamic rendering
+
 const defaultResourcesText = `Access your teaching schedule, submit student marks, and view historical submission data using the sidebar navigation. 
 Stay updated with notifications from the D.O.S. and ensure timely submission of grades. 
 If you encounter any issues, please contact the administration.`;
@@ -196,5 +198,3 @@ export default async function TeacherDashboardPage({
     </div>
   );
 }
-
-    
