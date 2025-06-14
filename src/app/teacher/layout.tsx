@@ -21,7 +21,7 @@ export default async function TeacherLayout({
 
   if (!teacherId) {
     console.warn('[TeacherLayout] teacherId is missing from searchParams. Redirecting to /login/teacher. Current searchParams:', searchParams);
-    redirect('/login/teacher');
+    redirect('/login/teacher'); // Critical: redirect if teacherId is not present
   }
 
   // If teacherId is present, log it for confirmation
@@ -29,7 +29,7 @@ export default async function TeacherLayout({
 
   return (
     <SidebarProvider defaultOpen={true}>
-        <TeacherSidebar teacherIdParam={teacherId} />
+        <TeacherSidebar teacherIdParam={teacherId} teacherNameParam={teacherName} />
         <SidebarInset className="flex flex-col min-h-screen">
           <AppHeader userName={teacherName} userRole="Teacher" />
           <main className="flex-1 p-4 md:p-6 lg:p-8 bg-background">
@@ -39,5 +39,3 @@ export default async function TeacherLayout({
     </SidebarProvider>
   );
 }
-
-    

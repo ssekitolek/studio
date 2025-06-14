@@ -11,8 +11,8 @@ import { Alert, AlertDescription, AlertTitle as UIAlertTitle } from "@/component
 
 export const dynamic = 'force-dynamic'; // Force dynamic rendering
 
-const DEFAULT_TEACHER_ID = "default-teacher-for-open-access";
-const DEFAULT_TEACHER_NAME = "Default Teacher";
+const DEFAULT_FALLBACK_TEACHER_ID = "default-teacher-for-open-access";
+const DEFAULT_FALLBACK_TEACHER_NAME = "Default Teacher";
 const defaultResourcesText = `Access your teaching schedule, submit student marks, and view historical submission data using the sidebar navigation. 
 Stay updated with notifications from the D.O.S. and ensure timely submission of grades. 
 If you encounter any issues, please contact the administration.`;
@@ -24,48 +24,63 @@ export default async function TeacherDashboardPage({
 }) {
   let teacherId: string;
   let teacherNameFromParams: string;
+  let fetchError: string | null = null;
+  let dashboardData: TeacherDashboardData;
 
-  if (!searchParams) {
-    console.warn("[TeacherDashboardPage] searchParams object is undefined. Using default teacher ID and name.");
-    teacherId = DEFAULT_TEACHER_ID;
-    teacherNameFromParams = DEFAULT_TEACHER_NAME;
-  } else if (!searchParams.teacherId) {
-    console.warn(`[TeacherDashboardPage] teacherId is missing from searchParams. Using default teacher ID: ${DEFAULT_TEACHER_ID}. searchParams received:`, searchParams);
-    teacherId = DEFAULT_TEACHER_ID;
-    teacherNameFromParams = searchParams.teacherName ? decodeURIComponent(searchParams.teacherName) : DEFAULT_TEACHER_NAME;
+  // Defensive handling of searchParams
+  if (!searchParams || typeof searchParams !== 'object') {
+    console.warn("[TeacherDashboardPage] searchParams is missing or invalid. Using fallback teacher ID and name.");
+    teacherId = DEFAULT_FALLBACK_TEACHER_ID;
+    teacherNameFromParams = DEFAULT_FALLBACK_TEACHER_NAME;
   } else {
-    teacherId = searchParams.teacherId;
-    teacherNameFromParams = searchParams.teacherName ? decodeURIComponent(searchParams.teacherName) : "Teacher";
+    if (!searchParams.teacherId || typeof searchParams.teacherId !== 'string') {
+      console.warn(`[TeacherDashboardPage] teacherId is missing or invalid in searchParams. Using fallback teacher ID: ${DEFAULT_FALLBACK_TEACHER_ID}. searchParams received:`, searchParams);
+      teacherId = DEFAULT_FALLBACK_TEACHER_ID;
+    } else {
+      teacherId = searchParams.teacherId;
+    }
+
+    if (!searchParams.teacherName || typeof searchParams.teacherName !== 'string') {
+      console.warn(`[TeacherDashboardPage] teacherName is missing or invalid in searchParams. Using fallback teacher name. searchParams received:`, searchParams);
+      teacherNameFromParams = DEFAULT_FALLBACK_TEACHER_NAME;
+    } else {
+      try {
+        teacherNameFromParams = decodeURIComponent(searchParams.teacherName);
+      } catch (e) {
+        console.warn(`[TeacherDashboardPage] Failed to decode teacherName. Using fallback. Error: ${e}`, searchParams.teacherName);
+        teacherNameFromParams = DEFAULT_FALLBACK_TEACHER_NAME;
+      }
+    }
   }
   
-  let dashboardData: TeacherDashboardData;
-  let fetchError: string | null = null;
-
   try {
     dashboardData = await getTeacherDashboardData(teacherId);
-    if (!dashboardData) {
-        // This case should ideally be handled within getTeacherDashboardData to return a default structure
-        console.error(`[TeacherDashboardPage] CRITICAL: getTeacherDashboardData returned null or undefined for teacherId: ${teacherId}`);
-        throw new Error("Failed to retrieve dashboard data structure.");
+    if (!dashboardData || typeof dashboardData !== 'object') {
+        console.error(`[TeacherDashboardPage] CRITICAL: getTeacherDashboardData returned invalid data for teacherId: ${teacherId}. Received:`, dashboardData);
+        throw new Error("Failed to retrieve a valid dashboard data structure.");
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while loading dashboard data.";
     console.error(`[TeacherDashboardPage] CRITICAL_ERROR_TEACHER_DASHBOARD_FETCH for teacher ${teacherId}:`, error);
     fetchError = errorMessage;
-    // Initialize with a fully safe default structure
-    dashboardData = {
-      assignments: [],
-      notifications: [], 
-      teacherName: teacherNameFromParams, // Use param as fallback
-      resourcesText: "Could not load resources due to a critical error. Please contact an administrator."
-    };
+  } finally {
+    // Ensure dashboardData is always initialized with a safe, complete structure
+    if (typeof dashboardData! !== 'object' || dashboardData === null) {
+      dashboardData = {
+        assignments: [],
+        notifications: [], 
+        teacherName: teacherNameFromParams, // Use param as fallback
+        resourcesText: "Could not load resources due to a critical error. Please contact an administrator."
+      };
+       if (!fetchError) fetchError = "Dashboard data is unavailable or in an invalid format.";
+    }
+    dashboardData.assignments = Array.isArray(dashboardData.assignments) ? dashboardData.assignments : [];
+    dashboardData.notifications = Array.isArray(dashboardData.notifications) ? dashboardData.notifications : [];
+    dashboardData.teacherName = typeof dashboardData.teacherName === 'string' ? dashboardData.teacherName : teacherNameFromParams;
+    dashboardData.resourcesText = typeof dashboardData.resourcesText === 'string' ? dashboardData.resourcesText : defaultResourcesText;
   }
-
-  // Ensure all potentially undefined properties are defaulted
-  const assignments: TeacherDashboardAssignment[] = dashboardData.assignments || [];
-  let notifications: TeacherNotification[] = [...(dashboardData.notifications || [])]; 
-  const resourcesText = dashboardData.resourcesText || defaultResourcesText;
-  const teacherDisplayName = dashboardData.teacherName || teacherNameFromParams;
+  
+  const { assignments, notifications, teacherName, resourcesText } = dashboardData;
 
   // Add fetchError to notifications if it exists and isn't already represented
   if (fetchError && !notifications.some(n => n.message.includes(fetchError!))) {
@@ -76,12 +91,11 @@ export default async function TeacherDashboardPage({
       });
   }
 
-
   return (
     <div className="space-y-8">
       <PageHeader
         title="Teacher Dashboard"
-        description={`Welcome back, ${teacherDisplayName}! Here's an overview of your tasks and classes.`}
+        description={`Welcome back, ${teacherName}! Here's an overview of your tasks and classes.`}
         icon={LayoutDashboard}
       />
 
@@ -91,7 +105,7 @@ export default async function TeacherDashboardPage({
             <UIAlertTitle>Dashboard Loading Error</UIAlertTitle>
             <AlertDescription>
                 {notifications.find(n => n.id.startsWith('critical_error_') || n.id.startsWith('error_') || n.id.startsWith('processing_error_'))?.message || "An unspecified error occurred while loading the dashboard."}
-                 {!teacherId && <p className="mt-2">Teacher ID was not provided. Please use the main portal to access the teacher section. <Link href="/" className="underline">Go to Portal</Link>.</p>}
+                 {(!searchParams || !searchParams.teacherId) && <p className="mt-2">Teacher ID was not provided. Please use the main portal to access the teacher section. <Link href="/" className="underline">Go to Portal</Link>.</p>}
             </AlertDescription>
         </Alert>
       )}
@@ -117,7 +131,7 @@ export default async function TeacherDashboardPage({
                       </p>
                     </div>
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/teacher/marks/submit?teacherId=${encodeURIComponent(teacherId)}&teacherName=${encodeURIComponent(teacherDisplayName)}`}>
+                      <Link href={`/teacher/marks/submit?teacherId=${encodeURIComponent(teacherId)}&teacherName=${encodeURIComponent(teacherName)}`}>
                         <BookOpenCheck className="mr-2 h-4 w-4" /> Enter Marks
                       </Link>
                     </Button>
@@ -163,7 +177,7 @@ export default async function TeacherDashboardPage({
                 </div>
               ))
             ) : null }
-            {notifications.filter(n => !(n.id.startsWith('critical_error_') || n.id.startsWith('error_') || n.id.startsWith('processing_error_'))).length === 0 && (
+            {notifications.filter(n => !(n.id.startsWith('critical_error_') || n.id.startsWith('error_') || n.id.startsWith('processing_error_'))).length === 0 && !fetchError && (
                 <div className="text-center py-6 text-muted-foreground">
                     <Info className="mx-auto h-8 w-8 mb-2" />
                     <p>No new notifications at this time.</p>
@@ -179,13 +193,13 @@ export default async function TeacherDashboardPage({
         </CardHeader>
         <CardContent className="flex flex-col md:flex-row items-center gap-6">
             <div className="md:w-2/3">
-              {(resourcesText || defaultResourcesText).split('\n').map((paragraph, index) => (
+              {(resourcesText).split('\n').map((paragraph, index) => (
                 <p key={index} className="text-foreground/90 mb-2 last:mb-0">
                   {paragraph}
                 </p>
               ))}
               <Button variant="default" className="mt-4" asChild>
-                <Link href={`/teacher/marks/submit?teacherId=${encodeURIComponent(teacherId)}&teacherName=${encodeURIComponent(teacherDisplayName)}`}>
+                <Link href={`/teacher/marks/submit?teacherId=${encodeURIComponent(teacherId)}&teacherName=${encodeURIComponent(teacherName)}`}>
                   <BookOpenCheck className="mr-2 h-4 w-4" /> Go to Marks Submission
                 </Link>
               </Button>

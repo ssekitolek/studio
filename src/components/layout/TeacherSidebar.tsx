@@ -20,35 +20,35 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { LayoutDashboard, BookOpenCheck, History, LogOut, GanttChartSquare, UserCircle } from "lucide-react";
 
 interface TeacherSidebarProps {
-  teacherIdParam?: string | null; // Make teacherIdParam optional
+  teacherIdParam: string; 
+  teacherNameParam: string;
 }
 
-export function TeacherSidebar({ teacherIdParam }: TeacherSidebarProps) {
+export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSidebarProps) {
   const pathname = usePathname();
   const { state } = useSidebar();
 
   const navItems = [
     { 
-      href: `/teacher/dashboard${teacherIdParam ? `?teacherId=${teacherIdParam}` : ''}`, 
+      href: `/teacher/dashboard?teacherId=${encodeURIComponent(teacherIdParam)}&teacherName=${encodeURIComponent(teacherNameParam)}`, 
       label: "Dashboard", 
       icon: LayoutDashboard, 
       tooltip: "View your dashboard" 
     },
     { 
-      href: `/teacher/marks/submit${teacherIdParam ? `?teacherId=${teacherIdParam}` : ''}`, 
+      href: `/teacher/marks/submit?teacherId=${encodeURIComponent(teacherIdParam)}&teacherName=${encodeURIComponent(teacherNameParam)}`, 
       label: "Submit Marks", 
       icon: BookOpenCheck, 
       tooltip: "Submit student marks" 
     },
     { 
-      href: `/teacher/marks/history${teacherIdParam ? `?teacherId=${teacherIdParam}` : ''}`, 
+      href: `/teacher/marks/history?teacherId=${encodeURIComponent(teacherIdParam)}&teacherName=${encodeURIComponent(teacherNameParam)}`, 
       label: "View Submissions", 
       icon: History, 
       tooltip: "View past mark submissions" 
     },
-    // Profile link can be static or also include teacherId if needed for that page
     // { 
-    //   href: `/teacher/profile${teacherIdParam ? `?teacherId=${teacherIdParam}` : ''}`, 
+    //   href: `/teacher/profile?teacherId=${encodeURIComponent(teacherIdParam)}&teacherName=${encodeURIComponent(teacherNameParam)}`, 
     //   label: "My Profile", 
     //   icon: UserCircle, 
     //   tooltip: "View your profile" 
@@ -64,7 +64,7 @@ export function TeacherSidebar({ teacherIdParam }: TeacherSidebarProps) {
     <Sidebar collapsible="icon" side="left" variant="sidebar" className="border-r">
       <SidebarHeader className="flex items-center justify-between p-2 h-16">
         {state === 'expanded' && (
-          <Link href={teacherIdParam ? `/teacher/dashboard?teacherId=${teacherIdParam}` : "/teacher/dashboard"}>
+          <Link href={`/teacher/dashboard?teacherId=${encodeURIComponent(teacherIdParam)}&teacherName=${encodeURIComponent(teacherNameParam)}`}>
             <span className="text-lg font-headline font-semibold text-sidebar-foreground">
               Grade<span className="text-sidebar-primary">Central</span> <span className="text-xs text-sidebar-foreground/70">Teacher</span>
             </span>

@@ -306,13 +306,18 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
 }
 
 export async function getTeacherDashboardData(teacherId: string): Promise<TeacherDashboardData> {
+  const defaultErrorResponse: TeacherDashboardData = {
+    assignments: [],
+    notifications: [],
+    teacherName: undefined,
+    resourcesText: "Could not load resources due to an error. Please contact support."
+  };
+
   if (!db) {
     console.error("CRITICAL_ERROR_DB_NULL: Firestore db object is null in getTeacherDashboardData. Dashboard will not load. Check Firebase config.");
     return {
-      assignments: [],
+      ...defaultErrorResponse,
       notifications: [{ id: 'critical_error_db_null', message: "Critical Error: Database connection failed. Dashboard data cannot be loaded. Please contact an administrator.", type: 'warning' }],
-      teacherName: undefined,
-      resourcesText: "Could not load resources due to a database connection error."
     };
   }
 
@@ -320,11 +325,12 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     const teacherDocument = await getTeacherByIdFromDOS(teacherId); 
     
     if (!teacherDocument) {
+      // Removed console.warn here as per previous request for this specific case.
+      // The UI will still get a notification.
       return {
-        assignments: [],
-        notifications: [{ id: 'error_teacher_not_found', message: `Could not load data. Teacher record not found for ID: ${teacherId}. Please ensure the ID is correct or contact support.`, type: 'warning' }],
-        teacherName: undefined,
-        resourcesText: "Could not load resources. Teacher data missing or ID is incorrect."
+        ...defaultErrorResponse,
+        notifications: [{ id: 'error_teacher_not_found', message: `Teacher record not found for ID: ${teacherId}. Dashboard may not display correctly.`, type: 'warning' }],
+        teacherName: undefined, // Explicitly set as undefined
       };
     }
 
@@ -455,15 +461,9 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     console.error(`ERROR_IN_GET_TEACHER_DASHBOARD_DATA for teacher ${teacherId}:`, error);
     const existingTeacherDoc = await getTeacherByIdFromDOS(teacherId); // Attempt to get name even on error
     return {
-      assignments: [],
+      ...defaultErrorResponse,
       notifications: [{ id: 'processing_error_dashboard', message: `Error processing dashboard data: ${errorMessage}`, type: 'warning' }],
       teacherName: existingTeacherDoc?.name || undefined, 
-      resourcesText: "Could not load resources due to an internal error."
     };
   }
 }
-
-
-    
-
-    

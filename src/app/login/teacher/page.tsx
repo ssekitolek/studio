@@ -18,6 +18,7 @@ export default function TeacherOpenAccessPage() {
     // Automatically redirect to the teacher dashboard
     const teacherIdParam = encodeURIComponent(DEFAULT_TEACHER_ID);
     const teacherNameParam = encodeURIComponent(DEFAULT_TEACHER_NAME);
+    // Use replace to avoid adding this redirect page to browser history
     router.replace(`/teacher/dashboard?teacherId=${teacherIdParam}&teacherName=${teacherNameParam}`);
   }, [router]);
 
@@ -57,5 +58,3 @@ export default function TeacherOpenAccessPage() {
     </main>
   );
 }
-
-    
