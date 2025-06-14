@@ -24,7 +24,7 @@ export default function TeacherLayout({ children, params, searchParams }: Layout
     try {
       teacherName = decodeURIComponent(searchParams.teacherName as string);
     } catch (e) {
-      console.warn(`[TeacherLayout] WARN: Failed to decode teacherName: "${searchParams.teacherName}". Using default. Error: ${e}`);
+      console.warn(`[TeacherLayout] WARN: Failed to decode teacherName: "${searchParams.teacherName}". Using default. Error: ${e instanceof Error ? e.message : String(e)}`);
       // teacherName remains "Teacher"
     }
   } else {
