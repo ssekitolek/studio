@@ -1,10 +1,10 @@
 
 "use server";
 
-import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem } from "@/lib/types";
+import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference, runTransaction, writeBatch, Timestamp } from "firebase/firestore";
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference, runTransaction, writeBatch, Timestamp, orderBy } from "firebase/firestore";
 import * as XLSX from 'xlsx';
 
 // Simulate a delay
@@ -874,6 +874,55 @@ export async function downloadAllMarks(format: 'csv' | 'xlsx' | 'pdf' = 'csv'): 
     console.error("Error in downloadAllMarks:", error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
     return { success: false, message: `Failed to prepare marks data: ${errorMessage}` };
+  }
+}
+
+export type MarksForReviewEntry = GenkitGradeEntry & { studentName: string };
+
+export async function getMarksForReview(classId: string, subjectId: string, examId: string): Promise<MarksForReviewEntry[]> {
+  if (!db) {
+    console.error("Firestore is not initialized. Cannot fetch marks for review.");
+    return [];
+  }
+  try {
+    const assessmentId = `${examId}_${classId}_${subjectId}`;
+    const markSubmissionsRef = collection(db, "markSubmissions");
+    
+    const q = query(
+      markSubmissionsRef, 
+      where("assessmentId", "==", assessmentId),
+      orderBy("dateSubmitted", "desc"), // Get the latest submission first
+      limit(1) // We only want the most recent submission for this specific assessment
+    );
+    const submissionSnapshot = await getDocs(q);
+
+    if (submissionSnapshot.empty) {
+      console.log(`No mark submissions found for assessmentId: ${assessmentId}`);
+      return []; // No submissions found for these criteria
+    }
+
+    const latestSubmissionDoc = submissionSnapshot.docs[0];
+    const submissionData = latestSubmissionDoc.data() as MarkSubmissionRecord;
+
+    if (!submissionData.submittedMarks || submissionData.submittedMarks.length === 0) {
+      return []; // Submission exists but has no marks
+    }
+
+    // Fetch all students to map names
+    const allStudents = await getStudents();
+    const studentsMap = new Map(allStudents.map(s => [s.studentIdNumber, `${s.firstName} ${s.lastName}`]));
+
+    const marksForReview: MarksForReviewEntry[] = submissionData.submittedMarks.map(mark => ({
+      studentId: mark.studentId, // This is studentIdNumber
+      grade: mark.score,
+      studentName: studentsMap.get(mark.studentId) || "Unknown Student",
+    }));
+    
+    return marksForReview;
+
+  } catch (error) {
+    console.error(`Error fetching marks for review (assessmentId: ${examId}_${classId}_${subjectId}):`, error);
+    return []; // Return empty array on error
   }
 }
 

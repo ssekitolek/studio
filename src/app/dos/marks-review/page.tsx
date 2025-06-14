@@ -8,26 +8,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Input } from "@/components/ui/input"; // Added missing import
-import { ShieldAlert, Loader2, CheckCircle, Search, FileWarning } from "lucide-react";
-import { getClasses, getSubjects, getExams, getStudents, getGeneralSettings } from "@/lib/actions/dos-actions"; // Assuming these exist
+import { Input } from "@/components/ui/input";
+import { ShieldAlert, Loader2, CheckCircle, Search, FileWarning, Info } from "lucide-react";
+import { getClasses, getSubjects, getExams, getMarksForReview } from "@/lib/actions/dos-actions";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
-import type { ClassInfo, Subject as SubjectType, Exam, Student, AnomalyExplanation, GradeEntry } from "@/lib/types";
+import type { ClassInfo, Subject as SubjectType, Exam, AnomalyExplanation, GradeEntry as GenkitGradeEntry } from "@/lib/types";
+import type { MarksForReviewEntry } from "@/lib/actions/dos-actions"; // Import the new type
 import { useToast } from "@/hooks/use-toast";
-
-// Dummy marks data - in a real app, this would be fetched based on selections
-const dummyMarksData: Array<GradeEntry & { studentName: string }> = [
-  { studentId: "S1001", grade: 85, studentName: "Alice Wonderland" },
-  { studentId: "S1002", grade: 85, studentName: "Bob The Builder" },
-  { studentId: "S1003", grade: 85, studentName: "Charlie Brown" },
-  { studentId: "S1004", grade: 60, studentName: "Diana Prince" },
-  { studentId: "S1005", grade: 92, studentName: "Edward Scissorhands" },
-];
 
 export default function MarksReviewPage() {
   const { toast } = useToast();
-  const [isProcessing, startTransition] = useTransition();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isProcessingAnomalyCheck, startAnomalyCheckTransition] = useTransition();
+  const [isLoadingInitialData, setIsLoadingInitialData] = useState(true);
+  const [isLoadingMarks, setIsLoadingMarks] = useState(false);
 
   const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [subjects, setSubjects] = useState<SubjectType[]>([]);
@@ -37,13 +30,13 @@ export default function MarksReviewPage() {
   const [selectedSubject, setSelectedSubject] = useState<string>("");
   const [selectedExam, setSelectedExam] = useState<string>("");
   
-  const [marks, setMarks] = useState<Array<GradeEntry & { studentName: string }>>([]);
+  const [marks, setMarks] = useState<MarksForReviewEntry[]>([]);
   const [anomalies, setAnomalies] = useState<AnomalyExplanation[]>([]);
-  const [historicalAverage, setHistoricalAverage] = useState<number | undefined>(undefined); // Example
+  const [historicalAverage, setHistoricalAverage] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     async function fetchData() {
-      setIsLoading(true);
+      setIsLoadingInitialData(true);
       try {
         const [classesData, subjectsData, examsData] = await Promise.all([
           getClasses(),
@@ -56,7 +49,7 @@ export default function MarksReviewPage() {
       } catch (error) {
         toast({ title: "Error", description: "Failed to load initial data.", variant: "destructive" });
       } finally {
-        setIsLoading(false);
+        setIsLoadingInitialData(false);
       }
     }
     fetchData();
@@ -67,11 +60,21 @@ export default function MarksReviewPage() {
       toast({ title: "Selection Missing", description: "Please select class, subject, and exam.", variant: "destructive" });
       return;
     }
-    // In a real app, fetch marks for the selected criteria
-    // For now, use dummy data
-    console.log(`Fetching marks for Class: ${selectedClass}, Subject: ${selectedSubject}, Exam: ${selectedExam}`);
-    setMarks(dummyMarksData); 
+    setIsLoadingMarks(true);
+    setMarks([]); // Clear previous marks
     setAnomalies([]); // Clear previous anomalies
+    try {
+      const fetchedMarks = await getMarksForReview(selectedClass, selectedSubject, selectedExam);
+      setMarks(fetchedMarks);
+      if (fetchedMarks.length === 0) {
+        toast({ title: "No Marks Found", description: "No marks data found for the selected criteria.", variant: "default", action: <Info className="text-blue-500"/> });
+      }
+    } catch (error) {
+      console.error("Error fetching marks for review:", error);
+      toast({ title: "Error", description: "Failed to fetch marks.", variant: "destructive" });
+    } finally {
+      setIsLoadingMarks(false);
+    }
   };
 
   const handleAnomalyCheck = async () => {
@@ -84,11 +87,11 @@ export default function MarksReviewPage() {
     const currentExam = exams.find(e => e.id === selectedExam);
 
     if (!currentSubject || !currentExam) {
-        toast({ title: "Error", description: "Could not find subject or exam details.", variant: "destructive" });
+        toast({ title: "Error", description: "Could not find subject or exam details for anomaly check.", variant: "destructive" });
         return;
     }
 
-    const gradeEntries: GradeEntry[] = marks.map(m => ({ studentId: m.studentId, grade: m.grade }));
+    const gradeEntries: GenkitGradeEntry[] = marks.map(m => ({ studentId: m.studentId, grade: m.grade }));
 
     const anomalyInput: GradeAnomalyDetectionInput = {
       subject: currentSubject.name,
@@ -97,7 +100,7 @@ export default function MarksReviewPage() {
       historicalAverage: historicalAverage, 
     };
 
-    startTransition(async () => {
+    startAnomalyCheckTransition(async () => {
       try {
         const result = await gradeAnomalyDetection(anomalyInput);
         if (result.hasAnomalies) {
@@ -129,16 +132,16 @@ export default function MarksReviewPage() {
           <CardDescription>Select class, subject, and exam to review marks.</CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Select value={selectedClass} onValueChange={setSelectedClass} disabled={isLoading}>
-            <SelectTrigger><SelectValue placeholder="Select Class" /></SelectTrigger>
+          <Select value={selectedClass} onValueChange={setSelectedClass} disabled={isLoadingInitialData}>
+            <SelectTrigger><SelectValue placeholder={isLoadingInitialData ? "Loading..." : "Select Class"} /></SelectTrigger>
             <SelectContent>{classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
           </Select>
-          <Select value={selectedSubject} onValueChange={setSelectedSubject} disabled={isLoading}>
-            <SelectTrigger><SelectValue placeholder="Select Subject" /></SelectTrigger>
+          <Select value={selectedSubject} onValueChange={setSelectedSubject} disabled={isLoadingInitialData}>
+            <SelectTrigger><SelectValue placeholder={isLoadingInitialData ? "Loading..." : "Select Subject"} /></SelectTrigger>
             <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
           </Select>
-          <Select value={selectedExam} onValueChange={setSelectedExam} disabled={isLoading}>
-            <SelectTrigger><SelectValue placeholder="Select Exam" /></SelectTrigger>
+          <Select value={selectedExam} onValueChange={setSelectedExam} disabled={isLoadingInitialData}>
+            <SelectTrigger><SelectValue placeholder={isLoadingInitialData ? "Loading..." : "Select Exam"} /></SelectTrigger>
             <SelectContent>{exams.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent>
           </Select>
         </CardContent>
@@ -150,21 +153,32 @@ export default function MarksReviewPage() {
                 value={historicalAverage === undefined ? '' : historicalAverage}
                 onChange={(e) => setHistoricalAverage(e.target.value ? parseFloat(e.target.value) : undefined)}
             />
-            <Button onClick={handleFetchMarks} disabled={isLoading || isProcessing || !selectedClass || !selectedSubject || !selectedExam}>
-                <Search className="mr-2 h-4 w-4" /> Load Marks
+            <Button 
+              onClick={handleFetchMarks} 
+              disabled={isLoadingInitialData || isLoadingMarks || isProcessingAnomalyCheck || !selectedClass || !selectedSubject || !selectedExam}
+            >
+                {isLoadingMarks ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+                Load Marks
             </Button>
         </CardContent>
       </Card>
 
-      {marks.length > 0 && (
+      {isLoadingMarks && (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="ml-2">Loading marks...</p>
+        </div>
+      )}
+
+      {!isLoadingMarks && marks.length > 0 && (
         <Card className="shadow-md">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle className="font-headline text-xl text-primary">Marks Overview</CardTitle>
               <CardDescription>Marks for the selected criteria.</CardDescription>
             </div>
-            <Button onClick={handleAnomalyCheck} disabled={isProcessing}>
-              {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
+            <Button onClick={handleAnomalyCheck} disabled={isProcessingAnomalyCheck || isLoadingMarks}>
+              {isProcessingAnomalyCheck ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
               Check for Anomalies
             </Button>
           </CardHeader>
@@ -179,7 +193,7 @@ export default function MarksReviewPage() {
               </TableHeader>
               <TableBody>
                 {marks.map((mark, index) => (
-                  <TableRow key={index}>
+                  <TableRow key={`${mark.studentId}-${index}`}>
                     <TableCell>{mark.studentId}</TableCell>
                     <TableCell>{mark.studentName}</TableCell>
                     <TableCell className="text-right">{mark.grade}</TableCell>
@@ -189,6 +203,15 @@ export default function MarksReviewPage() {
             </Table>
           </CardContent>
         </Card>
+      )}
+      {!isLoadingMarks && !isLoadingInitialData && selectedClass && selectedSubject && selectedExam && marks.length === 0 && (
+           <Card className="shadow-md">
+             <CardContent className="py-8">
+                <p className="text-center text-muted-foreground">
+                    No marks submitted or found for the selected Class, Subject, and Exam.
+                </p>
+             </CardContent>
+           </Card>
       )}
 
       {anomalies.length > 0 && (
@@ -207,7 +230,7 @@ export default function MarksReviewPage() {
           </AlertDescription>
         </Alert>
       )}
-      {isProcessing && anomalies.length === 0 && ( // Show loading for anomaly check only if no results yet
+      {isProcessingAnomalyCheck && anomalies.length === 0 && ( 
          <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="ml-2">Checking for anomalies...</p>
@@ -216,5 +239,3 @@ export default function MarksReviewPage() {
     </div>
   );
 }
-
-    

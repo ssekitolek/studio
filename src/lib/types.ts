@@ -1,4 +1,5 @@
 
+
 export interface Teacher {
   id: string;
   name: string;
@@ -128,4 +129,3 @@ export interface TeacherDashboardData {
   teacherName?: string;
   resourcesText?: string; // New field for teacher resources text
 }
-
