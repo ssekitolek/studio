@@ -27,26 +27,30 @@ export default function MarksHistoryPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter(); 
-  const teacherId = searchParams.get("teacherId");
+  const teacherIdFromUrl = searchParams.get("teacherId");
 
   const [isLoading, startLoadingTransition] = useTransition();
   const [history, setHistory] = useState<SubmissionHistoryItem[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!teacherId) {
-      toast({ title: "Access Denied", description: "No teacher ID provided. Please login.", variant: "destructive" });
-      router.push("/login/teacher"); 
+    if (!teacherIdFromUrl || teacherIdFromUrl === "undefined") {
+      const msg = `Teacher ID invalid (received: '${teacherIdFromUrl}'). Please login.`;
+      toast({ title: "Access Denied", description: msg, variant: "destructive" });
+      setError(msg);
+      if (typeof window !== "undefined") router.push("/login/teacher"); // Perform client-side redirect
       return;
     }
+    setError(null);
     startLoadingTransition(async () => {
       try {
-        const submissionData = await getSubmittedMarksHistory(teacherId as string); 
+        const submissionData = await getSubmittedMarksHistory(teacherIdFromUrl as string); 
         setHistory(submissionData);
       } catch (error) {
         toast({ title: "Error", description: "Failed to load submission history.", variant: "destructive" });
       }
     });
-  }, [toast, teacherId, router]);
+  }, [toast, teacherIdFromUrl, router]);
 
   const getStatusVariant = (status: SubmissionHistoryItem['status']) => {
     if (status.includes("Anomaly Detected")) return "default"; 
@@ -63,19 +67,19 @@ export default function MarksHistoryPage() {
   }
 
 
-  if (!teacherId && !isLoading) { 
+  if (error) { 
      return (
       <div className="space-y-6">
         <PageHeader
             title="Marks Submission History"
-            description="Access denied. Please log in."
+            description="Access denied or error."
             icon={History}
         />
         <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Authentication Required</AlertTitle>
+            <AlertTitle>Access Error</AlertTitle>
             <AlertDescription>
-                You must be logged in to view submission history. Please <Link href="/login/teacher" className="underline">login</Link>.
+                {error} You can try to <Link href="/login/teacher" className="underline">login again</Link>.
             </AlertDescription>
         </Alert>
       </div>

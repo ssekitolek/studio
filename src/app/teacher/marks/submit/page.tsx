@@ -21,7 +21,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
 const markSchema = z.object({
-  studentId: z.string(), // This will hold studentIdNumber
+  studentId: z.string(), 
   studentName: z.string(),
   score: z.preprocess(
     (val) => (val === "" || val === undefined || val === null ? null : Number(val)),
@@ -46,7 +46,7 @@ export default function SubmitMarksPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter(); 
-  const teacherId = searchParams.get("teacherId");
+  const teacherIdFromUrl = searchParams.get("teacherId");
 
   const [isPending, startTransition] = useTransition();
   const [isLoadingAssessments, setIsLoadingAssessments] = useState(true);
@@ -55,6 +55,7 @@ export default function SubmitMarksPage() {
   const [selectedAssessment, setSelectedAssessment] = useState<AssessmentOption | null>(null);
   const [anomalies, setAnomalies] = useState<AnomalyExplanation[]>([]);
   const [showAnomalyWarning, setShowAnomalyWarning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const form = useForm<MarksSubmissionFormValues>({
     resolver: zodResolver(marksSubmissionSchema),
@@ -69,15 +70,19 @@ export default function SubmitMarksPage() {
   });
 
   useEffect(() => {
-    if (!teacherId) {
-      toast({ title: "Access Denied", description: "No teacher ID provided. Please login.", variant: "destructive" });
-      router.push("/login/teacher"); 
+    if (!teacherIdFromUrl || teacherIdFromUrl === "undefined") {
+      const msg = `Teacher ID invalid (received: '${teacherIdFromUrl}'). Please login.`;
+      toast({ title: "Access Denied", description: msg, variant: "destructive" });
+      setError(msg);
+      if (typeof window !== "undefined") router.push("/login/teacher");
+      setIsLoadingAssessments(false); // Stop loading if ID is invalid
       return;
     }
+    setError(null);
     async function fetchAssessments() {
       setIsLoadingAssessments(true);
       try {
-        const assessmentData = await getTeacherAssessments(teacherId as string); 
+        const assessmentData = await getTeacherAssessments(teacherIdFromUrl as string); 
         setAssessments(assessmentData);
       } catch (error) {
         toast({ title: "Error", description: "Failed to load assessments.", variant: "destructive" });
@@ -86,7 +91,7 @@ export default function SubmitMarksPage() {
       }
     }
     fetchAssessments();
-  }, [toast, teacherId, router]);
+  }, [toast, teacherIdFromUrl, router]);
 
   const handleAssessmentChange = async (assessmentId: string) => {
     form.setValue("assessmentId", assessmentId);
@@ -122,8 +127,8 @@ export default function SubmitMarksPage() {
         toast({ title: "Error", description: "No assessment selected.", variant: "destructive"});
         return;
     }
-    if (!teacherId) {
-        toast({ title: "Authentication Error", description: "Teacher ID is missing. Please re-login.", variant: "destructive" });
+    if (!teacherIdFromUrl || teacherIdFromUrl === "undefined") {
+        toast({ title: "Authentication Error", description: "Teacher ID is missing or invalid. Please re-login.", variant: "destructive" });
         return;
     }
 
@@ -158,7 +163,7 @@ export default function SubmitMarksPage() {
 
     startTransition(async () => {
       try {
-        const result = await submitMarks(teacherId, {
+        const result = await submitMarks(teacherIdFromUrl, { // Use validated teacherIdFromUrl
           assessmentId: data.assessmentId,
           marks: marksToSubmit as Array<{ studentId: string; score: number }>, 
         });
@@ -189,19 +194,19 @@ export default function SubmitMarksPage() {
   
   const currentMaxMarks = selectedAssessment?.maxMarks ?? 100;
 
-  if (!teacherId && !isLoadingAssessments) { 
+  if (error) { 
     return (
       <div className="space-y-6">
         <PageHeader
             title="Submit Marks"
-            description="Access denied. Please log in."
+            description="Access denied or error."
             icon={BookOpenCheck}
         />
         <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Authentication Required</AlertTitle>
+            <AlertTitle>Access Error</AlertTitle>
             <AlertDescription>
-                You must be logged in to submit marks. Please <Link href="/login/teacher" className="underline">login</Link>.
+                {error} You can try to <Link href="/login/teacher" className="underline">login again</Link>.
             </AlertDescription>
         </Alert>
       </div>
@@ -235,7 +240,7 @@ export default function SubmitMarksPage() {
                             handleAssessmentChange(value);
                         }} 
                         value={field.value}
-                        disabled={isLoadingAssessments || !teacherId}
+                        disabled={isLoadingAssessments || !teacherIdFromUrl || teacherIdFromUrl === "undefined"}
                     >
                       <FormControl>
                         <SelectTrigger>

@@ -19,26 +19,27 @@ interface TeacherProfile {
 export default function TeacherProfilePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const teacherId = searchParams.get("teacherId");
+  const teacherIdFromUrl = searchParams.get("teacherId");
 
   const [profile, setProfile] = useState<TeacherProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!teacherId) {
-      setError("Teacher ID not found in URL. Cannot load profile.");
+    if (!teacherIdFromUrl || teacherIdFromUrl === "undefined") {
+      const msg = `Teacher ID invalid (received: '${teacherIdFromUrl}'). Cannot load profile.`;
+      setError(msg);
       setIsLoading(false);
-      // Optionally redirect
-      // router.push("/login/teacher");
+      // Optionally redirect if preferred, but showing an error on page is also fine.
+      // if (typeof window !== "undefined") router.push("/login/teacher");
       return;
     }
-
+    
+    setError(null);
     async function fetchData() {
       setIsLoading(true);
-      setError(null);
       try {
-        const data = await getTeacherProfileData(teacherId as string);
+        const data = await getTeacherProfileData(teacherIdFromUrl as string);
         if (data) {
           setProfile(data);
         } else {
@@ -51,7 +52,7 @@ export default function TeacherProfilePage() {
       }
     }
     fetchData();
-  }, [teacherId, router]);
+  }, [teacherIdFromUrl, router]);
 
   if (isLoading) {
     return (
@@ -76,7 +77,7 @@ export default function TeacherProfilePage() {
           <AlertDescription>
             {error} Please ensure you are logged in correctly or try again later. 
             If the issue persists, contact administration.
-            { !teacherId && <span> You can try to <Link href="/login/teacher" className="underline">login again</Link>.</span> }
+            { (!teacherIdFromUrl || teacherIdFromUrl === "undefined") && <span> You can try to <Link href="/login/teacher" className="underline">login again</Link>.</span> }
           </AlertDescription>
         </Alert>
       </div>
