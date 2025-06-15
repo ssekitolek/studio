@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BookOpenCheck, Loader2, AlertTriangle, CheckCircle, ShieldAlert, FileWarning } from "lucide-react";
-import { getTeacherAssessments, getStudentsForAssessment, submitMarks } from "@/lib/actions/teacher-actions"; // Added getStudentsForAssessment
+import { getTeacherAssessments, getStudentsForAssessment, submitMarks } from "@/lib/actions/teacher-actions"; 
 import type { Student, AnomalyExplanation } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -79,11 +79,11 @@ export default function SubmitMarksPage() {
     const teacherIdFromUrl = searchParams.get("teacherId");
 
     if (!teacherIdFromUrl || teacherIdFromUrl.trim() === "" || teacherIdFromUrl === "undefined") {
-      const msg = `Teacher ID is invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login again to submit marks.`;
+      const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login again to submit marks.`;
       toast({ title: "Access Denied", description: msg, variant: "destructive" });
       setPageError(msg);
       setCurrentTeacherId(null);
-      setIsLoadingAssessments(false); // Stop loading if ID is bad
+      setIsLoadingAssessments(false); 
       return;
     }
 
@@ -107,7 +107,7 @@ export default function SubmitMarksPage() {
       }
     }
     fetchAssessments(teacherIdFromUrl);
-  }, [searchParams, toast]); // Removed router from dependencies as it's stable
+  }, [searchParams, toast]);
 
   const handleAssessmentChange = async (assessmentId: string) => {
     form.setValue("assessmentId", assessmentId);
@@ -115,7 +115,7 @@ export default function SubmitMarksPage() {
     setSelectedAssessment(assessment || null);
     setAnomalies([]);
     setShowAnomalyWarning(false);
-    form.resetField("marks", { defaultValue: [] }); // Clear previous marks
+    form.resetField("marks", { defaultValue: [] }); 
 
     if (assessmentId && currentTeacherId) { 
       setIsLoadingStudents(true);
@@ -205,7 +205,6 @@ export default function SubmitMarksPage() {
           } else {
             setAnomalies([]);
             setShowAnomalyWarning(false);
-            // Reset scores to null but keep student list and assessment selection
             const currentAssessmentId = form.getValues("assessmentId");
             form.reset({ assessmentId: currentAssessmentId, marks: fields.map(f => ({...f, studentId: f.studentId, studentName: f.studentName, score: null})) });
           }
@@ -317,7 +316,7 @@ export default function SubmitMarksPage() {
                       </TableHeader>
                       <TableBody>
                         {fields.map((item, index) => (
-                          <TableRow key={item.id}> {/* Use item.id which is stable from useFieldArray */}
+                          <TableRow key={item.id}> 
                             <TableCell>{item.studentId}</TableCell>
                             <TableCell>{item.studentName}</TableCell>
                             <TableCell className="text-right">

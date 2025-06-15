@@ -19,7 +19,7 @@ interface TeacherProfile {
 
 export default function TeacherProfilePage() {
   const searchParams = useSearchParams();
-  const router = useRouter(); // Kept for potential future use
+  const router = useRouter(); 
   const { toast } = useToast();
 
   const [profile, setProfile] = useState<TeacherProfile | null>(null);
@@ -41,7 +41,7 @@ export default function TeacherProfilePage() {
       toast({ title: "Access Denied", description: msg, variant: "destructive" });
       setPageError(msg);
       setCurrentTeacherId(null);
-      setIsLoading(false); // Stop loading if ID is bad
+      setIsLoading(false); 
       return;
     }
 
@@ -68,9 +68,9 @@ export default function TeacherProfilePage() {
       }
     }
     fetchData(teacherIdFromUrl);
-  }, [searchParams, toast]); // Removed router from dependencies as it's stable
+  }, [searchParams, toast]); 
 
-  if (isLoading && !pageError && currentTeacherId) { // Show loader if ID is valid and loading
+  if (isLoading && !pageError && currentTeacherId) { 
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -100,7 +100,7 @@ export default function TeacherProfilePage() {
     );
   }
 
-  if (!profile && !isLoading && currentTeacherId) { // ID was valid, loading finished, but no profile data
+  if (!profile && !isLoading && currentTeacherId) { 
      return (
       <div className="space-y-6">
         <PageHeader
@@ -117,7 +117,7 @@ export default function TeacherProfilePage() {
     );
   }
   
-  if (!currentTeacherId && !isLoading && !pageError) { // Initial state if ID was invalid from start, no error set yet
+  if (!currentTeacherId && !isLoading && !pageError) { 
      return (
       <div className="space-y-6">
         <PageHeader

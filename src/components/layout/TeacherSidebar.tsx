@@ -28,12 +28,11 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
   const pathname = usePathname();
   const { state } = useSidebar();
   
-  const validTeacherId = teacherIdParam && teacherIdParam !== "undefined" ? teacherIdParam : undefined;
+  const validTeacherId = teacherIdParam && teacherIdParam !== "undefined" && teacherIdParam.trim() !== "" ? teacherIdParam : undefined;
   const validTeacherName = teacherNameParam && teacherNameParam !== "undefined" ? teacherNameParam : "Teacher";
 
-  // Ensure teacherIdParam is not the string "undefined" before encoding
   const encodedTeacherId = validTeacherId ? encodeURIComponent(validTeacherId) : '';
-  const encodedTeacherName = encodeURIComponent(validTeacherName); // teacherName can default to "Teacher"
+  const encodedTeacherName = encodeURIComponent(validTeacherName); 
 
   const navItems = [
     { 
@@ -67,7 +66,7 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
   ];
 
   const isItemActive = (href: string) => {
-    if (!validTeacherId && href.startsWith("/teacher/")) { // If no valid teacherId, teacher links shouldn't be active
+    if (!validTeacherId && href.startsWith("/teacher/")) { 
         return false;
     }
     const baseHref = href.split('?')[0]; 
@@ -98,7 +97,7 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
           <SidebarMenu className="px-2 py-2 space-y-1">
             {navItems.map((item, index) => (
               <SidebarMenuItem key={index}>
-                <Link href={item.disabled ? "#" : item.href}>
+                <Link href={item.disabled ? "#" : item.href} passHref>
                   <SidebarMenuButton 
                     isActive={!item.disabled && isItemActive(item.href)} 
                     tooltip={item.tooltip} 
@@ -106,9 +105,13 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
                     disabled={item.disabled}
                     aria-disabled={item.disabled}
                     onClick={(e) => { if (item.disabled) e.preventDefault(); }}
+                    asChild={!item.disabled} // Use asChild only if not disabled, Link will render the 'a'
                   >
-                    <item.icon className="h-5 w-5" />
-                     {state === 'expanded' && <span>{item.label}</span>}
+                    {/* Content of the button, Link will wrap this in an 'a' tag if asChild is true */}
+                    <>
+                      <item.icon className="h-5 w-5" />
+                      {state === 'expanded' && <span>{item.label}</span>}
+                    </>
                   </SidebarMenuButton>
                 </Link>
               </SidebarMenuItem>
@@ -118,10 +121,12 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter className="p-2">
-        <Link href="/">
-            <SidebarMenuButton tooltip="Log Out" className="justify-start">
-              <LogOut className="h-5 w-5" />
-              {state === 'expanded' && <span>Log Out</span>}
+        <Link href="/" passHref>
+            <SidebarMenuButton tooltip="Log Out" className="justify-start" asChild>
+              <>
+                <LogOut className="h-5 w-5" />
+                {state === 'expanded' && <span>Log Out</span>}
+              </>
             </SidebarMenuButton>
         </Link>
       </SidebarFooter>

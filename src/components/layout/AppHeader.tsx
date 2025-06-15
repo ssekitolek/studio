@@ -16,7 +16,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { LogOut, Settings, UserCircle } from "lucide-react";
 
 interface AppHeaderProps {
-  userName?: string; // Made optional
+  userName?: string; 
   userRole: "D.O.S." | "Teacher";
   userAvatarUrl?: string;
   teacherId?: string; 
@@ -24,7 +24,7 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teacherNameParam }: AppHeaderProps) {
-  const displayUserName = userName || (userRole === "Teacher" ? "Teacher" : "Admin");
+  const displayUserName = userName || (userRole === "Teacher" ? (teacherNameParam || "Teacher") : "Admin");
   
   const getInitials = (name: string) => {
     return name
@@ -35,19 +35,21 @@ export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teache
   };
 
   const validTeacherId = teacherId && teacherId !== "undefined" ? teacherId : undefined;
-  const validTeacherNameParam = teacherNameParam && teacherNameParam !== "undefined" ? teacherNameParam : displayUserName;
+  // Use teacherNameParam if available, otherwise fallback to userName (which itself has fallbacks)
+  const validTeacherNameParamForLink = teacherNameParam && teacherNameParam !== "undefined" ? teacherNameParam : displayUserName;
+
 
   const dashboardLink = userRole === "D.O.S." 
     ? "/dos/dashboard" 
     : (validTeacherId 
-        ? `/teacher/dashboard?teacherId=${encodeURIComponent(validTeacherId)}&teacherName=${encodeURIComponent(validTeacherNameParam)}`
-        : "/login/teacher"); // Fallback if teacherId is invalid
+        ? `/teacher/dashboard?teacherId=${encodeURIComponent(validTeacherId)}&teacherName=${encodeURIComponent(validTeacherNameParamForLink)}`
+        : "/login/teacher"); 
 
   const settingsLink = userRole === "D.O.S."
     ? "/dos/settings/general"
     : (validTeacherId
-        ? `/teacher/profile?teacherId=${encodeURIComponent(validTeacherId)}&teacherName=${encodeURIComponent(validTeacherNameParam)}`
-        : "/login/teacher"); // Fallback if teacherId is invalid
+        ? `/teacher/profile?teacherId=${encodeURIComponent(validTeacherId)}&teacherName=${encodeURIComponent(validTeacherNameParamForLink)}`
+        : "/login/teacher"); 
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6 shadow-sm">

@@ -62,7 +62,7 @@ export default function TeacherDashboardPage() {
       nameFromUrl = DEFAULT_FALLBACK_TEACHER_NAME;
     }
     
-    setCurrentTeacherName(nameFromUrl); // Set name immediately for UI responsiveness
+    setCurrentTeacherName(nameFromUrl); 
 
     if (!idFromParams || idFromParams.trim() === "" || idFromParams === "undefined") {
       const errorMessage = `Teacher ID is invalid or missing from URL (received: '${idFromParams}'). Dashboard cannot be loaded.`;
@@ -77,8 +77,6 @@ export default function TeacherDashboardPage() {
           teacherName: nameFromUrl,
       }));
       setCurrentTeacherId(null);
-      // Consider redirecting to login if ID is fundamentally missing/invalid
-      // router.push("/login/teacher?error=invalid_session"); 
       return;
     }
     
@@ -100,7 +98,6 @@ export default function TeacherDashboardPage() {
         } else if (data.notifications.some(n => n.id === 'error_teacher_not_found')) {
             setFetchError(data.notifications.find(n => n.id === 'error_teacher_not_found')?.message || "Teacher record could not be loaded by the server.");
         }
-         // Use teacherName from data if available, otherwise keep from URL
         if (data.teacherName) {
           setCurrentTeacherName(data.teacherName);
         }
@@ -132,7 +129,7 @@ export default function TeacherDashboardPage() {
   const validEncodedTeacherId = currentTeacherId ? encodeURIComponent(currentTeacherId) : '';
   const validEncodedTeacherName = encodeURIComponent(displayTeacherName);
 
-  if (isLoading && !currentTeacherId && !fetchError) { // Initial state before teacherId is processed
+  if (isLoading && !currentTeacherId && !fetchError) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-150px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -158,7 +155,7 @@ export default function TeacherDashboardPage() {
 
   const marksSubmissionLink = currentTeacherId 
     ? `/teacher/marks/submit?teacherId=${validEncodedTeacherId}&teacherName=${validEncodedTeacherName}`
-    : "/login/teacher";
+    : "#"; // Prevent navigation if ID is bad
 
   return (
     <div className="space-y-8">
@@ -179,7 +176,6 @@ export default function TeacherDashboardPage() {
         </Alert>
       )}
       
-      {/* Display notifications from dashboardData, excluding critical/error ones already handled by fetchError display */}
       {notifications.filter(n => !n.id.startsWith('critical_') && !n.id.startsWith('error_') && n.id !== 'processing_error_dashboard').map(notification => (
          <Alert 
             variant={notification.type === 'warning' || notification.type === 'deadline' ? 'default' : 'default'} 
@@ -256,7 +252,7 @@ export default function TeacherDashboardPage() {
                         Next Deadline: {item.nextDeadlineInfo || "Not set"}
                       </p>
                     </div>
-                    <Button variant="outline" size="sm" asChild>
+                    <Button variant="outline" size="sm" asChild disabled={!currentTeacherId}>
                       <Link href={marksSubmissionLink}>
                         <BookOpenCheck className="mr-2 h-4 w-4" /> Enter Marks
                       </Link>
