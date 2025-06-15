@@ -56,3 +56,4 @@ export default function TeacherLayout({ children, params, searchParams }: Layout
     </SidebarProvider>
   );
 }
+
