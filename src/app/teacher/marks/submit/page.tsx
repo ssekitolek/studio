@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BookOpenCheck, Loader2, AlertTriangle, CheckCircle, ShieldAlert, FileWarning } from "lucide-react";
-import { getTeacherAssessments, submitMarks } from "@/lib/actions/teacher-actions";
+import { getTeacherAssessments, getStudentsForAssessment, submitMarks } from "@/lib/actions/teacher-actions"; // Added getStudentsForAssessment
 import type { Student, AnomalyExplanation } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -71,24 +71,24 @@ export default function SubmitMarksPage() {
 
   useEffect(() => {
     if (!searchParams) {
-        setPageError("Could not access URL parameters. Please try reloading.");
+        setPageError("Could not access URL parameters. Please try reloading or logging in again.");
         setIsLoadingAssessments(false);
         return;
     }
 
     const teacherIdFromUrl = searchParams.get("teacherId");
 
-    if (!teacherIdFromUrl || teacherIdFromUrl === "undefined" || teacherIdFromUrl.trim() === "") {
-      const msg = `Teacher ID is invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login.`;
+    if (!teacherIdFromUrl || teacherIdFromUrl.trim() === "" || teacherIdFromUrl === "undefined") {
+      const msg = `Teacher ID is invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login again to submit marks.`;
       toast({ title: "Access Denied", description: msg, variant: "destructive" });
       setPageError(msg);
       setCurrentTeacherId(null);
-      setIsLoadingAssessments(false);
+      setIsLoadingAssessments(false); // Stop loading if ID is bad
       return;
     }
 
     setCurrentTeacherId(teacherIdFromUrl);
-    setPageError(null); // Clear any previous errors
+    setPageError(null); 
 
     async function fetchAssessments(validTeacherId: string) {
       setIsLoadingAssessments(true);
@@ -96,7 +96,7 @@ export default function SubmitMarksPage() {
         const assessmentData = await getTeacherAssessments(validTeacherId);
         setAssessments(assessmentData);
         if (assessmentData.length === 0) {
-            toast({ title: "No Assessments", description: "No assessments found for your assignments in the current term.", variant: "default" });
+            toast({ title: "No Assessments", description: "No assessments found for your assignments in the current term. Please contact D.O.S if this is unexpected.", variant: "default" });
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
@@ -107,7 +107,7 @@ export default function SubmitMarksPage() {
       }
     }
     fetchAssessments(teacherIdFromUrl);
-  }, [searchParams, toast, router]);
+  }, [searchParams, toast]); // Removed router from dependencies as it's stable
 
   const handleAssessmentChange = async (assessmentId: string) => {
     form.setValue("assessmentId", assessmentId);
@@ -115,29 +115,29 @@ export default function SubmitMarksPage() {
     setSelectedAssessment(assessment || null);
     setAnomalies([]);
     setShowAnomalyWarning(false);
-    form.resetField("marks", { defaultValue: [] });
+    form.resetField("marks", { defaultValue: [] }); // Clear previous marks
 
-    if (assessmentId && currentTeacherId) { // Ensure currentTeacherId is valid
+    if (assessmentId && currentTeacherId) { 
       setIsLoadingStudents(true);
       try {
-        const students: Student[] = await getStudentsForAssessment(assessmentId);
+        const students: Student[] = await getStudentsForAssessment(assessmentId); 
         const marksData = students.map(student => ({
-          studentId: student.studentIdNumber,
+          studentId: student.studentIdNumber, 
           studentName: `${student.firstName} ${student.lastName}`,
-          score: null,
+          score: null, 
         }));
-        replace(marksData);
+        replace(marksData); 
          if (students.length === 0) {
-            toast({ title: "No Students", description: "No students found for the selected assessment.", variant: "default" });
+            toast({ title: "No Students", description: "No students found for the selected assessment. Please check class enrollment or contact D.O.S.", variant: "default" });
         }
       } catch (error) {
         toast({ title: "Error Loading Students", description: "Failed to load students for this assessment.", variant: "destructive" });
-        replace([]);
+        replace([]); 
       } finally {
         setIsLoadingStudents(false);
       }
     } else {
-      replace([]);
+      replace([]); 
       if(!currentTeacherId){
         toast({ title: "Authentication Error", description: "Teacher ID is missing or invalid. Cannot load students.", variant: "destructive" });
       }
@@ -176,7 +176,7 @@ export default function SubmitMarksPage() {
           });
           invalidScoreFound = true;
         } else {
-           form.clearErrors(`marks.${index}.score`); // Clear error if valid
+           form.clearErrors(`marks.${index}.score`); 
         }
       }
     });
@@ -190,7 +190,7 @@ export default function SubmitMarksPage() {
       try {
         const result = await submitMarks(currentTeacherId, {
           assessmentId: data.assessmentId,
-          marks: marksToSubmit as Array<{ studentId: string; score: number }>,
+          marks: marksToSubmit as Array<{ studentId: string; score: number }>, 
         });
         if (result.success) {
           toast({
@@ -205,6 +205,7 @@ export default function SubmitMarksPage() {
           } else {
             setAnomalies([]);
             setShowAnomalyWarning(false);
+            // Reset scores to null but keep student list and assessment selection
             const currentAssessmentId = form.getValues("assessmentId");
             form.reset({ assessmentId: currentAssessmentId, marks: fields.map(f => ({...f, studentId: f.studentId, studentName: f.studentName, score: null})) });
           }
@@ -233,6 +234,7 @@ export default function SubmitMarksPage() {
             <AlertTitle>Access Error</AlertTitle>
             <AlertDescription>
                 {pageError} You can try to <Link href="/login/teacher" className="underline">login again</Link>.
+                If the issue persists, contact administration.
             </AlertDescription>
         </Alert>
       </div>
@@ -315,7 +317,7 @@ export default function SubmitMarksPage() {
                       </TableHeader>
                       <TableBody>
                         {fields.map((item, index) => (
-                          <TableRow key={item.id}>
+                          <TableRow key={item.id}> {/* Use item.id which is stable from useFieldArray */}
                             <TableCell>{item.studentId}</TableCell>
                             <TableCell>{item.studentName}</TableCell>
                             <TableCell className="text-right">

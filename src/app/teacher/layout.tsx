@@ -10,7 +10,7 @@ interface LayoutProps {
 }
 
 export default function TeacherLayout({ children, searchParams }: LayoutProps) {
-  const teacherId = searchParams?.teacherId as string | undefined;
+  const teacherIdParam = searchParams?.teacherId as string | undefined;
   let teacherName = "Teacher"; // Default name
 
   if (searchParams?.teacherName) {
@@ -19,28 +19,27 @@ export default function TeacherLayout({ children, searchParams }: LayoutProps) {
       try {
         teacherName = decodeURIComponent(nameParam);
       } catch (e) {
-        // console.warn(`[TeacherLayout] Failed to decode teacherName (string). Using default. Error: ${e}`);
+        console.warn(`[TeacherLayout] Failed to decode teacherName (string: "${nameParam}"). Using default. Error: ${e}`);
       }
     } else if (Array.isArray(nameParam) && nameParam.length > 0 && typeof nameParam[0] === 'string') {
       try {
         teacherName = decodeURIComponent(nameParam[0]);
       } catch (e) {
-        // console.warn(`[TeacherLayout] Failed to decode teacherName (array). Using default. Error: ${e}`);
+        console.warn(`[TeacherLayout] Failed to decode teacherName (array: "${nameParam[0]}"). Using default. Error: ${e}`);
       }
     }
   }
-
-  // Removed redirect logic to stop the loop.
-  // Pages themselves will handle missing/invalid teacherId using useSearchParams.
+  // The redirect based on !teacherId was removed to stop the loop.
+  // Client pages (dashboard, submit, history, profile) are responsible for handling missing/invalid teacherId from useSearchParams.
 
   return (
     <SidebarProvider defaultOpen={true}>
-        <TeacherSidebar teacherIdParam={teacherId} teacherNameParam={teacherName} />
+        <TeacherSidebar teacherIdParam={teacherIdParam} teacherNameParam={teacherName} />
         <SidebarInset className="flex flex-col min-h-screen">
           <AppHeader
             userName={teacherName}
             userRole="Teacher"
-            teacherId={teacherId} 
+            teacherId={teacherIdParam} 
             teacherNameParam={teacherName}
           />
           <main className="flex-1 p-4 md:p-6 lg:p-8 bg-background">
@@ -50,3 +49,4 @@ export default function TeacherLayout({ children, searchParams }: LayoutProps) {
     </SidebarProvider>
   );
 }
+

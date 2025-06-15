@@ -26,7 +26,7 @@ interface SubmissionHistoryItem {
 export default function MarksHistoryPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const router = useRouter(); // Kept for potential future use, though not strictly needed now
 
   const [isLoading, startLoadingTransition] = useTransition();
   const [history, setHistory] = useState<SubmissionHistoryItem[]>([]);
@@ -35,14 +35,14 @@ export default function MarksHistoryPage() {
 
   useEffect(() => {
     if (!searchParams) {
-        setPageError("Could not access URL parameters. Please try reloading.");
+        setPageError("Could not access URL parameters. Please try reloading or logging in again.");
         return;
     }
 
     const teacherIdFromUrl = searchParams.get("teacherId");
 
-    if (!teacherIdFromUrl || teacherIdFromUrl === "undefined" || teacherIdFromUrl.trim() === "") {
-      const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login.`;
+    if (!teacherIdFromUrl || teacherIdFromUrl.trim() === "" || teacherIdFromUrl === "undefined") {
+      const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login again to view history.`;
       toast({ title: "Access Denied", description: msg, variant: "destructive" });
       setPageError(msg);
       setCurrentTeacherId(null);
@@ -50,7 +50,7 @@ export default function MarksHistoryPage() {
     }
 
     setCurrentTeacherId(teacherIdFromUrl);
-    setPageError(null); // Clear any previous errors
+    setPageError(null); 
 
     startLoadingTransition(async () => {
       try {
@@ -65,11 +65,11 @@ export default function MarksHistoryPage() {
         setPageError(`Failed to load submission history: ${errorMessage}`);
       }
     });
-  }, [searchParams, toast, router]);
+  }, [searchParams, toast]); // Removed router from dependencies as it's stable
 
   const getStatusVariant = (status: SubmissionHistoryItem['status']) => {
-    if (status.includes("Anomaly Detected")) return "default";
-    if (status === "Accepted") return "default";
+    if (status.includes("Anomaly Detected")) return "default"; // Will be styled by getStatusClass
+    if (status === "Accepted") return "default"; // Will be styled by getStatusClass
     if (status === "Rejected") return "destructive";
     return "secondary";
   };
@@ -77,7 +77,8 @@ export default function MarksHistoryPage() {
   const getStatusClass = (status: SubmissionHistoryItem['status']) => {
     if (status.includes("Anomaly Detected")) return "bg-yellow-500 hover:bg-yellow-600 text-black";
     if (status === "Accepted") return "bg-green-500 hover:bg-green-600 text-white";
-    if (status === "Rejected") return "bg-destructive hover:bg-destructive/90 text-destructive-foreground";
+    // Destructive already handled by variant, but can add specifics if needed:
+    // if (status === "Rejected") return "bg-destructive hover:bg-destructive/90 text-destructive-foreground";
     return "bg-secondary hover:bg-secondary/80 text-secondary-foreground";
   }
 
@@ -95,13 +96,14 @@ export default function MarksHistoryPage() {
             <AlertTitle>Access Error</AlertTitle>
             <AlertDescription>
                 {pageError} You can try to <Link href="/login/teacher" className="underline">login again</Link>.
+                If the issue persists, contact administration.
             </AlertDescription>
         </Alert>
       </div>
     );
   }
 
-  if (isLoading && history.length === 0 && currentTeacherId) {
+  if (isLoading && history.length === 0 && currentTeacherId) { // Only show main loader if ID is valid and no data yet
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -151,7 +153,7 @@ export default function MarksHistoryPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="outline" size="sm" className="mr-2" disabled>
+                      <Button variant="outline" size="sm" className="mr-2" disabled> {/* View details button is illustrative */}
                         <Eye className="mr-1 h-4 w-4" /> View Details
                       </Button>
                     </TableCell>
@@ -162,12 +164,12 @@ export default function MarksHistoryPage() {
           ) : (
              !isLoading && currentTeacherId && <p className="text-center text-muted-foreground py-8">No submission history found.</p>
           )}
-           {isLoading && history.length > 0 && currentTeacherId && (
+           {isLoading && history.length > 0 && currentTeacherId && ( // Show subtle loader if appending
             <div className="text-center text-muted-foreground py-4">
                 <Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading more...
             </div>
            )}
-           {!currentTeacherId && !pageError && !isLoading && (
+           {!currentTeacherId && !pageError && !isLoading && ( // Case: ID was invalid from start, no error set yet by fetch
              <p className="text-center text-muted-foreground py-8">Teacher ID not found. Cannot load history.</p>
            )}
         </CardContent>

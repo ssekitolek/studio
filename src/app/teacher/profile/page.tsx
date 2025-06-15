@@ -19,7 +19,7 @@ interface TeacherProfile {
 
 export default function TeacherProfilePage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const router = useRouter(); // Kept for potential future use
   const { toast } = useToast();
 
   const [profile, setProfile] = useState<TeacherProfile | null>(null);
@@ -29,24 +29,24 @@ export default function TeacherProfilePage() {
 
   useEffect(() => {
     if (!searchParams) {
-        setPageError("Could not access URL parameters. Please try reloading.");
+        setPageError("Could not access URL parameters. Please try reloading or logging in again.");
         setIsLoading(false);
         return;
     }
 
     const teacherIdFromUrl = searchParams.get("teacherId");
 
-    if (!teacherIdFromUrl || teacherIdFromUrl === "undefined" || teacherIdFromUrl.trim() === "") {
-      const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Cannot load profile.`;
+    if (!teacherIdFromUrl || teacherIdFromUrl.trim() === "" || teacherIdFromUrl === "undefined") {
+      const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Cannot load profile. Please login again.`;
       toast({ title: "Access Denied", description: msg, variant: "destructive" });
       setPageError(msg);
       setCurrentTeacherId(null);
-      setIsLoading(false);
+      setIsLoading(false); // Stop loading if ID is bad
       return;
     }
 
     setCurrentTeacherId(teacherIdFromUrl);
-    setPageError(null); // Clear any previous errors
+    setPageError(null); 
 
     async function fetchData(validTeacherId: string) {
       setIsLoading(true);
@@ -55,7 +55,7 @@ export default function TeacherProfilePage() {
         if (data) {
           setProfile(data);
         } else {
-          const notFoundMsg = `Failed to load profile data or profile not found for ID: ${validTeacherId}.`;
+          const notFoundMsg = `Failed to load profile data or profile not found for ID: ${validTeacherId}. Please contact administration if this persists.`;
           setPageError(notFoundMsg);
           toast({ title: "Profile Not Found", description: notFoundMsg, variant: "destructive" });
         }
@@ -68,9 +68,9 @@ export default function TeacherProfilePage() {
       }
     }
     fetchData(teacherIdFromUrl);
-  }, [searchParams, router, toast]);
+  }, [searchParams, toast]); // Removed router from dependencies as it's stable
 
-  if (isLoading && !pageError) {
+  if (isLoading && !pageError && currentTeacherId) { // Show loader if ID is valid and loading
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -92,7 +92,7 @@ export default function TeacherProfilePage() {
           <UIAlertTitle>Error Loading Profile</UIAlertTitle>
           <AlertDescription>
             {pageError}
-            {(!currentTeacherId || currentTeacherId === "undefined") && <span> You can try to <Link href="/login/teacher" className="underline">login again</Link>.</span>}
+            {(!currentTeacherId) && <span> You can try to <Link href="/login/teacher" className="underline">login again</Link>.</span>}
             If the issue persists, contact administration.
           </AlertDescription>
         </Alert>
@@ -100,7 +100,7 @@ export default function TeacherProfilePage() {
     );
   }
 
-  if (!profile && !isLoading) {
+  if (!profile && !isLoading && currentTeacherId) { // ID was valid, loading finished, but no profile data
      return (
       <div className="space-y-6">
         <PageHeader
@@ -110,9 +110,24 @@ export default function TeacherProfilePage() {
         />
         <Card className="shadow-md">
           <CardContent className="py-8 text-center text-muted-foreground">
-            Profile data could not be loaded.
-            {currentTeacherId && <span> (Attempted for ID: {currentTeacherId})</span>}
-             {!currentTeacherId && <span> Teacher ID not found.</span>}
+            Profile data could not be loaded for Teacher ID: {currentTeacherId}. Please contact D.O.S. if you believe this is an error.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
+  if (!currentTeacherId && !isLoading && !pageError) { // Initial state if ID was invalid from start, no error set yet
+     return (
+      <div className="space-y-6">
+        <PageHeader
+          title="My Profile"
+          description="View your personal information."
+          icon={UserCircle}
+        />
+        <Card className="shadow-md">
+          <CardContent className="py-8 text-center text-muted-foreground">
+             Teacher ID not found. Please <Link href="/login/teacher" className="underline">login</Link> to view your profile.
           </CardContent>
         </Card>
       </div>

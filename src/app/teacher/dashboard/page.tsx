@@ -44,20 +44,27 @@ export default function TeacherDashboardPage() {
 
   useEffect(() => {
     if (!searchParams) {
-      // This case should ideally not happen if useSearchParams is used correctly in a client component
       setIsLoading(false);
-      setFetchError("Could not access URL parameters.");
+      setFetchError("Could not access URL parameters. Please try reloading or logging in again.");
       return;
     }
 
     const idFromParams = searchParams.get("teacherId");
-    const nameFromUrl = searchParams.get("teacherName") 
-      ? decodeURIComponent(searchParams.get("teacherName")!) 
-      : DEFAULT_FALLBACK_TEACHER_NAME;
-
+    let nameFromUrl = searchParams.get("teacherName");
+    if (nameFromUrl) {
+      try {
+        nameFromUrl = decodeURIComponent(nameFromUrl);
+      } catch (e) {
+        console.warn(`[TeacherDashboard] Failed to decode teacherName from URL ("${nameFromUrl}"). Error: ${e}`);
+        nameFromUrl = DEFAULT_FALLBACK_TEACHER_NAME;
+      }
+    } else {
+      nameFromUrl = DEFAULT_FALLBACK_TEACHER_NAME;
+    }
+    
     setCurrentTeacherName(nameFromUrl); // Set name immediately for UI responsiveness
 
-    if (!idFromParams || idFromParams === "undefined" || idFromParams.trim() === "") {
+    if (!idFromParams || idFromParams.trim() === "" || idFromParams === "undefined") {
       const errorMessage = `Teacher ID is invalid or missing from URL (received: '${idFromParams}'). Dashboard cannot be loaded.`;
       console.warn(`[TeacherDashboardPage] ${errorMessage} (URL was: ${typeof window !== "undefined" ? window.location.href : "N/A"})`);
       setIsLoading(false);
@@ -67,28 +74,37 @@ export default function TeacherDashboardPage() {
           notifications: [{id: 'error_invalid_id_param', message: errorMessage, type: 'warning'}],
           resourcesText: "Could not load resources due to invalid ID.",
           stats: initialDefaultStats,
-          teacherName: nameFromUrl, // Keep the name from URL if available
+          teacherName: nameFromUrl,
       }));
-      setCurrentTeacherId(null); // Ensure currentTeacherId is null
-      // Optionally redirect
-      // router.push("/login/teacher");
+      setCurrentTeacherId(null);
+      // Consider redirecting to login if ID is fundamentally missing/invalid
+      // router.push("/login/teacher?error=invalid_session"); 
       return;
     }
     
-    setCurrentTeacherId(idFromParams); // Set valid ID
+    setCurrentTeacherId(idFromParams); 
     setIsLoading(true);
     setFetchError(null); 
 
     async function loadDataInternal(validTeacherId: string) {
+      console.log(`[TeacherDashboardPage] loadDataInternal called with teacherId: "${validTeacherId}"`);
       try {
         const data = await getTeacherDashboardData(validTeacherId);
         setDashboardData(data);
-        if (!data.teacherName && !data.notifications.some(n => n.id === 'error_teacher_not_found')) {
-           const newError = "Teacher record could not be loaded by the server, or data is incomplete.";
+        if (!data.teacherName && !data.notifications.some(n => n.id === 'error_teacher_not_found' || n.id === 'error_invalid_teacher_id')) {
+           const newError = "Teacher record could not be loaded by the server, or crucial teacher data is incomplete. Please contact administration.";
            setFetchError(prev => prev ? `${prev} ${newError}` : newError);
+           if (!data.notifications.some(n => n.id === 'error_teacher_not_found')) {
+             setDashboardData(prev => ({...prev, notifications: [...prev.notifications, {id: 'error_missing_teacher_name_from_data', message: newError, type: 'warning'}]}));
+           }
         } else if (data.notifications.some(n => n.id === 'error_teacher_not_found')) {
-            setFetchError(data.notifications.find(n => n.id === 'error_teacher_not_found')?.message || "Teacher record could not be loaded.");
+            setFetchError(data.notifications.find(n => n.id === 'error_teacher_not_found')?.message || "Teacher record could not be loaded by the server.");
         }
+         // Use teacherName from data if available, otherwise keep from URL
+        if (data.teacherName) {
+          setCurrentTeacherName(data.teacherName);
+        }
+
       } catch (error) {
          const errorMessageText = error instanceof Error ? error.message : "An unknown error occurred.";
          console.error(`[TeacherDashboardPage] CRITICAL_ERROR_FETCHING_DASHBOARD_DATA for teacher ${validTeacherId}:`, error);
@@ -116,7 +132,16 @@ export default function TeacherDashboardPage() {
   const validEncodedTeacherId = currentTeacherId ? encodeURIComponent(currentTeacherId) : '';
   const validEncodedTeacherName = encodeURIComponent(displayTeacherName);
 
-  if (isLoading && !fetchError) { // Show loader only if not already errored out due to invalid ID
+  if (isLoading && !currentTeacherId && !fetchError) { // Initial state before teacherId is processed
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-150px)]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-lg text-muted-foreground">Initializing...</p>
+      </div>
+    );
+  }
+  
+  if (isLoading && currentTeacherId && !fetchError) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-150px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -154,11 +179,39 @@ export default function TeacherDashboardPage() {
         </Alert>
       )}
       
-      {notifications.filter(n => n.id.startsWith('critical_error_') || n.id.startsWith('error_') || n.id.startsWith('processing_error_')).map(notification => (
-         <Alert variant="destructive" className="shadow-md" key={notification.id}>
-            <AlertTriangle className="h-4 w-4" />
-            <UIAlertTitle>Important Alert</UIAlertTitle>
-            <AlertDescription>{notification.message}</AlertDescription>
+      {/* Display notifications from dashboardData, excluding critical/error ones already handled by fetchError display */}
+      {notifications.filter(n => !n.id.startsWith('critical_') && !n.id.startsWith('error_') && n.id !== 'processing_error_dashboard').map(notification => (
+         <Alert 
+            variant={notification.type === 'warning' || notification.type === 'deadline' ? 'default' : 'default'} 
+            className={`shadow-md ${
+                notification.type === 'deadline' ? 'border-accent bg-accent/10' :
+                notification.type === 'warning' ? 'border-destructive bg-destructive/10' : 
+                'border-blue-500 bg-blue-500/10' 
+            }`} 
+            key={notification.id}
+        >
+            {notification.type === 'warning' ? <AlertTriangle className="h-4 w-4 text-destructive" /> : 
+             notification.type === 'deadline' ? <AlertCircle className="h-4 w-4 text-accent" /> : 
+             <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            }
+            <UIAlertTitle 
+                className={
+                    notification.type === 'deadline' ? 'text-accent-foreground' :
+                    notification.type === 'warning' ? 'text-destructive-foreground' : 
+                    'text-blue-700 dark:text-blue-300'
+                }
+            >
+                {notification.type === 'deadline' ? 'Upcoming Deadline' : notification.type === 'warning' ? 'Important Alert' : 'Notification'}
+            </UIAlertTitle>
+            <AlertDescription 
+                 className={
+                    notification.type === 'deadline' ? 'text-accent-foreground/90' :
+                    notification.type === 'warning' ? 'text-destructive-foreground/90' : 
+                    'text-blue-600 dark:text-blue-400'
+                }
+            >
+                {notification.message}
+            </AlertDescription>
         </Alert>
       ))}
 
@@ -230,25 +283,22 @@ export default function TeacherDashboardPage() {
         <Card className="shadow-md hover:shadow-lg transition-shadow">
           <CardHeader>
             <CardTitle className="font-headline text-xl text-primary flex items-center">
-              <Bell className="mr-2 h-6 w-6" /> Notifications
+              <Bell className="mr-2 h-6 w-6" /> Notifications (D.O.S. Announcements)
             </CardTitle>
-            <CardDescription>Important updates and reminders.</CardDescription>
+            <CardDescription>Important updates and reminders from the D.O.S office.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 max-h-96 overflow-y-auto">
-            {currentTeacherId && notifications && notifications.filter(n => !n.id.startsWith('critical_error_') && !n.id.startsWith('error_') && !n.id.startsWith('processing_error_')).length > 0 ? (
-              notifications.filter(n => !n.id.startsWith('critical_error_') && !n.id.startsWith('error_') && !n.id.startsWith('processing_error_')).map((notification) => (
+            {currentTeacherId && notifications && notifications.filter(n => n.id === 'dos_announcement').length > 0 ? (
+              notifications.filter(n => n.id === 'dos_announcement').map((notification) => (
                 <div
                   key={notification.id}
                   className={`flex items-start p-3 rounded-lg ${
-                    notification.type === 'deadline' ? 'bg-accent/10 text-accent-foreground' :
                     notification.type === 'warning' ? 'bg-destructive/10 text-destructive-foreground' : 
                     'bg-blue-500/10 text-blue-700 dark:text-blue-300'
                   }`}
                 >
                   {notification.type === 'warning' ? (
                       <AlertTriangle className={`h-5 w-5 mr-3 mt-0.5 shrink-0 text-destructive`} />
-                  ): notification.type === 'deadline' ? (
-                      <AlertCircle className={`h-5 w-5 mr-3 mt-0.5 shrink-0 text-accent`} />
                   ) : (
                       <Info className="h-5 w-5 text-blue-500 mr-3 mt-0.5 shrink-0" />
                   )}
@@ -258,7 +308,7 @@ export default function TeacherDashboardPage() {
             ) : (
                 <div className="text-center py-6 text-muted-foreground">
                     <Info className="mx-auto h-8 w-8 mb-2" />
-                    <p>{currentTeacherId ? "No new notifications at this time." : "Notifications cannot be loaded as Teacher ID is not available."}</p>
+                    <p>{currentTeacherId ? "No D.O.S. announcements at this time." : "Announcements cannot be loaded as Teacher ID is not available."}</p>
                 </div>
             )}
           </CardContent>
@@ -290,3 +340,4 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
+
