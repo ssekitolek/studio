@@ -32,7 +32,8 @@ export default function TeacherLayout({ children, params, searchParams }: Layout
 
   if (!teacherId) {
     // This is the critical check. If searchParams is undefined, teacherId will be undefined.
-    // The console.error here was being flagged as an error by Next.js visual overlay, previously commented out.
+    // The following console.error was commented out to prevent Next.js from flagging this line as an error source,
+    // as the root issue is searchParams being undefined from the framework.
     // console.error(`[TeacherLayout] DIAGNOSTIC: Critical state detected - teacherId is missing due to 'searchParams' being undefined. Initiating redirect to /login/teacher. Details: searchParams object received as: ${searchParams === undefined ? "undefined" : JSON.stringify(searchParams, null, 2)}`);
     redirect('/login/teacher');
   }

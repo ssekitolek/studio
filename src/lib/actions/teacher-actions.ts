@@ -653,15 +653,16 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     let teacherNameOnError: string | undefined = undefined;
     try {
       // Best effort to get teacher name, but don't let this fail the error handling.
-      const existingTeacherDoc = await getTeacherByIdFromDOS(teacherId);
+      const existingTeacherDoc = await getTeacherByIdFromDOS(teacherId); // Use the action
       teacherNameOnError = existingTeacherDoc?.name;
     } catch (nestedError) {
-      console.error(`[LOG] getTeacherDashboardData: Nested error while trying to get teacher name during error handling:`, nestedError);
+      // Log if even getting the teacher name fails, but don't let this override the primary error.
+      console.error(`[LOG] getTeacherDashboardData: Nested error while trying to get teacher name during error handling for teacher ${teacherId}:`, nestedError);
     }
     return {
       ...defaultResponse,
       notifications: [{ id: 'processing_error_dashboard', message: `Error processing dashboard data: ${errorMessage}`, type: 'warning' }],
-      teacherName: teacherNameOnError, // Use the fetched name or undefined
+      teacherName: teacherNameOnError, // Use the fetched name or default to undefined
     };
   }
 }
