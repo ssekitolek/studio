@@ -97,17 +97,16 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
           <SidebarMenu className="px-2 py-2 space-y-1">
             {navItems.map((item, index) => (
               <SidebarMenuItem key={index}>
-                <Link href={item.disabled ? "#" : item.href} passHref>
-                  <SidebarMenuButton 
-                    isActive={!item.disabled && isItemActive(item.href)} 
-                    tooltip={item.tooltip} 
+                <Link href={item.disabled ? "#" : item.href}>
+                  <SidebarMenuButton
+                    isActive={!item.disabled && isItemActive(item.href)}
+                    tooltip={item.tooltip}
                     className="justify-start"
                     disabled={item.disabled}
                     aria-disabled={item.disabled}
                     onClick={(e) => { if (item.disabled) e.preventDefault(); }}
-                    asChild={!item.disabled} // Use asChild only if not disabled, Link will render the 'a'
+                    asChild={false} // Explicitly set asChild to false
                   >
-                    {/* Content of the button, Link will wrap this in an 'a' tag if asChild is true */}
                     <>
                       <item.icon className="h-5 w-5" />
                       {state === 'expanded' && <span>{item.label}</span>}
@@ -121,8 +120,8 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter className="p-2">
-        <Link href="/" passHref>
-            <SidebarMenuButton tooltip="Log Out" className="justify-start" asChild>
+        <Link href="/">
+            <SidebarMenuButton tooltip="Log Out" className="justify-start" asChild={false}>
               <>
                 <LogOut className="h-5 w-5" />
                 {state === 'expanded' && <span>Log Out</span>}
