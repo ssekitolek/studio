@@ -6,36 +6,36 @@ import { redirect } from 'next/navigation';
 
 interface LayoutProps {
   children: React.ReactNode;
-  params: Record<string, string | string[] | undefined>;
-  searchParams?: Record<string, string | string[] | undefined>; // searchParams is optional, reflecting runtime reality
+  params: Record<string, string | string[] | undefined>; // For route params like /teacher/[segment]
+  searchParams?: Record<string, string | string[] | undefined>; // For URL query params like ?teacherId=xyz
 }
 
 export default function TeacherLayout({ children, params, searchParams }: LayoutProps) {
-  // This log helps diagnose if searchParams is undefined when the component renders.
-  console.log('[TeacherLayout] Rendering. searchParams object is defined:', !!searchParams);
+  // searchParams can be undefined if not provided by Next.js or if the URL has no query string.
+  // We must handle this gracefully.
 
   const teacherId = searchParams?.teacherId as string | undefined;
-  let teacherName = "Teacher"; // Default value
+  let teacherName = "Teacher"; // Default name
 
   if (searchParams?.teacherName) {
     try {
-      teacherName = decodeURIComponent(searchParams.teacherName as string);
+      // Ensure teacherName is a string before decoding
+      const nameParam = searchParams.teacherName;
+      if (typeof nameParam === 'string') {
+        teacherName = decodeURIComponent(nameParam);
+      } else if (Array.isArray(nameParam) && nameParam.length > 0 && typeof nameParam[0] === 'string') {
+        // Handle if teacherName is an array of strings (take the first one)
+        teacherName = decodeURIComponent(nameParam[0]);
+      }
     } catch (e) {
-      // Silently use default if decoding fails, or add a specific log if needed
-      // console.warn(`[TeacherLayout] Failed to decode teacherName: "${searchParams.teacherName}". Using default. Error: ${e}`);
+      // If decoding fails (e.g., malformed URI), use the default name.
+      // console.warn(`[TeacherLayout] Failed to decode teacherName. Using default. Error: ${e}`);
     }
   }
-  // else {
-    // The following console.warn was commented out because it might be flagged as an error source by Next.js,
-    // even though it's a diagnostic message. The log at the top serves a similar purpose.
-    // console.warn(`[TeacherLayout] WARN: searchParams object is undefined, so teacherName is also missing. Using default name "Teacher".`);
-  // }
 
   if (!teacherId) {
-    // This is the critical check. If searchParams is undefined, teacherId will be undefined.
-    // The console.error here was commented out as it was being flagged as an error source by Next.js in the visual error overlay.
-    // The diagnostic console.log at the top of the function helps identify if searchParams is undefined.
-    // console.error(`[TeacherLayout] DIAGNOSTIC: Critical state detected - teacherId is missing due to 'searchParams' being undefined. Initiating redirect to /login/teacher. Details: searchParams object received as: ${searchParams === undefined ? "undefined" : JSON.stringify(searchParams, null, 2)}`);
+    // This is the critical check. If searchParams was undefined or didn't contain teacherId,
+    // teacherId will be undefined here.
     redirect('/login/teacher');
   }
 
@@ -46,8 +46,8 @@ export default function TeacherLayout({ children, params, searchParams }: Layout
           <AppHeader
             userName={teacherName}
             userRole="Teacher"
-            teacherId={teacherId}
-            teacherNameParam={teacherName}
+            teacherId={teacherId} // Pass the validated/extracted teacherId
+            teacherNameParam={teacherName} // Pass the validated/extracted teacherName
           />
           <main className="flex-1 p-4 md:p-6 lg:p-8 bg-background">
             {children}
@@ -56,4 +56,3 @@ export default function TeacherLayout({ children, params, searchParams }: Layout
     </SidebarProvider>
   );
 }
-
