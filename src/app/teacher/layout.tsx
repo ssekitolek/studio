@@ -11,6 +11,7 @@ interface LayoutProps {
 }
 
 export default function TeacherLayout({ children, params, searchParams }: LayoutProps) {
+  // Log the received objects clearly
   console.log('[TeacherLayout] Rendering. searchParams object is defined:', !!searchParams);
 
   const teacherId = searchParams?.teacherId as string | undefined;
