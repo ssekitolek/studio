@@ -4,7 +4,7 @@
 import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference, runTransaction, writeBatch, Timestamp, orderBy } from "firebase/firestore";
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference, runTransaction, writeBatch, Timestamp, orderBy, setDoc } from "firebase/firestore";
 import * as XLSX from 'xlsx';
 
 // Simulate a delay
@@ -771,18 +771,22 @@ export async function updateGeneralSettings(settings: GeneralSettings): Promise<
   }
   try {
     const settingsRef = doc(db, "settings", "general");
-    const settingsToSave = {
+    const settingsToSave: any = { 
         ...settings,
         currentTermId: settings.currentTermId || null,
         globalMarksSubmissionDeadline: settings.globalMarksSubmissionDeadline || null,
         dosGlobalAnnouncementText: settings.dosGlobalAnnouncementText || null,
         dosGlobalAnnouncementType: settings.dosGlobalAnnouncementType || null,
-        teacherDashboardResourcesText: settings.teacherDashboardResourcesText || null, 
+        teacherDashboardResourcesText: settings.teacherDashboardResourcesText || null,
     };
-    await updateDoc(settingsRef, settingsToSave, { merge: true }); 
+    // Ensure defaultGradingScale is an array, even if empty, to avoid Firestore errors if it's undefined.
+    settingsToSave.defaultGradingScale = Array.isArray(settings.defaultGradingScale) ? settings.defaultGradingScale : [];
+
+    await setDoc(settingsRef, settingsToSave, { merge: true }); 
     revalidatePath("/dos/settings/general");
     revalidatePath("/dos/dashboard"); 
     revalidatePath("/teacher/dashboard"); 
+    console.log("[DOS Action - updateGeneralSettings] General settings updated/created successfully in Firestore.");
     return { success: true, message: "General settings updated." };
   } catch (error) {
     console.error("Error in updateGeneralSettings:", error);
@@ -1166,7 +1170,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
                 isDefaultTemplate: false, 
             } as GeneralSettings & { isDefaultTemplate: boolean };
         }
-        console.warn("[DOS Action - getGeneralSettings] 'settings/general' document does not exist. Returning default template settings.");
+        console.warn("Error: [DOS Action - getGeneralSettings] 'settings/general' document does not exist. Returning default template settings.");
         return {
             defaultGradingScale: [{ grade: 'A', minScore: 80, maxScore: 100 }, { grade: 'B', minScore: 70, maxScore: 79 }],
             markSubmissionTimeZone: 'UTC',
