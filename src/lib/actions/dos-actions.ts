@@ -1133,9 +1133,9 @@ export async function getExams(): Promise<Exam[]> {
     }
 }
 
-export async function getGeneralSettings(): Promise<GeneralSettings> {
+export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaultTemplate?: boolean }> {
   if (!db) {
-    console.error("Firestore is not initialized. Check Firebase configuration. Returning placeholder settings.");
+    console.error("[DOS Action - getGeneralSettings] Firestore is not initialized. Check Firebase configuration. Returning placeholder settings.");
      return {
         defaultGradingScale: [{ grade: 'N/A', minScore: 0, maxScore: 0 }],
         markSubmissionTimeZone: 'UTC',
@@ -1143,7 +1143,8 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
         globalMarksSubmissionDeadline: undefined,
         dosGlobalAnnouncementText: "Error: System settings could not be loaded. DB uninitialized.",
         dosGlobalAnnouncementType: "warning",
-        teacherDashboardResourcesText: "Error: Resources text could not be loaded. DB uninitialized.", 
+        teacherDashboardResourcesText: "Error: Resources text could not be loaded. DB uninitialized.",
+        isDefaultTemplate: true, 
     };
   }
     try {
@@ -1161,8 +1162,9 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
                 globalMarksSubmissionDeadline: data.globalMarksSubmissionDeadline === null ? undefined : data.globalMarksSubmissionDeadline,
                 dosGlobalAnnouncementText: data.dosGlobalAnnouncementText === null ? undefined : data.dosGlobalAnnouncementText,
                 dosGlobalAnnouncementType: data.dosGlobalAnnouncementType === null ? undefined : data.dosGlobalAnnouncementType,
-                teacherDashboardResourcesText: data.teacherDashboardResourcesText === null ? undefined : data.teacherDashboardResourcesText, 
-            } as GeneralSettings;
+                teacherDashboardResourcesText: data.teacherDashboardResourcesText === null ? undefined : data.teacherDashboardResourcesText,
+                isDefaultTemplate: false, 
+            } as GeneralSettings & { isDefaultTemplate: boolean };
         }
         console.warn("[DOS Action - getGeneralSettings] 'settings/general' document does not exist. Returning default template settings.");
         return {
@@ -1172,7 +1174,8 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
             globalMarksSubmissionDeadline: undefined,
             dosGlobalAnnouncementText: "Welcome to GradeCentral! Please configure system settings via the D.O.S. portal.",
             dosGlobalAnnouncementType: "info",
-            teacherDashboardResourcesText: "Access your teaching schedule, submit student marks, and view historical submission data using the sidebar navigation. Stay updated with notifications from the D.O.S. and ensure timely submission of grades. If you encounter any issues, please contact the administration.", 
+            teacherDashboardResourcesText: "Access your teaching schedule, submit student marks, and view historical submission data using the sidebar navigation. Stay updated with notifications from the D.O.S. and ensure timely submission of grades. If you encounter any issues, please contact the administration.",
+            isDefaultTemplate: true,
         };
     } catch (error) {
         console.error("[DOS Action - getGeneralSettings] Error fetching general settings:", error);
@@ -1183,8 +1186,11 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
             globalMarksSubmissionDeadline: undefined,
             dosGlobalAnnouncementText: "Error fetching announcements due to a server error.",
             dosGlobalAnnouncementType: "warning",
-            teacherDashboardResourcesText: "Could not load teacher resources text due to a server error. Please contact support.", 
+            teacherDashboardResourcesText: "Could not load teacher resources text due to a server error. Please contact support.",
+            isDefaultTemplate: true, // Indicate defaults were used due to an error
         };
     }
 }
+    
+
     

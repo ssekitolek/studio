@@ -293,14 +293,15 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
   }
   console.log(`[LOG_TAR] Fetched teacherDocument: ${teacherDocument.name}, ID: ${teacherDocument.id}, subjectsAssigned: ${JSON.stringify(teacherDocument.subjectsAssigned)}`);
 
-  const [allClasses, allSubjects, allExamsFromSystem, generalSettings] = await Promise.all([
+  const [allClasses, allSubjects, allExamsFromSystem, generalSettingsResult] = await Promise.all([
     getClasses(), getSubjects(), getAllExamsFromDOS(), getGeneralSettings(),
   ]);
   console.log(`[LOG_TAR] Fetched allClasses: ${allClasses.length}, allSubjects: ${allSubjects.length}, allExamsFromSystem: ${allExamsFromSystem.length}`);
+  console.log(`[LOG_TAR] General Settings result: isDefaultTemplate=${generalSettingsResult.isDefaultTemplate}, currentTermId=${generalSettingsResult.currentTermId}`);
 
-  const currentTermId = generalSettings.currentTermId;
+  const currentTermId = generalSettingsResult.currentTermId;
   if (!currentTermId) {
-    console.warn("[LOG_TAR] No current term ID set in general settings. Cannot determine responsibilities.");
+    console.error(`Error: [LOG_TAR] No current term ID set in general settings (isDefaultTemplate: ${generalSettingsResult.isDefaultTemplate}). Cannot determine responsibilities.`);
     return responsibilitiesMap;
   }
   console.log(`[LOG_TAR] Current Term ID: ${currentTermId}`);
@@ -518,16 +519,32 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     console.log(`[LOG_TDD] Teacher document FOUND: ${teacherDocument.name}, ID: ${teacherDocument.id}`);
     const teacherName = teacherDocument.name; 
 
-    const [generalSettings, allTerms] = await Promise.all([ 
+    const [generalSettingsResult, allTerms] = await Promise.all([ 
       getGeneralSettings(),
       getTerms(),
     ]);
-    console.log(`[LOG_TDD] Fetched generalSettings (CurrentTermID: ${generalSettings.currentTermId}) and ${allTerms.length} terms for teacher: ${teacherName}.`);
+    const { isDefaultTemplate: gsIsDefault, ...actualGeneralSettings } = generalSettingsResult;
+    console.log(`[LOG_TDD] Fetched generalSettings (isDefault: ${gsIsDefault}, CurrentTermID: ${actualGeneralSettings.currentTermId}) and ${allTerms.length} terms for teacher: ${teacherName}.`);
 
     const notifications: TeacherNotification[] = [];
-    const resourcesText = generalSettings.teacherDashboardResourcesText || defaultResponse.resourcesText;
+    const resourcesText = actualGeneralSettings.teacherDashboardResourcesText || defaultResponse.resourcesText;
 
-    const currentTermId = generalSettings.currentTermId;
+    if (gsIsDefault) {
+        notifications.push({
+            id: 'system_settings_missing_critical',
+            message: "Critical System Alert: GradeCentral general settings are not configured by the D.O.S. office. Essential features like term-based assignments cannot be determined. Please contact administration immediately.",
+            type: 'warning',
+        });
+    } else if (!actualGeneralSettings.currentTermId) {
+        notifications.push({
+            id: 'current_term_not_set_warning',
+            message: "System Configuration Alert: The current academic term has not been set by the D.O.S. office. Assignments and deadlines cannot be determined. Please contact administration.",
+            type: 'warning', 
+        });
+    }
+
+
+    const currentTermId = actualGeneralSettings.currentTermId;
     const currentTerm = currentTermId ? allTerms.find(t => t.id === currentTermId) : null;
     
     console.log(`[LOG_TDD] Calling getTeacherAssessmentResponsibilities for teacher: ${teacherName} (ID: ${teacherId})`);
@@ -540,39 +557,41 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     const uniqueClassIds = new Set<string>();
     const uniqueSubjectNames = new Set<string>();
 
-    responsibilitiesMap.forEach(({ classObj, subjectObj, examObj }, key) => {
-        uniqueClassIds.add(classObj.id);
-        uniqueSubjectNames.add(subjectObj.name);
+    if (currentTermId) { // Only process assignments if current term is set
+        responsibilitiesMap.forEach(({ classObj, subjectObj, examObj }, key) => {
+            uniqueClassIds.add(classObj.id);
+            uniqueSubjectNames.add(subjectObj.name);
 
-        let assignmentSpecificDeadlineText = "Not set";
-        let assignmentSpecificDeadlineDate: Date | null = null;
+            let assignmentSpecificDeadlineText = "Not set";
+            let assignmentSpecificDeadlineDate: Date | null = null;
 
-        if (examObj.marksSubmissionDeadline) {
-            assignmentSpecificDeadlineText = `Exam: ${new Date(examObj.marksSubmissionDeadline).toLocaleDateString()}`;
-            assignmentSpecificDeadlineDate = new Date(examObj.marksSubmissionDeadline);
-        } else if (generalSettings.globalMarksSubmissionDeadline) {
-            assignmentSpecificDeadlineText = `Global: ${new Date(generalSettings.globalMarksSubmissionDeadline).toLocaleDateString()}`;
-            assignmentSpecificDeadlineDate = new Date(generalSettings.globalMarksSubmissionDeadline);
-        } else if (currentTerm?.endDate) {
-            assignmentSpecificDeadlineText = `Term End: ${new Date(currentTerm.endDate).toLocaleDateString()}`;
-            assignmentSpecificDeadlineDate = new Date(currentTerm.endDate);
-        }
-        
-        if (assignmentSpecificDeadlineDate) {
-            if (!earliestOverallDeadline || assignmentSpecificDeadlineDate < earliestOverallDeadline) {
-                earliestOverallDeadline = assignmentSpecificDeadlineDate;
-                earliestOverallDeadlineText = assignmentSpecificDeadlineText; 
+            if (examObj.marksSubmissionDeadline) {
+                assignmentSpecificDeadlineText = `Exam: ${new Date(examObj.marksSubmissionDeadline).toLocaleDateString()}`;
+                assignmentSpecificDeadlineDate = new Date(examObj.marksSubmissionDeadline);
+            } else if (actualGeneralSettings.globalMarksSubmissionDeadline) {
+                assignmentSpecificDeadlineText = `Global: ${new Date(actualGeneralSettings.globalMarksSubmissionDeadline).toLocaleDateString()}`;
+                assignmentSpecificDeadlineDate = new Date(actualGeneralSettings.globalMarksSubmissionDeadline);
+            } else if (currentTerm?.endDate) {
+                assignmentSpecificDeadlineText = `Term End: ${new Date(currentTerm.endDate).toLocaleDateString()}`;
+                assignmentSpecificDeadlineDate = new Date(currentTerm.endDate);
             }
-        }
+            
+            if (assignmentSpecificDeadlineDate) {
+                if (!earliestOverallDeadline || assignmentSpecificDeadlineDate < earliestOverallDeadline) {
+                    earliestOverallDeadline = assignmentSpecificDeadlineDate;
+                    earliestOverallDeadlineText = assignmentSpecificDeadlineText; 
+                }
+            }
 
-        dashboardAssignments.push({
-            id: key, 
-            className: classObj.name,
-            subjectName: subjectObj.name,
-            examName: examObj.name,
-            nextDeadlineInfo: assignmentSpecificDeadlineText, 
+            dashboardAssignments.push({
+                id: key, 
+                className: classObj.name,
+                subjectName: subjectObj.name,
+                examName: examObj.name,
+                nextDeadlineInfo: assignmentSpecificDeadlineText, 
+            });
         });
-    });
+    }
     
     dashboardAssignments.sort((a, b) => {
       const classCompare = a.className.localeCompare(b.className);
@@ -607,15 +626,15 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     console.log(`[LOG_TDD] Calculated stats for ${teacherName}: ${JSON.stringify(stats)}`);
 
 
-    if (generalSettings.dosGlobalAnnouncementText) {
+    if (actualGeneralSettings.dosGlobalAnnouncementText) {
       notifications.push({
         id: 'dos_announcement',
-        message: generalSettings.dosGlobalAnnouncementText,
-        type: generalSettings.dosGlobalAnnouncementType || 'info',
+        message: actualGeneralSettings.dosGlobalAnnouncementText,
+        type: actualGeneralSettings.dosGlobalAnnouncementType || 'info',
       });
     }
     
-    if (earliestOverallDeadline) { 
+    if (earliestOverallDeadline && currentTermId) { // Only show deadline reminder if term is set
       const today = new Date();
       today.setHours(0,0,0,0); 
       const deadlineForComparison = new Date(earliestOverallDeadline.valueOf());
@@ -636,11 +655,9 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       }
     }
     
-    if (dashboardAssignments.length === 0 && responsibilitiesMap.size === 0) {
+    if (currentTermId && dashboardAssignments.length === 0 && responsibilitiesMap.size === 0) {
       let noAssignmentMessage = 'No teaching assignments found for the current term.';
-      if (!currentTermId) {
-        noAssignmentMessage = 'No current academic term is set by the D.O.S. Assignments cannot be determined.';
-      } else if (!(await getAllExamsFromDOS()).filter(e => e.termId === currentTermId).length) { 
+      if (!(await getAllExamsFromDOS()).filter(e => e.termId === currentTermId).length) { 
          noAssignmentMessage = 'No exams are scheduled for the current academic term. Assignments cannot be determined.';
       }
       notifications.push({
@@ -698,3 +715,6 @@ export async function getTeacherProfileData(teacherId: string): Promise<{ name?:
 }
 
 
+
+
+    
