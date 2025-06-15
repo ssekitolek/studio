@@ -21,7 +21,7 @@ import { LayoutDashboard, BookOpenCheck, History, LogOut, GanttChartSquare, User
 
 interface TeacherSidebarProps {
   teacherIdParam?: string; 
-  teacherNameParam?: string; // Made optional, will default if needed
+  teacherNameParam?: string;
 }
 
 export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSidebarProps) {
@@ -31,33 +31,34 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
   const validTeacherId = teacherIdParam && teacherIdParam !== "undefined" ? teacherIdParam : undefined;
   const validTeacherName = teacherNameParam && teacherNameParam !== "undefined" ? teacherNameParam : "Teacher";
 
+  // Ensure teacherIdParam is not the string "undefined" before encoding
   const encodedTeacherId = validTeacherId ? encodeURIComponent(validTeacherId) : '';
-  const encodedTeacherName = encodeURIComponent(validTeacherName);
+  const encodedTeacherName = encodeURIComponent(validTeacherName); // teacherName can default to "Teacher"
 
   const navItems = [
     { 
-      href: `/teacher/dashboard?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}`, 
+      href: validTeacherId ? `/teacher/dashboard?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "/login/teacher", 
       label: "Dashboard", 
       icon: LayoutDashboard, 
       tooltip: "View your dashboard",
       disabled: !validTeacherId,
     },
     { 
-      href: `/teacher/marks/submit?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}`, 
+      href: validTeacherId ? `/teacher/marks/submit?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "/login/teacher", 
       label: "Submit Marks", 
       icon: BookOpenCheck, 
       tooltip: "Submit student marks",
       disabled: !validTeacherId,
     },
     { 
-      href: `/teacher/marks/history?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}`, 
+      href: validTeacherId ? `/teacher/marks/history?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "/login/teacher", 
       label: "View Submissions", 
       icon: History, 
       tooltip: "View past mark submissions",
       disabled: !validTeacherId,
     },
     { 
-      href: `/teacher/profile?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}`, 
+      href: validTeacherId ? `/teacher/profile?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "/login/teacher", 
       label: "My Profile", 
       icon: UserCircle, 
       tooltip: "View your profile",
@@ -66,6 +67,9 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
   ];
 
   const isItemActive = (href: string) => {
+    if (!validTeacherId && href.startsWith("/teacher/")) { // If no valid teacherId, teacher links shouldn't be active
+        return false;
+    }
     const baseHref = href.split('?')[0]; 
     return pathname === baseHref || (baseHref !== "/teacher/dashboard" && pathname.startsWith(baseHref));
   };
@@ -74,7 +78,7 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
     <Sidebar collapsible="icon" side="left" variant="sidebar" className="border-r">
       <SidebarHeader className="flex items-center justify-between p-2 h-16">
         {state === 'expanded' && (
-          <Link href={validTeacherId ? `/teacher/dashboard?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}`: "/login/teacher"} className="ml-2">
+          <Link href={validTeacherId ? `/teacher/dashboard?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "/login/teacher"} className="ml-2">
             <span className="text-lg font-headline font-semibold text-sidebar-foreground">
               Grade<span className="text-sidebar-primary">Central</span> <span className="text-xs text-sidebar-foreground/70">Teacher</span>
             </span>
@@ -94,7 +98,7 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
           <SidebarMenu className="px-2 py-2 space-y-1">
             {navItems.map((item, index) => (
               <SidebarMenuItem key={index}>
-                <Link href={item.disabled ? "#" : item.href} passHref legacyBehavior={item.disabled}>
+                <Link href={item.disabled ? "#" : item.href}>
                   <SidebarMenuButton 
                     isActive={!item.disabled && isItemActive(item.href)} 
                     tooltip={item.tooltip} 
