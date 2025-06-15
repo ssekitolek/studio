@@ -9,6 +9,7 @@ import { getTeacherProfileData } from "@/lib/actions/teacher-actions";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle as UIAlertTitle } from "@/components/ui/alert";
 import Link from "next/link";
+import { useToast } from "@/hooks/use-toast";
 
 
 interface TeacherProfile {
@@ -19,46 +20,57 @@ interface TeacherProfile {
 export default function TeacherProfilePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+  const { toast } = useToast();
+
   const [profile, setProfile] = useState<TeacherProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [pageError, setPageError] = useState<string | null>(null);
   const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!searchParams) return;
-    
+    if (!searchParams) {
+        setPageError("Could not access URL parameters. Please try reloading.");
+        setIsLoading(false);
+        return;
+    }
+
     const teacherIdFromUrl = searchParams.get("teacherId");
 
     if (!teacherIdFromUrl || teacherIdFromUrl === "undefined" || teacherIdFromUrl.trim() === "") {
       const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Cannot load profile.`;
-      setError(msg);
+      toast({ title: "Access Denied", description: msg, variant: "destructive" });
+      setPageError(msg);
       setCurrentTeacherId(null);
       setIsLoading(false);
       return;
     }
-    
+
     setCurrentTeacherId(teacherIdFromUrl);
-    setError(null);
-    async function fetchData() {
+    setPageError(null); // Clear any previous errors
+
+    async function fetchData(validTeacherId: string) {
       setIsLoading(true);
       try {
-        const data = await getTeacherProfileData(teacherIdFromUrl as string);
+        const data = await getTeacherProfileData(validTeacherId);
         if (data) {
           setProfile(data);
         } else {
-          setError(`Failed to load profile data or profile not found for ID: ${teacherIdFromUrl}.`);
+          const notFoundMsg = `Failed to load profile data or profile not found for ID: ${validTeacherId}.`;
+          setPageError(notFoundMsg);
+          toast({ title: "Profile Not Found", description: notFoundMsg, variant: "destructive" });
         }
       } catch (e) {
-        setError(e instanceof Error ? e.message : "An unexpected error occurred.");
+        const errorMsg = e instanceof Error ? e.message : "An unexpected error occurred.";
+        setPageError(errorMsg);
+        toast({ title: "Error Loading Profile", description: errorMsg, variant: "destructive" });
       } finally {
         setIsLoading(false);
       }
     }
-    fetchData();
-  }, [searchParams, router]);
+    fetchData(teacherIdFromUrl);
+  }, [searchParams, router, toast]);
 
-  if (isLoading && !error) { // Show loader only if not already errored
+  if (isLoading && !pageError) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -67,7 +79,7 @@ export default function TeacherProfilePage() {
     );
   }
 
-  if (error) {
+  if (pageError) {
     return (
       <div className="space-y-6">
         <PageHeader
@@ -79,7 +91,7 @@ export default function TeacherProfilePage() {
           <AlertTriangle className="h-4 w-4" />
           <UIAlertTitle>Error Loading Profile</UIAlertTitle>
           <AlertDescription>
-            {error} 
+            {pageError}
             {(!currentTeacherId || currentTeacherId === "undefined") && <span> You can try to <Link href="/login/teacher" className="underline">login again</Link>.</span>}
             If the issue persists, contact administration.
           </AlertDescription>
@@ -87,8 +99,8 @@ export default function TeacherProfilePage() {
       </div>
     );
   }
-  
-  if (!profile && !isLoading) { // Handles case where profile is null after loading and no error explicitly set from fetch
+
+  if (!profile && !isLoading) {
      return (
       <div className="space-y-6">
         <PageHeader
@@ -100,6 +112,7 @@ export default function TeacherProfilePage() {
           <CardContent className="py-8 text-center text-muted-foreground">
             Profile data could not be loaded.
             {currentTeacherId && <span> (Attempted for ID: {currentTeacherId})</span>}
+             {!currentTeacherId && <span> Teacher ID not found.</span>}
           </CardContent>
         </Card>
       </div>
@@ -133,3 +146,5 @@ export default function TeacherProfilePage() {
     </div>
   );
 }
+
+    

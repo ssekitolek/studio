@@ -14,14 +14,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BookOpenCheck, Loader2, AlertTriangle, CheckCircle, ShieldAlert, FileWarning } from "lucide-react";
-import { getTeacherAssessments, getStudentsForAssessment, submitMarks } from "@/lib/actions/teacher-actions";
+import { getTeacherAssessments, submitMarks } from "@/lib/actions/teacher-actions";
 import type { Student, AnomalyExplanation } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { useSearchParams, useRouter } from "next/navigation"; 
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
 const markSchema = z.object({
-  studentId: z.string(), 
+  studentId: z.string(),
   studentName: z.string(),
   score: z.preprocess(
     (val) => (val === "" || val === undefined || val === null ? null : Number(val)),
@@ -45,8 +45,8 @@ interface AssessmentOption {
 export default function SubmitMarksPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
-  const router = useRouter(); 
-  
+  const router = useRouter();
+
   const [isPending, startTransition] = useTransition();
   const [isLoadingAssessments, setIsLoadingAssessments] = useState(true);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
@@ -54,7 +54,7 @@ export default function SubmitMarksPage() {
   const [selectedAssessment, setSelectedAssessment] = useState<AssessmentOption | null>(null);
   const [anomalies, setAnomalies] = useState<AnomalyExplanation[]>([]);
   const [showAnomalyWarning, setShowAnomalyWarning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [pageError, setPageError] = useState<string | null>(null);
   const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
 
   const form = useForm<MarksSubmissionFormValues>({
@@ -70,34 +70,43 @@ export default function SubmitMarksPage() {
   });
 
   useEffect(() => {
-    if (!searchParams) return;
+    if (!searchParams) {
+        setPageError("Could not access URL parameters. Please try reloading.");
+        setIsLoadingAssessments(false);
+        return;
+    }
 
     const teacherIdFromUrl = searchParams.get("teacherId");
 
     if (!teacherIdFromUrl || teacherIdFromUrl === "undefined" || teacherIdFromUrl.trim() === "") {
-      const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login.`;
+      const msg = `Teacher ID is invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login.`;
       toast({ title: "Access Denied", description: msg, variant: "destructive" });
-      setError(msg);
+      setPageError(msg);
       setCurrentTeacherId(null);
-      setIsLoadingAssessments(false); 
+      setIsLoadingAssessments(false);
       return;
     }
-    
+
     setCurrentTeacherId(teacherIdFromUrl);
-    setError(null);
-    async function fetchAssessments() {
+    setPageError(null); // Clear any previous errors
+
+    async function fetchAssessments(validTeacherId: string) {
       setIsLoadingAssessments(true);
       try {
-        const assessmentData = await getTeacherAssessments(teacherIdFromUrl as string); 
+        const assessmentData = await getTeacherAssessments(validTeacherId);
         setAssessments(assessmentData);
+        if (assessmentData.length === 0) {
+            toast({ title: "No Assessments", description: "No assessments found for your assignments in the current term.", variant: "default" });
+        }
       } catch (error) {
-        toast({ title: "Error", description: "Failed to load assessments.", variant: "destructive" });
-        setError("Failed to load assessments. Please try again.");
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+        toast({ title: "Error Loading Assessments", description: errorMessage, variant: "destructive" });
+        setPageError(`Failed to load assessments: ${errorMessage}`);
       } finally {
         setIsLoadingAssessments(false);
       }
     }
-    fetchAssessments();
+    fetchAssessments(teacherIdFromUrl);
   }, [searchParams, toast, router]);
 
   const handleAssessmentChange = async (assessmentId: string) => {
@@ -106,29 +115,32 @@ export default function SubmitMarksPage() {
     setSelectedAssessment(assessment || null);
     setAnomalies([]);
     setShowAnomalyWarning(false);
-    form.resetField("marks", { defaultValue: [] }); 
+    form.resetField("marks", { defaultValue: [] });
 
-    if (assessmentId) {
+    if (assessmentId && currentTeacherId) { // Ensure currentTeacherId is valid
       setIsLoadingStudents(true);
       try {
-        // Ensure currentTeacherId is valid before calling getStudentsForAssessment
-        // though assessmentId itself implicitly contains identifiers if structured.
-        // However, this action might not need teacherId explicitly if assessmentId is globally unique.
         const students: Student[] = await getStudentsForAssessment(assessmentId);
         const marksData = students.map(student => ({
-          studentId: student.studentIdNumber, 
+          studentId: student.studentIdNumber,
           studentName: `${student.firstName} ${student.lastName}`,
           score: null,
         }));
         replace(marksData);
+         if (students.length === 0) {
+            toast({ title: "No Students", description: "No students found for the selected assessment.", variant: "default" });
+        }
       } catch (error) {
-        toast({ title: "Error", description: "Failed to load students for this assessment.", variant: "destructive" });
+        toast({ title: "Error Loading Students", description: "Failed to load students for this assessment.", variant: "destructive" });
         replace([]);
       } finally {
         setIsLoadingStudents(false);
       }
     } else {
       replace([]);
+      if(!currentTeacherId){
+        toast({ title: "Authentication Error", description: "Teacher ID is missing or invalid. Cannot load students.", variant: "destructive" });
+      }
     }
   };
 
@@ -137,13 +149,14 @@ export default function SubmitMarksPage() {
         toast({ title: "Error", description: "No assessment selected.", variant: "destructive"});
         return;
     }
-    if (!currentTeacherId) { // Check against state variable
+    if (!currentTeacherId) {
         toast({ title: "Authentication Error", description: "Teacher ID is missing or invalid. Please re-login.", variant: "destructive" });
+        setPageError("Teacher ID is missing. Please login again.");
         return;
     }
 
     const marksToSubmit = data.marks.map(m => ({
-        studentId: m.studentId, 
+        studentId: m.studentId,
         score: m.score
     })).filter(m => m.score !== null && m.score !== undefined && m.score.toString().trim() !== '');
 
@@ -152,9 +165,9 @@ export default function SubmitMarksPage() {
         toast({ title: "No marks entered", description: "Please enter marks for at least one student.", variant: "destructive"});
         return;
     }
-    
+
     let invalidScoreFound = false;
-    data.marks.forEach((mark, index) => { 
+    data.marks.forEach((mark, index) => {
       if (mark.score !== null && mark.score !== undefined) {
         if (mark.score < 0 || mark.score > selectedAssessment.maxMarks) {
           form.setError(`marks.${index}.score`, {
@@ -162,26 +175,28 @@ export default function SubmitMarksPage() {
             message: `Score must be between 0 and ${selectedAssessment.maxMarks}.`
           });
           invalidScoreFound = true;
+        } else {
+           form.clearErrors(`marks.${index}.score`); // Clear error if valid
         }
       }
     });
 
     if (invalidScoreFound) {
-      toast({ title: "Invalid Scores", description: "Some scores are outside the valid range.", variant: "destructive" });
+      toast({ title: "Invalid Scores", description: "Some scores are outside the valid range. Please correct them.", variant: "destructive" });
       return;
     }
 
     startTransition(async () => {
       try {
-        const result = await submitMarks(currentTeacherId, { 
+        const result = await submitMarks(currentTeacherId, {
           assessmentId: data.assessmentId,
-          marks: marksToSubmit as Array<{ studentId: string; score: number }>, 
+          marks: marksToSubmit as Array<{ studentId: string; score: number }>,
         });
         if (result.success) {
           toast({
             title: result.anomalies?.hasAnomalies ? "Marks Submitted with Warnings" : "Success",
             description: result.message,
-            variant: result.anomalies?.hasAnomalies ? "default" : "default", 
+            variant: result.anomalies?.hasAnomalies ? "default" : "default",
             action: result.anomalies?.hasAnomalies ? <ShieldAlert className="text-yellow-500" /> : <CheckCircle className="text-green-500" />,
           });
           if (result.anomalies?.hasAnomalies) {
@@ -190,9 +205,8 @@ export default function SubmitMarksPage() {
           } else {
             setAnomalies([]);
             setShowAnomalyWarning(false);
-            // Reset form but keep assessmentId selected
             const currentAssessmentId = form.getValues("assessmentId");
-            form.reset({ assessmentId: currentAssessmentId, marks: fields.map(f => ({...f, score: null})) }); 
+            form.reset({ assessmentId: currentAssessmentId, marks: fields.map(f => ({...f, studentId: f.studentId, studentName: f.studentName, score: null})) });
           }
         } else {
           toast({ title: "Error", description: result.message, variant: "destructive" });
@@ -203,22 +217,22 @@ export default function SubmitMarksPage() {
       }
     });
   };
-  
+
   const currentMaxMarks = selectedAssessment?.maxMarks ?? 100;
 
-  if (error) { 
+  if (pageError) {
     return (
       <div className="space-y-6">
         <PageHeader
             title="Submit Marks"
-            description="Access denied or error."
+            description="Error accessing this page."
             icon={BookOpenCheck}
         />
         <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Access Error</AlertTitle>
             <AlertDescription>
-                {error} You can try to <Link href="/login/teacher" className="underline">login again</Link>.
+                {pageError} You can try to <Link href="/login/teacher" className="underline">login again</Link>.
             </AlertDescription>
         </Alert>
       </div>
@@ -246,11 +260,11 @@ export default function SubmitMarksPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Assessment</FormLabel>
-                    <Select 
+                    <Select
                         onValueChange={(value) => {
                             field.onChange(value);
                             handleAssessmentChange(value);
-                        }} 
+                        }}
                         value={field.value}
                         disabled={isLoadingAssessments || !currentTeacherId}
                     >
@@ -266,7 +280,7 @@ export default function SubmitMarksPage() {
                           </SelectItem>
                         ))}
                          {assessments.length === 0 && !isLoadingAssessments && currentTeacherId && (
-                            <p className="p-4 text-sm text-muted-foreground">No assessments available for the current term or your assignments.</p>
+                            <div className="p-4 text-sm text-muted-foreground">No assessments available for the current term or your assignments.</div>
                         )}
                       </SelectContent>
                     </Select>
@@ -281,7 +295,7 @@ export default function SubmitMarksPage() {
             <Card className="shadow-md">
               <CardHeader>
                 <CardTitle className="font-headline text-xl text-primary">Enter Marks for {selectedAssessment.name}</CardTitle>
-                <CardDescription>Maximum possible score is {selectedAssessment.maxMarks}. Leave blank or enter 0 for no mark if applicable.</CardDescription>
+                <CardDescription>Maximum possible score is {selectedAssessment.maxMarks}. Leave blank if no mark is awarded.</CardDescription>
               </CardHeader>
               <CardContent>
                 {isLoadingStudents ? (
@@ -316,14 +330,14 @@ export default function SubmitMarksPage() {
                                         placeholder={`0-${currentMaxMarks}`}
                                         className="text-right"
                                         {...field}
-                                        value={field.value === null || field.value === undefined ? '' : field.value}
+                                        value={field.value === null || field.value === undefined ? '' : String(field.value)}
                                         onChange={(e) => {
                                             const val = e.target.value;
                                             field.onChange(val === '' ? null : Number(val));
                                         }}
                                         min="0"
                                         max={currentMaxMarks}
-                                        step="any" 
+                                        step="any"
                                       />
                                     </FormControl>
                                     <FormMessage className="text-xs text-left" />
@@ -337,12 +351,12 @@ export default function SubmitMarksPage() {
                     </Table>
                   </div>
                 ) : (
-                  <p className="text-center text-muted-foreground py-8">No students found for this assessment or assessment not selected.</p>
+                  <p className="text-center text-muted-foreground py-8">No students found for this assessment, or assessment not selected/valid.</p>
                 )}
               </CardContent>
             </Card>
           )}
-          
+
           {showAnomalyWarning && anomalies.length > 0 && (
             <Alert variant="default" className="border-yellow-500 bg-yellow-500/10">
               <FileWarning className="h-5 w-5 text-yellow-600" />
@@ -356,7 +370,7 @@ export default function SubmitMarksPage() {
                     </li>
                   ))}
                 </ul>
-                <p className="mt-2">You can still proceed, or correct the marks and resubmit.</p>
+                <p className="mt-2">You can still proceed with this submission, or correct the marks and resubmit to clear these warnings.</p>
               </AlertDescription>
             </Alert>
           )}
@@ -378,3 +392,5 @@ export default function SubmitMarksPage() {
     </div>
   );
 }
+
+    

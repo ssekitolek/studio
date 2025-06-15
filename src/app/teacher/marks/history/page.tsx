@@ -8,10 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { History, Eye, Download, Loader2, AlertTriangle } from "lucide-react";
-import { getSubmittedMarksHistory } from "@/lib/actions/teacher-actions"; 
+import { History, Eye, Loader2, AlertTriangle } from "lucide-react";
+import { getSubmittedMarksHistory } from "@/lib/actions/teacher-actions";
 import { useToast } from "@/hooks/use-toast";
-import { useSearchParams, useRouter } from "next/navigation"; 
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
 interface SubmissionHistoryItem {
@@ -26,48 +26,54 @@ interface SubmissionHistoryItem {
 export default function MarksHistoryPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
-  const router = useRouter(); 
-  
+  const router = useRouter();
+
   const [isLoading, startLoadingTransition] = useTransition();
   const [history, setHistory] = useState<SubmissionHistoryItem[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [pageError, setPageError] = useState<string | null>(null);
   const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!searchParams) return;
+    if (!searchParams) {
+        setPageError("Could not access URL parameters. Please try reloading.");
+        return;
+    }
 
     const teacherIdFromUrl = searchParams.get("teacherId");
 
     if (!teacherIdFromUrl || teacherIdFromUrl === "undefined" || teacherIdFromUrl.trim() === "") {
       const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login.`;
       toast({ title: "Access Denied", description: msg, variant: "destructive" });
-      setError(msg);
+      setPageError(msg);
       setCurrentTeacherId(null);
-      // Optionally redirect client-side if preferred, though showing an error is fine.
-      // if (typeof window !== "undefined") router.push("/login/teacher"); 
       return;
     }
-    
+
     setCurrentTeacherId(teacherIdFromUrl);
-    setError(null);
+    setPageError(null); // Clear any previous errors
+
     startLoadingTransition(async () => {
       try {
-        const submissionData = await getSubmittedMarksHistory(teacherIdFromUrl as string); 
+        const submissionData = await getSubmittedMarksHistory(teacherIdFromUrl as string);
         setHistory(submissionData);
+        if (submissionData.length === 0) {
+            toast({ title: "No History", description: "No submission history found.", variant: "default" });
+        }
       } catch (error) {
-        toast({ title: "Error", description: "Failed to load submission history.", variant: "destructive" });
-        setError("Failed to load submission history. Please try again.");
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+        toast({ title: "Error Loading History", description: errorMessage, variant: "destructive" });
+        setPageError(`Failed to load submission history: ${errorMessage}`);
       }
     });
   }, [searchParams, toast, router]);
 
   const getStatusVariant = (status: SubmissionHistoryItem['status']) => {
-    if (status.includes("Anomaly Detected")) return "default"; 
-    if (status === "Accepted") return "default"; 
+    if (status.includes("Anomaly Detected")) return "default";
+    if (status === "Accepted") return "default";
     if (status === "Rejected") return "destructive";
     return "secondary";
   };
-  
+
   const getStatusClass = (status: SubmissionHistoryItem['status']) => {
     if (status.includes("Anomaly Detected")) return "bg-yellow-500 hover:bg-yellow-600 text-black";
     if (status === "Accepted") return "bg-green-500 hover:bg-green-600 text-white";
@@ -76,7 +82,7 @@ export default function MarksHistoryPage() {
   }
 
 
-  if (error) { 
+  if (pageError) {
      return (
       <div className="space-y-6">
         <PageHeader
@@ -88,14 +94,14 @@ export default function MarksHistoryPage() {
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Access Error</AlertTitle>
             <AlertDescription>
-                {error} You can try to <Link href="/login/teacher" className="underline">login again</Link>.
+                {pageError} You can try to <Link href="/login/teacher" className="underline">login again</Link>.
             </AlertDescription>
         </Alert>
       </div>
     );
   }
 
-  if (isLoading && history.length === 0 && currentTeacherId) { // Only show loader if ID is valid and we are expecting data
+  if (isLoading && history.length === 0 && currentTeacherId) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -156,23 +162,23 @@ export default function MarksHistoryPage() {
           ) : (
              !isLoading && currentTeacherId && <p className="text-center text-muted-foreground py-8">No submission history found.</p>
           )}
-           {isLoading && history.length > 0 && currentTeacherId && ( 
+           {isLoading && history.length > 0 && currentTeacherId && (
             <div className="text-center text-muted-foreground py-4">
                 <Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading more...
             </div>
            )}
-           {!currentTeacherId && !error && !isLoading && ( // Case where ID was invalid from start but didn't throw distinct error
+           {!currentTeacherId && !pageError && !isLoading && (
              <p className="text-center text-muted-foreground py-8">Teacher ID not found. Cannot load history.</p>
            )}
         </CardContent>
       </Card>
-        
+
       {currentTeacherId && history.some(h => h.status.includes("Anomaly Detected")) && (
          <Alert variant="default" className="border-yellow-500 bg-yellow-500/10">
             <AlertTriangle className="h-5 w-5 text-yellow-600" />
             <AlertTitle className="font-headline text-yellow-700">Review Required</AlertTitle>
             <AlertDescription className="text-yellow-600">
-            Some of your submissions have potential anomalies flagged by the system. 
+            Some of your submissions have potential anomalies flagged by the system.
             Please review them. The D.O.S. may also contact you regarding these.
           </AlertDescription>
         </Alert>
@@ -180,3 +186,5 @@ export default function MarksHistoryPage() {
     </div>
   );
 }
+
+    
