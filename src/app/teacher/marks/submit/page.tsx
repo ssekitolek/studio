@@ -96,7 +96,12 @@ export default function SubmitMarksPage() {
         const assessmentData = await getTeacherAssessments(validTeacherId);
         setAssessments(assessmentData);
         if (assessmentData.length === 0) {
-            toast({ title: "No Assessments", description: "No assessments found for your assignments in the current term. Please contact D.O.S if this is unexpected.", variant: "default" });
+            toast({ 
+                title: "No Assessments Available", 
+                description: "No assessments found for your assignments in the current term. Please contact D.O.S if this is unexpected.", 
+                variant: "default",
+                duration: 7000,
+            });
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
@@ -128,7 +133,7 @@ export default function SubmitMarksPage() {
         }));
         replace(marksData); 
          if (students.length === 0) {
-            toast({ title: "No Students", description: "No students found for the selected assessment. Please check class enrollment or contact D.O.S.", variant: "default" });
+            toast({ title: "No Students Found", description: "No students found for the selected assessment. Please check class enrollment or contact D.O.S.", variant: "default" });
         }
       } catch (error) {
         toast({ title: "Error Loading Students", description: "Failed to load students for this assessment.", variant: "destructive" });
@@ -275,13 +280,22 @@ export default function SubmitMarksPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {assessments.map(assessment => (
-                          <SelectItem key={assessment.id} value={assessment.id}>
-                            {assessment.name} (Out of {assessment.maxMarks})
-                          </SelectItem>
-                        ))}
-                         {assessments.length === 0 && !isLoadingAssessments && currentTeacherId && (
-                            <div className="p-4 text-sm text-muted-foreground">No assessments available for the current term or your assignments.</div>
+                        {isLoadingAssessments ? (
+                            <div className="p-4 text-sm text-muted-foreground flex items-center justify-center">
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin"/> Loading...
+                            </div>
+                        ) : assessments.length > 0 ? (
+                            assessments.map(assessment => (
+                            <SelectItem key={assessment.id} value={assessment.id}>
+                                {assessment.name} (Out of {assessment.maxMarks})
+                            </SelectItem>
+                            ))
+                        ) : (
+                            <div className="p-4 text-sm text-muted-foreground text-center">
+                                No assessments available for the current term or your assignments.
+                                <br />
+                                Please contact D.O.S. if this is unexpected.
+                            </div>
                         )}
                       </SelectContent>
                     </Select>
@@ -378,7 +392,11 @@ export default function SubmitMarksPage() {
 
           {selectedAssessment && fields.length > 0 && (
             <div className="flex justify-end">
-              <Button type="submit" disabled={isPending || isLoadingStudents || isLoadingAssessments || !currentTeacherId} size="lg">
+              <Button 
+                type="submit" 
+                disabled={isPending || isLoadingStudents || isLoadingAssessments || !currentTeacherId || !selectedAssessment || fields.length === 0} 
+                size="lg"
+              >
                 {isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -393,5 +411,3 @@ export default function SubmitMarksPage() {
     </div>
   );
 }
-
-    
