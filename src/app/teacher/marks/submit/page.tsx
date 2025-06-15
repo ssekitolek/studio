@@ -98,9 +98,9 @@ export default function SubmitMarksPage() {
         if (assessmentData.length === 0) {
             toast({ 
                 title: "No Assessments Available", 
-                description: "No assessments found for your assignments in the current term. Please contact D.O.S if this is unexpected.", 
+                description: "No assessments found for your assignments in the current term. This could be due to system settings (like current term) not being configured by the D.O.S. Please contact administration if this is unexpected.", 
                 variant: "default",
-                duration: 7000,
+                duration: 10000, // Longer duration for important info
             });
         }
       } catch (error) {
@@ -292,9 +292,9 @@ export default function SubmitMarksPage() {
                             ))
                         ) : (
                             <div className="p-4 text-sm text-muted-foreground text-center">
-                                No assessments available for the current term or your assignments.
+                                No assessments available. This might be due to missing D.O.S. configurations (e.g., current term).
                                 <br />
-                                Please contact D.O.S. if this is unexpected.
+                                Please contact administration if this is unexpected.
                             </div>
                         )}
                       </SelectContent>
@@ -411,3 +411,5 @@ export default function SubmitMarksPage() {
     </div>
   );
 }
+
+    
