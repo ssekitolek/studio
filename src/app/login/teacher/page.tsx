@@ -24,7 +24,6 @@ export default function TeacherLoginPage() {
     setError(null);
     setIsLoading(true);
 
-    // Basic client-side validation
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError("Invalid email format.");
       setIsLoading(false);
@@ -38,10 +37,15 @@ export default function TeacherLoginPage() {
 
     try {
       const result = await loginTeacherByEmailPassword(email, password);
-      if (result.success && result.teacher && result.teacher.id && result.teacher.name) {
-        const teacherIdParam = encodeURIComponent(result.teacher.id);
-        const teacherNameParam = encodeURIComponent(result.teacher.name);
-        router.push(`/teacher/dashboard?teacherId=${teacherIdParam}&teacherName=${teacherNameParam}`);
+      if (result.success && result.teacher) {
+        if (result.teacher.id && result.teacher.name) {
+          const teacherIdParam = encodeURIComponent(result.teacher.id);
+          const teacherNameParam = encodeURIComponent(result.teacher.name);
+          router.push(`/teacher/dashboard?teacherId=${teacherIdParam}&teacherName=${teacherNameParam}`);
+        } else {
+          setError("Login successful, but critical teacher information is missing. Please contact support.");
+          console.error("Login success but missing teacher.id or teacher.name:", result.teacher);
+        }
       } else {
         setError(result.message || "Invalid email or password");
       }
@@ -55,7 +59,7 @@ export default function TeacherLoginPage() {
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-8 bg-gradient-to-br from-background to-secondary">
-      <Card className="w-full max-w-md shadow-xl mt-8"> {/* Added mt-8 for spacing if needed */}
+      <Card className="w-full max-w-md shadow-xl mt-8">
         <CardHeader className="items-center text-center">
           <User className="w-16 h-16 text-primary mb-3" />
           <CardTitle className="text-3xl font-headline">Teacher Login</CardTitle>

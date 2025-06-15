@@ -27,20 +27,28 @@ export default function MarksHistoryPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter(); 
-  const teacherIdFromUrl = searchParams.get("teacherId");
-
+  
   const [isLoading, startLoadingTransition] = useTransition();
   const [history, setHistory] = useState<SubmissionHistoryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!teacherIdFromUrl || teacherIdFromUrl === "undefined") {
-      const msg = `Teacher ID invalid (received: '${teacherIdFromUrl}'). Please login.`;
+    if (!searchParams) return;
+
+    const teacherIdFromUrl = searchParams.get("teacherId");
+
+    if (!teacherIdFromUrl || teacherIdFromUrl === "undefined" || teacherIdFromUrl.trim() === "") {
+      const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login.`;
       toast({ title: "Access Denied", description: msg, variant: "destructive" });
       setError(msg);
-      if (typeof window !== "undefined") router.push("/login/teacher"); // Perform client-side redirect
+      setCurrentTeacherId(null);
+      // Optionally redirect client-side if preferred, though showing an error is fine.
+      // if (typeof window !== "undefined") router.push("/login/teacher"); 
       return;
     }
+    
+    setCurrentTeacherId(teacherIdFromUrl);
     setError(null);
     startLoadingTransition(async () => {
       try {
@@ -48,9 +56,10 @@ export default function MarksHistoryPage() {
         setHistory(submissionData);
       } catch (error) {
         toast({ title: "Error", description: "Failed to load submission history.", variant: "destructive" });
+        setError("Failed to load submission history. Please try again.");
       }
     });
-  }, [toast, teacherIdFromUrl, router]);
+  }, [searchParams, toast, router]);
 
   const getStatusVariant = (status: SubmissionHistoryItem['status']) => {
     if (status.includes("Anomaly Detected")) return "default"; 
@@ -72,7 +81,7 @@ export default function MarksHistoryPage() {
       <div className="space-y-6">
         <PageHeader
             title="Marks Submission History"
-            description="Access denied or error."
+            description="Access denied or error loading history."
             icon={History}
         />
         <Alert variant="destructive">
@@ -86,7 +95,7 @@ export default function MarksHistoryPage() {
     );
   }
 
-  if (isLoading && history.length === 0) {
+  if (isLoading && history.length === 0 && currentTeacherId) { // Only show loader if ID is valid and we are expecting data
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -111,7 +120,7 @@ export default function MarksHistoryPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {history.length > 0 ? (
+          {currentTeacherId && history.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -145,17 +154,20 @@ export default function MarksHistoryPage() {
               </TableBody>
             </Table>
           ) : (
-             !isLoading && <p className="text-center text-muted-foreground py-8">No submission history found.</p>
+             !isLoading && currentTeacherId && <p className="text-center text-muted-foreground py-8">No submission history found.</p>
           )}
-           {isLoading && history.length > 0 && ( 
+           {isLoading && history.length > 0 && currentTeacherId && ( 
             <div className="text-center text-muted-foreground py-4">
                 <Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading more...
             </div>
            )}
+           {!currentTeacherId && !error && !isLoading && ( // Case where ID was invalid from start but didn't throw distinct error
+             <p className="text-center text-muted-foreground py-8">Teacher ID not found. Cannot load history.</p>
+           )}
         </CardContent>
       </Card>
         
-      {history.some(h => h.status.includes("Anomaly Detected")) && (
+      {currentTeacherId && history.some(h => h.status.includes("Anomaly Detected")) && (
          <Alert variant="default" className="border-yellow-500 bg-yellow-500/10">
             <AlertTriangle className="h-5 w-5 text-yellow-600" />
             <AlertTitle className="font-headline text-yellow-700">Review Required</AlertTitle>
@@ -168,4 +180,3 @@ export default function MarksHistoryPage() {
     </div>
   );
 }
-

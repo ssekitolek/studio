@@ -16,34 +16,38 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { LogOut, Settings, UserCircle } from "lucide-react";
 
 interface AppHeaderProps {
-  userName: string;
+  userName?: string; // Made optional
   userRole: "D.O.S." | "Teacher";
   userAvatarUrl?: string;
-  teacherId?: string; // Added for teacher dashboard link
-  teacherNameParam?: string; // Added for teacher dashboard link
+  teacherId?: string; 
+  teacherNameParam?: string; 
 }
 
 export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teacherNameParam }: AppHeaderProps) {
+  const displayUserName = userName || (userRole === "Teacher" ? "Teacher" : "Admin");
+  
   const getInitials = (name: string) => {
     return name
       .split(" ")
       .map((n) => n[0])
       .join("")
-      .toUpperCase();
+      .toUpperCase() || (userRole === "Teacher" ? "T" : "A");
   };
+
+  const validTeacherId = teacherId && teacherId !== "undefined" ? teacherId : undefined;
+  const validTeacherNameParam = teacherNameParam && teacherNameParam !== "undefined" ? teacherNameParam : displayUserName;
 
   const dashboardLink = userRole === "D.O.S." 
     ? "/dos/dashboard" 
-    : (teacherId && teacherNameParam 
-        ? `/teacher/dashboard?teacherId=${encodeURIComponent(teacherId)}&teacherName=${encodeURIComponent(teacherNameParam)}`
-        : "/teacher/dashboard"); // Fallback, though ideally params should always be present for teacher
+    : (validTeacherId 
+        ? `/teacher/dashboard?teacherId=${encodeURIComponent(validTeacherId)}&teacherName=${encodeURIComponent(validTeacherNameParam)}`
+        : "/login/teacher"); // Fallback if teacherId is invalid
 
   const settingsLink = userRole === "D.O.S."
     ? "/dos/settings/general"
-    : (teacherId && teacherNameParam
-        ? `/teacher/profile?teacherId=${encodeURIComponent(teacherId)}&teacherName=${encodeURIComponent(teacherNameParam)}`
-        : "/teacher/profile");
-
+    : (validTeacherId
+        ? `/teacher/profile?teacherId=${encodeURIComponent(validTeacherId)}&teacherName=${encodeURIComponent(validTeacherNameParam)}`
+        : "/login/teacher"); // Fallback if teacherId is invalid
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6 shadow-sm">
@@ -59,15 +63,15 @@ export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teache
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-10 w-10 rounded-full">
             <Avatar className="h-10 w-10">
-              <AvatarImage src={userAvatarUrl || `https://placehold.co/100x100.png`} alt={userName} data-ai-hint="profile person" />
-              <AvatarFallback>{getInitials(userName)}</AvatarFallback>
+              <AvatarImage src={userAvatarUrl || `https://placehold.co/100x100.png`} alt={displayUserName} data-ai-hint="profile person" />
+              <AvatarFallback>{getInitials(displayUserName)}</AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{userName}</p>
+              <p className="text-sm font-medium leading-none">{displayUserName}</p>
               <p className="text-xs leading-none text-muted-foreground">
                 {userRole}
               </p>

@@ -12,7 +12,7 @@ import { getTeacherDashboardData } from "@/lib/actions/teacher-actions";
 import type { TeacherDashboardData, TeacherNotification, TeacherStats } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle as UIAlertTitle } from "@/components/ui/alert";
 import { StatCard } from "@/components/shared/StatCard";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +20,7 @@ const DEFAULT_FALLBACK_TEACHER_NAME = "Teacher";
 
 export default function TeacherDashboardPage() {
   const searchParams = useSearchParams(); 
+  const router = useRouter();
   
   const initialDefaultStats: TeacherStats = {
     assignedClassesCount: 0,
@@ -38,11 +39,15 @@ export default function TeacherDashboardPage() {
   const [dashboardData, setDashboardData] = useState<TeacherDashboardData>(initialDashboardData);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
+  const [currentTeacherName, setCurrentTeacherName] = useState<string>(DEFAULT_FALLBACK_TEACHER_NAME);
 
   useEffect(() => {
     if (!searchParams) {
-      console.warn("[TeacherDashboardPage] searchParams is null, deferring loadData.");
-      return; 
+      // This case should ideally not happen if useSearchParams is used correctly in a client component
+      setIsLoading(false);
+      setFetchError("Could not access URL parameters.");
+      return;
     }
 
     const idFromParams = searchParams.get("teacherId");
@@ -50,9 +55,9 @@ export default function TeacherDashboardPage() {
       ? decodeURIComponent(searchParams.get("teacherName")!) 
       : DEFAULT_FALLBACK_TEACHER_NAME;
 
-    setDashboardData(prev => ({ ...prev, teacherName: nameFromUrl }));
+    setCurrentTeacherName(nameFromUrl); // Set name immediately for UI responsiveness
 
-    if (!idFromParams || idFromParams === "undefined") {
+    if (!idFromParams || idFromParams === "undefined" || idFromParams.trim() === "") {
       const errorMessage = `Teacher ID is invalid or missing from URL (received: '${idFromParams}'). Dashboard cannot be loaded.`;
       console.warn(`[TeacherDashboardPage] ${errorMessage} (URL was: ${typeof window !== "undefined" ? window.location.href : "N/A"})`);
       setIsLoading(false);
@@ -62,28 +67,31 @@ export default function TeacherDashboardPage() {
           notifications: [{id: 'error_invalid_id_param', message: errorMessage, type: 'warning'}],
           resourcesText: "Could not load resources due to invalid ID.",
           stats: initialDefaultStats,
+          teacherName: nameFromUrl, // Keep the name from URL if available
       }));
+      setCurrentTeacherId(null); // Ensure currentTeacherId is null
+      // Optionally redirect
+      // router.push("/login/teacher");
       return;
     }
-
+    
+    setCurrentTeacherId(idFromParams); // Set valid ID
     setIsLoading(true);
     setFetchError(null); 
 
-    async function loadDataInternal(currentTeacherId: string) {
+    async function loadDataInternal(validTeacherId: string) {
       try {
-        const data = await getTeacherDashboardData(currentTeacherId);
+        const data = await getTeacherDashboardData(validTeacherId);
         setDashboardData(data);
-        if (data.teacherName === undefined && !data.notifications.some(n => n.id === 'error_teacher_not_found')) {
-           setFetchError(prev => {
-             const newError = "Teacher record could not be loaded by the server, or data is incomplete.";
-             return prev ? `${prev} ${newError}` : newError;
-           });
+        if (!data.teacherName && !data.notifications.some(n => n.id === 'error_teacher_not_found')) {
+           const newError = "Teacher record could not be loaded by the server, or data is incomplete.";
+           setFetchError(prev => prev ? `${prev} ${newError}` : newError);
         } else if (data.notifications.some(n => n.id === 'error_teacher_not_found')) {
             setFetchError(data.notifications.find(n => n.id === 'error_teacher_not_found')?.message || "Teacher record could not be loaded.");
         }
       } catch (error) {
          const errorMessageText = error instanceof Error ? error.message : "An unknown error occurred.";
-         console.error(`[TeacherDashboardPage] CRITICAL_ERROR_FETCHING_DASHBOARD_DATA for teacher ${currentTeacherId}:`, error);
+         console.error(`[TeacherDashboardPage] CRITICAL_ERROR_FETCHING_DASHBOARD_DATA for teacher ${validTeacherId}:`, error);
          setFetchError(errorMessageText);
          setDashboardData({ 
              assignments: [],
@@ -99,21 +107,20 @@ export default function TeacherDashboardPage() {
 
     loadDataInternal(idFromParams);
 
-  }, [searchParams]); 
+  }, [searchParams, router]); 
 
 
-  const nameFromUrlOnRender = searchParams?.get("teacherName") 
-      ? decodeURIComponent(searchParams.get("teacherName")!) 
-      : DEFAULT_FALLBACK_TEACHER_NAME;
-  const displayTeacherName = dashboardData.teacherName || nameFromUrlOnRender;
+  const displayTeacherName = dashboardData.teacherName || currentTeacherName;
   const { assignments, notifications, resourcesText, stats } = dashboardData;
 
+  const validEncodedTeacherId = currentTeacherId ? encodeURIComponent(currentTeacherId) : '';
+  const validEncodedTeacherName = encodeURIComponent(displayTeacherName);
 
-  if (isLoading) {
+  if (isLoading && !fetchError) { // Show loader only if not already errored out due to invalid ID
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-150px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-lg text-muted-foreground">Loading Dashboard...</p>
+        <p className="mt-4 text-lg text-muted-foreground">Loading Dashboard for {displayTeacherName}...</p>
       </div>
     );
   }
@@ -124,6 +131,10 @@ export default function TeacherDashboardPage() {
     { title: "Recent Submissions", value: stats.recentSubmissionsCount, icon: CheckSquare, description: "Marks submitted in last 7 days." },
   ];
 
+  const marksSubmissionLink = currentTeacherId 
+    ? `/teacher/marks/submit?teacherId=${validEncodedTeacherId}&teacherName=${validEncodedTeacherName}`
+    : "/login/teacher";
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -132,12 +143,13 @@ export default function TeacherDashboardPage() {
         icon={LayoutDashboard}
       />
 
-      {fetchError && !notifications.some(n => n.id.startsWith('error_') || n.id.startsWith('critical_')) && (
+      {fetchError && (
          <Alert variant="destructive" className="shadow-md">
             <AlertTriangle className="h-4 w-4" />
             <UIAlertTitle>Dashboard Loading Issue</UIAlertTitle>
             <AlertDescription>
-                {fetchError} Some information may be missing or outdated. Please try refreshing, or log out and log in again.
+                {fetchError} Some information may be missing or outdated. 
+                {(!currentTeacherId || currentTeacherId === "undefined") && <span> Please try <Link href="/login/teacher" className="underline">logging in</Link> again.</span>}
             </AlertDescription>
         </Alert>
       )}
@@ -162,7 +174,7 @@ export default function TeacherDashboardPage() {
             <StatCard
               key={stat.title}
               title={stat.title}
-              value={stat.value}
+              value={currentTeacherId ? stat.value : 'N/A'}
               icon={stat.icon}
               description={stat.description}
               className="shadow-sm hover:shadow-md transition-shadow border"
@@ -170,7 +182,6 @@ export default function TeacherDashboardPage() {
           ))}
         </CardContent>
       </Card>
-
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 shadow-md hover:shadow-lg transition-shadow">
@@ -181,7 +192,7 @@ export default function TeacherDashboardPage() {
             <CardDescription>Your current teaching assignments and upcoming deadlines for the active term.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {assignments && assignments.length > 0 ? (
+            {currentTeacherId && assignments && assignments.length > 0 ? (
               assignments.map((item) => (
                 <Card key={item.id} className="bg-secondary/50 p-4 rounded-lg">
                   <div className="flex justify-between items-center">
@@ -193,7 +204,7 @@ export default function TeacherDashboardPage() {
                       </p>
                     </div>
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/teacher/marks/submit?teacherId=${encodeURIComponent(searchParams?.get("teacherId") || '')}&teacherName=${encodeURIComponent(displayTeacherName)}`}>
+                      <Link href={marksSubmissionLink}>
                         <BookOpenCheck className="mr-2 h-4 w-4" /> Enter Marks
                       </Link>
                     </Button>
@@ -203,8 +214,14 @@ export default function TeacherDashboardPage() {
             ) : (
               <div className="text-center py-6 text-muted-foreground">
                 <Info className="mx-auto h-8 w-8 mb-2" />
-                <p>No classes or subjects are currently assigned to you for assessment in the active term, or data could not be loaded.</p>
-                <p className="text-xs mt-1">If you believe this is an error, please contact the D.O.S. office.</p>
+                 {currentTeacherId ? (
+                  <>
+                    <p>No classes or subjects are currently assigned to you for assessment in the active term, or data could not be loaded.</p>
+                    <p className="text-xs mt-1">If you believe this is an error, please contact the D.O.S. office.</p>
+                  </>
+                 ) : (
+                    <p>Cannot load assignments as Teacher ID is not available.</p>
+                 )}
               </div>
             )}
           </CardContent>
@@ -218,7 +235,7 @@ export default function TeacherDashboardPage() {
             <CardDescription>Important updates and reminders.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 max-h-96 overflow-y-auto">
-            {notifications && notifications.filter(n => !n.id.startsWith('critical_error_') && !n.id.startsWith('error_') && !n.id.startsWith('processing_error_')).length > 0 ? (
+            {currentTeacherId && notifications && notifications.filter(n => !n.id.startsWith('critical_error_') && !n.id.startsWith('error_') && !n.id.startsWith('processing_error_')).length > 0 ? (
               notifications.filter(n => !n.id.startsWith('critical_error_') && !n.id.startsWith('error_') && !n.id.startsWith('processing_error_')).map((notification) => (
                 <div
                   key={notification.id}
@@ -241,7 +258,7 @@ export default function TeacherDashboardPage() {
             ) : (
                 <div className="text-center py-6 text-muted-foreground">
                     <Info className="mx-auto h-8 w-8 mb-2" />
-                    <p>No new notifications at this time.</p>
+                    <p>{currentTeacherId ? "No new notifications at this time." : "Notifications cannot be loaded as Teacher ID is not available."}</p>
                 </div>
             )}
           </CardContent>
@@ -259,8 +276,8 @@ export default function TeacherDashboardPage() {
                   {paragraph}
                 </p>
               ))}
-              <Button variant="default" className="mt-4" asChild>
-                 <Link href={`/teacher/marks/submit?teacherId=${encodeURIComponent(searchParams?.get("teacherId") || '')}&teacherName=${encodeURIComponent(displayTeacherName)}`}>
+              <Button variant="default" className="mt-4" asChild disabled={!currentTeacherId}>
+                 <Link href={marksSubmissionLink}>
                   <BookOpenCheck className="mr-2 h-4 w-4" /> Go to Marks Submission
                 </Link>
               </Button>

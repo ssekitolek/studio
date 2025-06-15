@@ -46,8 +46,7 @@ export default function SubmitMarksPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter(); 
-  const teacherIdFromUrl = searchParams.get("teacherId");
-
+  
   const [isPending, startTransition] = useTransition();
   const [isLoadingAssessments, setIsLoadingAssessments] = useState(true);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
@@ -56,6 +55,7 @@ export default function SubmitMarksPage() {
   const [anomalies, setAnomalies] = useState<AnomalyExplanation[]>([]);
   const [showAnomalyWarning, setShowAnomalyWarning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
 
   const form = useForm<MarksSubmissionFormValues>({
     resolver: zodResolver(marksSubmissionSchema),
@@ -70,14 +70,20 @@ export default function SubmitMarksPage() {
   });
 
   useEffect(() => {
-    if (!teacherIdFromUrl || teacherIdFromUrl === "undefined") {
-      const msg = `Teacher ID invalid (received: '${teacherIdFromUrl}'). Please login.`;
+    if (!searchParams) return;
+
+    const teacherIdFromUrl = searchParams.get("teacherId");
+
+    if (!teacherIdFromUrl || teacherIdFromUrl === "undefined" || teacherIdFromUrl.trim() === "") {
+      const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login.`;
       toast({ title: "Access Denied", description: msg, variant: "destructive" });
       setError(msg);
-      if (typeof window !== "undefined") router.push("/login/teacher");
-      setIsLoadingAssessments(false); // Stop loading if ID is invalid
+      setCurrentTeacherId(null);
+      setIsLoadingAssessments(false); 
       return;
     }
+    
+    setCurrentTeacherId(teacherIdFromUrl);
     setError(null);
     async function fetchAssessments() {
       setIsLoadingAssessments(true);
@@ -86,12 +92,13 @@ export default function SubmitMarksPage() {
         setAssessments(assessmentData);
       } catch (error) {
         toast({ title: "Error", description: "Failed to load assessments.", variant: "destructive" });
+        setError("Failed to load assessments. Please try again.");
       } finally {
         setIsLoadingAssessments(false);
       }
     }
     fetchAssessments();
-  }, [toast, teacherIdFromUrl, router]);
+  }, [searchParams, toast, router]);
 
   const handleAssessmentChange = async (assessmentId: string) => {
     form.setValue("assessmentId", assessmentId);
@@ -104,6 +111,9 @@ export default function SubmitMarksPage() {
     if (assessmentId) {
       setIsLoadingStudents(true);
       try {
+        // Ensure currentTeacherId is valid before calling getStudentsForAssessment
+        // though assessmentId itself implicitly contains identifiers if structured.
+        // However, this action might not need teacherId explicitly if assessmentId is globally unique.
         const students: Student[] = await getStudentsForAssessment(assessmentId);
         const marksData = students.map(student => ({
           studentId: student.studentIdNumber, 
@@ -127,7 +137,7 @@ export default function SubmitMarksPage() {
         toast({ title: "Error", description: "No assessment selected.", variant: "destructive"});
         return;
     }
-    if (!teacherIdFromUrl || teacherIdFromUrl === "undefined") {
+    if (!currentTeacherId) { // Check against state variable
         toast({ title: "Authentication Error", description: "Teacher ID is missing or invalid. Please re-login.", variant: "destructive" });
         return;
     }
@@ -163,7 +173,7 @@ export default function SubmitMarksPage() {
 
     startTransition(async () => {
       try {
-        const result = await submitMarks(teacherIdFromUrl, { // Use validated teacherIdFromUrl
+        const result = await submitMarks(currentTeacherId, { 
           assessmentId: data.assessmentId,
           marks: marksToSubmit as Array<{ studentId: string; score: number }>, 
         });
@@ -180,7 +190,9 @@ export default function SubmitMarksPage() {
           } else {
             setAnomalies([]);
             setShowAnomalyWarning(false);
-            form.reset({ assessmentId: data.assessmentId, marks: fields.map(f => ({...f, score: null})) }); 
+            // Reset form but keep assessmentId selected
+            const currentAssessmentId = form.getValues("assessmentId");
+            form.reset({ assessmentId: currentAssessmentId, marks: fields.map(f => ({...f, score: null})) }); 
           }
         } else {
           toast({ title: "Error", description: result.message, variant: "destructive" });
@@ -240,11 +252,11 @@ export default function SubmitMarksPage() {
                             handleAssessmentChange(value);
                         }} 
                         value={field.value}
-                        disabled={isLoadingAssessments || !teacherIdFromUrl || teacherIdFromUrl === "undefined"}
+                        disabled={isLoadingAssessments || !currentTeacherId}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={isLoadingAssessments ? "Loading assessments..." : "Select an assessment"} />
+                          <SelectValue placeholder={!currentTeacherId ? "Teacher ID missing" : isLoadingAssessments ? "Loading assessments..." : "Select an assessment"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -253,7 +265,7 @@ export default function SubmitMarksPage() {
                             {assessment.name} (Out of {assessment.maxMarks})
                           </SelectItem>
                         ))}
-                         {assessments.length === 0 && !isLoadingAssessments && (
+                         {assessments.length === 0 && !isLoadingAssessments && currentTeacherId && (
                             <p className="p-4 text-sm text-muted-foreground">No assessments available for the current term or your assignments.</p>
                         )}
                       </SelectContent>
@@ -351,7 +363,7 @@ export default function SubmitMarksPage() {
 
           {selectedAssessment && fields.length > 0 && (
             <div className="flex justify-end">
-              <Button type="submit" disabled={isPending || isLoadingStudents || isLoadingAssessments} size="lg">
+              <Button type="submit" disabled={isPending || isLoadingStudents || isLoadingAssessments || !currentTeacherId} size="lg">
                 {isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
