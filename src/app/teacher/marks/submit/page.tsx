@@ -394,7 +394,7 @@ export default function SubmitMarksPage() {
             <div className="flex justify-end">
               <Button 
                 type="submit" 
-                disabled={isPending || isLoadingStudents || isLoadingAssessments || !currentTeacherId || !selectedAssessment || fields.length === 0} 
+                disabled={isPending || isLoadingStudents || isLoadingAssessments || !currentTeacherId} 
                 size="lg"
               >
                 {isPending ? (
