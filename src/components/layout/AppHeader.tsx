@@ -34,9 +34,8 @@ export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teache
       .toUpperCase() || (userRole === "Teacher" ? "T" : "A");
   };
 
-  const validTeacherId = teacherId && teacherId !== "undefined" ? teacherId : undefined;
-  // Use teacherNameParam if available, otherwise fallback to userName (which itself has fallbacks)
-  const validTeacherNameParamForLink = teacherNameParam && teacherNameParam !== "undefined" ? teacherNameParam : displayUserName;
+  const validTeacherId = teacherId && teacherId !== "undefined" && teacherId.trim() !== "" ? teacherId : undefined;
+  const validTeacherNameParamForLink = teacherNameParam && teacherNameParam !== "undefined" && teacherNameParam.trim() !== "" ? teacherNameParam : displayUserName;
 
 
   const dashboardLink = userRole === "D.O.S." 
@@ -45,7 +44,7 @@ export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teache
         ? `/teacher/dashboard?teacherId=${encodeURIComponent(validTeacherId)}&teacherName=${encodeURIComponent(validTeacherNameParamForLink)}`
         : "/login/teacher"); 
 
-  const settingsLink = userRole === "D.O.S."
+  const settingsOrProfileLink = userRole === "D.O.S."
     ? "/dos/settings/general"
     : (validTeacherId
         ? `/teacher/profile?teacherId=${encodeURIComponent(validTeacherId)}&teacherName=${encodeURIComponent(validTeacherNameParamForLink)}`
@@ -80,10 +79,10 @@ export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teache
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link href={settingsLink}>
+          <DropdownMenuItem asChild disabled={!validTeacherId && userRole === "Teacher"}>
+            <Link href={settingsOrProfileLink}>
               <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
+              <span>{userRole === "D.O.S." ? "Settings" : "My Profile"}</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />

@@ -29,9 +29,7 @@ export default function TeacherLayout({ children, searchParams }: LayoutProps) {
       }
     }
   }
-  // The redirect based on !teacherId was removed to stop the loop.
-  // Client pages (dashboard, submit, history, profile) are responsible for handling missing/invalid teacherId from useSearchParams.
-
+  
   return (
     <SidebarProvider defaultOpen={true}>
         <TeacherSidebar teacherIdParam={teacherIdParam} teacherNameParam={teacherName} />
@@ -49,4 +47,3 @@ export default function TeacherLayout({ children, searchParams }: LayoutProps) {
     </SidebarProvider>
   );
 }
-

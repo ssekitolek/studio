@@ -51,6 +51,7 @@ export default function TeacherDashboardPage() {
 
     const idFromParams = searchParams.get("teacherId");
     let nameFromUrl = searchParams.get("teacherName");
+
     if (nameFromUrl) {
       try {
         nameFromUrl = decodeURIComponent(nameFromUrl);
@@ -71,7 +72,7 @@ export default function TeacherDashboardPage() {
       setFetchError(errorMessage);
       setDashboardData(prev => ({
           ...prev,
-          notifications: [{id: 'error_invalid_id_param', message: errorMessage, type: 'warning'}],
+          notifications: [{id: 'error_invalid_id_param', message: `${errorMessage} Please try logging in again.`, type: 'warning'}],
           resourcesText: "Could not load resources due to invalid ID.",
           stats: initialDefaultStats,
           teacherName: nameFromUrl,
@@ -89,18 +90,21 @@ export default function TeacherDashboardPage() {
       try {
         const data = await getTeacherDashboardData(validTeacherId);
         setDashboardData(data);
-        if (!data.teacherName && !data.notifications.some(n => n.id === 'error_teacher_not_found' || n.id === 'error_invalid_teacher_id')) {
-           const newError = "Teacher record could not be loaded by the server, or crucial teacher data is incomplete. Please contact administration.";
+        if (data.teacherName) { // Prioritize name from backend
+          setCurrentTeacherName(data.teacherName);
+        }
+        
+        if (!data.teacherName && !data.notifications.some(n => n.id === 'error_teacher_not_found' || n.id === 'error_invalid_teacher_id' || n.id.startsWith('system_settings_') || n.id.startsWith('current_term_'))) {
+           const newError = `Your teacher record could not be loaded (ID used: ${validTeacherId}). Please contact administration.`;
            setFetchError(prev => prev ? `${prev} ${newError}` : newError);
            if (!data.notifications.some(n => n.id === 'error_teacher_not_found')) {
              setDashboardData(prev => ({...prev, notifications: [...prev.notifications, {id: 'error_missing_teacher_name_from_data', message: newError, type: 'warning'}]}));
            }
         } else if (data.notifications.some(n => n.id === 'error_teacher_not_found')) {
-            setFetchError(data.notifications.find(n => n.id === 'error_teacher_not_found')?.message || "Teacher record could not be loaded by the server.");
+            const existingError = data.notifications.find(n => n.id === 'error_teacher_not_found')?.message || `Teacher record not found for ID: ${validTeacherId}.`;
+            setFetchError(existingError);
         }
-        if (data.teacherName) {
-          setCurrentTeacherName(data.teacherName);
-        }
+
 
       } catch (error) {
          const errorMessageText = error instanceof Error ? error.message : "An unknown error occurred.";
@@ -123,7 +127,7 @@ export default function TeacherDashboardPage() {
   }, [searchParams, router]); 
 
 
-  const displayTeacherName = dashboardData.teacherName || currentTeacherName;
+  const displayTeacherName = dashboardData.teacherName || currentTeacherName; // Use currentTeacherName as fallback
   const { assignments, notifications, resourcesText, stats } = dashboardData;
 
   const validEncodedTeacherId = currentTeacherId ? encodeURIComponent(currentTeacherId) : '';
@@ -155,7 +159,7 @@ export default function TeacherDashboardPage() {
 
   const marksSubmissionLink = currentTeacherId 
     ? `/teacher/marks/submit?teacherId=${validEncodedTeacherId}&teacherName=${validEncodedTeacherName}`
-    : "#"; // Prevent navigation if ID is bad
+    : "#"; 
 
   return (
     <div className="space-y-8">
@@ -164,8 +168,46 @@ export default function TeacherDashboardPage() {
         description={`Welcome back, ${displayTeacherName}!`}
         icon={LayoutDashboard}
       />
+      
+      {notifications.map(notification => (
+         <Alert 
+            variant={notification.type === 'warning' || notification.type === 'deadline' ? 'default' : 'default'} 
+            className={`shadow-md ${
+                notification.type === 'deadline' ? 'border-accent bg-accent/10' :
+                notification.id.startsWith('error_') || notification.id.startsWith('critical_') || notification.type === 'warning' ? 'border-destructive bg-destructive/10' : 
+                'border-blue-500 bg-blue-500/10' 
+            }`} 
+            key={notification.id}
+        >
+            {notification.type === 'warning' || notification.id.startsWith('error_') || notification.id.startsWith('critical_') ? <AlertTriangle className="h-4 w-4 text-destructive" /> : 
+             notification.type === 'deadline' ? <AlertCircle className="h-4 w-4 text-accent" /> : 
+             <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            }
+            <UIAlertTitle 
+                className={
+                    notification.type === 'deadline' ? 'text-accent-foreground' :
+                    notification.id.startsWith('error_') || notification.id.startsWith('critical_') || notification.type === 'warning' ? 'text-destructive-foreground' : 
+                    'text-blue-700 dark:text-blue-300'
+                }
+            >
+                {notification.type === 'deadline' ? 'Upcoming Deadline' : 
+                 notification.id.startsWith('error_') || notification.id.startsWith('critical_') || notification.type === 'warning' ? 'Important Alert' : 
+                 notification.id.startsWith('system_settings_') || notification.id.startsWith('current_term_') ? 'System Configuration Alert' :
+                 'Notification'}
+            </UIAlertTitle>
+            <AlertDescription 
+                 className={
+                    notification.type === 'deadline' ? 'text-accent-foreground/90' :
+                    notification.id.startsWith('error_') || notification.id.startsWith('critical_') || notification.type === 'warning' ? 'text-destructive-foreground/90' : 
+                    'text-blue-600 dark:text-blue-400'
+                }
+            >
+                {notification.message}
+            </AlertDescription>
+        </Alert>
+      ))}
 
-      {fetchError && (
+      {fetchError && !notifications.some(n => n.message.includes(fetchError)) && (
          <Alert variant="destructive" className="shadow-md">
             <AlertTriangle className="h-4 w-4" />
             <UIAlertTitle>Dashboard Loading Issue</UIAlertTitle>
@@ -175,41 +217,6 @@ export default function TeacherDashboardPage() {
             </AlertDescription>
         </Alert>
       )}
-      
-      {notifications.filter(n => !n.id.startsWith('critical_') && !n.id.startsWith('error_') && n.id !== 'processing_error_dashboard').map(notification => (
-         <Alert 
-            variant={notification.type === 'warning' || notification.type === 'deadline' ? 'default' : 'default'} 
-            className={`shadow-md ${
-                notification.type === 'deadline' ? 'border-accent bg-accent/10' :
-                notification.type === 'warning' ? 'border-destructive bg-destructive/10' : 
-                'border-blue-500 bg-blue-500/10' 
-            }`} 
-            key={notification.id}
-        >
-            {notification.type === 'warning' ? <AlertTriangle className="h-4 w-4 text-destructive" /> : 
-             notification.type === 'deadline' ? <AlertCircle className="h-4 w-4 text-accent" /> : 
-             <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            }
-            <UIAlertTitle 
-                className={
-                    notification.type === 'deadline' ? 'text-accent-foreground' :
-                    notification.type === 'warning' ? 'text-destructive-foreground' : 
-                    'text-blue-700 dark:text-blue-300'
-                }
-            >
-                {notification.type === 'deadline' ? 'Upcoming Deadline' : notification.type === 'warning' ? 'Important Alert' : 'Notification'}
-            </UIAlertTitle>
-            <AlertDescription 
-                 className={
-                    notification.type === 'deadline' ? 'text-accent-foreground/90' :
-                    notification.type === 'warning' ? 'text-destructive-foreground/90' : 
-                    'text-blue-600 dark:text-blue-400'
-                }
-            >
-                {notification.message}
-            </AlertDescription>
-        </Alert>
-      ))}
 
 
       <Card className="shadow-md">
@@ -223,7 +230,7 @@ export default function TeacherDashboardPage() {
             <StatCard
               key={stat.title}
               title={stat.title}
-              value={currentTeacherId ? stat.value : 'N/A'}
+              value={currentTeacherId && !fetchError ? stat.value : 'N/A'}
               icon={stat.icon}
               description={stat.description}
               className="shadow-sm hover:shadow-md transition-shadow border"
@@ -241,7 +248,7 @@ export default function TeacherDashboardPage() {
             <CardDescription>Your current teaching assignments and upcoming deadlines for the active term.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {currentTeacherId && assignments && assignments.length > 0 ? (
+            {currentTeacherId && !fetchError && assignments && assignments.length > 0 ? (
               assignments.map((item) => (
                 <Card key={item.id} className="bg-secondary/50 p-4 rounded-lg">
                   <div className="flex justify-between items-center">
@@ -263,13 +270,13 @@ export default function TeacherDashboardPage() {
             ) : (
               <div className="text-center py-6 text-muted-foreground">
                 <Info className="mx-auto h-8 w-8 mb-2" />
-                 {currentTeacherId ? (
+                 {currentTeacherId && !fetchError ? (
                   <>
                     <p>No classes or subjects are currently assigned to you for assessment in the active term, or data could not be loaded.</p>
                     <p className="text-xs mt-1">If you believe this is an error, please contact the D.O.S. office.</p>
                   </>
                  ) : (
-                    <p>Cannot load assignments as Teacher ID is not available.</p>
+                    <p>Cannot load assignments as Teacher ID is not available or an error occurred.</p>
                  )}
               </div>
             )}
@@ -284,10 +291,10 @@ export default function TeacherDashboardPage() {
             <CardDescription>Important updates and reminders from the D.O.S office.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 max-h-96 overflow-y-auto">
-            {currentTeacherId && notifications && notifications.filter(n => n.id === 'dos_announcement').length > 0 ? (
+            {currentTeacherId && !fetchError && notifications && notifications.filter(n => n.id === 'dos_announcement').length > 0 ? (
               notifications.filter(n => n.id === 'dos_announcement').map((notification) => (
                 <div
-                  key={notification.id}
+                  key={`${notification.id}-dos`} 
                   className={`flex items-start p-3 rounded-lg ${
                     notification.type === 'warning' ? 'bg-destructive/10 text-destructive-foreground' : 
                     'bg-blue-500/10 text-blue-700 dark:text-blue-300'
@@ -304,7 +311,7 @@ export default function TeacherDashboardPage() {
             ) : (
                 <div className="text-center py-6 text-muted-foreground">
                     <Info className="mx-auto h-8 w-8 mb-2" />
-                    <p>{currentTeacherId ? "No D.O.S. announcements at this time." : "Announcements cannot be loaded as Teacher ID is not available."}</p>
+                    <p>{currentTeacherId && !fetchError ? "No D.O.S. announcements at this time." : "Announcements cannot be loaded as Teacher ID is not available or an error occurred."}</p>
                 </div>
             )}
           </CardContent>
@@ -336,4 +343,4 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
-
+    

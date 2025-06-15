@@ -97,7 +97,7 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
           <SidebarMenu className="px-2 py-2 space-y-1">
             {navItems.map((item, index) => (
               <SidebarMenuItem key={index}>
-                <Link href={item.disabled ? "#" : item.href}>
+                <Link href={item.disabled ? "#" : item.href} passHref>
                   <SidebarMenuButton
                     isActive={!item.disabled && isItemActive(item.href)}
                     tooltip={item.tooltip}
@@ -105,7 +105,7 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
                     disabled={item.disabled}
                     aria-disabled={item.disabled}
                     onClick={(e) => { if (item.disabled) e.preventDefault(); }}
-                    asChild={false} // Explicitly set asChild to false
+                    asChild={false}
                   >
                     <>
                       <item.icon className="h-5 w-5" />
@@ -120,7 +120,7 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter className="p-2">
-        <Link href="/">
+        <Link href="/" passHref>
             <SidebarMenuButton tooltip="Log Out" className="justify-start" asChild={false}>
               <>
                 <LogOut className="h-5 w-5" />
