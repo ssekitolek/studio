@@ -78,7 +78,7 @@ export default function SubmitMarksPage() {
 
     const teacherIdFromUrl = searchParams.get("teacherId");
 
-    if (!teacherIdFromUrl || teacherIdFromUrl.trim() === "" || teacherIdFromUrl === "undefined") {
+    if (!teacherIdFromUrl || teacherIdFromUrl.trim() === "" || teacherIdFromUrl.toLowerCase() === "undefined") {
       const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login again to submit marks.`;
       toast({ title: "Access Denied", description: msg, variant: "destructive" });
       setPageError(msg);
@@ -100,7 +100,7 @@ export default function SubmitMarksPage() {
                 title: "No Assessments Available", 
                 description: "No assessments found for your assignments in the current term. This could be due to system settings (like current term) not being configured by the D.O.S. Please contact administration if this is unexpected.", 
                 variant: "default",
-                duration: 10000, // Longer duration for important info
+                duration: 10000,
             });
         }
       } catch (error) {

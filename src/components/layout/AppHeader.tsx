@@ -34,8 +34,8 @@ export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teache
       .toUpperCase() || (userRole === "Teacher" ? "T" : "A");
   };
 
-  const validTeacherId = teacherId && teacherId !== "undefined" && teacherId.trim() !== "" ? teacherId : undefined;
-  const validTeacherNameParamForLink = teacherNameParam && teacherNameParam !== "undefined" && teacherNameParam.trim() !== "" ? teacherNameParam : displayUserName;
+  const validTeacherId = teacherId && teacherId.toLowerCase() !== "undefined" && teacherId.trim() !== "" ? teacherId : undefined;
+  const validTeacherNameParamForLink = teacherNameParam && teacherNameParam.toLowerCase() !== "undefined" && teacherNameParam.trim() !== "" ? teacherNameParam : displayUserName;
 
 
   const dashboardLink = userRole === "D.O.S." 
@@ -97,3 +97,5 @@ export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teache
     </header>
   );
 }
+
+    

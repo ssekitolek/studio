@@ -56,7 +56,6 @@ export default function TeacherDashboardPage() {
       try {
         nameFromUrl = decodeURIComponent(nameFromUrl);
       } catch (e) {
-        console.warn(`[TeacherDashboard] Failed to decode teacherName from URL ("${nameFromUrl}"). Error: ${e}`);
         nameFromUrl = DEFAULT_FALLBACK_TEACHER_NAME;
       }
     } else {
@@ -65,9 +64,8 @@ export default function TeacherDashboardPage() {
     
     setCurrentTeacherName(nameFromUrl); 
 
-    if (!idFromParams || idFromParams.trim() === "" || idFromParams === "undefined") {
+    if (!idFromParams || idFromParams.trim() === "" || idFromParams.toLowerCase() === "undefined") {
       const errorMessage = `Teacher ID is invalid or missing from URL (received: '${idFromParams}'). Dashboard cannot be loaded.`;
-      console.warn(`[TeacherDashboardPage] ${errorMessage} (URL was: ${typeof window !== "undefined" ? window.location.href : "N/A"})`);
       setIsLoading(false);
       setFetchError(errorMessage);
       setDashboardData(prev => ({
@@ -86,18 +84,17 @@ export default function TeacherDashboardPage() {
     setFetchError(null); 
 
     async function loadDataInternal(validTeacherId: string) {
-      console.log(`[TeacherDashboardPage] loadDataInternal called with teacherId: "${validTeacherId}"`);
       try {
         const data = await getTeacherDashboardData(validTeacherId);
         setDashboardData(data);
-        if (data.teacherName) { // Prioritize name from backend
+        if (data.teacherName) { 
           setCurrentTeacherName(data.teacherName);
         }
         
-        if (!data.teacherName && !data.notifications.some(n => n.id === 'error_teacher_not_found' || n.id === 'error_invalid_teacher_id' || n.id.startsWith('system_settings_') || n.id.startsWith('current_term_'))) {
+        if (!data.teacherName && !data.notifications.some(n => n.id.startsWith('error_') || n.id.startsWith('system_settings_') || n.id.startsWith('current_term_'))) {
            const newError = `Your teacher record could not be loaded (ID used: ${validTeacherId}). Please contact administration.`;
            setFetchError(prev => prev ? `${prev} ${newError}` : newError);
-           if (!data.notifications.some(n => n.id === 'error_teacher_not_found')) {
+           if (!data.notifications.some(n => n.id === 'error_missing_teacher_name_from_data')) {
              setDashboardData(prev => ({...prev, notifications: [...prev.notifications, {id: 'error_missing_teacher_name_from_data', message: newError, type: 'warning'}]}));
            }
         } else if (data.notifications.some(n => n.id === 'error_teacher_not_found')) {
@@ -105,10 +102,8 @@ export default function TeacherDashboardPage() {
             setFetchError(existingError);
         }
 
-
       } catch (error) {
          const errorMessageText = error instanceof Error ? error.message : "An unknown error occurred.";
-         console.error(`[TeacherDashboardPage] CRITICAL_ERROR_FETCHING_DASHBOARD_DATA for teacher ${validTeacherId}:`, error);
          setFetchError(errorMessageText);
          setDashboardData({ 
              assignments: [],
@@ -124,10 +119,10 @@ export default function TeacherDashboardPage() {
 
     loadDataInternal(idFromParams);
 
-  }, [searchParams, router]); 
+  }, [searchParams]); 
 
 
-  const displayTeacherName = dashboardData.teacherName || currentTeacherName; // Use currentTeacherName as fallback
+  const displayTeacherName = dashboardData.teacherName || currentTeacherName;
   const { assignments, notifications, resourcesText, stats } = dashboardData;
 
   const validEncodedTeacherId = currentTeacherId ? encodeURIComponent(currentTeacherId) : '';
@@ -213,7 +208,7 @@ export default function TeacherDashboardPage() {
             <UIAlertTitle>Dashboard Loading Issue</UIAlertTitle>
             <AlertDescription>
                 {fetchError} Some information may be missing or outdated. 
-                {(!currentTeacherId || currentTeacherId === "undefined") && <span> Please try <Link href="/login/teacher" className="underline">logging in</Link> again.</span>}
+                {(!currentTeacherId) && <span> Please try <Link href="/login/teacher" className="underline">logging in</Link> again.</span>}
             </AlertDescription>
         </Alert>
       )}
@@ -343,4 +338,6 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
+    
+
     

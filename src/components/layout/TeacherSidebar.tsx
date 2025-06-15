@@ -28,8 +28,8 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
   const pathname = usePathname();
   const { state } = useSidebar();
   
-  const validTeacherId = teacherIdParam && teacherIdParam !== "undefined" && teacherIdParam.trim() !== "" ? teacherIdParam : undefined;
-  const validTeacherName = teacherNameParam && teacherNameParam !== "undefined" ? teacherNameParam : "Teacher";
+  const validTeacherId = teacherIdParam && teacherIdParam.toLowerCase() !== "undefined" && teacherIdParam.trim() !== "" ? teacherIdParam : undefined;
+  const validTeacherName = teacherNameParam && teacherNameParam.toLowerCase() !== "undefined" ? teacherNameParam : "Teacher";
 
   const encodedTeacherId = validTeacherId ? encodeURIComponent(validTeacherId) : '';
   const encodedTeacherName = encodeURIComponent(validTeacherName); 
@@ -99,13 +99,13 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
               <SidebarMenuItem key={index}>
                 <Link href={item.disabled ? "#" : item.href} passHref>
                   <SidebarMenuButton
+                    asChild={false}
                     isActive={!item.disabled && isItemActive(item.href)}
                     tooltip={item.tooltip}
                     className="justify-start"
                     disabled={item.disabled}
                     aria-disabled={item.disabled}
                     onClick={(e) => { if (item.disabled) e.preventDefault(); }}
-                    asChild={false}
                   >
                     <>
                       <item.icon className="h-5 w-5" />
@@ -132,3 +132,5 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
     </Sidebar>
   );
 }
+
+    

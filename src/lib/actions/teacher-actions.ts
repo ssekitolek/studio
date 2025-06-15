@@ -13,7 +13,7 @@ import { subDays } from "date-fns";
 
 interface MarksSubmissionData {
   assessmentId: string;
-  marks: Array<{ studentId: string; score: number }>; // score should be number by this point
+  marks: Array<{ studentId: string; score: number }>; 
 }
 
 interface SubmissionHistoryItem {
@@ -27,9 +27,7 @@ interface SubmissionHistoryItem {
 
 
 export async function loginTeacherByEmailPassword(email: string, passwordToVerify: string): Promise<{ success: boolean; message: string; teacher?: { id: string; name: string; email: string; } }> {
-  console.log(`[Teacher Login Action] Attempting login for email: ${email}`);
   if (!db) {
-    console.error("CRITICAL: Firestore database (db) is not initialized in loginTeacherByEmailPassword. Check Firebase configuration.");
     return { success: false, message: "Authentication service is currently unavailable. Please try again later." };
   }
   try {
@@ -38,25 +36,20 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
-      console.warn(`[Teacher Login Action] No teacher found with email: ${email}`);
-      return { success: false, message: "Invalid email or password." }; // Generic message for security
+      return { success: false, message: "Invalid email or password." };
     }
 
     const teacherDoc = querySnapshot.docs[0];
     const teacherData = teacherDoc.data() as TeacherType;
-    console.log(`[Teacher Login Action] Teacher document found for email ${email}. ID: ${teacherDoc.id}, Name: ${teacherData.name}`);
 
     if (!teacherData.password) {
-        console.error(`[Teacher Login Action] Password not set for teacher with email ${email} (ID: ${teacherDoc.id}). Login failed.`);
         return { success: false, message: "Password not set for this account. Please contact D.O.S." };
     }
     if (!teacherDoc.id || !teacherData.name || !teacherData.email) {
-        console.error(`[Teacher Login Action] Teacher document (ID: ${teacherDoc.id}) is missing id, name, or email. Login failed.`, {id: teacherDoc.id, name: teacherData.name, email: teacherData.email});
         return { success: false, message: "Teacher account data is incomplete. Cannot log in." };
     }
 
     if (teacherData.password === passwordToVerify) {
-      console.log(`[Teacher Login Action] Password match for teacher ${teacherData.name} (ID: ${teacherDoc.id}). Login successful.`);
       return {
         success: true,
         message: "Login successful.",
@@ -67,11 +60,9 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
         }
       };
     } else {
-      console.warn(`[Teacher Login Action] Password mismatch for teacher ${teacherData.name} (ID: ${teacherDoc.id}). Login failed.`);
-      return { success: false, message: "Invalid email or password." }; // Generic message
+      return { success: false, message: "Invalid email or password." }; 
     }
   } catch (error) {
-    console.error("[Teacher Login Action] FATAL ERROR during teacher login:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown internal server error occurred.";
     return { success: false, message: `Login failed due to a server error: ${errorMessage}. Please try again or contact support if the issue persists.` };
   }
@@ -81,19 +72,14 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
 export async function submitMarks(teacherId: string, data: MarksSubmissionData): Promise<{ success: boolean; message: string; anomalies?: GradeAnomalyDetectionOutput }> {
   console.log(`[Teacher Action - submitMarks] Called for teacherId: ${teacherId}, assessmentId: ${data.assessmentId}`);
   if (!db) {
-    console.error("CRITICAL_ERROR_DB_NULL: Firestore database (db) is not initialized in submitMarks.");
     return { success: false, message: "Database service not available. Marks could not be saved." };
   }
-  if (!teacherId || teacherId === "undefined" || teacherId.trim() === "") {
-    console.error(`SUBMIT_MARKS_ERROR: Teacher ID is invalid or missing. Received: "${teacherId}"`);
+  if (!teacherId || teacherId.toLowerCase() === "undefined" || teacherId.trim() === "") {
     return { success: false, message: "Teacher ID is invalid or missing. Marks could not be saved." };
   }
   if (!data.assessmentId || !data.marks) {
-    console.error("SUBMIT_MARKS_ERROR: Invalid submission data. Assessment ID and marks are required.");
     return { success: false, message: "Invalid submission data. Assessment ID and marks are required. Marks could not be saved." };
   }
-
-  console.log(`[Teacher Action - submitMarks] Attempting to submit marks for teacherId: ${teacherId}, assessmentId: ${data.assessmentId}`);
 
   const gradeEntries: GradeEntry[] = data.marks.map(mark => ({
     studentId: mark.studentId,
@@ -115,11 +101,8 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
         };
         
         try {
-            console.log("[Teacher Action - submitMarks] Calling gradeAnomalyDetection with input:", JSON.stringify(anomalyInput, null, 2));
             anomalyResult = await gradeAnomalyDetection(anomalyInput);
-            console.log("[Teacher Action - submitMarks] Anomaly detection result:", JSON.stringify(anomalyResult, null, 2));
         } catch (error) {
-            console.error("SUBMIT_MARKS_ERROR: Error during anomaly detection:", error);
             anomalyResult = { hasAnomalies: true, anomalies: [{studentId: "SYSTEM_ERROR", explanation: `Anomaly check failed: ${error instanceof Error ? error.message : String(error)}`}] };
         }
     }
@@ -143,14 +126,10 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
     anomalyExplanations: anomalyResult?.anomalies || [],
   };
 
-  console.log("[Teacher Action - submitMarks] Payload to be saved to Firestore 'markSubmissions':", JSON.stringify(submissionPayload, null, 2));
-
   try {
     const markSubmissionsRef = collection(db, "markSubmissions");
-    const docRef = await addDoc(markSubmissionsRef, submissionPayload);
-    console.log(`[Teacher Action - submitMarks] Marks successfully saved to Firestore. Document ID: ${docRef.id}`);
+    await addDoc(markSubmissionsRef, submissionPayload);
   } catch (error) {
-    console.error("[Teacher Action - submitMarks] CRITICAL_ERROR_FIRESTORE_SAVE: Error saving mark submission to Firestore:", error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred while saving.";
     return { success: false, message: `Failed to save submission: ${errorMessage}` };
   }
@@ -169,18 +148,14 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
 
 
 async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName: string; examName: string; name: string; maxMarks: number; historicalAverage?: number }> {
-    console.log(`[getAssessmentDetails] Called for assessmentId: ${assessmentId}`);
     if (!db) {
-      console.error("CRITICAL: Firestore 'db' is null in getAssessmentDetails. Firebase not initialized.");
       return { subjectName: "Error: DB Uninitialized", examName: "Error: DB Uninitialized", name: "Error: DB Uninitialized", maxMarks: 100 };
     }
     const parts = assessmentId.split('_');
     if (parts.length !== 3) {
-        console.error(`[getAssessmentDetails] Invalid assessmentId format: ${assessmentId}. Expected examId_classId_subjectId.`);
         return { subjectName: "Unknown Subject (Invalid ID)", examName: "Unknown Exam (Invalid ID)", name: "Unknown Assessment (Invalid ID)", maxMarks: 100 };
     }
     const [examId, classId, subjectId] = parts;
-    console.log(`[getAssessmentDetails] Parsed IDs - Exam: ${examId}, Class: ${classId}, Subject: ${subjectId}`);
 
     const [allExams, allSubjects, allClasses] = await Promise.all([
       getAllExamsFromDOS(),
@@ -191,15 +166,9 @@ async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName
     const exam = allExams.find(e => e.id === examId);
     const subject = allSubjects.find(s => s.id === subjectId);
     const cls = allClasses.find(c => c.id === classId);
-
-    if(!exam) console.warn(`[getAssessmentDetails] Exam not found for ID: ${examId}`);
-    if(!subject) console.warn(`[getAssessmentDetails] Subject not found for ID: ${subjectId}`);
-    if(!cls) console.warn(`[getAssessmentDetails] Class not found for ID: ${classId}`);
-
-    const assessmentName = `${cls?.name || 'Unknown Class'} - ${subject?.name || 'Unknown Subject'} - ${exam?.name || 'Unknown Exam'}`;
-    console.log(`[getAssessmentDetails] Constructed assessmentName: ${assessmentName}`);
     
-    const historicalAverage = undefined; // Placeholder for now
+    const assessmentName = `${cls?.name || 'Unknown Class'} - ${subject?.name || 'Unknown Subject'} - ${exam?.name || 'Unknown Exam'}`;    
+    const historicalAverage = undefined; 
 
     return {
         subjectName: subject?.name || "Unknown Subject",
@@ -211,33 +180,25 @@ async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName
 }
 
 export async function getStudentsForAssessment(assessmentId: string): Promise<Student[]> {
-  console.log(`[getStudentsForAssessment] Called for assessmentId: ${assessmentId}`);
   if (!db) {
-    console.error("CRITICAL: Firestore 'db' is null in getStudentsForAssessment. Firebase not initialized.");
     return [];
   }
   const parts = assessmentId.split('_');
   if (parts.length !== 3) {
-      console.error(`[getStudentsForAssessment] Invalid assessmentId format: ${assessmentId}`);
       return [];
   }
   const classId = parts[1];
-  console.log(`[getStudentsForAssessment] Fetching students for classId: ${classId}`);
 
   const allStudents = await getAllStudents(); 
   const filteredStudents = allStudents.filter(student => student.classId === classId);
-  console.log(`[getStudentsForAssessment] Found ${filteredStudents.length} students for classId: ${classId}`);
   return filteredStudents;
 }
 
 export async function getSubmittedMarksHistory(teacherId: string): Promise<SubmissionHistoryItem[]> {
-    console.log(`[getSubmittedMarksHistory] Called for teacherId: ${teacherId}`);
     if (!db) {
-        console.error("CRITICAL: Firestore 'db' is null in getSubmittedMarksHistory. Firebase not initialized.");
         return [];
     }
-    if (!teacherId || teacherId === "undefined" || teacherId.trim() === "") {
-        console.warn(`[getSubmittedMarksHistory] Called with invalid teacherId: "${teacherId}". Returning empty history.`);
+    if (!teacherId || teacherId.toLowerCase() === "undefined" || teacherId.trim() === "") {
         return [];
     }
     try {
@@ -250,7 +211,6 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.empty) {
-            console.log(`[getSubmittedMarksHistory] No submission history found for teacherId: ${teacherId}`);
             return [];
         }
 
@@ -265,10 +225,8 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
                 status: data.status || "Unknown",
             } as SubmissionHistoryItem;
         });
-        console.log(`[getSubmittedMarksHistory] Found ${history.length} submission(s) for teacherId: ${teacherId}`);
         return history;
     } catch (error) {
-        console.error(`[getSubmittedMarksHistory] Error fetching submission history for teacherId ${teacherId}:`, error);
         return [];
     }
 }
@@ -281,7 +239,7 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
     console.error("[LOG_TAR] CRITICAL_ERROR_DB_NULL: Firestore db object is null.");
     return responsibilitiesMap;
   }
-   if (!teacherId || teacherId === "undefined" || teacherId.trim() === "") {
+   if (!teacherId || teacherId.toLowerCase() === "undefined" || teacherId.trim() === "") {
     console.warn(`[LOG_TAR] Invalid teacherId received: "${teacherId}". Returning empty map.`);
     return responsibilitiesMap;
   }
@@ -302,47 +260,36 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
   const currentTermId = generalSettingsResult.currentTermId;
   if (!currentTermId) {
     console.warn(`[LOG_TAR] No current term ID set in general settings (isDefaultTemplate: ${generalSettingsResult.isDefaultTemplate}). Cannot determine responsibilities.`);
-    return responsibilitiesMap; // Early exit if no current term
+    return responsibilitiesMap;
   }
   console.log(`[LOG_TAR] Current Term ID: ${currentTermId}`);
 
   const examsForCurrentTerm = allExamsFromSystem.filter(exam => exam.termId === currentTermId);
   if (examsForCurrentTerm.length === 0) {
     console.warn(`[LOG_TAR] No exams found for current term ID: ${currentTermId}. Teacher responsibilities cannot be determined.`);
-    return responsibilitiesMap; // Early exit if no exams for current term
+    return responsibilitiesMap;
   }
   console.log(`[LOG_TAR] Processing ${examsForCurrentTerm.length} exams for current term ID: ${currentTermId}.`);
 
-  // Stage 1: Process specific assignments from teacher.subjectsAssigned
   const specificAssignments = Array.isArray(teacherDocument.subjectsAssigned) ? teacherDocument.subjectsAssigned : [];
-  console.log(`[LOG_TAR Stage 1] Teacher ${teacherId} has ${specificAssignments.length} entries in subjectsAssigned.`);
   specificAssignments.forEach(assignment => {
     const classObj = allClasses.find(c => c.id === assignment.classId);
     const subjectObj = allSubjects.find(s => s.id === assignment.subjectId);
     if (classObj && subjectObj && Array.isArray(assignment.examIds)) {
-      console.log(`[LOG_TAR Stage 1] Processing specific assignment for Class: ${classObj.name}, Subject: ${subjectObj.name}`);
       assignment.examIds.forEach(assignedExamId => {
         const examObj = examsForCurrentTerm.find(e => e.id === assignedExamId);
-        if (examObj) { // Exam must be for the current term
+        if (examObj) {
           const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`;
           responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
-          console.log(`[LOG_TAR Stage 1] ADDED via subjectsAssigned: ${key} (E: ${examObj.name}, C: ${classObj.name}, S: ${subjectObj.name})`);
-        } else {
-          console.warn(`[LOG_TAR Stage 1] WARN: Exam ID ${assignedExamId} from subjectsAssigned not found in current term exams (Term ID: ${currentTermId}). Class: ${classObj.name}, Subject: ${subjectObj.name}`);
         }
       });
-    } else {
-        console.warn(`[LOG_TAR Stage 1] WARN: Invalid specific assignment entry, or class/subject not found for assignment:`, JSON.stringify(assignment));
     }
   });
 
-  // Stage 2: Process Class Teacher roles
-  console.log(`[LOG_TAR Stage 2] Processing Class Teacher roles for teacher ${teacherId}.`);
   allClasses.forEach(classObj => {
     if (classObj.classTeacherId === teacherId && Array.isArray(classObj.subjects)) {
-      console.log(`[LOG_TAR Stage 2] Teacher ${teacherId} is Class Teacher for ${classObj.name}. Processing ${classObj.subjects.length} subjects.`);
       classObj.subjects.forEach(subjectObj => {
-        examsForCurrentTerm.forEach(examObj => { // Only consider exams for the current term
+        examsForCurrentTerm.forEach(examObj => {
           const isRelevantForClassTeacher = 
             (!examObj.classId || examObj.classId === classObj.id) &&
             (!examObj.subjectId || examObj.subjectId === subjectObj.id) &&
@@ -352,9 +299,6 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
             const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`;
             if (!responsibilitiesMap.has(key)) { 
               responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
-              console.log(`[LOG_TAR Stage 2] ADDED via ClassTeacher role: ${key} (E: ${examObj.name}, C: ${classObj.name}, S: ${subjectObj.name})`);
-            } else {
-              console.log(`[LOG_TAR Stage 2] INFO: ClassTeacher responsibility for ${key} already covered by specific assignment or other rule.`);
             }
           }
         });
@@ -362,26 +306,19 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
     }
   });
   
-  // Stage 3: Process exams directly assigned to the teacher via exam.teacherId
-  console.log(`[LOG_TAR Stage 3] Processing exams directly assigned to teacher ${teacherId} on Exam documents (for current term).`);
-  examsForCurrentTerm.forEach(examObj => { // Only consider exams for the current term
+  examsForCurrentTerm.forEach(examObj => {
     if (examObj.teacherId === teacherId) {
-      console.log(`[LOG_TAR Stage 3] Exam ${examObj.name} (ID: ${examObj.id}) is directly assigned to teacher ${teacherId}.`);
       const classForExam = examObj.classId ? allClasses.find(c => c.id === examObj.classId) : null;
       const subjectForExam = examObj.subjectId ? allSubjects.find(s => s.id === examObj.subjectId) : null;
 
       if (classForExam && subjectForExam) { 
         const key = `${examObj.id}_${classForExam.id}_${subjectForExam.id}`;
         responsibilitiesMap.set(key, { classObj: classForExam, subjectObj: subjectForExam, examObj }); 
-        console.log(`[LOG_TAR Stage 3] ADDED/OVERRIDDEN via Exam.teacherId (specific class & subject): ${key} (E: ${examObj.name}, C: ${classForExam.name}, S: ${subjectForExam.name})`);
       } else if (classForExam && !subjectForExam) { 
-         console.log(`[LOG_TAR Stage 3] Exam ${examObj.name} for Class ${classForExam.name}, no specific subject. Applying to relevant subjects teacher ${teacherId} is responsible for in this class.`);
          const subjectsInThisClassTeacherIsResponsibleFor = new Set<string>();
-         // Check if class teacher for this class
          if(classForExam.classTeacherId === teacherId) { 
             classForExam.subjects.forEach(s => subjectsInThisClassTeacherIsResponsibleFor.add(s.id));
          }
-         // Check specific assignments for this class & exam
          specificAssignments.forEach(sa => { 
             if (sa.classId === classForExam.id && Array.isArray(sa.examIds) && sa.examIds.includes(examObj.id)) {
                  subjectsInThisClassTeacherIsResponsibleFor.add(sa.subjectId);
@@ -392,18 +329,14 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
             if (actualSubjectObj) {
                 const key = `${examObj.id}_${classForExam.id}_${actualSubjectObj.id}`;
                 responsibilitiesMap.set(key, { classObj: classForExam, subjectObj: actualSubjectObj, examObj });
-                console.log(`[LOG_TAR Stage 3] ADDED/OVERRIDDEN via Exam.teacherId (specific class, subject ${actualSubjectObj.name}): ${key}`);
             }
          });
       } else if (!classForExam && subjectForExam) { 
-          console.log(`[LOG_TAR Stage 3] Exam ${examObj.name} for Subject ${subjectForExam.name}, no specific class. Applying to relevant classes where teacher ${teacherId} teaches this subject.`);
           allClasses.forEach(c => {
             let teacherTeachesThisSubjectInThisClass = false;
-            // Check if class teacher and subject is taught in class
             if (c.classTeacherId === teacherId && c.subjects.some(s => s.id === subjectForExam.id)) {
                 teacherTeachesThisSubjectInThisClass = true;
             } else {
-                // Check specific assignments for this class, subject, and exam
                 if (specificAssignments.some(sa => sa.classId === c.id && sa.subjectId === subjectForExam.id && Array.isArray(sa.examIds) && sa.examIds.includes(examObj.id))) {
                     teacherTeachesThisSubjectInThisClass = true;
                 }
@@ -411,11 +344,9 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
             if (teacherTeachesThisSubjectInThisClass) {
                 const key = `${examObj.id}_${c.id}_${subjectForExam.id}`;
                 responsibilitiesMap.set(key, { classObj: c, subjectObj: subjectForExam, examObj });
-                console.log(`[LOG_TAR Stage 3] ADDED/OVERRIDDEN via Exam.teacherId (specific subject, class ${c.name}): ${key}`);
             }
           });
-      } else if (!classForExam && !subjectForExam) { // Exam assigned to teacher, but not specific class/subject
-         console.log(`[LOG_TAR Stage 3] Exam ${examObj.name} general assignment to teacher ${teacherId}. Applying to all contexts where teacher is responsible for subjects.`);
+      } else if (!classForExam && !subjectForExam) { 
          const applicableClassSubjectPairs = new Set<string>(); 
          allClasses.forEach(cls => {
             if (cls.classTeacherId === teacherId) { 
@@ -434,30 +365,21 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
             if (cObj && sObj) {
                 const key = `${examObj.id}_${cObj.id}_${sObj.id}`;
                 responsibilitiesMap.set(key, { classObj: cObj, subjectObj: sObj, examObj });
-                console.log(`[LOG_TAR Stage 3] ADDED/OVERRIDDEN via Exam.teacherId (general exam, context C: ${cObj.name}, S: ${sObj.name}): ${key}`);
             }
          });
       }
     }
   });
 
-  console.log(`[LOG_TAR] Total unique responsibilities determined for teacher ${teacherId}: ${responsibilitiesMap.size}`);
-  responsibilitiesMap.forEach((value, key) => {
-    console.log(`[LOG_TAR FINAL] Responsibility for ${teacherId}: ${key} -> C: ${value.classObj.name}, S: ${value.subjectObj.name}, E: ${value.examObj.name}`);
-  });
-  console.log(`[LOG_TAR] END for teacherId: "${teacherId}"`);
   return responsibilitiesMap;
 }
 
 
 export async function getTeacherAssessments(teacherId: string): Promise<Array<{id: string, name: string, maxMarks: number}>> {
-    console.log(`[getTeacherAssessments] Called for teacherId: "${teacherId}"`);
     if (!db) {
-      console.error("CRITICAL_ERROR_DB_NULL: Firestore db object is null in getTeacherAssessments.");
       return [];
     }
-    if (!teacherId || teacherId === "undefined" || teacherId.trim() === "") {
-      console.warn(`[getTeacherAssessments] Called with invalid teacherId: "${teacherId}". Returning empty assessments list.`);
+    if (!teacherId || teacherId.toLowerCase() === "undefined" || teacherId.trim() === "") {
       return [];
     }
 
@@ -466,14 +388,13 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
 
     responsibilitiesMap.forEach(({ classObj, subjectObj, examObj }, key) => {
         assessmentsForForm.push({
-            id: key, // examId_classId_subjectId
+            id: key, 
             name: `${classObj.name} - ${subjectObj.name} - ${examObj.name}`,
             maxMarks: examObj.maxMarks,
         });
     });
     
     assessmentsForForm.sort((a, b) => a.name.localeCompare(b.name));
-    console.log(`[getTeacherAssessments] Found ${assessmentsForForm.length} assessments for teacherId: "${teacherId}".`);
     return assessmentsForForm;
 }
 
@@ -493,15 +414,13 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
   };
 
   if (!db) {
-    console.error("[LOG_TDD] CRITICAL_ERROR_DB_NULL: Firestore db object is null.");
     return {
       ...defaultResponse,
       notifications: [{ id: 'critical_error_db_null', message: "Critical Error: Database connection failed. Dashboard data cannot be loaded.", type: 'warning' }],
     };
   }
 
-  if (!teacherId || teacherId.trim() === "" || teacherId === "undefined") { // Explicitly check for "undefined" string
-     console.warn(`[LOG_TDD] Received blank or invalid teacherId: "${teacherId}". Returning default response with error notification.`);
+  if (!teacherId || teacherId.trim() === "" || teacherId.toLowerCase() === "undefined") { 
     return {
       ...defaultResponse,
       notifications: [{ id: 'error_invalid_teacher_id', message: `Your teacher record could not be loaded. Teacher ID is invalid. (ID used: ${teacherId})`, type: 'warning' }],
@@ -509,17 +428,14 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
   }
   
   try {
-    console.log(`[LOG_TDD] Attempting to fetch teacher document with getTeacherByIdFromDOS for ID: "${teacherId}"`);
     const teacherDocument = await getTeacherByIdFromDOS(teacherId); 
     
     if (!teacherDocument) {
-      console.warn(`[LOG_TDD] Teacher record NOT FOUND by getTeacherByIdFromDOS for ID: "${teacherId}".`);
       return {
         ...defaultResponse,
         notifications: [{ id: 'error_teacher_not_found', message: `Your teacher record could not be loaded. Please contact administration. (ID used: ${teacherId})`, type: 'warning' }],
       };
     }
-    console.log(`[LOG_TDD] Teacher document FOUND: ${teacherDocument.name}, ID: ${teacherDocument.id}`);
     const teacherName = teacherDocument.name; 
 
     const [generalSettingsResult, allTerms] = await Promise.all([ 
@@ -527,7 +443,6 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       getTerms(),
     ]);
     const { isDefaultTemplate: gsIsDefault, ...actualGeneralSettings } = generalSettingsResult;
-    console.log(`[LOG_TDD] Fetched generalSettings (isDefault: ${gsIsDefault}, CurrentTermID: ${actualGeneralSettings.currentTermId}) and ${allTerms.length} terms for teacher: ${teacherName}.`);
 
     const notifications: TeacherNotification[] = [];
     const resourcesText = actualGeneralSettings.teacherDashboardResourcesText || defaultResponse.resourcesText;
@@ -546,13 +461,10 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
         });
     }
 
-
     const currentTermId = actualGeneralSettings.currentTermId;
     const currentTerm = currentTermId ? allTerms.find(t => t.id === currentTermId) : null;
     
-    console.log(`[LOG_TDD] Calling getTeacherAssessmentResponsibilities for teacher: ${teacherName} (ID: ${teacherId})`);
     const responsibilitiesMap = await getTeacherAssessmentResponsibilities(teacherId);
-    console.log(`[LOG_TDD] Received ${responsibilitiesMap.size} responsibilities for teacher ${teacherName} (ID: ${teacherId}).`);
     const dashboardAssignments: TeacherDashboardAssignment[] = [];
     let earliestOverallDeadline: Date | null = null;
     let earliestOverallDeadlineText: string = "Not set";
@@ -594,8 +506,6 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
                 nextDeadlineInfo: assignmentSpecificDeadlineText, 
             });
         });
-    } else {
-      console.warn(`[LOG_TDD] No currentTermId, so responsibilitiesMap processing skipped for assignments. Teacher: ${teacherName}`);
     }
     
     dashboardAssignments.sort((a, b) => {
@@ -605,8 +515,6 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       if (subjectCompare !== 0) return subjectCompare;
       return a.examName.localeCompare(b.examName);
     });
-    console.log(`[LOG_TDD] Processed ${dashboardAssignments.length} dashboard assignments for teacher: ${teacherName}.`);
-
 
     let recentSubmissionsCount = 0;
     try {
@@ -618,9 +526,8 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       );
       const submissionsSnapshot = await getCountFromServer(submissionsQuery);
       recentSubmissionsCount = submissionsSnapshot.data().count;
-      console.log(`[LOG_TDD] Found ${recentSubmissionsCount} recent submissions for teacher ${teacherName}.`);
     } catch (e) {
-      console.error("[LOG_TDD] Error fetching recent submissions count:", e);
+      // Error fetching count, keep as 0
     }
 
     const stats: TeacherStats = {
@@ -628,8 +535,6 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       subjectsTaughtCount: uniqueSubjectNames.size,
       recentSubmissionsCount: recentSubmissionsCount,
     };
-    console.log(`[LOG_TDD] Calculated stats for ${teacherName}: ${JSON.stringify(stats)}`);
-
 
     if (actualGeneralSettings.dosGlobalAnnouncementText) {
       notifications.push({
@@ -671,22 +576,18 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
         message: noAssignmentMessage,
         type: 'info',
       });
-      console.log(`[LOG_TDD] No assignments for ${teacherName}. Notification added: ${noAssignmentMessage}`);
     }
     
-    const finalDashboardData = { assignments: dashboardAssignments, notifications, teacherName, resourcesText, stats };
-    console.log(`[LOG_TDD] ACTION END for teacher: ${teacherName} (ID: ${teacherId}). Returning data: ${JSON.stringify({assignmentsCount: finalDashboardData.assignments.length, notificationsCount: finalDashboardData.notifications.length, stats: finalDashboardData.stats, teacherName: finalDashboardData.teacherName})}`);
-    return finalDashboardData;
+    return { assignments: dashboardAssignments, notifications, teacherName, resourcesText, stats };
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while processing dashboard data.";
-    console.error(`[LOG_TDD] ACTION ERROR for teacher ${teacherId}:`, error);
     let teacherNameOnError: string | undefined = undefined;
     try {
       const existingTeacherDoc = await getTeacherByIdFromDOS(teacherId); 
       teacherNameOnError = existingTeacherDoc?.name;
     } catch (nestedError) {
-      console.error(`[LOG_TDD] Nested error while trying to get teacher name during error handling for teacher ${teacherId}:`, nestedError);
+      //
     }
     return {
       ...defaultResponse,
@@ -697,26 +598,21 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
 }
 
 export async function getTeacherProfileData(teacherId: string): Promise<{ name?: string; email?: string } | null> {
-  console.log(`[getTeacherProfileData] Called for teacherId: "${teacherId}"`);
   if (!db) {
-    console.error("CRITICAL_ERROR_DB_NULL: Firestore db object is null in getTeacherProfileData.");
     return null;
   }
-  if (!teacherId || teacherId === "undefined" || teacherId.trim() === "") {
-    console.warn(`[getTeacherProfileData] Called with invalid teacherId: "${teacherId}".`);
+  if (!teacherId || teacherId.toLowerCase() === "undefined" || teacherId.trim() === "") {
     return null;
   }
   try {
     const teacher = await getTeacherByIdFromDOS(teacherId); 
     if (teacher) {
-      console.log(`[getTeacherProfileData] Found teacher: ${teacher.name}, email: ${teacher.email}`);
       return { name: teacher.name, email: teacher.email };
     }
-    console.warn(`[getTeacherProfileData] Teacher not found for ID: "${teacherId}"`);
     return null;
   } catch (error) {
-    console.error(`[getTeacherProfileData] Error fetching profile data for teacher "${teacherId}":`, error);
     return null;
   }
 }
+
     

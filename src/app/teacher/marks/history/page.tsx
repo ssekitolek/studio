@@ -28,7 +28,7 @@ export default function MarksHistoryPage() {
   const searchParams = useSearchParams();
   const router = useRouter(); 
 
-  const [isLoading, startLoadingTransition] = useTransition();
+  const [isLoading, setIsLoading] = useState(true); // Changed from useTransition for simple loading state
   const [history, setHistory] = useState<SubmissionHistoryItem[]>([]);
   const [pageError, setPageError] = useState<string | null>(null);
   const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
@@ -36,35 +36,41 @@ export default function MarksHistoryPage() {
   useEffect(() => {
     if (!searchParams) {
         setPageError("Could not access URL parameters. Please try reloading or logging in again.");
+        setIsLoading(false);
         return;
     }
 
     const teacherIdFromUrl = searchParams.get("teacherId");
 
-    if (!teacherIdFromUrl || teacherIdFromUrl.trim() === "" || teacherIdFromUrl === "undefined") {
+    if (!teacherIdFromUrl || teacherIdFromUrl.trim() === "" || teacherIdFromUrl.toLowerCase() === "undefined") {
       const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login again to view history.`;
       toast({ title: "Access Denied", description: msg, variant: "destructive" });
       setPageError(msg);
       setCurrentTeacherId(null);
+      setIsLoading(false);
       return;
     }
 
     setCurrentTeacherId(teacherIdFromUrl);
     setPageError(null); 
+    setIsLoading(true);
 
-    startLoadingTransition(async () => {
-      try {
-        const submissionData = await getSubmittedMarksHistory(teacherIdFromUrl as string);
-        setHistory(submissionData);
-        if (submissionData.length === 0) {
-            toast({ title: "No History", description: "No submission history found.", variant: "default" });
+    async function fetchData() {
+        try {
+            const submissionData = await getSubmittedMarksHistory(teacherIdFromUrl as string);
+            setHistory(submissionData);
+            if (submissionData.length === 0) {
+                toast({ title: "No History", description: "No submission history found.", variant: "default" });
+            }
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+            toast({ title: "Error Loading History", description: errorMessage, variant: "destructive" });
+            setPageError(`Failed to load submission history: ${errorMessage}`);
+        } finally {
+            setIsLoading(false);
         }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-        toast({ title: "Error Loading History", description: errorMessage, variant: "destructive" });
-        setPageError(`Failed to load submission history: ${errorMessage}`);
-      }
-    });
+    }
+    fetchData();
   }, [searchParams, toast]); 
 
   const getStatusVariant = (status: SubmissionHistoryItem['status']) => {
@@ -101,7 +107,7 @@ export default function MarksHistoryPage() {
     );
   }
 
-  if (isLoading && history.length === 0 && currentTeacherId) { 
+  if (isLoading && currentTeacherId) { 
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -162,11 +168,6 @@ export default function MarksHistoryPage() {
           ) : (
              !isLoading && currentTeacherId && <p className="text-center text-muted-foreground py-8">No submission history found.</p>
           )}
-           {isLoading && history.length > 0 && currentTeacherId && ( 
-            <div className="text-center text-muted-foreground py-4">
-                <Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading more...
-            </div>
-           )}
            {!currentTeacherId && !pageError && !isLoading && ( 
              <p className="text-center text-muted-foreground py-8">Teacher ID not found. Cannot load history.</p>
            )}

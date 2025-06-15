@@ -11,7 +11,7 @@ interface LayoutProps {
 
 export default function TeacherLayout({ children, searchParams }: LayoutProps) {
   const teacherIdParam = searchParams?.teacherId as string | undefined;
-  let teacherName = "Teacher"; // Default name
+  let teacherName = "Teacher"; 
 
   if (searchParams?.teacherName) {
     const nameParam = searchParams.teacherName;
@@ -19,13 +19,13 @@ export default function TeacherLayout({ children, searchParams }: LayoutProps) {
       try {
         teacherName = decodeURIComponent(nameParam);
       } catch (e) {
-        console.warn(`[TeacherLayout] Failed to decode teacherName (string: "${nameParam}"). Using default. Error: ${e}`);
+        // Use default if decoding fails
       }
     } else if (Array.isArray(nameParam) && nameParam.length > 0 && typeof nameParam[0] === 'string') {
       try {
         teacherName = decodeURIComponent(nameParam[0]);
       } catch (e) {
-        console.warn(`[TeacherLayout] Failed to decode teacherName (array: "${nameParam[0]}"). Using default. Error: ${e}`);
+         // Use default if decoding fails
       }
     }
   }
@@ -47,3 +47,5 @@ export default function TeacherLayout({ children, searchParams }: LayoutProps) {
     </SidebarProvider>
   );
 }
+
+    

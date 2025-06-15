@@ -36,7 +36,7 @@ export default function TeacherProfilePage() {
 
     const teacherIdFromUrl = searchParams.get("teacherId");
 
-    if (!teacherIdFromUrl || teacherIdFromUrl.trim() === "" || teacherIdFromUrl === "undefined") {
+    if (!teacherIdFromUrl || teacherIdFromUrl.trim() === "" || teacherIdFromUrl.toLowerCase() === "undefined") {
       const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Cannot load profile. Please login again.`;
       toast({ title: "Access Denied", description: msg, variant: "destructive" });
       setPageError(msg);
@@ -47,9 +47,9 @@ export default function TeacherProfilePage() {
 
     setCurrentTeacherId(teacherIdFromUrl);
     setPageError(null); 
+    setIsLoading(true);
 
     async function fetchData(validTeacherId: string) {
-      setIsLoading(true);
       try {
         const data = await getTeacherProfileData(validTeacherId);
         if (data) {
@@ -70,7 +70,7 @@ export default function TeacherProfilePage() {
     fetchData(teacherIdFromUrl);
   }, [searchParams, toast]); 
 
-  if (isLoading && !pageError && currentTeacherId) { 
+  if (isLoading && currentTeacherId) { 
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
