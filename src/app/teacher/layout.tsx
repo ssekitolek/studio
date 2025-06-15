@@ -7,11 +7,11 @@ import { redirect } from 'next/navigation';
 interface LayoutProps {
   children: React.ReactNode;
   params: Record<string, string | string[] | undefined>;
-  searchParams?: Record<string, string | string[] | undefined>; // searchParams is optional but expected for teacher routes
+  searchParams?: Record<string, string | string[] | undefined>; // searchParams is optional, reflecting runtime reality
 }
 
 export default function TeacherLayout({ children, params, searchParams }: LayoutProps) {
-  // Log the received objects clearly
+  // This log helps diagnose if searchParams is undefined when the component renders.
   console.log('[TeacherLayout] Rendering. searchParams object is defined:', !!searchParams);
 
   const teacherId = searchParams?.teacherId as string | undefined;
@@ -26,14 +26,15 @@ export default function TeacherLayout({ children, params, searchParams }: Layout
     }
   }
   // else {
-    // This warning was causing Next.js to flag it as an error, previously commented out.
+    // The following console.warn was commented out because it might be flagged as an error source by Next.js,
+    // even though it's a diagnostic message. The log at the top serves a similar purpose.
     // console.warn(`[TeacherLayout] WARN: searchParams object is undefined, so teacherName is also missing. Using default name "Teacher".`);
   // }
 
   if (!teacherId) {
     // This is the critical check. If searchParams is undefined, teacherId will be undefined.
-    // The following console.error was commented out to prevent Next.js from flagging this line as an error source,
-    // as the root issue is searchParams being undefined from the framework.
+    // The console.error here was commented out as it was being flagged as an error source by Next.js in the visual error overlay.
+    // The diagnostic console.log at the top of the function helps identify if searchParams is undefined.
     // console.error(`[TeacherLayout] DIAGNOSTIC: Critical state detected - teacherId is missing due to 'searchParams' being undefined. Initiating redirect to /login/teacher. Details: searchParams object received as: ${searchParams === undefined ? "undefined" : JSON.stringify(searchParams, null, 2)}`);
     redirect('/login/teacher');
   }
@@ -55,4 +56,3 @@ export default function TeacherLayout({ children, params, searchParams }: Layout
     </SidebarProvider>
   );
 }
-
