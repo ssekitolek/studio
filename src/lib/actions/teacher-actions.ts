@@ -284,33 +284,33 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
 
   const teacherDocument = await getTeacherByIdFromDOS(teacherId);
   if (!teacherDocument) {
-    console.warn(`[LOG] Teacher not found for ID: ${teacherId}. Returning empty map.`);
+    console.warn(`[LOG] Teacher not found for ID: ${teacherId} in getTeacherAssessmentResponsibilities. Returning empty map.`);
     return responsibilitiesMap;
   }
-  console.log(`[LOG] Fetched teacherDocument: ${teacherDocument.name}`);
+  console.log(`[LOG] Fetched teacherDocument in getTeacherAssessmentResponsibilities: ${teacherDocument.name}`);
 
   const [allClasses, allSubjects, allExamsFromSystem, generalSettings] = await Promise.all([
     getClasses(), getSubjects(), getAllExamsFromDOS(), getGeneralSettings(),
   ]);
-  console.log(`[LOG] Fetched allClasses: ${allClasses.length}, allSubjects: ${allSubjects.length}, allExamsFromSystem: ${allExamsFromSystem.length}`);
+  console.log(`[LOG] In getTeacherAssessmentResponsibilities - Fetched allClasses: ${allClasses.length}, allSubjects: ${allSubjects.length}, allExamsFromSystem: ${allExamsFromSystem.length}`);
 
   const currentTermId = generalSettings.currentTermId;
   if (!currentTermId) {
-    console.warn("[LOG] No current term ID set in general settings. Cannot determine responsibilities.");
+    console.warn("[LOG] In getTeacherAssessmentResponsibilities - No current term ID set in general settings. Cannot determine responsibilities.");
     return responsibilitiesMap;
   }
-  console.log(`[LOG] Current Term ID: ${currentTermId}`);
+  console.log(`[LOG] In getTeacherAssessmentResponsibilities - Current Term ID: ${currentTermId}`);
 
   const examsForCurrentTerm = allExamsFromSystem.filter(exam => exam.termId === currentTermId);
   if (examsForCurrentTerm.length === 0) {
-    console.warn(`[LOG] No exams found for current term ID: ${currentTermId}.`);
+    console.warn(`[LOG] In getTeacherAssessmentResponsibilities - No exams found for current term ID: ${currentTermId}.`);
     return responsibilitiesMap;
   }
-  console.log(`[LOG] Processing ${examsForCurrentTerm.length} exams for current term.`);
+  console.log(`[LOG] In getTeacherAssessmentResponsibilities - Processing ${examsForCurrentTerm.length} exams for current term.`);
 
   // 1. Process teacher.subjectsAssigned (explicit assignments by D.O.S.)
   const specificAssignments = Array.isArray(teacherDocument.subjectsAssigned) ? teacherDocument.subjectsAssigned : [];
-  console.log(`[LOG] Teacher ${teacherId} has ${specificAssignments.length} specific assignments in their document.`);
+  console.log(`[LOG] In getTeacherAssessmentResponsibilities - Teacher ${teacherId} has ${specificAssignments.length} specific assignments in their document.`);
   specificAssignments.forEach(assignment => {
     const classObj = allClasses.find(c => c.id === assignment.classId);
     const subjectObj = allSubjects.find(s => s.id === assignment.subjectId);
@@ -320,24 +320,23 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
         if (examObj) {
           const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`;
           responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
-          console.log(`[LOG] Teacher ${teacherId} - Added via specific assignment (subjectsAssigned): ${key} (C: ${classObj.name}, S: ${subjectObj.name}, E: ${examObj.name})`);
+          console.log(`[LOG] In getTeacherAssessmentResponsibilities - Teacher ${teacherId} - Added via specific assignment (subjectsAssigned): ${key} (C: ${classObj.name}, S: ${subjectObj.name}, E: ${examObj.name})`);
         } else {
-          console.warn(`[LOG] Specific assignment: Exam ID ${assignedExamId} not found in current term exams for teacher ${teacherId}, class ${classObj.id}, subject ${subjectObj.id}`);
+          console.warn(`[LOG] In getTeacherAssessmentResponsibilities - Specific assignment: Exam ID ${assignedExamId} not found in current term exams for teacher ${teacherId}, class ${classObj.id}, subject ${subjectObj.id}`);
         }
       });
     } else {
-        console.warn(`[LOG] Specific assignment for teacher ${teacherId} is invalid or class/subject not found:`, JSON.stringify(assignment));
+        console.warn(`[LOG] In getTeacherAssessmentResponsibilities - Specific assignment for teacher ${teacherId} is invalid or class/subject not found:`, JSON.stringify(assignment));
     }
   });
 
   // 2. Process "Class Teacher" role
-  console.log(`[LOG] Processing Class Teacher roles for teacher ${teacherId}.`);
+  console.log(`[LOG] In getTeacherAssessmentResponsibilities - Processing Class Teacher roles for teacher ${teacherId}.`);
   allClasses.forEach(classObj => {
     if (classObj.classTeacherId === teacherId && Array.isArray(classObj.subjects)) {
-      console.log(`[LOG] Teacher ${teacherId} is Class Teacher for ${classObj.name} (ID: ${classObj.id}). Processing ${classObj.subjects.length} subjects.`);
+      console.log(`[LOG] In getTeacherAssessmentResponsibilities - Teacher ${teacherId} is Class Teacher for ${classObj.name} (ID: ${classObj.id}). Processing ${classObj.subjects.length} subjects.`);
       classObj.subjects.forEach(subjectObj => {
         examsForCurrentTerm.forEach(examObj => {
-          // An exam applies if it's general for the term OR specific to this context and teacher.
           const isGeneralExamForThisContext = 
             (!examObj.classId || examObj.classId === classObj.id) &&
             (!examObj.subjectId || examObj.subjectId === subjectObj.id) &&
@@ -345,9 +344,9 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
           
           if (isGeneralExamForThisContext) {
             const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`;
-            if (!responsibilitiesMap.has(key)) { // Specific assignments take precedence
+            if (!responsibilitiesMap.has(key)) { 
               responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
-              console.log(`[LOG] Teacher ${teacherId} - Added via Class Teacher role for ${classObj.name} - ${subjectObj.name} - ${examObj.name}: ${key}`);
+              console.log(`[LOG] In getTeacherAssessmentResponsibilities - Teacher ${teacherId} - Added via Class Teacher role for ${classObj.name} - ${subjectObj.name} - ${examObj.name}: ${key}`);
             }
           }
         });
@@ -356,23 +355,23 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
   });
   
   // 3. Process Exams directly assigned to this teacher on the Exam document itself
-  console.log(`[LOG] Processing exams directly assigned to teacher ${teacherId} on Exam documents.`);
+  console.log(`[LOG] In getTeacherAssessmentResponsibilities - Processing exams directly assigned to teacher ${teacherId} on Exam documents.`);
   examsForCurrentTerm.forEach(examObj => {
     if (examObj.teacherId === teacherId) {
-      console.log(`[LOG] Exam ${examObj.name} (ID: ${examObj.id}) is directly assigned to teacher ${teacherId}.`);
+      console.log(`[LOG] In getTeacherAssessmentResponsibilities - Exam ${examObj.name} (ID: ${examObj.id}) is directly assigned to teacher ${teacherId}.`);
       const classForExam = examObj.classId ? allClasses.find(c => c.id === examObj.classId) : null;
       const subjectForExam = examObj.subjectId ? allSubjects.find(s => s.id === examObj.subjectId) : null;
 
-      if (classForExam && subjectForExam) { // Most specific: exam assigned to teacher, class, AND subject on exam doc
+      if (classForExam && subjectForExam) { 
         const key = `${examObj.id}_${classForExam.id}_${subjectForExam.id}`;
         responsibilitiesMap.set(key, { classObj: classForExam, subjectObj: subjectForExam, examObj }); 
-        console.log(`[LOG] Teacher ${teacherId} - Added/Overridden via direct exam assignment (TCS - Exam Doc): ${key} (C: ${classForExam.name}, S: ${subjectForExam.name})`);
-      } else if (classForExam && !subjectForExam) { // Exam assigned to teacher AND class on exam doc
+        console.log(`[LOG] In getTeacherAssessmentResponsibilities - Teacher ${teacherId} - Added/Overridden via direct exam assignment (TCS - Exam Doc): ${key} (C: ${classForExam.name}, S: ${subjectForExam.name})`);
+      } else if (classForExam && !subjectForExam) { 
          const subjectsTeacherIsResponsibleForInThisClass = new Set<string>();
-         if(classForExam.classTeacherId === teacherId) { // If they are class teacher for this class
+         if(classForExam.classTeacherId === teacherId) { 
             classForExam.subjects.forEach(s => subjectsTeacherIsResponsibleForInThisClass.add(s.id));
          }
-         specificAssignments.forEach(sa => { // Or if explicitly assigned this exam for any subject in this class
+         specificAssignments.forEach(sa => { 
             if (sa.classId === classForExam.id && Array.isArray(sa.examIds) && sa.examIds.includes(examObj.id)) {
                  subjectsTeacherIsResponsibleForInThisClass.add(sa.subjectId);
             }
@@ -382,10 +381,10 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
             if (actualSubjectObj) {
                 const key = `${examObj.id}_${classForExam.id}_${actualSubjectObj.id}`;
                 responsibilitiesMap.set(key, { classObj: classForExam, subjectObj: actualSubjectObj, examObj });
-                console.log(`[LOG] Teacher ${teacherId} - Added/Overridden via direct exam assignment (TC on Exam Doc - for subject ${actualSubjectObj.name}): ${key}`);
+                console.log(`[LOG] In getTeacherAssessmentResponsibilities - Teacher ${teacherId} - Added/Overridden via direct exam assignment (TC on Exam Doc - for subject ${actualSubjectObj.name}): ${key}`);
             }
          });
-      } else if (!classForExam && subjectForExam) { // Exam assigned to teacher AND subject on exam doc
+      } else if (!classForExam && subjectForExam) { 
           allClasses.forEach(c => {
             let teacherTeachesThisSubjectInThisClass = false;
             if (c.classTeacherId === teacherId && c.subjects.some(s => s.id === subjectForExam.id)) {
@@ -398,17 +397,17 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
             if (teacherTeachesThisSubjectInThisClass) {
                 const key = `${examObj.id}_${c.id}_${subjectForExam.id}`;
                 responsibilitiesMap.set(key, { classObj: c, subjectObj: subjectForExam, examObj });
-                console.log(`[LOG] Teacher ${teacherId} - Added/Overridden via direct exam assignment (TS on Exam Doc - for class ${c.name}): ${key}`);
+                console.log(`[LOG] In getTeacherAssessmentResponsibilities - Teacher ${teacherId} - Added/Overridden via direct exam assignment (TS on Exam Doc - for class ${c.name}): ${key}`);
             }
           });
-      } else if (!classForExam && !subjectForExam) { // Exam assigned only to this teacher on exam doc (general for them)
-         const applicableClassSubjectPairs = new Set<string>(); // "classId_subjectId"
+      } else if (!classForExam && !subjectForExam) { 
+         const applicableClassSubjectPairs = new Set<string>(); 
          allClasses.forEach(cls => {
-            if (cls.classTeacherId === teacherId) { // If class teacher
+            if (cls.classTeacherId === teacherId) { 
                 cls.subjects.forEach(sub => applicableClassSubjectPairs.add(`${cls.id}_${sub.id}`));
             }
          });
-         specificAssignments.forEach(sa => { // Or if specifically assigned this exam
+         specificAssignments.forEach(sa => { 
             if (Array.isArray(sa.examIds) && sa.examIds.includes(examObj.id)) {
                 applicableClassSubjectPairs.add(`${sa.classId}_${sa.subjectId}`);
             }
@@ -420,16 +419,16 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
             if (cObj && sObj) {
                 const key = `${examObj.id}_${cObj.id}_${sObj.id}`;
                 responsibilitiesMap.set(key, { classObj: cObj, subjectObj: sObj, examObj });
-                console.log(`[LOG] Teacher ${teacherId} - Added/Overridden via direct exam assignment (T-General on Exam Doc - for ${cObj.name} - ${sObj.name}): ${key}`);
+                console.log(`[LOG] In getTeacherAssessmentResponsibilities - Teacher ${teacherId} - Added/Overridden via direct exam assignment (T-General on Exam Doc - for ${cObj.name} - ${sObj.name}): ${key}`);
             }
          });
       }
     }
   });
 
-  console.log(`[LOG] Total unique responsibilities determined for teacher ${teacherId}: ${responsibilitiesMap.size}`);
+  console.log(`[LOG] Total unique responsibilities determined for teacher ${teacherId} in getTeacherAssessmentResponsibilities: ${responsibilitiesMap.size}`);
   responsibilitiesMap.forEach((value, key) => {
-    console.log(`[LOG] Final Responsibility for ${teacherId}: ${key} -> C: ${value.classObj.name}, S: ${value.subjectObj.name}, E: ${value.examObj.name}`);
+    console.log(`[LOG] Final Responsibility (getTeacherAssessmentResponsibilities) for ${teacherId}: ${key} -> C: ${value.classObj.name}, S: ${value.subjectObj.name}, E: ${value.examObj.name}`);
   });
   console.log(`[LOG] getTeacherAssessmentResponsibilities END for teacherId: ${teacherId}`);
   return responsibilitiesMap;
@@ -464,7 +463,7 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
 }
 
 export async function getTeacherDashboardData(teacherId: string): Promise<TeacherDashboardData> {
-  console.log(`[LOG] getTeacherDashboardData START for teacherId: ${teacherId}`);
+  console.log(`[LOG] getTeacherDashboardData ACTION START for teacherId: "${teacherId}"`);
   const defaultStats: TeacherStats = {
     assignedClassesCount: 0,
     subjectsTaughtCount: 0,
@@ -486,27 +485,27 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     };
   }
 
-  if (!teacherId) {
-     console.warn("[LOG] getTeacherDashboardData: Called without teacherId. Returning default dashboard data.");
+  if (!teacherId || teacherId.trim() === "") {
+     console.warn(`[LOG] getTeacherDashboardData: Received blank or invalid teacherId: "${teacherId}". Returning default response.`);
     return {
       ...defaultResponse,
-      notifications: [{ id: 'error_no_teacher_id', message: "Teacher ID not provided. Cannot load dashboard.", type: 'warning' }],
+      notifications: [{ id: 'error_no_teacher_id', message: `Teacher ID was not provided or is invalid. Cannot load dashboard. (Received: "${teacherId}")`, type: 'warning' }],
     };
   }
   
   try {
-    console.log(`[LOG] getTeacherDashboardData: Fetching teacher document for ID: ${teacherId}`);
+    console.log(`[LOG] getTeacherDashboardData: Attempting to fetch teacher document with getTeacherByIdFromDOS for ID: "${teacherId}"`);
     const teacherDocument = await getTeacherByIdFromDOS(teacherId); 
     
     if (!teacherDocument) {
-      console.warn(`[LOG] getTeacherDashboardData: Teacher record not found for ID: ${teacherId}.`);
+      console.warn(`[LOG] getTeacherDashboardData: Teacher record NOT FOUND by getTeacherByIdFromDOS for ID: "${teacherId}".`);
       return {
         ...defaultResponse,
-        notifications: [{ id: 'error_teacher_not_found', message: `Your teacher record could not be loaded. Please contact administration.`, type: 'warning' }],
+        notifications: [{ id: 'error_teacher_not_found', message: `Your teacher record could not be loaded. Please contact administration. (ID used: ${teacherId})`, type: 'warning' }],
         teacherName: undefined, 
       };
     }
-    console.log(`[LOG] getTeacherDashboardData: Teacher found: ${teacherDocument.name}`);
+    console.log(`[LOG] getTeacherDashboardData: Teacher document FOUND: ${teacherDocument.name}, ID: ${teacherDocument.id}`);
 
     const [generalSettings, allTerms] = await Promise.all([ 
       getGeneralSettings(),
@@ -644,25 +643,23 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     }
     
     const finalDashboardData = { assignments: dashboardAssignments, notifications, teacherName, resourcesText, stats };
-    console.log(`[LOG] getTeacherDashboardData END for teacher: ${teacherName} (ID: ${teacherId}). Returning data: ${JSON.stringify({assignmentsCount: finalDashboardData.assignments.length, notificationsCount: finalDashboardData.notifications.length, stats: finalDashboardData.stats, teacherName: finalDashboardData.teacherName})}`);
+    console.log(`[LOG] getTeacherDashboardData ACTION END for teacher: ${teacherName} (ID: ${teacherId}). Returning data: ${JSON.stringify({assignmentsCount: finalDashboardData.assignments.length, notificationsCount: finalDashboardData.notifications.length, stats: finalDashboardData.stats, teacherName: finalDashboardData.teacherName})}`);
     return finalDashboardData;
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while processing dashboard data.";
-    console.error(`[LOG] getTeacherDashboardData ERROR for teacher ${teacherId}:`, error);
+    console.error(`[LOG] getTeacherDashboardData ACTION ERROR for teacher ${teacherId}:`, error);
     let teacherNameOnError: string | undefined = undefined;
     try {
-      // Best effort to get teacher name, but don't let this fail the error handling.
-      const existingTeacherDoc = await getTeacherByIdFromDOS(teacherId); // Use the action
+      const existingTeacherDoc = await getTeacherByIdFromDOS(teacherId); 
       teacherNameOnError = existingTeacherDoc?.name;
     } catch (nestedError) {
-      // Log if even getting the teacher name fails, but don't let this override the primary error.
       console.error(`[LOG] getTeacherDashboardData: Nested error while trying to get teacher name during error handling for teacher ${teacherId}:`, nestedError);
     }
     return {
       ...defaultResponse,
       notifications: [{ id: 'processing_error_dashboard', message: `Error processing dashboard data: ${errorMessage}`, type: 'warning' }],
-      teacherName: teacherNameOnError, // Use the fetched name or default to undefined
+      teacherName: teacherNameOnError, 
     };
   }
 }
