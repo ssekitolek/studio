@@ -6,36 +6,38 @@ import { redirect } from 'next/navigation';
 
 interface LayoutProps {
   children: React.ReactNode;
-  params: Record<string, string | string[] | undefined>; // For route params like /teacher/[segment]
-  searchParams?: Record<string, string | string[] | undefined>; // For URL query params like ?teacherId=xyz
+  params: Record<string, string | string[] | undefined>;
+  searchParams?: { [key: string]: string | string[] | undefined }; // searchParams can be undefined
 }
 
 export default function TeacherLayout({ children, params, searchParams }: LayoutProps) {
-  // searchParams can be undefined if not provided by Next.js or if the URL has no query string.
-  // We must handle this gracefully.
-
+  // Safely access teacherId from searchParams
   const teacherId = searchParams?.teacherId as string | undefined;
   let teacherName = "Teacher"; // Default name
 
   if (searchParams?.teacherName) {
-    try {
-      // Ensure teacherName is a string before decoding
-      const nameParam = searchParams.teacherName;
-      if (typeof nameParam === 'string') {
+    const nameParam = searchParams.teacherName;
+    // Handle both string and string[] cases for teacherName
+    if (typeof nameParam === 'string') {
+      try {
         teacherName = decodeURIComponent(nameParam);
-      } else if (Array.isArray(nameParam) && nameParam.length > 0 && typeof nameParam[0] === 'string') {
-        // Handle if teacherName is an array of strings (take the first one)
-        teacherName = decodeURIComponent(nameParam[0]);
+      } catch (e) {
+        // console.warn(`[TeacherLayout] Failed to decode teacherName (string). Using default. Error: ${e}`);
       }
-    } catch (e) {
-      // If decoding fails (e.g., malformed URI), use the default name.
-      // console.warn(`[TeacherLayout] Failed to decode teacherName. Using default. Error: ${e}`);
+    } else if (Array.isArray(nameParam) && nameParam.length > 0 && typeof nameParam[0] === 'string') {
+      try {
+        teacherName = decodeURIComponent(nameParam[0]);
+      } catch (e) {
+        // console.warn(`[TeacherLayout] Failed to decode teacherName (array). Using default. Error: ${e}`);
+      }
     }
+    // If decoding fails or param is not a string/valid array, teacherName remains "Teacher".
   }
 
   if (!teacherId) {
-    // This is the critical check. If searchParams was undefined or didn't contain teacherId,
-    // teacherId will be undefined here.
+    // This is the critical check.
+    // If searchParams was undefined or didn't contain teacherId,
+    // teacherId will be undefined here, leading to a redirect.
     redirect('/login/teacher');
   }
 
@@ -46,8 +48,8 @@ export default function TeacherLayout({ children, params, searchParams }: Layout
           <AppHeader
             userName={teacherName}
             userRole="Teacher"
-            teacherId={teacherId} // Pass the validated/extracted teacherId
-            teacherNameParam={teacherName} // Pass the validated/extracted teacherName
+            teacherId={teacherId}
+            teacherNameParam={teacherName}
           />
           <main className="flex-1 p-4 md:p-6 lg:p-8 bg-background">
             {children}
