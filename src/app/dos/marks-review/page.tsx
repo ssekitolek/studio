@@ -13,7 +13,7 @@ import { ShieldAlert, Loader2, CheckCircle, Search, FileWarning, Info } from "lu
 import { getClasses, getSubjects, getExams, getMarksForReview } from "@/lib/actions/dos-actions";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
 import type { ClassInfo, Subject as SubjectType, Exam, AnomalyExplanation, GradeEntry as GenkitGradeEntry } from "@/lib/types";
-import type { MarksForReviewEntry } from "@/lib/actions/dos-actions"; // Import the new type
+import type { MarksForReviewEntry } from "@/lib/actions/dos-actions"; 
 import { useToast } from "@/hooks/use-toast";
 
 export default function MarksReviewPage() {
@@ -61,13 +61,13 @@ export default function MarksReviewPage() {
       return;
     }
     setIsLoadingMarks(true);
-    setMarks([]); // Clear previous marks
-    setAnomalies([]); // Clear previous anomalies
+    setMarks([]); 
+    setAnomalies([]); 
     try {
       const fetchedMarks = await getMarksForReview(selectedClass, selectedSubject, selectedExam);
       setMarks(fetchedMarks);
       if (fetchedMarks.length === 0) {
-        toast({ title: "No Marks Found", description: "No marks data found for the selected criteria.", variant: "default", action: <Info className="text-blue-500"/> });
+        toast({ title: "No Marks Found", description: "No marks data found for the selected criteria. This could mean no marks were submitted by the teacher yet for this specific combination.", variant: "default", action: <Info className="text-blue-500"/> });
       }
     } catch (error) {
       console.error("Error fetching marks for review:", error);
@@ -105,10 +105,10 @@ export default function MarksReviewPage() {
         const result = await gradeAnomalyDetection(anomalyInput);
         if (result.hasAnomalies) {
           setAnomalies(result.anomalies);
-          toast({ title: "Anomalies Detected", description: "Potential issues found in the marks.", variant: "default", action: <FileWarning className="text-yellow-500"/> });
+          toast({ title: "Anomalies Detected by D.O.S. Review", description: "Potential issues found in the marks.", variant: "default", action: <FileWarning className="text-yellow-500"/> });
         } else {
           setAnomalies([]);
-          toast({ title: "No Anomalies Found", description: "The marks appear consistent.", variant: "default", action: <CheckCircle className="text-green-500"/> });
+          toast({ title: "No Anomalies Found by D.O.S. Review", description: "The marks appear consistent.", variant: "default", action: <CheckCircle className="text-green-500"/> });
         }
       } catch (error) {
         console.error("Anomaly detection error:", error);
@@ -129,7 +129,7 @@ export default function MarksReviewPage() {
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle className="font-headline text-xl text-primary">Selection Criteria</CardTitle>
-          <CardDescription>Select class, subject, and exam to review marks.</CardDescription>
+          <CardDescription>Select class, subject, and exam to review the latest marks submitted by the teacher.</CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Select value={selectedClass} onValueChange={setSelectedClass} disabled={isLoadingInitialData}>
@@ -158,7 +158,7 @@ export default function MarksReviewPage() {
               disabled={isLoadingInitialData || isLoadingMarks || isProcessingAnomalyCheck || !selectedClass || !selectedSubject || !selectedExam}
             >
                 {isLoadingMarks ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
-                Load Marks
+                Load Submitted Marks
             </Button>
         </CardContent>
       </Card>
@@ -166,7 +166,7 @@ export default function MarksReviewPage() {
       {isLoadingMarks && (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="ml-2">Loading marks...</p>
+          <p className="ml-2">Loading submitted marks...</p>
         </div>
       )}
 
@@ -174,12 +174,12 @@ export default function MarksReviewPage() {
         <Card className="shadow-md">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="font-headline text-xl text-primary">Marks Overview</CardTitle>
-              <CardDescription>Marks for the selected criteria.</CardDescription>
+              <CardTitle className="font-headline text-xl text-primary">Latest Submitted Marks Overview</CardTitle>
+              <CardDescription>Marks for the selected criteria as submitted by the teacher.</CardDescription>
             </div>
             <Button onClick={handleAnomalyCheck} disabled={isProcessingAnomalyCheck || isLoadingMarks}>
               {isProcessingAnomalyCheck ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
-              Check for Anomalies
+              D.O.S. Anomaly Check
             </Button>
           </CardHeader>
           <CardContent>
@@ -217,9 +217,9 @@ export default function MarksReviewPage() {
       {anomalies.length > 0 && (
         <Alert variant="default" className="border-yellow-500 bg-yellow-500/10">
             <FileWarning className="h-5 w-5 text-yellow-600" />
-            <AlertTitle className="font-headline text-yellow-700">Anomaly Detection Results</AlertTitle>
+            <AlertTitle className="font-headline text-yellow-700">D.O.S. Anomaly Detection Results</AlertTitle>
             <AlertDescription className="text-yellow-600">
-            The following potential issues were found:
+            The following potential issues were found by the D.O.S. review:
             <ul className="list-disc pl-5 mt-2 space-y-1">
               {anomalies.map((anomaly, index) => (
                 <li key={index}>

@@ -78,7 +78,7 @@ export default function SubmitMarksPage() {
 
     const teacherIdFromUrl = searchParams.get("teacherId");
 
-    if (!teacherIdFromUrl || teacherIdFromUrl.trim() === "" || teacherIdFromUrl.toLowerCase() === "undefined") {
+    if (!teacherIdFromUrl || teacherIdFromUrl.trim() === "" || teacherIdFromUrl.toLowerCase() === "undefined" || teacherIdFromUrl === "undefined") {
       const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login again to submit marks.`;
       toast({ title: "Access Denied", description: msg, variant: "destructive" });
       setPageError(msg);
@@ -198,20 +198,34 @@ export default function SubmitMarksPage() {
           marks: marksToSubmit as Array<{ studentId: string; score: number }>, 
         });
         if (result.success) {
-          toast({
-            title: result.anomalies?.hasAnomalies ? "Marks Submitted with Warnings" : "Success",
-            description: result.message,
-            variant: result.anomalies?.hasAnomalies ? "default" : "default",
-            action: result.anomalies?.hasAnomalies ? <ShieldAlert className="text-yellow-500" /> : <CheckCircle className="text-green-500" />,
-          });
           if (result.anomalies?.hasAnomalies) {
+            toast({
+                title: "Marks Submitted with Warnings",
+                description: "Potential anomalies were detected and have been flagged for D.O.S. review. Your marks have been recorded.",
+                variant: "default",
+                action: <ShieldAlert className="text-yellow-500" />,
+                duration: 10000,
+            });
             setAnomalies(result.anomalies.anomalies);
             setShowAnomalyWarning(true);
+            // Keep form data for teacher review if anomalies
           } else {
+            toast({
+                title: "Marks Submitted Successfully!",
+                description: "The D.O.S. has received them.",
+                variant: "default",
+                action: <CheckCircle className="text-green-500" />,
+            });
             setAnomalies([]);
             setShowAnomalyWarning(false);
+            // Reset only marks fields, keep assessmentId selected
             const currentAssessmentId = form.getValues("assessmentId");
-            form.reset({ assessmentId: currentAssessmentId, marks: fields.map(f => ({...f, studentId: f.studentId, studentName: f.studentName, score: null})) });
+            const studentFields = form.getValues("marks").map(mark => ({
+                studentId: mark.studentId,
+                studentName: mark.studentName,
+                score: null, // Reset score
+            }));
+            form.reset({ assessmentId: currentAssessmentId, marks: studentFields });
           }
         } else {
           toast({ title: "Error", description: result.message, variant: "destructive" });
@@ -385,7 +399,7 @@ export default function SubmitMarksPage() {
                     </li>
                   ))}
                 </ul>
-                <p className="mt-2">You can still proceed with this submission, or correct the marks and resubmit to clear these warnings.</p>
+                <p className="mt-2">Your marks have been submitted with these warnings. You can correct the marks and resubmit, or the D.O.S. will review them as is.</p>
               </AlertDescription>
             </Alert>
           )}
@@ -394,7 +408,7 @@ export default function SubmitMarksPage() {
             <div className="flex justify-end">
               <Button 
                 type="submit" 
-                disabled={isPending || isLoadingStudents || isLoadingAssessments || !currentTeacherId} 
+                disabled={isPending || isLoadingStudents || isLoadingAssessments || !currentTeacherId } 
                 size="lg"
               >
                 {isPending ? (
@@ -411,5 +425,3 @@ export default function SubmitMarksPage() {
     </div>
   );
 }
-
-    
