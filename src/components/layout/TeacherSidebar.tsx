@@ -29,7 +29,7 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
   const { state } = useSidebar();
   
   const validTeacherId = teacherIdParam && teacherIdParam.toLowerCase() !== "undefined" && teacherIdParam.trim() !== "" ? teacherIdParam : undefined;
-  const validTeacherName = teacherNameParam && teacherNameParam.toLowerCase() !== "undefined" ? teacherNameParam : "Teacher";
+  const validTeacherName = teacherNameParam && teacherNameParam.toLowerCase() !== "undefined" && teacherNameParam.trim() !== "" ? teacherNameParam : "Teacher";
 
   const encodedTeacherId = validTeacherId ? encodeURIComponent(validTeacherId) : '';
   const encodedTeacherName = encodeURIComponent(validTeacherName); 
@@ -97,9 +97,9 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
           <SidebarMenu className="px-2 py-2 space-y-1">
             {navItems.map((item, index) => (
               <SidebarMenuItem key={index}>
-                <Link href={item.disabled ? "#" : item.href} passHref>
+                <Link href={item.disabled ? "#" : item.href} passHref={!item.disabled}>
                   <SidebarMenuButton
-                    asChild={false}
+                    asChild={false} 
                     isActive={!item.disabled && isItemActive(item.href)}
                     tooltip={item.tooltip}
                     className="justify-start"

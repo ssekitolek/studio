@@ -28,7 +28,7 @@ export default function MarksHistoryPage() {
   const searchParams = useSearchParams();
   const router = useRouter(); 
 
-  const [isLoading, setIsLoading] = useState(true); // Changed from useTransition for simple loading state
+  const [isLoading, setIsLoading] = useState(true); 
   const [history, setHistory] = useState<SubmissionHistoryItem[]>([]);
   const [pageError, setPageError] = useState<string | null>(null);
   const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
@@ -37,6 +37,7 @@ export default function MarksHistoryPage() {
     if (!searchParams) {
         setPageError("Could not access URL parameters. Please try reloading or logging in again.");
         setIsLoading(false);
+        toast({ title: "Error", description: "URL parameters unavailable.", variant: "destructive" });
         return;
     }
 

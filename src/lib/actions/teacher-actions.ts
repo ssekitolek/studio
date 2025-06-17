@@ -273,11 +273,12 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
     getClasses(), getSubjects(), getAllExamsFromDOS(), getGeneralSettings(),
   ]);
   console.log(`[LOG_TAR] Fetched allClasses: ${allClasses.length}, allSubjects: ${allSubjects.length}, allExamsFromSystem: ${allExamsFromSystem.length}`);
-  console.log(`[LOG_TAR] General Settings result: isDefaultTemplate=${generalSettingsResult.isDefaultTemplate}, currentTermId=${generalSettingsResult.currentTermId}`);
+  const { isDefaultTemplate: gsIsDefault, ...actualGeneralSettings } = generalSettingsResult;
+  console.log(`[LOG_TAR] General Settings result: isDefaultTemplate=${gsIsDefault}, currentTermId=${actualGeneralSettings.currentTermId}`);
 
-  const currentTermId = generalSettingsResult.currentTermId;
+  const currentTermId = actualGeneralSettings.currentTermId;
   if (!currentTermId) {
-    console.warn(`[LOG_TAR] No current term ID set in general settings (isDefaultTemplate: ${generalSettingsResult.isDefaultTemplate}, using currentTermId: ${currentTermId}). Cannot determine responsibilities.`);
+    console.warn(`[LOG_TAR] No current term ID set in general settings (isDefaultTemplate: ${gsIsDefault}, using currentTermId: ${currentTermId}). Cannot determine responsibilities.`);
     return responsibilitiesMap;
   }
   console.log(`[LOG_TAR] Current Term ID: ${currentTermId}`);
@@ -663,3 +664,4 @@ export async function getTeacherProfileData(teacherId: string): Promise<{ name?:
     return null;
   }
 }
+

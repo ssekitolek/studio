@@ -13,6 +13,7 @@ import type { TeacherDashboardData, TeacherNotification, TeacherStats } from "@/
 import { Alert, AlertDescription, AlertTitle as UIAlertTitle } from "@/components/ui/alert";
 import { StatCard } from "@/components/shared/StatCard";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,7 @@ const DEFAULT_FALLBACK_TEACHER_NAME = "Teacher";
 export default function TeacherDashboardPage() {
   const searchParams = useSearchParams(); 
   const router = useRouter();
+  const { toast } = useToast();
   
   const initialDefaultStats: TeacherStats = {
     assignedClassesCount: 0,
@@ -46,6 +48,7 @@ export default function TeacherDashboardPage() {
     if (!searchParams) {
       setIsLoading(false);
       setFetchError("Could not access URL parameters. Please try reloading or logging in again.");
+      toast({ title: "Error", description: "URL parameters unavailable.", variant: "destructive" });
       return;
     }
 
@@ -68,9 +71,10 @@ export default function TeacherDashboardPage() {
       const errorMessage = `Teacher ID is invalid or missing from URL (received: '${idFromParams}'). Dashboard cannot be loaded.`;
       setIsLoading(false);
       setFetchError(errorMessage);
+      toast({ title: "Access Denied", description: errorMessage, variant: "destructive" });
       setDashboardData(prev => ({
           ...prev,
-          notifications: [{id: 'error_invalid_id_param', message: `${errorMessage} Please try logging in again.`, type: 'warning'}],
+          notifications: [{id: 'error_invalid_id_param_dash', message: `${errorMessage} Please try logging in again.`, type: 'warning'}],
           resourcesText: "Could not load resources due to invalid ID.",
           stats: initialDefaultStats,
           teacherName: nameFromUrl,
@@ -94,8 +98,8 @@ export default function TeacherDashboardPage() {
         if (!data.teacherName && !data.notifications.some(n => n.id.startsWith('error_') || n.id.startsWith('system_settings_') || n.id.startsWith('current_term_'))) {
            const newError = `Your teacher record could not be loaded (ID used: ${validTeacherId}). Please contact administration.`;
            setFetchError(prev => prev ? `${prev} ${newError}` : newError);
-           if (!data.notifications.some(n => n.id === 'error_missing_teacher_name_from_data')) {
-             setDashboardData(prev => ({...prev, notifications: [...prev.notifications, {id: 'error_missing_teacher_name_from_data', message: newError, type: 'warning'}]}));
+           if (!data.notifications.some(n => n.id === 'error_missing_teacher_name_from_data_dash')) {
+             setDashboardData(prev => ({...prev, notifications: [...prev.notifications, {id: 'error_missing_teacher_name_from_data_dash', message: newError, type: 'warning'}]}));
            }
         } else if (data.notifications.some(n => n.id === 'error_teacher_not_found')) {
             const existingError = data.notifications.find(n => n.id === 'error_teacher_not_found')?.message || `Teacher record not found for ID: ${validTeacherId}.`;
@@ -105,9 +109,10 @@ export default function TeacherDashboardPage() {
       } catch (error) {
          const errorMessageText = error instanceof Error ? error.message : "An unknown error occurred.";
          setFetchError(errorMessageText);
+         toast({ title: "Dashboard Load Failed", description: errorMessageText, variant: "destructive"});
          setDashboardData({ 
              assignments: [],
-             notifications: [{id: 'critical_fetch_error_page', message: `Failed to load dashboard: ${errorMessageText}`, type: 'warning'}],
+             notifications: [{id: 'critical_fetch_error_page_dash', message: `Failed to load dashboard: ${errorMessageText}`, type: 'warning'}],
              teacherName: nameFromUrl, 
              resourcesText: "Could not load resources due to an error.",
              stats: initialDefaultStats,
@@ -119,7 +124,7 @@ export default function TeacherDashboardPage() {
 
     loadDataInternal(idFromParams);
 
-  }, [searchParams]); 
+  }, [searchParams, toast]); 
 
 
   const displayTeacherName = dashboardData.teacherName || currentTeacherName;

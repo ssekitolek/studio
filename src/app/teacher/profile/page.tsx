@@ -31,6 +31,7 @@ export default function TeacherProfilePage() {
     if (!searchParams) {
         setPageError("Could not access URL parameters. Please try reloading or logging in again.");
         setIsLoading(false);
+        toast({ title: "Error", description: "URL parameters unavailable.", variant: "destructive" });
         return;
     }
 
