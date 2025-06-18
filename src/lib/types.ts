@@ -1,4 +1,5 @@
 
+
 export interface Teacher {
   id: string;
   name: string;
@@ -166,3 +167,4 @@ export interface SubmissionHistoryDisplayItem {
   dosStatus: 'Pending' | 'Approved' | 'Rejected';
   dosRejectReason?: string;
 }
+
