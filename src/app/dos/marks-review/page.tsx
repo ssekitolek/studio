@@ -132,7 +132,10 @@ export default function MarksReviewPage() {
     startSubmissionUpdateTransition(async () => {
       const result = await approveMarkSubmission(marksPayload.submissionId!);
       toast({ title: result.success ? "Success" : "Error", description: result.message, variant: result.success ? "default" : "destructive" });
-      if (result.success) handleFetchMarks(); 
+      if (result.success) {
+        // Refetch marks to update status and potentially clear list if this was the last action
+        handleFetchMarks(); 
+      }
     });
   };
 
@@ -146,6 +149,7 @@ export default function MarksReviewPage() {
       const result = await rejectMarkSubmission(marksPayload.submissionId!, rejectReason);
       toast({ title: result.success ? "Success" : "Error", description: result.message, variant: result.success ? "default" : "destructive" });
       if (result.success) {
+        // Refetch marks to update status and potentially clear list
         handleFetchMarks(); 
         setShowRejectInput(false);
         setRejectReason("");
@@ -277,7 +281,7 @@ export default function MarksReviewPage() {
                 AI Anomaly Check
                 </Button>
                 <Select onValueChange={(value: 'csv' | 'xlsx' | 'pdf') => handleDownload(value)} disabled={isDownloading || !marksPayload?.submissionId}>
-                    <SelectTrigger className="w-auto" disabled={isDownloading || !marksPayload?.submissionId}>
+                    <SelectTrigger className="w-auto" disabled={isDownloading || !marksPayload?.submissionId || isActionDisabled}>
                         <SelectValue placeholder={isDownloading ? "Downloading..." : "Download As"} />
                     </SelectTrigger>
                     <SelectContent>
@@ -333,8 +337,9 @@ export default function MarksReviewPage() {
                         value={rejectReason}
                         onChange={(e) => setRejectReason(e.target.value)}
                         className="min-h-[80px]"
+                        disabled={isActionDisabled}
                     />
-                    <Button onClick={handleReject} variant="destructive" disabled={isUpdatingSubmission || !rejectReason.trim()}>
+                    <Button onClick={handleReject} variant="destructive" disabled={isUpdatingSubmission || !rejectReason.trim() || isActionDisabled}>
                          {isUpdatingSubmission && currentDosStatus !== 'Rejected' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ThumbsDown className="mr-2 h-4 w-4"/>}
                         Confirm Rejection
                     </Button>
@@ -378,3 +383,5 @@ export default function MarksReviewPage() {
     </div>
   );
 }
+
+    

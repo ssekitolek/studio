@@ -33,7 +33,7 @@ import {
   BookUser,
   CalendarDays,
   ShieldAlert,
-  UserCheck // New icon for assignments
+  UserCheck 
 } from "lucide-react";
 
 const dosNavItems = [
@@ -68,7 +68,12 @@ export function DosSidebar() {
   const { state } = useSidebar();
 
   const isItemActive = (href: string) => {
-    return pathname === href || (href !== "/dos/dashboard" && pathname.startsWith(href));
+    // For dashboard, only active if it's an exact match
+    if (href === "/dos/dashboard") {
+        return pathname === href;
+    }
+    // For other main links or section parent links, active if pathname starts with href
+    return pathname.startsWith(href);
   };
   
   const renderNavItem = (item: any, index: number) => {
@@ -145,3 +150,5 @@ export function DosSidebar() {
     </Sidebar>
   );
 }
+
+    
