@@ -20,7 +20,7 @@ export default function MarksHistoryPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
 
-  const [isLoading, setIsLoading] = useState(true); 
+  const [isLoading, setIsLoading] = useState(true);
   const [history, setHistory] = useState<SubmissionHistoryDisplayItem[]>([]);
   const [pageError, setPageError] = useState<string | null>(null);
   const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
@@ -45,7 +45,7 @@ export default function MarksHistoryPage() {
     }
 
     setCurrentTeacherId(teacherIdFromUrl);
-    setPageError(null); 
+    setPageError(null);
     setIsLoading(true);
 
     async function fetchData(validTeacherId: string) {
@@ -53,39 +53,41 @@ export default function MarksHistoryPage() {
         try {
             const submissionData = await getSubmittedMarksHistory(validTeacherId);
             setHistory(submissionData);
-            if (submissionData.length === 0 && !pageError) { 
-                toast({ 
-                  title: "No History Found", 
-                  description: "You have not submitted any marks yet, or no submissions match the current filters.", 
+            if (submissionData.length === 0 && !pageError) {
+                toast({
+                  title: "No History Found",
+                  description: "You have not submitted any marks yet, or no submissions match the current filters.",
                   variant: "default",
-                  action: <Info className="text-blue-500" /> 
+                  action: <Info className="text-blue-500" />
                 });
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
             toast({ title: "Error Loading History", description: errorMessage, variant: "destructive" });
             setPageError(`Failed to load submission history: ${errorMessage}`);
-            setHistory([]); 
+            setHistory([]);
         } finally {
             setIsLoading(false);
         }
     }
-    fetchData(teacherIdFromUrl);
-  }, [searchParams, toast]); 
+    if (teacherIdFromUrl && teacherIdFromUrl.trim() !== "" && teacherIdFromUrl.toLowerCase() !== "undefined" && teacherIdFromUrl !== "undefined") {
+        fetchData(teacherIdFromUrl);
+    }
+  }, [searchParams, toast, pageError]);
 
   const getStatusVariantAndClass = (item: SubmissionHistoryDisplayItem): {variant: "default" | "destructive" | "secondary", className: string, icon?: React.ReactNode} => {
     if (item.dosStatus === "Approved") return { variant: "default", className: "bg-green-500 hover:bg-green-600 text-white", icon: <CheckCircle2 className="mr-1 inline-block h-3 w-3" /> };
     if (item.dosStatus === "Rejected") return { variant: "destructive", className: "bg-red-500 hover:bg-red-600 text-white", icon: <AlertTriangle className="mr-1 inline-block h-3 w-3" /> };
-    if (item.dosStatus === "Pending" && item.status.includes("Anomaly")) return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
+    if (item.dosStatus === "Pending" && item.status && item.status.includes("Anomaly")) return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
     if (item.dosStatus === "Pending") return { variant: "secondary", className: "bg-blue-500 hover:bg-blue-600 text-white", icon: <Info className="mr-1 inline-block h-3 w-3" /> };
     // Fallback for original status if dosStatus is not set (older records perhaps)
-    if (item.status.includes("Anomaly Detected")) return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
+    if (item.status && item.status.includes("Anomaly Detected")) return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
     if (item.status === "Accepted") return { variant: "default", className: "bg-green-500 hover:bg-green-600 text-white", icon: <CheckCircle2 className="mr-1 inline-block h-3 w-3" /> };
     return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" };
   };
 
 
-  if (pageError && !isLoading) { 
+  if (pageError && !isLoading) {
      return (
       <div className="space-y-6">
         <PageHeader
@@ -105,7 +107,7 @@ export default function MarksHistoryPage() {
     );
   }
 
-  if (isLoading && currentTeacherId) { 
+  if (isLoading && currentTeacherId) {
     return (
       <div className="space-y-6">
           <PageHeader
@@ -120,8 +122,8 @@ export default function MarksHistoryPage() {
       </div>
     );
   }
-  
-  if (!currentTeacherId && !isLoading && !pageError) { 
+
+  if (!currentTeacherId && !isLoading && !pageError) {
      return (
       <div className="space-y-6">
         <PageHeader
@@ -186,7 +188,7 @@ export default function MarksHistoryPage() {
                         {item.dosRejectReason || "N/A"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="outline" size="sm" className="mr-2" disabled> 
+                        <Button variant="outline" size="sm" className="mr-2" disabled>
                           <Eye className="mr-1 h-4 w-4" /> View
                         </Button>
                       </TableCell>

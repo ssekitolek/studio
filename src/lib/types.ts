@@ -3,64 +3,64 @@ export interface Teacher {
   id: string;
   name: string;
   email: string;
-  password?: string; 
-  subjectsAssigned: Array<{ classId: string; subjectId: string; examIds: string[] }>; 
+  password?: string;
+  subjectsAssigned: Array<{ classId: string; subjectId: string; examIds: string[] }>;
 }
 
 export interface Student {
   id: string;
-  studentIdNumber: string; 
+  studentIdNumber: string;
   firstName: string;
   lastName: string;
-  classId: string; 
-  dateOfBirth?: string; 
+  classId: string;
+  dateOfBirth?: string;
   gender?: 'Male' | 'Female' | 'Other';
 }
 
 export interface ClassInfo {
   id: string;
-  name: string; 
-  level: string; 
-  stream?: string; 
-  classTeacherId?: string; 
-  subjects: Subject[]; 
+  name: string;
+  level: string;
+  stream?: string;
+  classTeacherId?: string;
+  subjects: Subject[];
 }
 
 export interface Subject {
   id: string;
-  name: string; 
-  code?: string; 
+  name: string;
+  code?: string;
 }
 
 export interface Term {
   id: string;
-  name: string; 
+  name: string;
   year: number;
-  startDate: string; 
-  endDate: string; 
+  startDate: string;
+  endDate: string;
 }
 
-export interface Exam { 
+export interface Exam {
   id: string;
-  name: string; 
-  termId: string; 
-  examDate?: string; 
-  maxMarks: number; 
+  name: string;
+  termId: string;
+  examDate?: string;
+  maxMarks: number;
   description?: string;
   classId?: string;
   subjectId?: string;
   teacherId?: string;
-  marksSubmissionDeadline?: string; 
+  marksSubmissionDeadline?: string;
 }
 
 export interface Assessment {
-    id: string; 
+    id: string;
     examId: string;
     classId: string;
     subjectId: string;
-    teacherId: string; 
-    maxMarks: number; 
-    submissionDeadline: string; 
+    teacherId: string;
+    maxMarks: number;
+    submissionDeadline: string;
 }
 
 export interface Mark {
@@ -68,13 +68,13 @@ export interface Mark {
   assessmentId: string;
   studentId: string;
   score: number | null;
-  submittedAt?: string; 
-  lastUpdatedAt?: string; 
+  submittedAt?: string;
+  lastUpdatedAt?: string;
   comments?: string;
 }
 
 export interface GradeEntry {
-  studentId: string; 
+  studentId: string;
   grade: number;
 }
 
@@ -84,13 +84,13 @@ export interface AnomalyExplanation {
 }
 
 export interface GeneralSettings {
-    defaultGradingScale: Array<GradingScaleItem>; 
+    defaultGradingScale: Array<GradingScaleItem>;
     currentTermId?: string;
-    markSubmissionTimeZone: string; 
-    globalMarksSubmissionDeadline?: string; 
+    markSubmissionTimeZone: string;
+    globalMarksSubmissionDeadline?: string;
     dosGlobalAnnouncementText?: string;
     dosGlobalAnnouncementType?: 'info' | 'warning';
-    teacherDashboardResourcesText?: string; 
+    teacherDashboardResourcesText?: string;
 }
 
 export interface GradingScaleItem {
@@ -107,10 +107,10 @@ export interface GradingPolicy {
 }
 
 export interface TeacherDashboardAssignment {
-  id: string; 
+  id: string;
   className: string;
-  subjectName: string; 
-  examName: string; 
+  subjectName: string;
+  examName: string;
   nextDeadlineInfo: string;
 }
 
@@ -131,8 +131,8 @@ export interface TeacherDashboardData {
   assignments: TeacherDashboardAssignment[];
   notifications: TeacherNotification[];
   teacherName?: string;
-  resourcesText?: string; 
-  stats: TeacherStats; 
+  resourcesText?: string;
+  stats: TeacherStats;
 }
 
 // For Firestore structure of markSubmissions

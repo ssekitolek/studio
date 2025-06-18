@@ -10,11 +10,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ShieldAlert, Loader2, CheckCircle, Search, FileWarning, Info, Download,ThumbsUp, ThumbsDown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ShieldAlert, Loader2, CheckCircle, Search, FileWarning, Info, Download, ThumbsUp, ThumbsDown } from "lucide-react";
 import { getClasses, getSubjects, getExams, getMarksForReview, approveMarkSubmission, rejectMarkSubmission, downloadSingleMarkSubmission } from "@/lib/actions/dos-actions";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
 import type { ClassInfo, Subject as SubjectType, Exam, AnomalyExplanation, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord } from "@/lib/types";
-import type { MarksForReviewPayload } from "@/lib/actions/dos-actions"; 
+import type { MarksForReviewPayload } from "@/lib/actions/dos-actions";
 import { useToast } from "@/hooks/use-toast";
 
 export default function MarksReviewPage() {
@@ -29,11 +30,11 @@ export default function MarksReviewPage() {
   const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [subjects, setSubjects] = useState<SubjectType[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
-  
+
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [selectedSubject, setSelectedSubject] = useState<string>("");
   const [selectedExam, setSelectedExam] = useState<string>("");
-  
+
   const [marksPayload, setMarksPayload] = useState<MarksForReviewPayload | null>(null);
   const [aiAnomalies, setAiAnomalies] = useState<AnomalyExplanation[]>([]);
   const [historicalAverage, setHistoricalAverage] = useState<number | undefined>(undefined);
@@ -68,8 +69,8 @@ export default function MarksReviewPage() {
       return;
     }
     setIsLoadingMarks(true);
-    setMarksPayload(null); 
-    setAiAnomalies([]); 
+    setMarksPayload(null);
+    setAiAnomalies([]);
     setShowRejectInput(false);
     setRejectReason("");
     try {
@@ -106,7 +107,7 @@ export default function MarksReviewPage() {
       subject: currentSubject.name,
       exam: currentExam.name,
       grades: gradeEntries,
-      historicalAverage: historicalAverage, 
+      historicalAverage: historicalAverage,
     };
 
     startAnomalyCheckTransition(async () => {
@@ -172,7 +173,7 @@ export default function MarksReviewPage() {
               fileName = `${assessmentNameSlug}.xlsx`;
               break;
             case "pdf":
-              blobType = "application/pdf"; // Or "text/plain" if it's just text
+              blobType = "application/pdf";
               fileName = `${assessmentNameSlug}.pdf`;
               break;
             case "csv":
@@ -204,6 +205,9 @@ export default function MarksReviewPage() {
   const currentDosStatus = marksPayload?.dosStatus;
   const currentDosRejectReason = marksPayload?.dosRejectReason;
 
+  const isActionDisabled = isProcessingAnomalyCheck || isLoadingMarks || isUpdatingSubmission || !marksPayload?.submissionId;
+  const isSubmissionFinalized = currentDosStatus === 'Approved' || currentDosStatus === 'Rejected';
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -232,16 +236,16 @@ export default function MarksReviewPage() {
           </Select>
         </CardContent>
         <CardContent className="flex flex-col sm:flex-row justify-end gap-2">
-            <Input 
-                type="number" 
-                placeholder="Optional: Historical Avg." 
+            <Input
+                type="number"
+                placeholder="Optional: Historical Avg."
                 className="max-w-xs"
                 value={historicalAverage === undefined ? '' : historicalAverage}
                 onChange={(e) => setHistoricalAverage(e.target.value ? parseFloat(e.target.value) : undefined)}
             />
-            <Button 
-              onClick={handleFetchMarks} 
-              disabled={isLoadingInitialData || isLoadingMarks || isProcessingAnomalyCheck || !selectedClass || !selectedSubject || !selectedExam || isUpdatingSubmission}
+            <Button
+              onClick={handleFetchMarks}
+              disabled={isLoadingInitialData || isLoadingMarks || !selectedClass || !selectedSubject || !selectedExam || isProcessingAnomalyCheck || isUpdatingSubmission}
               className="w-full sm:w-auto"
             >
                 {isLoadingMarks ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
@@ -268,12 +272,12 @@ export default function MarksReviewPage() {
               </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
-                <Button onClick={handleAnomalyCheck} disabled={isProcessingAnomalyCheck || isLoadingMarks || isUpdatingSubmission}>
+                <Button onClick={handleAnomalyCheck} disabled={isActionDisabled}>
                 {isProcessingAnomalyCheck ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
                 AI Anomaly Check
                 </Button>
-                <Select onValueChange={(value: 'csv' | 'xlsx' | 'pdf') => handleDownload(value)} disabled={isDownloading}>
-                    <SelectTrigger className="w-auto" disabled={isDownloading}>
+                <Select onValueChange={(value: 'csv' | 'xlsx' | 'pdf') => handleDownload(value)} disabled={isDownloading || !marksPayload?.submissionId}>
+                    <SelectTrigger className="w-auto" disabled={isDownloading || !marksPayload?.submissionId}>
                         <SelectValue placeholder={isDownloading ? "Downloading..." : "Download As"} />
                     </SelectTrigger>
                     <SelectContent>
@@ -306,32 +310,32 @@ export default function MarksReviewPage() {
           </CardContent>
           <CardContent className="border-t pt-4 space-y-3">
             <div className="flex flex-wrap gap-2 justify-end">
-                <Button 
-                    variant="outline" 
-                    onClick={() => setShowRejectInput(s => !s)} 
-                    disabled={isUpdatingSubmission || currentDosStatus === 'Approved' || currentDosStatus === 'Rejected'}
+                <Button
+                    variant="outline"
+                    onClick={() => setShowRejectInput(s => !s)}
+                    disabled={isActionDisabled || isSubmissionFinalized}
                 >
                     <ThumbsDown className="mr-2 h-4 w-4"/> {showRejectInput ? "Cancel Reject" : "Reject Submission"}
                 </Button>
-                <Button 
-                    onClick={handleApprove} 
-                    disabled={isUpdatingSubmission || currentDosStatus === 'Approved' || currentDosStatus === 'Rejected'}
+                <Button
+                    onClick={handleApprove}
+                    disabled={isActionDisabled || isSubmissionFinalized}
                     className="bg-green-600 hover:bg-green-700"
                 >
-                    {isUpdatingSubmission && marksPayload?.dosStatus !== 'Approved' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ThumbsUp className="mr-2 h-4 w-4"/>}
+                    {isUpdatingSubmission && !isSubmissionFinalized ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ThumbsUp className="mr-2 h-4 w-4"/>}
                     Approve Submission
                 </Button>
             </div>
-            {showRejectInput && currentDosStatus !== 'Approved' && currentDosStatus !== 'Rejected' && (
+            {showRejectInput && !isSubmissionFinalized && (
                 <div className="space-y-2 pt-2">
-                    <Textarea 
-                        placeholder="Reason for rejection..." 
-                        value={rejectReason} 
+                    <Textarea
+                        placeholder="Reason for rejection..."
+                        value={rejectReason}
                         onChange={(e) => setRejectReason(e.target.value)}
                         className="min-h-[80px]"
                     />
                     <Button onClick={handleReject} variant="destructive" disabled={isUpdatingSubmission || !rejectReason.trim()}>
-                         {isUpdatingSubmission ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ThumbsDown className="mr-2 h-4 w-4"/>}
+                         {isUpdatingSubmission && !isSubmissionFinalized ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ThumbsDown className="mr-2 h-4 w-4"/>}
                         Confirm Rejection
                     </Button>
                 </div>
@@ -365,7 +369,7 @@ export default function MarksReviewPage() {
           </AlertDescription>
         </Alert>
       )}
-      {isProcessingAnomalyCheck && aiAnomalies.length === 0 && ( 
+      {isProcessingAnomalyCheck && aiAnomalies.length === 0 && (
          <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="ml-2">Checking for anomalies...</p>

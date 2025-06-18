@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BookOpenCheck, Loader2, AlertTriangle, CheckCircle, ShieldAlert, FileWarning } from "lucide-react";
-import { getTeacherAssessments, getStudentsForAssessment, submitMarks } from "@/lib/actions/teacher-actions"; 
+import { getTeacherAssessments, getStudentsForAssessment, submitMarks } from "@/lib/actions/teacher-actions";
 import type { Student, AnomalyExplanation } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams } from "next/navigation";
@@ -78,27 +78,27 @@ export default function SubmitMarksPage() {
 
     const teacherIdFromUrl = searchParams.get("teacherId");
 
-    if (!teacherIdFromUrl || teacherIdFromUrl.trim() === "" || teacherIdFromUrl.toLowerCase() === "undefined") {
+    if (!teacherIdFromUrl || teacherIdFromUrl.trim() === "" || teacherIdFromUrl.toLowerCase() === "undefined" || teacherIdFromUrl === "undefined") {
       const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login again to submit marks.`;
       toast({ title: "Access Denied", description: msg, variant: "destructive" });
       setPageError(msg);
       setCurrentTeacherId(null);
-      setIsLoadingAssessments(false); 
+      setIsLoadingAssessments(false);
       return;
     }
 
     setCurrentTeacherId(teacherIdFromUrl);
-    setPageError(null); 
+    setPageError(null);
 
     async function fetchAssessments(validTeacherId: string) {
       setIsLoadingAssessments(true);
       try {
         const assessmentData = await getTeacherAssessments(validTeacherId);
         setAssessments(assessmentData);
-        if (assessmentData.length === 0) {
-            toast({ 
-                title: "No Assessments Available", 
-                description: "No assessments found for your assignments in the current term. This could be due to system settings (like current term) not being configured by the D.O.S. Please contact administration if this is unexpected.", 
+        if (assessmentData.length === 0 && !pageError) { // Only show if no other page error
+            toast({
+                title: "No Assessments Available",
+                description: "No pending assessments found for your assignments in the current term. This could be due to system settings (like current term) not being configured by the D.O.S., or all marks have been submitted. Please contact administration if this is unexpected.",
                 variant: "default",
                 duration: 10000,
             });
@@ -112,7 +112,7 @@ export default function SubmitMarksPage() {
       }
     }
     fetchAssessments(teacherIdFromUrl);
-  }, [searchParams, toast]);
+  }, [searchParams, toast, pageError]); // Added pageError to dependency to avoid re-toast
 
   const handleAssessmentChange = async (assessmentId: string) => {
     form.setValue("assessmentId", assessmentId);
@@ -120,29 +120,29 @@ export default function SubmitMarksPage() {
     setSelectedAssessment(assessment || null);
     setAnomalies([]);
     setShowAnomalyWarning(false);
-    form.resetField("marks", { defaultValue: [] }); 
+    form.resetField("marks", { defaultValue: [] });
 
-    if (assessmentId && currentTeacherId) { 
+    if (assessmentId && currentTeacherId) {
       setIsLoadingStudents(true);
       try {
-        const students: Student[] = await getStudentsForAssessment(assessmentId); 
+        const students: Student[] = await getStudentsForAssessment(assessmentId);
         const marksData = students.map(student => ({
-          studentId: student.studentIdNumber, 
+          studentId: student.studentIdNumber,
           studentName: `${student.firstName} ${student.lastName}`,
-          score: null, 
+          score: null,
         }));
-        replace(marksData); 
+        replace(marksData);
          if (students.length === 0) {
             toast({ title: "No Students Found", description: "No students found for the selected assessment. Please check class enrollment or contact D.O.S.", variant: "default" });
         }
       } catch (error) {
         toast({ title: "Error Loading Students", description: "Failed to load students for this assessment.", variant: "destructive" });
-        replace([]); 
+        replace([]);
       } finally {
         setIsLoadingStudents(false);
       }
     } else {
-      replace([]); 
+      replace([]);
       if(!currentTeacherId){
         toast({ title: "Authentication Error", description: "Teacher ID is missing or invalid. Cannot load students.", variant: "destructive" });
       }
@@ -181,7 +181,7 @@ export default function SubmitMarksPage() {
           });
           invalidScoreFound = true;
         } else {
-           form.clearErrors(`marks.${index}.score`); 
+           form.clearErrors(`marks.${index}.score`);
         }
       }
     });
@@ -195,7 +195,7 @@ export default function SubmitMarksPage() {
       try {
         const result = await submitMarks(currentTeacherId, {
           assessmentId: data.assessmentId,
-          marks: marksToSubmit as Array<{ studentId: string; score: number }>, 
+          marks: marksToSubmit as Array<{ studentId: string; score: number }>,
         });
         if (result.success) {
           if (result.anomalies?.hasAnomalies) {
@@ -218,14 +218,26 @@ export default function SubmitMarksPage() {
             });
             setAnomalies([]);
             setShowAnomalyWarning(false);
-            // Reset only marks fields, keep assessmentId selected
-            const currentAssessmentId = form.getValues("assessmentId");
+            // Reset student scores, keep assessment selected and students listed
             const studentFields = form.getValues("marks").map(mark => ({
                 studentId: mark.studentId,
                 studentName: mark.studentName,
                 score: null, // Reset score
             }));
-            form.reset({ assessmentId: currentAssessmentId, marks: studentFields });
+            form.reset({ assessmentId: data.assessmentId, marks: studentFields });
+
+            // Refetch assessments to remove the submitted one from the list
+            if(currentTeacherId) {
+                setIsLoadingAssessments(true);
+                const updatedAssessments = await getTeacherAssessments(currentTeacherId);
+                setAssessments(updatedAssessments);
+                setSelectedAssessment(null); // Deselect assessment after submission
+                form.reset({ assessmentId: "", marks: [] }); // Fully reset form
+                setIsLoadingAssessments(false);
+                if (updatedAssessments.length === 0) {
+                    toast({ title: "All Assessments Submitted", description: "No more pending assessments for this term.", variant: "default"});
+                }
+            }
           }
         } else {
           toast({ title: "Error", description: result.message, variant: "destructive" });
@@ -306,7 +318,7 @@ export default function SubmitMarksPage() {
                             ))
                         ) : (
                             <div className="p-4 text-sm text-muted-foreground text-center">
-                                No assessments available. This might be due to missing D.O.S. configurations (e.g., current term).
+                                No pending assessments available. This might be due to missing D.O.S. configurations (e.g., current term), or all marks are submitted.
                                 <br />
                                 Please contact administration if this is unexpected.
                             </div>
@@ -344,7 +356,7 @@ export default function SubmitMarksPage() {
                       </TableHeader>
                       <TableBody>
                         {fields.map((item, index) => (
-                          <TableRow key={item.id}> 
+                          <TableRow key={item.id}>
                             <TableCell>{item.studentId}</TableCell>
                             <TableCell>{item.studentName}</TableCell>
                             <TableCell className="text-right">
@@ -406,9 +418,9 @@ export default function SubmitMarksPage() {
 
           {selectedAssessment && fields.length > 0 && (
             <div className="flex justify-end">
-              <Button 
-                type="submit" 
-                disabled={isPending || isLoadingStudents || isLoadingAssessments || !currentTeacherId} 
+              <Button
+                type="submit"
+                disabled={isPending || isLoadingStudents || isLoadingAssessments || !currentTeacherId }
                 size="lg"
               >
                 {isPending ? (
@@ -425,5 +437,3 @@ export default function SubmitMarksPage() {
     </div>
   );
 }
-
-
