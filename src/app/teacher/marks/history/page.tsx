@@ -74,7 +74,7 @@ export default function MarksHistoryPage() {
     if (teacherIdFromUrl && teacherIdFromUrl.trim() !== "" && teacherIdFromUrl.toLowerCase() !== "undefined" && teacherIdFromUrl !== "undefined") {
         fetchData(teacherIdFromUrl);
     }
-  }, [searchParams, toast, pageError]); // Added pageError to prevent re-fetch if already in error state.
+  }, [searchParams, toast, pageError]); // Added pageError to dependency to prevent re-fetch if already in error state.
 
   const getStatusVariantAndClass = (item: SubmissionHistoryDisplayItem): {variant: "default" | "destructive" | "secondary", className: string, icon?: React.ReactNode} => {
     // Primary logic based on dosStatus

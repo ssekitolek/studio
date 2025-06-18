@@ -98,7 +98,7 @@ export default function SubmitMarksPage() {
         if (assessmentData.length === 0 && !pageError) { // Only show if no other page error
             toast({
                 title: "No Assessments Available",
-                description: "No pending assessments found for your assignments in the current term. This could be due to system settings (like current term) not being configured by the D.O.S., or all marks have been submitted. Please contact administration if this is unexpected.",
+                description: "No pending assessments found for your assignments in the current term. This could be due to system settings (like current term) not being configured by the D.O.S., or all marks have been submitted and are pending/approved. Please contact administration if this is unexpected.",
                 variant: "default",
                 duration: 10000,
             });
@@ -212,13 +212,15 @@ export default function SubmitMarksPage() {
           } else {
             toast({
                 title: "Marks Submitted Successfully!",
-                description: "The D.O.S. has received them.",
+                description: "The D.O.S. has received them and they are pending review.",
                 variant: "default",
                 action: <CheckCircle className="text-green-500" />,
             });
             setAnomalies([]);
             setShowAnomalyWarning(false);
             // Reset student scores, keep assessment selected and students listed
+            // This gives visual feedback that this particular assessment is done
+            // The assessment will be removed from the list on next full fetch.
             const studentFields = form.getValues("marks").map(mark => ({
                 studentId: mark.studentId,
                 studentName: mark.studentName,
@@ -318,9 +320,9 @@ export default function SubmitMarksPage() {
                             ))
                         ) : (
                             <div className="p-4 text-sm text-muted-foreground text-center">
-                                No pending assessments available. This might be due to missing D.O.S. configurations (e.g., current term), or all marks are submitted.
+                                No pending assessments available. This might be due to missing D.O.S. configurations (e.g., current term), or all marks are submitted and are pending/approved.
                                 <br />
-                                Please contact administration if this is unexpected.
+                                Please check "View Submissions" or contact administration if this is unexpected.
                             </div>
                         )}
                       </SelectContent>
