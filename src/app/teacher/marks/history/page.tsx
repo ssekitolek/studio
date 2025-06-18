@@ -45,7 +45,7 @@ export default function MarksHistoryPage() {
     }
 
     setCurrentTeacherId(teacherIdFromUrl);
-    setPageError(null); // Reset page error if teacherId is now valid
+    setPageError(null); 
     setIsLoading(true);
 
     async function fetchData(validTeacherId: string) {
@@ -71,20 +71,18 @@ export default function MarksHistoryPage() {
         }
     }
     fetchData(teacherIdFromUrl);
-  }, [searchParams, toast]); // Removed pageError from dependency array to allow re-fetch attempts if params change
+  }, [searchParams, toast]); 
 
   const getStatusVariantAndClass = (item: SubmissionHistoryDisplayItem): {variant: "default" | "destructive" | "secondary", className: string, icon?: React.ReactNode} => {
-    // Primary logic based on dosStatus for the teacher's view
     if (item.status.includes("Approved by D.O.S.")) return { variant: "default", className: "bg-green-500 hover:bg-green-600 text-white", icon: <CheckCircle2 className="mr-1 inline-block h-3 w-3" /> };
     if (item.status.includes("Rejected by D.O.S.")) return { variant: "destructive", className: "bg-red-500 hover:bg-red-600 text-white", icon: <AlertTriangle className="mr-1 inline-block h-3 w-3" /> };
     if (item.status.includes("Pending D.O.S. Review (Anomaly)")) return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
     if (item.status.includes("Pending D.O.S. Review")) return { variant: "secondary", className: "bg-blue-500 hover:bg-blue-600 text-white", icon: <Info className="mr-1 inline-block h-3 w-3" /> };
     
-    // Fallback for any other unhandled status, or if dosStatus was somehow not set and only teacher-facing status is available
     if (item.status && item.status.includes("Anomaly Detected")) return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
-    if (item.status === "Accepted") return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" }; // System accepted, pre-DOS review
+    if (item.status === "Accepted") return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" };
     
-    return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" }; // Default fallback
+    return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" }; 
   };
 
 
@@ -218,3 +216,4 @@ export default function MarksHistoryPage() {
     </div>
   );
 }
+

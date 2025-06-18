@@ -91,7 +91,7 @@ export default function TeacherDashboardPage() {
       console.log(`[TeacherDashboardPage] Attempting to load data for teacherId: ${validTeacherId}`);
       try {
         const data = await getTeacherDashboardData(validTeacherId);
-        console.log("[TeacherDashboardPage] Received data from getTeacherDashboardData:", data);
+        console.log("[TeacherDashboardPage] Received data from getTeacherDashboardData:", JSON.stringify(data, null, 2));
         setDashboardData(data);
         if (data.teacherName) { 
           setCurrentTeacherName(data.teacherName);
@@ -248,7 +248,7 @@ export default function TeacherDashboardPage() {
             <CardTitle className="font-headline text-xl text-primary flex items-center">
               <ListChecks className="mr-2 h-6 w-6" /> Assigned Classes & Subjects for Assessment
             </CardTitle>
-            <CardDescription>Your current teaching assignments and upcoming deadlines for the active term.</CardDescription>
+            <CardDescription>Your current teaching assignments and upcoming deadlines for the active term. Assessments that are pending D.O.S. review or approved will not appear here.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {currentTeacherId && !fetchError && assignments && assignments.length > 0 ? (
@@ -273,13 +273,13 @@ export default function TeacherDashboardPage() {
             ) : (
               <div className="text-center py-6 text-muted-foreground">
                 <Info className="mx-auto h-8 w-8 mb-2" />
-                 {currentTeacherId && !fetchError ? (
+                 {currentTeacherId && !fetchError && !isLoading ? (
                   <>
-                    <p>No classes or subjects are currently assigned to you for assessment in the active term, or data could not be loaded.</p>
-                    <p className="text-xs mt-1">This could be due to missing D.O.S. configurations (e.g., current term not set, or no exams for current term). If you believe this is an error, please contact the D.O.S. office.</p>
+                    <p>No classes or subjects are currently assigned to you for assessment submission in the active term.</p>
+                    <p className="text-xs mt-1">This could be due to missing D.O.S. configurations (e.g., current term not set, or no exams for current term), or all your assigned marks have been submitted and are awaiting D.O.S. review or have been approved. Check "View Submissions" for details on past submissions.</p>
                   </>
                  ) : (
-                    <p>Cannot load assignments as Teacher ID is not available or an error occurred.</p>
+                    !isLoading && <p>Cannot load assignments as Teacher ID is not available or an error occurred.</p>
                  )}
               </div>
             )}
@@ -349,3 +349,4 @@ export default function TeacherDashboardPage() {
     
 
     
+
