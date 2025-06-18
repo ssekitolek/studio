@@ -54,7 +54,7 @@ export interface Exam {
 }
 
 export interface Assessment {
-    id: string;
+    id: string; // Composite ID: examId_classId_subjectId
     examId: string;
     classId: string;
     subjectId: string;
@@ -65,21 +65,21 @@ export interface Assessment {
 
 export interface Mark {
   id: string;
-  assessmentId: string;
-  studentId: string;
+  assessmentId: string; // Composite ID: examId_classId_subjectId
+  studentId: string; // Student's official ID number
   score: number | null;
-  submittedAt?: string;
-  lastUpdatedAt?: string;
+  submittedAt?: string; // ISO string
+  lastUpdatedAt?: string; // ISO string
   comments?: string;
 }
 
 export interface GradeEntry {
-  studentId: string;
+  studentId: string; // Student's official ID number
   grade: number;
 }
 
 export interface AnomalyExplanation {
-  studentId: string;
+  studentId: string; // Student's official ID number
   explanation: string;
 }
 
@@ -87,7 +87,7 @@ export interface GeneralSettings {
     defaultGradingScale: Array<GradingScaleItem>;
     currentTermId?: string;
     markSubmissionTimeZone: string;
-    globalMarksSubmissionDeadline?: string;
+    globalMarksSubmissionDeadline?: string; // ISO string date
     dosGlobalAnnouncementText?: string;
     dosGlobalAnnouncementType?: 'info' | 'warning';
     teacherDashboardResourcesText?: string;
@@ -111,58 +111,58 @@ export interface TeacherDashboardAssignment {
   className: string;
   subjectName: string;
   examName: string;
-  nextDeadlineInfo: string; // Formatted string like "Exam: YYYY-MM-DD" or "Term End: YYYY-MM-DD"
+  nextDeadlineInfo: string;
 }
 
 export interface TeacherNotification {
-  id: string; // Unique ID for the notification (e.g., 'dos_announcement', 'deadline_reminder_examId_classId_subjectId')
+  id: string;
   message: string;
-  type: 'deadline' | 'info' | 'warning'; // To style the notification
-  link?: string; // Optional link for more details
+  type: 'deadline' | 'info' | 'warning';
+  link?: string;
 }
 
 export interface TeacherStats {
   assignedClassesCount: number;
   subjectsTaughtCount: number;
-  recentSubmissionsCount: number; // e.g., submissions in the last 7 days
+  recentSubmissionsCount: number;
 }
 
 export interface TeacherDashboardData {
   assignments: TeacherDashboardAssignment[];
   notifications: TeacherNotification[];
-  teacherName?: string; // Name of the logged-in teacher
-  resourcesText?: string; // Text from D.O.S. General Settings
+  teacherName?: string;
+  resourcesText?: string;
   stats: TeacherStats;
 }
 
 // For Firestore structure of markSubmissions
 export interface MarkSubmissionFirestoreRecord {
   teacherId: string;
-  assessmentId: string; // Composite key: examId_classId_subjectId
-  assessmentName: string; // Derived: Class Name - Subject Name - Exam Name
-  dateSubmitted: import("firebase/firestore").Timestamp; // Firestore Timestamp
+  assessmentId: string; // Composite key: examDocumentId_classDocumentId_subjectDocumentId
+  assessmentName: string; // Derived human-readable: Class Name - Subject Name - Exam Name
+  dateSubmitted: import("firebase/firestore").Timestamp;
   studentCount: number;
   averageScore: number | null;
-  status: string; // Teacher-facing status: "Pending Review (Anomaly Detected)" | "Accepted" - reflects AI check
-  submittedMarks: Array<{ studentId: string; score: number }>;
-  anomalyExplanations: Array<AnomalyExplanation>;
+  status: string; // Teacher-facing status from AI check: "Pending Review (Anomaly Detected)" | "Accepted"
+  submittedMarks: Array<{ studentId: string; score: number }>; // studentId is studentIdNumber
+  anomalyExplanations: Array<AnomalyExplanation>; // Anomaly explanations if any from AI
   // D.O.S. specific fields
-  dosStatus: 'Pending' | 'Approved' | 'Rejected'; // D.O.S. workflow status
+  dosStatus: 'Pending' | 'Approved' | 'Rejected';
   dosRejectReason?: string;
-  dosLastReviewedBy?: string; // Optional: User ID of D.O.S. (future use)
-  dosLastReviewedAt?: import("firebase/firestore").Timestamp; // Optional: Timestamp of D.O.S. review
+  dosLastReviewedBy?: string; // User ID of D.O.S.
+  dosLastReviewedAt?: import("firebase/firestore").Timestamp;
   dosEdited?: boolean; // Flag if D.O.S. edited the marks
-  dosLastEditedAt?: import("firebase/firestore").Timestamp; // Timestamp of D.O.S. edit
+  dosLastEditedAt?: import("firebase/firestore").Timestamp;
 }
 
 // For Teacher's View of Submission History
 export interface SubmissionHistoryDisplayItem {
   id: string; // Firestore document ID of the submission
-  assessmentName: string;
+  assessmentName: string; // Human-readable name
   dateSubmitted: string; // ISO string
   studentCount: number;
   averageScore: number | null;
   status: string; // Combined/derived status for display to teacher reflecting D.O.S. review
-  dosStatus: 'Pending' | 'Approved' | 'Rejected'; // Actual D.O.S. status
+  dosStatus: 'Pending' | 'Approved' | 'Rejected';
   dosRejectReason?: string;
 }

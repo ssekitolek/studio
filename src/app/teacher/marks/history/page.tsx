@@ -59,7 +59,7 @@ export default function MarksHistoryPage() {
             if (submissionData.length === 0 && !pageError) { 
                 toast({
                   title: "No History Found",
-                  description: "You have not submitted any marks yet, or no submissions match the current filters.",
+                  description: "You have not submitted any marks yet.",
                   variant: "default",
                   action: <Info className="text-blue-500" />
                 });
@@ -75,17 +75,22 @@ export default function MarksHistoryPage() {
         }
     }
     fetchData(teacherIdFromUrl);
-  }, [searchParams, toast]); // Removed pageError from deps to prevent re-triggering on its own change
+  }, [searchParams, toast]);
 
   const getStatusVariantAndClass = (item: SubmissionHistoryDisplayItem): {variant: "default" | "destructive" | "secondary", className: string, icon?: React.ReactNode} => {
-    if (item.status.includes("Approved by D.O.S.")) return { variant: "default", className: "bg-green-500 hover:bg-green-600 text-white", icon: <CheckCircle2 className="mr-1 inline-block h-3 w-3" /> };
-    if (item.status.includes("Rejected by D.O.S.")) return { variant: "destructive", className: "bg-red-500 hover:bg-red-600 text-white", icon: <AlertTriangle className="mr-1 inline-block h-3 w-3" /> };
-    if (item.status.includes("Pending D.O.S. Review (Anomaly)")) return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
-    if (item.status.includes("Pending D.O.S. Review")) return { variant: "secondary", className: "bg-blue-500 hover:bg-blue-600 text-white", icon: <Info className="mr-1 inline-block h-3 w-3" /> };
-    
-    // Fallbacks for older or less specific statuses if any exist from teacher's initial AI check
+    // Prioritize D.O.S. status for display
+    if (item.dosStatus === 'Approved') return { variant: "default", className: "bg-green-500 hover:bg-green-600 text-white", icon: <CheckCircle2 className="mr-1 inline-block h-3 w-3" /> };
+    if (item.dosStatus === 'Rejected') return { variant: "destructive", className: "bg-red-500 hover:bg-red-600 text-white", icon: <AlertTriangle className="mr-1 inline-block h-3 w-3" /> };
+    if (item.dosStatus === 'Pending') {
+        if (item.status && item.status.includes("Anomaly Detected")) { // Check original teacher-side AI status
+             return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
+        }
+        return { variant: "secondary", className: "bg-blue-500 hover:bg-blue-600 text-white", icon: <Info className="mr-1 inline-block h-3 w-3" /> };
+    }
+    // Fallback if dosStatus is somehow not set (should not happen with new logic)
+    // but retain original logic for teacher's AI check status if dosStatus is missing
     if (item.status && item.status.includes("Anomaly Detected")) return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
-    if (item.status === "Accepted") return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" }; // Might be pre-DOS review
+    if (item.status === "Accepted") return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" }; 
     
     return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" }; 
   };
@@ -165,7 +170,7 @@ export default function MarksHistoryPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Assessment</TableHead>
+                  <TableHead>Assessment Name</TableHead>
                   <TableHead>Date Submitted</TableHead>
                   <TableHead className="text-center">Students</TableHead>
                   <TableHead className="text-center">Avg. Score</TableHead>
