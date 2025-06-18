@@ -107,31 +107,31 @@ export interface GradingPolicy {
 }
 
 export interface TeacherDashboardAssignment {
-  id: string;
+  id: string; // Composite ID: examId_classId_subjectId
   className: string;
   subjectName: string;
   examName: string;
-  nextDeadlineInfo: string;
+  nextDeadlineInfo: string; // Formatted string like "Exam: YYYY-MM-DD" or "Term End: YYYY-MM-DD"
 }
 
 export interface TeacherNotification {
-  id: string;
+  id: string; // Unique ID for the notification (e.g., 'dos_announcement', 'deadline_reminder_examId_classId_subjectId')
   message: string;
-  type: 'deadline' | 'info' | 'warning';
-  link?: string;
+  type: 'deadline' | 'info' | 'warning'; // To style the notification
+  link?: string; // Optional link for more details
 }
 
 export interface TeacherStats {
   assignedClassesCount: number;
   subjectsTaughtCount: number;
-  recentSubmissionsCount: number;
+  recentSubmissionsCount: number; // e.g., submissions in the last 7 days
 }
 
 export interface TeacherDashboardData {
   assignments: TeacherDashboardAssignment[];
   notifications: TeacherNotification[];
-  teacherName?: string;
-  resourcesText?: string;
+  teacherName?: string; // Name of the logged-in teacher
+  resourcesText?: string; // Text from D.O.S. General Settings
   stats: TeacherStats;
 }
 
