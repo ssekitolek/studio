@@ -97,7 +97,7 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
           <SidebarMenu className="px-2 py-2 space-y-1">
             {navItems.map((item, index) => (
               <SidebarMenuItem key={index}>
-                <Link href={item.href} passHref={!item.disabled}>
+                <Link href={item.disabled ? "#" : item.href} passHref={!item.disabled}>
                   <SidebarMenuButton
                     asChild={false} 
                     isActive={!item.disabled && isItemActive(item.href)}

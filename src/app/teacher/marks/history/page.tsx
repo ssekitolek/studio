@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { History, Eye, Loader2, AlertTriangle } from "lucide-react";
+import { History, Eye, Loader2, AlertTriangle, Info } from "lucide-react";
 import { getSubmittedMarksHistory } from "@/lib/actions/teacher-actions";
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams } from "next/navigation";
@@ -59,8 +59,13 @@ export default function MarksHistoryPage() {
         try {
             const submissionData = await getSubmittedMarksHistory(validTeacherId);
             setHistory(submissionData);
-            if (submissionData.length === 0 && !pageError) { // Only toast if no other error is present
-                toast({ title: "No History", description: "No submission history found for your account.", variant: "default" });
+            if (submissionData.length === 0 && !pageError) { 
+                toast({ 
+                  title: "No History Found", 
+                  description: "You have not submitted any marks yet, or no submissions match the current filters.", 
+                  variant: "default",
+                  action: <Info className="text-blue-500" /> 
+                });
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
@@ -71,7 +76,7 @@ export default function MarksHistoryPage() {
         }
     }
     fetchData(teacherIdFromUrl);
-  }, [searchParams, toast, pageError]); // Added pageError to dependency array to avoid re-toast on error
+  }, [searchParams, toast]); 
 
   const getStatusVariant = (status: SubmissionHistoryItem['status']) => {
     if (status.includes("Anomaly Detected")) return "default"; 
@@ -166,10 +171,10 @@ export default function MarksHistoryPage() {
               </TableBody>
             </Table>
           ) : (
-             !isLoading && currentTeacherId && <p className="text-center text-muted-foreground py-8">No submission history found.</p>
+             !isLoading && currentTeacherId && <p className="text-center text-muted-foreground py-8">No submission history found for your account.</p>
           )}
            {!currentTeacherId && !pageError && !isLoading && ( 
-             <p className="text-center text-muted-foreground py-8">Teacher ID not found. Cannot load history.</p>
+             <p className="text-center text-muted-foreground py-8">Teacher ID not found. Cannot load history. Please try logging in again.</p>
            )}
         </CardContent>
       </Card>

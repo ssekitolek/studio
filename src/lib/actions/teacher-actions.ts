@@ -107,8 +107,7 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
   if (gradeEntries.length > 0) {
     if (!assessmentDetails.subjectName || !assessmentDetails.examName || assessmentDetails.subjectName.startsWith("Unknown") || assessmentDetails.examName.startsWith("Unknown") || assessmentDetails.subjectName.startsWith("Error:") || assessmentDetails.examName.startsWith("Error:")) {
         console.warn("[Teacher Action - submitMarks] Could not retrieve valid subject name or exam name for anomaly detection for assessmentId:", data.assessmentId, `Subject: ${assessmentDetails.subjectName}, Exam: ${assessmentDetails.examName}. Skipping AI anomaly check.`);
-        // Optionally, you could set a default anomaly "warning" here if required.
-        // For now, we skip, meaning anomalyResult will be undefined, and submission will proceed as "Accepted" unless other issues.
+        
     } else {
         const anomalyInput: GradeAnomalyDetectionInput = {
           subject: assessmentDetails.subjectName,
@@ -154,7 +153,7 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
   try {
     const markSubmissionsRef = collection(db, "markSubmissions");
     const docRef = await addDoc(markSubmissionsRef, submissionPayload);
-    console.log(`[Teacher Action - submitMarks] Marks successfully saved to Firestore. Document ID: ${docRef.id}`);
+    console.log(`[Teacher Action - submitMarks] Marks successfully saved to Firestore. Document ID: ${docRef.id}, Status: ${initialStatus}`);
   } catch (error) {
     console.error("[Teacher Action - submitMarks] Error saving submission to Firestore:", error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred while saving.";
@@ -207,7 +206,7 @@ async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName
 
     
     const assessmentName = `${cls?.name || 'Unknown Class'} - ${subject?.name || 'Unknown Subject'} - ${exam?.name || 'Unknown Exam'}`;    
-    const historicalAverage = undefined; // Placeholder, implement if needed
+    const historicalAverage = undefined; 
 
     const result = {
         subjectName: subject?.name || "Unknown Subject",
@@ -361,7 +360,7 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
           const isRelevantForClassTeacher = 
             (!examObj.classId || examObj.classId === classObj.id) &&
             (!examObj.subjectId || examObj.subjectId === subjectObj.id) &&
-            (!examObj.teacherId || examObj.teacherId === teacherId || examObj.teacherId === null); // Also consider exams not assigned to any specific teacher
+            (!examObj.teacherId || examObj.teacherId === teacherId || examObj.teacherId === null); 
           
           if (isRelevantForClassTeacher) {
             const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`;
