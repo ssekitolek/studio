@@ -510,7 +510,7 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
                 const examIdFromSubmission = submission.assessmentId.split('_')[0];
                 const examIsCurrentTerm = allExams.some(e => e.id === examIdFromSubmission && e.termId === currentTermId);
 
-                // Filter out if DOS status is 'Approved' or 'Pending'
+                // Filter out if DOS status is 'Approved' or 'Pending' (but not 'Rejected')
                 if (examIsCurrentTerm && (submission.dosStatus === 'Approved' || submission.dosStatus === 'Pending')) {
                     submittedOrApprovedAssessmentIdsForCurrentTerm.add(submission.assessmentId);
                 }

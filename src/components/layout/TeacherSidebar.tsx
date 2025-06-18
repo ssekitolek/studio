@@ -30,8 +30,8 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
   const { state } = useSidebar();
 
   // Get dynamic params from URL using the hook, more reliable for client-side updates
-  const teacherIdFromUrl = searchParamsHook.get("teacherId");
-  const teacherNameFromUrlRaw = searchParamsHook.get("teacherName");
+  const teacherIdFromUrl = searchParamsHook?.get("teacherId");
+  const teacherNameFromUrlRaw = searchParamsHook?.get("teacherName");
 
   // Prioritize URL params from hook, fallback to props (e.g., for SSR or if hook not ready/URL has no params yet)
   const currentTeacherId = teacherIdFromUrl || teacherIdParam;
@@ -48,8 +48,8 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
     currentTeacherName = teacherNameParam;
   }
 
-  const validTeacherId = currentTeacherId && currentTeacherId.toLowerCase() !== "undefined" && currentTeacherId.trim() !== "" ? currentTeacherId : undefined;
-  const validDecodedTeacherName = currentTeacherName && currentTeacherName.toLowerCase() !== "undefined" && currentTeacherName.trim() !== "" ? currentTeacherName : "Teacher";
+  const validTeacherId = currentTeacherId && currentTeacherId.toLowerCase() !== "undefined" && currentTeacherId.trim() !== "" && currentTeacherId !== "undefined" ? currentTeacherId : undefined;
+  const validDecodedTeacherName = currentTeacherName && currentTeacherName.toLowerCase() !== "undefined" && currentTeacherName.trim() !== "" && currentTeacherName !== "undefined" ? currentTeacherName : "Teacher";
 
   const encodedTeacherId = validTeacherId ? encodeURIComponent(validTeacherId) : '';
   const encodedTeacherName = encodeURIComponent(validDecodedTeacherName);

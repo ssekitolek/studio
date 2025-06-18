@@ -586,11 +586,11 @@ export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success:
         termId: examPayload.termId,
         maxMarks: examPayload.maxMarks,
         description: examPayload.description === null ? undefined : examPayload.description,
-        examDate: examPayload.examDate === null ? undefined : examPayload.examDate,
-        classId: examPayload.classId === null ? undefined : examPayload.classId,
-        subjectId: examPayload.subjectId === null ? undefined : examPayload.subjectId,
-        teacherId: examPayload.teacherId === null ? undefined : examPayload.teacherId,
-        marksSubmissionDeadline: examPayload.marksSubmissionDeadline === null ? undefined : examPayload.marksSubmissionDeadline,
+        examDate: examPayload.examDate === null ? undefined : examData.examDate, // Corrected
+        classId: examPayload.classId === null ? undefined : examData.classId, // Corrected
+        subjectId: examPayload.subjectId === null ? undefined : examPayload.subjectId, // Corrected
+        teacherId: examPayload.teacherId === null ? undefined : examData.teacherId, // Corrected
+        marksSubmissionDeadline: examPayload.marksSubmissionDeadline === null ? undefined : examData.marksSubmissionDeadline, // Corrected
     };
     revalidatePath("/dos/settings/exams");
     return { success: true, message: "Exam created successfully.", exam: newExam };

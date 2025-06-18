@@ -218,16 +218,7 @@ export default function SubmitMarksPage() {
             });
             setAnomalies([]);
             setShowAnomalyWarning(false);
-            // Reset student scores, keep assessment selected and students listed
-            // This gives visual feedback that this particular assessment is done
-            // The assessment will be removed from the list on next full fetch.
-            const studentFields = form.getValues("marks").map(mark => ({
-                studentId: mark.studentId,
-                studentName: mark.studentName,
-                score: null, // Reset score
-            }));
-            form.reset({ assessmentId: data.assessmentId, marks: studentFields });
-
+            
             // Refetch assessments to remove the submitted one from the list
             if(currentTeacherId) {
                 setIsLoadingAssessments(true);
@@ -422,7 +413,7 @@ export default function SubmitMarksPage() {
             <div className="flex justify-end">
               <Button
                 type="submit"
-                disabled={isPending || isLoadingStudents || isLoadingAssessments || !currentTeacherId }
+                disabled={isPending || isLoadingStudents || isLoadingAssessments || !currentTeacherId}
                 size="lg"
               >
                 {isPending ? (
