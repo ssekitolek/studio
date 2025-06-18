@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation"; // Import useSearchParams
 import {
   Sidebar,
   SidebarHeader,
@@ -20,56 +20,79 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { LayoutDashboard, BookOpenCheck, History, LogOut, GanttChartSquare, UserCircle } from "lucide-react";
 
 interface TeacherSidebarProps {
-  teacherIdParam?: string; 
+  // Props from layout can still be used for SSR or initial hydration if needed,
+  // but client-side params will be more up-to-date.
+  teacherIdParam?: string;
   teacherNameParam?: string;
 }
 
 export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSidebarProps) {
   const pathname = usePathname();
+  const searchParamsHook = useSearchParams(); // Use the hook
   const { state } = useSidebar();
-  
-  const validTeacherId = teacherIdParam && teacherIdParam.toLowerCase() !== "undefined" && teacherIdParam.trim() !== "" ? teacherIdParam : undefined;
-  const validTeacherName = teacherNameParam && teacherNameParam.toLowerCase() !== "undefined" && teacherNameParam.trim() !== "" ? teacherNameParam : "Teacher";
+
+  // Get dynamic params from URL using the hook
+  const teacherIdFromUrl = searchParamsHook.get("teacherId");
+  const teacherNameFromUrlRaw = searchParamsHook.get("teacherName");
+
+  // Prioritize URL params from hook, fallback to props (e.g., for SSR or if hook not ready/URL has no params yet)
+  const currentTeacherId = teacherIdFromUrl || teacherIdParam;
+  let currentTeacherName = "Teacher"; // Default
+
+  if (teacherNameFromUrlRaw) {
+    try {
+        currentTeacherName = decodeURIComponent(teacherNameFromUrlRaw);
+    } catch (e) {
+        console.warn("Failed to decode teacherNameFromUrlRaw from URL, using fallback/prop.");
+        currentTeacherName = teacherNameParam || "Teacher";
+    }
+  } else if (teacherNameParam) {
+    currentTeacherName = teacherNameParam;
+  }
+
+
+  const validTeacherId = currentTeacherId && currentTeacherId.toLowerCase() !== "undefined" && currentTeacherId.trim() !== "" ? currentTeacherId : undefined;
+  const validDecodedTeacherName = currentTeacherName && currentTeacherName.toLowerCase() !== "undefined" && currentTeacherName.trim() !== "" ? currentTeacherName : "Teacher";
 
   const encodedTeacherId = validTeacherId ? encodeURIComponent(validTeacherId) : '';
-  const encodedTeacherName = encodeURIComponent(validTeacherName); 
+  const encodedTeacherName = encodeURIComponent(validDecodedTeacherName);
 
   const navItems = [
-    { 
-      href: validTeacherId ? `/teacher/dashboard?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#", 
-      label: "Dashboard", 
-      icon: LayoutDashboard, 
+    {
+      href: validTeacherId ? `/teacher/dashboard?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
+      label: "Dashboard",
+      icon: LayoutDashboard,
       tooltip: validTeacherId ? "View your dashboard" : "Dashboard (Login Required)",
       disabled: !validTeacherId,
     },
-    { 
-      href: validTeacherId ? `/teacher/marks/submit?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#", 
-      label: "Submit Marks", 
-      icon: BookOpenCheck, 
+    {
+      href: validTeacherId ? `/teacher/marks/submit?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
+      label: "Submit Marks",
+      icon: BookOpenCheck,
       tooltip: validTeacherId ? "Submit student marks" : "Submit Marks (Login Required)",
       disabled: !validTeacherId,
     },
-    { 
-      href: validTeacherId ? `/teacher/marks/history?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#", 
-      label: "View Submissions", 
-      icon: History, 
+    {
+      href: validTeacherId ? `/teacher/marks/history?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
+      label: "View Submissions",
+      icon: History,
       tooltip: validTeacherId ? "View past mark submissions" : "View Submissions (Login Required)",
       disabled: !validTeacherId,
     },
-    { 
-      href: validTeacherId ? `/teacher/profile?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#", 
-      label: "My Profile", 
-      icon: UserCircle, 
+    {
+      href: validTeacherId ? `/teacher/profile?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
+      label: "My Profile",
+      icon: UserCircle,
       tooltip: validTeacherId ? "View your profile" : "My Profile (Login Required)",
       disabled: !validTeacherId,
     },
   ];
 
   const isItemActive = (href: string) => {
-    if (!validTeacherId && href.startsWith("/teacher/")) { 
+    if (!validTeacherId && href.startsWith("/teacher/")) {
         return false;
     }
-    const baseHref = href.split('?')[0]; 
+    const baseHref = href.split('?')[0];
     return pathname === baseHref || (baseHref !== "/teacher/dashboard" && pathname.startsWith(baseHref));
   };
 
@@ -97,9 +120,9 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
           <SidebarMenu className="px-2 py-2 space-y-1">
             {navItems.map((item, index) => (
               <SidebarMenuItem key={index}>
-                <Link href={item.disabled ? "#" : item.href} passHref={!item.disabled}>
+                <Link href={item.disabled ? "#" : item.href}>
                   <SidebarMenuButton
-                    asChild={false} 
+                    asChild={false}
                     isActive={!item.disabled && isItemActive(item.href)}
                     tooltip={item.tooltip}
                     className="justify-start"
@@ -120,7 +143,7 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter className="p-2">
-        <Link href="/" passHref>
+        <Link href="/">
             <SidebarMenuButton tooltip="Log Out" className="justify-start" asChild={false}>
               <>
                 <LogOut className="h-5 w-5" />
@@ -132,5 +155,4 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
     </Sidebar>
   );
 }
-
     
