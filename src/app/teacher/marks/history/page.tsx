@@ -34,6 +34,8 @@ export default function MarksHistoryPage() {
     }
 
     const teacherIdFromUrl = searchParams.get("teacherId");
+    console.log(`[MarksHistoryPage] teacherIdFromUrl from searchParams: '${teacherIdFromUrl}'`);
+
 
     if (!teacherIdFromUrl || teacherIdFromUrl.trim() === "" || teacherIdFromUrl.toLowerCase() === "undefined" || teacherIdFromUrl === "undefined") {
       const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login again to view history.`;
@@ -52,6 +54,7 @@ export default function MarksHistoryPage() {
         console.log(`[MarksHistoryPage] Fetching data for teacherId: ${validTeacherId}`);
         try {
             const submissionData = await getSubmittedMarksHistory(validTeacherId);
+            console.log(`[MarksHistoryPage] Received ${submissionData.length} submission items from action.`);
             setHistory(submissionData);
             if (submissionData.length === 0 && !pageError) { 
                 toast({
@@ -65,13 +68,14 @@ export default function MarksHistoryPage() {
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
             toast({ title: "Error Loading History", description: errorMessage, variant: "destructive" });
             setPageError(`Failed to load submission history: ${errorMessage}`);
+            console.error(`[MarksHistoryPage] Error in fetchData for teacherId ${validTeacherId}:`, error);
             setHistory([]);
         } finally {
             setIsLoading(false);
         }
     }
     fetchData(teacherIdFromUrl);
-  }, [searchParams, toast]); 
+  }, [searchParams, toast]); // Removed pageError from deps to prevent re-triggering on its own change
 
   const getStatusVariantAndClass = (item: SubmissionHistoryDisplayItem): {variant: "default" | "destructive" | "secondary", className: string, icon?: React.ReactNode} => {
     if (item.status.includes("Approved by D.O.S.")) return { variant: "default", className: "bg-green-500 hover:bg-green-600 text-white", icon: <CheckCircle2 className="mr-1 inline-block h-3 w-3" /> };
@@ -79,8 +83,9 @@ export default function MarksHistoryPage() {
     if (item.status.includes("Pending D.O.S. Review (Anomaly)")) return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
     if (item.status.includes("Pending D.O.S. Review")) return { variant: "secondary", className: "bg-blue-500 hover:bg-blue-600 text-white", icon: <Info className="mr-1 inline-block h-3 w-3" /> };
     
+    // Fallbacks for older or less specific statuses if any exist from teacher's initial AI check
     if (item.status && item.status.includes("Anomaly Detected")) return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
-    if (item.status === "Accepted") return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" };
+    if (item.status === "Accepted") return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" }; // Might be pre-DOS review
     
     return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" }; 
   };
@@ -200,6 +205,16 @@ export default function MarksHistoryPage() {
              !isLoading && currentTeacherId && history.length === 0 && !pageError && (
                 <p className="text-center text-muted-foreground py-8">No submission history found for your account.</p>
              )
+          )}
+          {!isLoading && currentTeacherId && history.length === 0 && pageError && (
+             <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Error Loading History</AlertTitle>
+                <AlertDescription>
+                    Could not load submission history. Please try again later or contact support.
+                    Error: {pageError}
+                </AlertDescription>
+            </Alert>
           )}
         </CardContent>
       </Card>
