@@ -172,7 +172,7 @@ export default function MarksHistoryPage() {
                   <TableHead>Date Submitted</TableHead>
                   <TableHead className="text-center">Students</TableHead>
                   <TableHead className="text-center">Avg. Score</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-center">D.O.S. Status</TableHead>
                   <TableHead>D.O.S. Reject Reason</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
