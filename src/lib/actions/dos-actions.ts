@@ -878,7 +878,7 @@ export async function downloadAllMarks(format: 'csv' | 'xlsx' | 'pdf' = 'csv'): 
       XLSX.utils.book_append_sheet(workbook, worksheet, "Marks Report");
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       return { success: true, message: "XLSX data prepared.", data: new Uint8Array(excelBuffer) };
-    } else if (format === 'pdf') {
+    } else if (format === 'pdf') { 
       let pdfTextContent = "Marks Report\n";
       pdfTextContent += "====================================\n\n";
       const header = Object.keys(reportData[0]).join('\t|\t');

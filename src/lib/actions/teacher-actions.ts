@@ -502,7 +502,7 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
                 where("teacherId", "==", teacherId)
             );
             const submissionsSnapshot = await getDocs(q);
-            const nonRejectedSubmittedAssessmentIdsForCurrentTerm = new Set<string>();
+            const submittedOrApprovedAssessmentIdsForCurrentTerm = new Set<string>();
             const allExams = await getAllExamsFromDOS(); 
 
             submissionsSnapshot.forEach(docSnap => {
@@ -510,12 +510,13 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
                 const examIdFromSubmission = submission.assessmentId.split('_')[0];
                 const examIsCurrentTerm = allExams.some(e => e.id === examIdFromSubmission && e.termId === currentTermId);
 
+                // Filter out if DOS status is 'Approved' or 'Pending'
                 if (examIsCurrentTerm && (submission.dosStatus === 'Approved' || submission.dosStatus === 'Pending')) {
-                    nonRejectedSubmittedAssessmentIdsForCurrentTerm.add(submission.assessmentId);
+                    submittedOrApprovedAssessmentIdsForCurrentTerm.add(submission.assessmentId);
                 }
             });
 
-            assessmentsForForm = assessmentsForForm.filter(assessment => !nonRejectedSubmittedAssessmentIdsForCurrentTerm.has(assessment.id));
+            assessmentsForForm = assessmentsForForm.filter(assessment => !submittedOrApprovedAssessmentIdsForCurrentTerm.has(assessment.id));
             console.log(`[getTeacherAssessments] After filtering submitted (Pending/Approved for current term) assessments, ${assessmentsForForm.length} remain.`);
         } else {
             console.warn("[getTeacherAssessments] No current term ID set, cannot filter by submitted assessments for the current term. All potential assessments will be shown.");
