@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation"; // Import useSearchParams
+import { usePathname, useSearchParams } from "next/navigation"; 
 import {
   Sidebar,
   SidebarHeader,
@@ -20,18 +20,16 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { LayoutDashboard, BookOpenCheck, History, LogOut, GanttChartSquare, UserCircle } from "lucide-react";
 
 interface TeacherSidebarProps {
-  // Props from layout can still be used for SSR or initial hydration if needed,
-  // but client-side params will be more up-to-date.
-  teacherIdParam?: string;
-  teacherNameParam?: string;
+  teacherIdParam?: string; // Prop from layout, used as fallback or for SSR
+  teacherNameParam?: string; // Prop from layout
 }
 
 export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSidebarProps) {
   const pathname = usePathname();
-  const searchParamsHook = useSearchParams(); // Use the hook
+  const searchParamsHook = useSearchParams(); 
   const { state } = useSidebar();
 
-  // Get dynamic params from URL using the hook
+  // Get dynamic params from URL using the hook, more reliable for client-side updates
   const teacherIdFromUrl = searchParamsHook.get("teacherId");
   const teacherNameFromUrlRaw = searchParamsHook.get("teacherName");
 
@@ -43,13 +41,12 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
     try {
         currentTeacherName = decodeURIComponent(teacherNameFromUrlRaw);
     } catch (e) {
-        console.warn("Failed to decode teacherNameFromUrlRaw from URL, using fallback/prop.");
+        console.warn("Failed to decode teacherNameFromUrlRaw from URL in Sidebar, using fallback/prop.");
         currentTeacherName = teacherNameParam || "Teacher";
     }
   } else if (teacherNameParam) {
     currentTeacherName = teacherNameParam;
   }
-
 
   const validTeacherId = currentTeacherId && currentTeacherId.toLowerCase() !== "undefined" && currentTeacherId.trim() !== "" ? currentTeacherId : undefined;
   const validDecodedTeacherName = currentTeacherName && currentTeacherName.toLowerCase() !== "undefined" && currentTeacherName.trim() !== "" ? currentTeacherName : "Teacher";
@@ -120,9 +117,9 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
           <SidebarMenu className="px-2 py-2 space-y-1">
             {navItems.map((item, index) => (
               <SidebarMenuItem key={index}>
-                <Link href={item.disabled ? "#" : item.href}>
+                <Link href={item.disabled ? "#" : item.href} legacyBehavior={false}>
                   <SidebarMenuButton
-                    asChild={false}
+                    asChild={false} 
                     isActive={!item.disabled && isItemActive(item.href)}
                     tooltip={item.tooltip}
                     className="justify-start"
@@ -143,7 +140,7 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter className="p-2">
-        <Link href="/">
+        <Link href="/" legacyBehavior={false}>
             <SidebarMenuButton tooltip="Log Out" className="justify-start" asChild={false}>
               <>
                 <LogOut className="h-5 w-5" />

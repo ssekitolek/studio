@@ -160,10 +160,10 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
     return { success: false, message: `Failed to save submission: ${errorMessage}` };
   }
 
-  revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}`); 
-  revalidatePath(`/teacher/marks/history?teacherId=${teacherId}`); 
+  revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}&teacherName=PLACEHOLDER_NAME`); 
+  revalidatePath(`/teacher/marks/history?teacherId=${teacherId}&teacherName=PLACEHOLDER_NAME`); 
   revalidatePath(`/dos/marks-review`); 
-  revalidatePath(`/teacher/dashboard?teacherId=${teacherId}`);
+  revalidatePath(`/teacher/dashboard?teacherId=${teacherId}&teacherName=PLACEHOLDER_NAME`);
   
   if (anomalyResult?.hasAnomalies) {
     return { success: true, message: "Marks submitted. Potential anomalies were detected and logged.", anomalies: anomalyResult };
@@ -267,13 +267,20 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
 
         const history: SubmissionHistoryItem[] = querySnapshot.docs.map(docSnap => {
             const data = docSnap.data();
+            // Defensive checks for potentially missing fields
+            const assessmentName = data.assessmentName || "N/A";
+            const dateSubmitted = data.dateSubmitted instanceof Timestamp ? data.dateSubmitted.toDate().toISOString() : new Date().toISOString();
+            const studentCount = typeof data.studentCount === 'number' ? data.studentCount : 0;
+            const averageScore = typeof data.averageScore === 'number' ? data.averageScore : null;
+            const status = typeof data.status === 'string' ? data.status : "Unknown";
+
             return {
                 id: docSnap.id,
-                assessmentName: data.assessmentName || "N/A",
-                dateSubmitted: (data.dateSubmitted as Timestamp).toDate().toISOString(),
-                studentCount: data.studentCount || 0,
-                averageScore: data.averageScore !== undefined ? data.averageScore : null,
-                status: data.status || "Unknown",
+                assessmentName,
+                dateSubmitted,
+                studentCount,
+                averageScore,
+                status,
             } as SubmissionHistoryItem;
         });
         console.log(`[getSubmittedMarksHistory] Fetched ${history.length} history items for teacherId: ${teacherId}`);
@@ -286,7 +293,7 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
 
 async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<Map<string, { classObj: ClassInfo; subjectObj: SubjectType; examObj: ExamTypeFirebase }>> {
   const responsibilitiesMap = new Map<string, { classObj: ClassInfo; subjectObj: SubjectType; examObj: ExamTypeFirebase }>();
-  console.log(`[LOG_TAR] START for teacherId: "${teacherId}"`);
+  console.log(`[LOG_TAR] ACTION START for teacherId: "${teacherId}"`);
 
   if (!db) {
     console.error("[LOG_TAR] CRITICAL_ERROR_DB_NULL: Firestore db object is null.");

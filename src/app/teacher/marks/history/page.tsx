@@ -36,13 +36,13 @@ export default function MarksHistoryPage() {
     if (!searchParams) {
         setPageError("Could not access URL parameters. Please try reloading or logging in again.");
         setIsLoading(false);
-        toast({ title: "Error", description: "URL parameters unavailable.", variant: "destructive" });
+        toast({ title: "Error", description: "URL parameters unavailable for history page.", variant: "destructive" });
         return;
     }
 
     const teacherIdFromUrl = searchParams.get("teacherId");
 
-    if (!teacherIdFromUrl || teacherIdFromUrl.trim() === "" || teacherIdFromUrl.toLowerCase() === "undefined") {
+    if (!teacherIdFromUrl || teacherIdFromUrl.trim() === "" || teacherIdFromUrl.toLowerCase() === "undefined" || teacherIdFromUrl === "undefined") {
       const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login again to view history.`;
       toast({ title: "Access Denied", description: msg, variant: "destructive" });
       setPageError(msg);
@@ -56,6 +56,7 @@ export default function MarksHistoryPage() {
     setIsLoading(true);
 
     async function fetchData(validTeacherId: string) {
+        console.log(`[MarksHistoryPage] Fetching data for teacherId: ${validTeacherId}`);
         try {
             const submissionData = await getSubmittedMarksHistory(validTeacherId);
             setHistory(submissionData);
@@ -71,12 +72,13 @@ export default function MarksHistoryPage() {
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
             toast({ title: "Error Loading History", description: errorMessage, variant: "destructive" });
             setPageError(`Failed to load submission history: ${errorMessage}`);
+            setHistory([]); // Clear history on error
         } finally {
             setIsLoading(false);
         }
     }
     fetchData(teacherIdFromUrl);
-  }, [searchParams, toast]); 
+  }, [searchParams, toast]); // Removed pageError from deps to avoid re-fetch on error setting
 
   const getStatusVariant = (status: SubmissionHistoryItem['status']) => {
     if (status.includes("Anomaly Detected")) return "default"; 
@@ -92,7 +94,7 @@ export default function MarksHistoryPage() {
   }
 
 
-  if (pageError) {
+  if (pageError && !isLoading) { // Show error only after loading attempt if error occurs
      return (
       <div className="space-y-6">
         <PageHeader
@@ -114,12 +116,37 @@ export default function MarksHistoryPage() {
 
   if (isLoading && currentTeacherId) { 
     return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-2">Loading submission history...</p>
+      <div className="space-y-6">
+          <PageHeader
+            title="Marks Submission History"
+            description="Review your past mark submissions and their statuses."
+            icon={History}
+          />
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="ml-2">Loading submission history...</p>
+          </div>
       </div>
     );
   }
+  
+  if (!currentTeacherId && !isLoading && !pageError) { // Teacher ID missing but no explicit fetch error yet
+     return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Marks Submission History"
+          description="View your personal information."
+          icon={History}
+        />
+        <Card className="shadow-md">
+          <CardContent className="py-8 text-center text-muted-foreground">
+             Teacher ID not found. Please <Link href="/login/teacher" className="underline">login</Link> to view your submission history.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
 
   return (
     <div className="space-y-6">
@@ -137,7 +164,7 @@ export default function MarksHistoryPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {currentTeacherId && history.length > 0 ? (
+          {!isLoading && currentTeacherId && history.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -171,15 +198,14 @@ export default function MarksHistoryPage() {
               </TableBody>
             </Table>
           ) : (
-             !isLoading && currentTeacherId && <p className="text-center text-muted-foreground py-8">No submission history found for your account.</p>
+             !isLoading && currentTeacherId && history.length === 0 && !pageError && (
+                <p className="text-center text-muted-foreground py-8">No submission history found for your account.</p>
+             )
           )}
-           {!currentTeacherId && !pageError && !isLoading && ( 
-             <p className="text-center text-muted-foreground py-8">Teacher ID not found. Cannot load history. Please try logging in again.</p>
-           )}
         </CardContent>
       </Card>
 
-      {currentTeacherId && history.some(h => h.status.includes("Anomaly Detected")) && (
+      {!isLoading && currentTeacherId && history.some(h => h.status.includes("Anomaly Detected")) && (
          <Alert variant="default" className="border-yellow-500 bg-yellow-500/10">
             <AlertTriangle className="h-5 w-5 text-yellow-600" />
             <AlertTitle className="font-headline text-yellow-700">Review Required</AlertTitle>
@@ -192,6 +218,6 @@ export default function MarksHistoryPage() {
     </div>
   );
 }
-
     
 
+    
