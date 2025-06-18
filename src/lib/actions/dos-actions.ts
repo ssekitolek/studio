@@ -939,7 +939,7 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
 
     if (!submissionData.submittedMarks || submissionData.submittedMarks.length === 0) {
       console.log(`[DOS Action - getMarksForReview] Submission found (ID: ${latestSubmissionDoc.id}) but contains no marks for assessmentId: ${assessmentId}`);
-      return { ...defaultPayload, submissionId: latestSubmissionDoc.id }; 
+      return { ...defaultPayload, submissionId: latestSubmissionDoc.id, dosStatus: submissionData.dosStatus, dosRejectReason: submissionData.dosRejectReason }; 
     }
 
     const allStudents = await getStudents();
@@ -973,6 +973,7 @@ export async function approveMarkSubmission(submissionId: string): Promise<{ suc
             dosStatus: 'Approved',
             dosRejectReason: null, 
             dosLastReviewedAt: Timestamp.now(),
+            // dosLastReviewedBy: "D.O.S_ADMIN_ID", // TODO: Replace with actual admin ID if/when auth is added
         });
         revalidatePath("/dos/marks-review");
         
@@ -1003,6 +1004,7 @@ export async function rejectMarkSubmission(submissionId: string, reason: string)
             dosStatus: 'Rejected',
             dosRejectReason: reason,
             dosLastReviewedAt: Timestamp.now(),
+             // dosLastReviewedBy: "D.O.S_ADMIN_ID", // TODO: Replace with actual admin ID if/when auth is added
         });
         revalidatePath("/dos/marks-review");
         const submissionSnap = await getDoc(submissionRef);
