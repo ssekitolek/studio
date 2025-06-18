@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { ShieldAlert, Loader2, CheckCircle, Search, FileWarning, Info, Download, ThumbsUp, ThumbsDown } from "lucide-react";
 import { getClasses, getSubjects, getExams, getMarksForReview, approveMarkSubmission, rejectMarkSubmission, downloadSingleMarkSubmission } from "@/lib/actions/dos-actions";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
-import type { ClassInfo, Subject as SubjectType, Exam, AnomalyExplanation, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord } from "@/lib/types";
+import type { ClassInfo, Subject as SubjectType, Exam, AnomalyExplanation, GradeEntry as GenkitGradeEntry } from "@/lib/types";
 import type { MarksForReviewPayload } from "@/lib/actions/dos-actions";
 import { useToast } from "@/hooks/use-toast";
 
@@ -77,26 +77,26 @@ export default function MarksReviewPage() {
       const fetchedPayload = await getMarksForReview(selectedClass, selectedSubject, selectedExam);
       setMarksPayload(fetchedPayload);
       if (!fetchedPayload.submissionId || fetchedPayload.marks.length === 0) {
-        toast({ title: "No Marks Found", description: "No marks data found for the selected criteria. This could mean no marks were submitted by the teacher yet for this specific combination.", variant: "default", action: <Info className="text-blue-500"/> });
+        toast({ title: "No Marks Found", description: "No marks data found for the selected criteria. This could mean no marks were submitted by the teacher yet, or the submission was empty.", variant: "default", action: <Info className="text-blue-500"/> });
       }
     } catch (error) {
       console.error("Error fetching marks for review:", error);
-      toast({ title: "Error", description: "Failed to fetch marks.", variant: "destructive" });
+      toast({ title: "Error", description: `Failed to fetch marks: ${error instanceof Error ? error.message : String(error)}`, variant: "destructive" });
     } finally {
       setIsLoadingMarks(false);
     }
   };
 
   const handleAnomalyCheck = async () => {
-    if (!marksPayload || marksPayload.marks.length === 0) {
+    if (!marksPayload?.submissionId || marksPayload.marks.length === 0) {
       toast({ title: "No Marks", description: "No marks loaded to check for anomalies.", variant: "destructive" });
       return;
     }
 
-    const currentSubject = subjects.find(s => s.id === selectedSubject);
-    const currentExam = exams.find(e => e.id === selectedExam);
+    const currentSubjectObj = subjects.find(s => s.id === selectedSubject);
+    const currentExamObj = exams.find(e => e.id === selectedExam);
 
-    if (!currentSubject || !currentExam) {
+    if (!currentSubjectObj || !currentExamObj) {
         toast({ title: "Error", description: "Could not find subject or exam details for anomaly check.", variant: "destructive" });
         return;
     }
@@ -104,8 +104,8 @@ export default function MarksReviewPage() {
     const gradeEntries: GenkitGradeEntry[] = marksPayload.marks.map(m => ({ studentId: m.studentId, grade: m.grade }));
 
     const anomalyInput: GradeAnomalyDetectionInput = {
-      subject: currentSubject.name,
-      exam: currentExam.name,
+      subject: currentSubjectObj.name,
+      exam: currentExamObj.name,
       grades: gradeEntries,
       historicalAverage: historicalAverage,
     };
@@ -133,7 +133,6 @@ export default function MarksReviewPage() {
       const result = await approveMarkSubmission(marksPayload.submissionId!);
       toast({ title: result.success ? "Success" : "Error", description: result.message, variant: result.success ? "default" : "destructive" });
       if (result.success) {
-        // Refetch marks to update status and potentially clear list if this was the last action
         handleFetchMarks(); 
       }
     });
@@ -149,7 +148,6 @@ export default function MarksReviewPage() {
       const result = await rejectMarkSubmission(marksPayload.submissionId!, rejectReason);
       toast({ title: result.success ? "Success" : "Error", description: result.message, variant: result.success ? "default" : "destructive" });
       if (result.success) {
-        // Refetch marks to update status and potentially clear list
         handleFetchMarks(); 
         setShowRejectInput(false);
         setRejectReason("");
@@ -168,8 +166,7 @@ export default function MarksReviewPage() {
         if (result.success && result.data) {
           let blobType: string;
           let fileName: string;
-          const assessmentNameSlug = marksPayload.marks.length > 0 ? `${subjects.find(s=>s.id === selectedSubject)?.name}_${exams.find(e=>e.id === selectedExam)?.name}`.replace(/[^a-zA-Z0-9_]/g, '_') : "submission";
-
+          const assessmentNameSlug = marksPayload.assessmentName?.replace(/[^a-zA-Z0-9_]/g, '_') || "submission";
 
           switch (format) {
             case "xlsx":
@@ -265,23 +262,23 @@ export default function MarksReviewPage() {
         </div>
       )}
 
-      {!isLoadingMarks && currentMarks.length > 0 && marksPayload?.submissionId && (
+      {!isLoadingMarks && marksPayload && marksPayload.submissionId && (
         <Card className="shadow-md">
           <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div>
-              <CardTitle className="font-headline text-xl text-primary">Latest Submitted Marks Overview</CardTitle>
+              <CardTitle className="font-headline text-xl text-primary">Latest Submitted Marks: {marksPayload.assessmentName || "N/A"}</CardTitle>
               <CardDescription>
-                Marks for the selected criteria. D.O.S. Status: <Badge variant={currentDosStatus === 'Approved' ? 'default' : currentDosStatus === 'Rejected' ? 'destructive' : 'secondary'} className={currentDosStatus === 'Approved' ? 'bg-green-500 text-white' : currentDosStatus === 'Rejected' ? 'bg-red-500 text-white' : '' }>{currentDosStatus || 'N/A'}</Badge>
-                {currentDosStatus === 'Rejected' && currentDosRejectReason && <span className="text-xs italic"> Reason: {currentDosRejectReason}</span>}
+                D.O.S. Status: <Badge variant={currentDosStatus === 'Approved' ? 'default' : currentDosStatus === 'Rejected' ? 'destructive' : 'secondary'} className={`${currentDosStatus === 'Approved' ? 'bg-green-500 text-white' : currentDosStatus === 'Rejected' ? 'bg-red-500 text-white' : '' } align-middle`}>{currentDosStatus || 'N/A'}</Badge>
+                {currentDosStatus === 'Rejected' && currentDosRejectReason && <span className="text-xs italic ml-1"> Reason: {currentDosRejectReason}</span>}
               </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
-                <Button onClick={handleAnomalyCheck} disabled={isActionDisabled || isSubmissionFinalized}>
+                <Button onClick={handleAnomalyCheck} disabled={isActionDisabled || isSubmissionFinalized || currentMarks.length === 0}>
                 {isProcessingAnomalyCheck ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
                 AI Anomaly Check
                 </Button>
-                <Select onValueChange={(value: 'csv' | 'xlsx' | 'pdf') => handleDownload(value)} disabled={isDownloading || !marksPayload?.submissionId}>
-                    <SelectTrigger className="w-auto" disabled={isDownloading || !marksPayload?.submissionId || isActionDisabled}>
+                <Select onValueChange={(value: 'csv' | 'xlsx' | 'pdf') => handleDownload(value)} disabled={isDownloading || !marksPayload?.submissionId || currentMarks.length === 0}>
+                    <SelectTrigger className="w-auto" disabled={isDownloading || !marksPayload?.submissionId || currentMarks.length === 0}>
                         <SelectValue placeholder={isDownloading ? "Downloading..." : "Download As"} />
                     </SelectTrigger>
                     <SelectContent>
@@ -293,62 +290,68 @@ export default function MarksReviewPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Student ID</TableHead>
-                  <TableHead>Student Name</TableHead>
-                  <TableHead className="text-right">Score</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentMarks.map((mark, index) => (
-                  <TableRow key={`${mark.studentId}-${index}`}>
-                    <TableCell>{mark.studentId}</TableCell>
-                    <TableCell>{mark.studentName}</TableCell>
-                    <TableCell className="text-right">{mark.grade}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-          <CardContent className="border-t pt-4 space-y-3">
-            <div className="flex flex-wrap gap-2 justify-end">
-                <Button
-                    variant="outline"
-                    onClick={() => setShowRejectInput(s => !s)}
-                    disabled={isActionDisabled || isSubmissionFinalized}
-                >
-                    <ThumbsDown className="mr-2 h-4 w-4"/> {showRejectInput ? "Cancel Reject" : "Reject Submission"}
-                </Button>
-                <Button
-                    onClick={handleApprove}
-                    disabled={isActionDisabled || isSubmissionFinalized}
-                    className="bg-green-600 hover:bg-green-700"
-                >
-                    {isUpdatingSubmission && currentDosStatus !== 'Approved' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ThumbsUp className="mr-2 h-4 w-4"/>}
-                    Approve Submission
-                </Button>
-            </div>
-            {showRejectInput && !isSubmissionFinalized && (
-                <div className="space-y-2 pt-2">
-                    <Textarea
-                        placeholder="Reason for rejection..."
-                        value={rejectReason}
-                        onChange={(e) => setRejectReason(e.target.value)}
-                        className="min-h-[80px]"
-                        disabled={isActionDisabled}
-                    />
-                    <Button onClick={handleReject} variant="destructive" disabled={isUpdatingSubmission || !rejectReason.trim() || isActionDisabled}>
-                         {isUpdatingSubmission && currentDosStatus !== 'Rejected' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ThumbsDown className="mr-2 h-4 w-4"/>}
-                        Confirm Rejection
-                    </Button>
-                </div>
+            {currentMarks.length > 0 ? (
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Student ID</TableHead>
+                    <TableHead>Student Name</TableHead>
+                    <TableHead className="text-right">Score</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {currentMarks.map((mark, index) => (
+                    <TableRow key={`${mark.studentId}-${index}`}>
+                        <TableCell>{mark.studentId}</TableCell>
+                        <TableCell>{mark.studentName}</TableCell>
+                        <TableCell className="text-right">{mark.grade}</TableCell>
+                    </TableRow>
+                    ))}
+                </TableBody>
+                </Table>
+            ) : (
+                 <p className="text-center text-muted-foreground py-8">No marks were part of this submission entry, or the submission was not found.</p>
             )}
           </CardContent>
+          {currentMarks.length > 0 && (
+            <CardContent className="border-t pt-4 space-y-3">
+                <div className="flex flex-wrap gap-2 justify-end">
+                    <Button
+                        variant="outline"
+                        onClick={() => setShowRejectInput(s => !s)}
+                        disabled={isActionDisabled || isSubmissionFinalized}
+                    >
+                        <ThumbsDown className="mr-2 h-4 w-4"/> {showRejectInput ? "Cancel Reject" : "Reject Submission"}
+                    </Button>
+                    <Button
+                        onClick={handleApprove}
+                        disabled={isActionDisabled || isSubmissionFinalized}
+                        className="bg-green-600 hover:bg-green-700"
+                    >
+                        {isUpdatingSubmission && currentDosStatus !== 'Approved' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ThumbsUp className="mr-2 h-4 w-4"/>}
+                        Approve Submission
+                    </Button>
+                </div>
+                {showRejectInput && !isSubmissionFinalized && (
+                    <div className="space-y-2 pt-2">
+                        <Textarea
+                            placeholder="Reason for rejection..."
+                            value={rejectReason}
+                            onChange={(e) => setRejectReason(e.target.value)}
+                            className="min-h-[80px]"
+                            disabled={isActionDisabled}
+                        />
+                        <Button onClick={handleReject} variant="destructive" disabled={isUpdatingSubmission || !rejectReason.trim() || isActionDisabled}>
+                            {isUpdatingSubmission && currentDosStatus !== 'Rejected' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ThumbsDown className="mr-2 h-4 w-4"/>}
+                            Confirm Rejection
+                        </Button>
+                    </div>
+                )}
+            </CardContent>
+          )}
         </Card>
       )}
-      {!isLoadingMarks && !isLoadingInitialData && selectedClass && selectedSubject && selectedExam && currentMarks.length === 0 && (
+      {!isLoadingMarks && !isLoadingInitialData && selectedClass && selectedSubject && selectedExam && (!marksPayload || !marksPayload.submissionId) && (
            <Card className="shadow-md">
              <CardContent className="py-8">
                 <p className="text-center text-muted-foreground">
@@ -383,5 +386,4 @@ export default function MarksReviewPage() {
     </div>
   );
 }
-
     

@@ -148,8 +148,6 @@ export async function updateTeacherAssignments(
     return { success: false, message: "Firestore is not initialized." };
   }
   
-  console.log(`[DOS Action - updateTeacherAssignments] Teacher ID: ${teacherId}, Received specificSubjectAssignments:`, JSON.stringify(data.specificSubjectAssignments, null, 2));
-
   const validSpecificAssignments = Array.isArray(data.specificSubjectAssignments)
   ? data.specificSubjectAssignments.filter(
       (assignment) =>
@@ -164,9 +162,6 @@ export async function updateTeacherAssignments(
     ).map(a => ({ classId: a.classId, subjectId: a.subjectId, examIds: a.examIds }))
   : [];
   
-  console.log(`[DOS Action - updateTeacherAssignments] Validated and Mapped specificSubjectAssignments to save:`, JSON.stringify(validSpecificAssignments, null, 2));
-
-
   try {
     await runTransaction(db, async (transaction) => {
       const teacherRef = doc(db, "teachers", teacherId);
@@ -585,12 +580,12 @@ export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success:
         name: examPayload.name,
         termId: examPayload.termId,
         maxMarks: examPayload.maxMarks,
-        description: examPayload.description === null ? undefined : examPayload.description,
-        examDate: examPayload.examDate === null ? undefined : examData.examDate, // Corrected
-        classId: examPayload.classId === null ? undefined : examData.classId, // Corrected
-        subjectId: examPayload.subjectId === null ? undefined : examPayload.subjectId, // Corrected
-        teacherId: examPayload.teacherId === null ? undefined : examData.teacherId, // Corrected
-        marksSubmissionDeadline: examPayload.marksSubmissionDeadline === null ? undefined : examData.marksSubmissionDeadline, // Corrected
+        description: examPayload.description === null ? undefined : examData.description,
+        examDate: examPayload.examDate === null ? undefined : examData.examDate,
+        classId: examPayload.classId === null ? undefined : examData.classId,
+        subjectId: examPayload.subjectId === null ? undefined : examPayload.subjectId,
+        teacherId: examPayload.teacherId === null ? undefined : examData.teacherId,
+        marksSubmissionDeadline: examPayload.marksSubmissionDeadline === null ? undefined : examData.marksSubmissionDeadline,
     };
     revalidatePath("/dos/settings/exams");
     return { success: true, message: "Exam created successfully.", exam: newExam };
@@ -904,14 +899,15 @@ export async function downloadAllMarks(format: 'csv' | 'xlsx' | 'pdf' = 'csv'): 
 
 export type MarksForReviewEntry = GenkitGradeEntry & { studentName: string };
 export interface MarksForReviewPayload {
-    submissionId: string | null; 
+    submissionId: string | null;
+    assessmentName: string | null; 
     marks: MarksForReviewEntry[];
     dosStatus?: MarkSubmissionFirestoreRecord['dosStatus'];
     dosRejectReason?: string;
 }
 
 export async function getMarksForReview(classId: string, subjectId: string, examId: string): Promise<MarksForReviewPayload> {
-  const defaultPayload: MarksForReviewPayload = { submissionId: null, marks: [], dosStatus: undefined, dosRejectReason: undefined };
+  const defaultPayload: MarksForReviewPayload = { submissionId: null, assessmentName: null, marks: [], dosStatus: undefined, dosRejectReason: undefined };
   if (!db) {
     console.error("Firestore is not initialized. Cannot fetch marks for review.");
     return defaultPayload;
@@ -939,7 +935,7 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
 
     if (!submissionData.submittedMarks || submissionData.submittedMarks.length === 0) {
       console.log(`[DOS Action - getMarksForReview] Submission found (ID: ${latestSubmissionDoc.id}) but contains no marks for assessmentId: ${assessmentId}`);
-      return { ...defaultPayload, submissionId: latestSubmissionDoc.id, dosStatus: submissionData.dosStatus, dosRejectReason: submissionData.dosRejectReason }; 
+      return { ...defaultPayload, submissionId: latestSubmissionDoc.id, assessmentName: submissionData.assessmentName, dosStatus: submissionData.dosStatus, dosRejectReason: submissionData.dosRejectReason }; 
     }
 
     const allStudents = await getStudents();
@@ -954,6 +950,7 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
     console.log(`[DOS Action - getMarksForReview] Found ${marksForReview.length} marks for assessmentId: ${assessmentId}. Submission ID: ${latestSubmissionDoc.id}`);
     return {
         submissionId: latestSubmissionDoc.id,
+        assessmentName: submissionData.assessmentName,
         marks: marksForReview,
         dosStatus: submissionData.dosStatus,
         dosRejectReason: submissionData.dosRejectReason
@@ -973,7 +970,6 @@ export async function approveMarkSubmission(submissionId: string): Promise<{ suc
             dosStatus: 'Approved',
             dosRejectReason: null, 
             dosLastReviewedAt: Timestamp.now(),
-            // dosLastReviewedBy: "D.O.S_ADMIN_ID", // TODO: Replace with actual admin ID if/when auth is added
         });
         revalidatePath("/dos/marks-review");
         
@@ -1004,7 +1000,6 @@ export async function rejectMarkSubmission(submissionId: string, reason: string)
             dosStatus: 'Rejected',
             dosRejectReason: reason,
             dosLastReviewedAt: Timestamp.now(),
-             // dosLastReviewedBy: "D.O.S_ADMIN_ID", // TODO: Replace with actual admin ID if/when auth is added
         });
         revalidatePath("/dos/marks-review");
         const submissionSnap = await getDoc(submissionRef);
@@ -1044,18 +1039,9 @@ export async function updateSubmittedMarksByDOS(
       averageScore: averageScore,
       dosEdited: true,
       dosLastEditedAt: Timestamp.now(),
-      // Note: dosStatus is NOT changed here. D.O.S. must explicitly approve/reject after edits.
     });
 
     revalidatePath(`/dos/marks-review`);
-    // Optionally revalidate teacher history if D.O.S. edits should be immediately visible there.
-    // const submissionSnap = await getDoc(submissionRef);
-    // if (submissionSnap.exists()) {
-    //   const teacherId = submissionSnap.data().teacherId;
-    //   if (teacherId) {
-    //     revalidatePath(`/teacher/marks/history?teacherId=${teacherId}`);
-    //   }
-    // }
     return { success: true, message: "Marks updated by D.O.S. successfully." };
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Unknown error.";
@@ -1376,3 +1362,4 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
         };
     }
 }
+
