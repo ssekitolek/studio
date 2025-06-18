@@ -15,7 +15,7 @@ import { ShieldAlert, Loader2, CheckCircle, Search, FileWarning, Info, Download,
 import { getClasses, getSubjects, getExams, getMarksForReview, approveMarkSubmission, rejectMarkSubmission, downloadSingleMarkSubmission } from "@/lib/actions/dos-actions";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
 import type { ClassInfo, Subject as SubjectType, Exam, AnomalyExplanation, GradeEntry as GenkitGradeEntry } from "@/lib/types";
-import type { MarksForReviewPayload } from "@/lib/actions/dos-actions";
+import type { MarksForReviewPayload } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
 export default function MarksReviewPage() {
@@ -175,7 +175,7 @@ export default function MarksReviewPage() {
               blobType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
               fileName = `${assessmentNameSlug}.xlsx`;
               break;
-            case "pdf": // Basic text PDF for now
+            case "pdf": 
               blobType = "text/plain;charset=utf-8;"; // Changed to text/plain for basic PDF content
               fileName = `${assessmentNameSlug}.txt`; // Changed extension for clarity
               break;

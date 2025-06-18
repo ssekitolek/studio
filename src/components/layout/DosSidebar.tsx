@@ -33,7 +33,7 @@ import {
   BookUser,
   CalendarDays,
   ShieldAlert,
-  UserCheck 
+  UserCheck
 } from "lucide-react";
 
 const dosNavItems = [
@@ -75,7 +75,7 @@ export function DosSidebar() {
     // For other main links or section parent links, active if pathname starts with href
     return pathname.startsWith(href);
   };
-  
+
   const renderNavItem = (item: any, index: number) => {
     if (item.isSection) {
       return (
@@ -150,5 +150,3 @@ export function DosSidebar() {
     </Sidebar>
   );
 }
-
-    

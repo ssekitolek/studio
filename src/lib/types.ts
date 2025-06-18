@@ -1,4 +1,5 @@
 
+import type { Timestamp } from "firebase/firestore";
 
 export interface Teacher {
   id: string;
@@ -141,7 +142,7 @@ export interface MarkSubmissionFirestoreRecord {
   teacherId: string;
   assessmentId: string; // Composite key: examDocumentId_classDocumentId_subjectDocumentId
   assessmentName: string; // Derived human-readable: Class Name - Subject Name - Exam Name
-  dateSubmitted: import("firebase/firestore").Timestamp;
+  dateSubmitted: Timestamp;
   studentCount: number;
   averageScore: number | null;
   status: string; // Teacher-facing status from AI check: "Pending Review (Anomaly Detected)" | "Accepted"
@@ -151,9 +152,9 @@ export interface MarkSubmissionFirestoreRecord {
   dosStatus: 'Pending' | 'Approved' | 'Rejected';
   dosRejectReason?: string;
   dosLastReviewedBy?: string; // User ID of D.O.S.
-  dosLastReviewedAt?: import("firebase/firestore").Timestamp;
+  dosLastReviewedAt?: Timestamp;
   dosEdited?: boolean; // Flag if D.O.S. edited the marks
-  dosLastEditedAt?: import("firebase/firestore").Timestamp;
+  dosLastEditedAt?: Timestamp;
 }
 
 // For Teacher's View of Submission History
@@ -164,7 +165,16 @@ export interface SubmissionHistoryDisplayItem {
   studentCount: number;
   averageScore: number | null;
   status: string; // Combined/derived status for display to teacher reflecting D.O.S. review
-  dosStatus: 'Pending' | 'Approved' | 'Rejected';
+  dosStatus: MarkSubmissionFirestoreRecord['dosStatus']; // direct D.O.S. status
   dosRejectReason?: string;
 }
 
+// For D.O.S. Marks Review Page
+export type MarksForReviewEntry = GradeEntry & { studentName: string };
+export interface MarksForReviewPayload {
+    submissionId: string | null;
+    assessmentName: string | null;
+    marks: MarksForReviewEntry[];
+    dosStatus?: MarkSubmissionFirestoreRecord['dosStatus'];
+    dosRejectReason?: string;
+}
