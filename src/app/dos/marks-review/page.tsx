@@ -73,14 +73,16 @@ export default function MarksReviewPage() {
     setAiAnomalies([]);
     setShowRejectInput(false);
     setRejectReason("");
+    console.log(`[MarksReviewPage] Fetching marks for Class: ${selectedClass}, Subject: ${selectedSubject}, Exam: ${selectedExam}`);
     try {
       const fetchedPayload = await getMarksForReview(selectedClass, selectedSubject, selectedExam);
       setMarksPayload(fetchedPayload);
+      console.log(`[MarksReviewPage] Received payload:`, fetchedPayload);
       if (!fetchedPayload.submissionId || fetchedPayload.marks.length === 0) {
         toast({ title: "No Marks Found", description: "No marks data found for the selected criteria. This could mean no marks were submitted by the teacher yet, or the submission was empty.", variant: "default", action: <Info className="text-blue-500"/> });
       }
     } catch (error) {
-      console.error("Error fetching marks for review:", error);
+      console.error("[MarksReviewPage] Error fetching marks for review:", error);
       toast({ title: "Error", description: `Failed to fetch marks: ${error instanceof Error ? error.message : String(error)}`, variant: "destructive" });
     } finally {
       setIsLoadingMarks(false);
@@ -133,7 +135,7 @@ export default function MarksReviewPage() {
       const result = await approveMarkSubmission(marksPayload.submissionId!);
       toast({ title: result.success ? "Success" : "Error", description: result.message, variant: result.success ? "default" : "destructive" });
       if (result.success) {
-        handleFetchMarks(); 
+        handleFetchMarks(); // Refresh to show updated status
       }
     });
   };
@@ -148,7 +150,7 @@ export default function MarksReviewPage() {
       const result = await rejectMarkSubmission(marksPayload.submissionId!, rejectReason);
       toast({ title: result.success ? "Success" : "Error", description: result.message, variant: result.success ? "default" : "destructive" });
       if (result.success) {
-        handleFetchMarks(); 
+        handleFetchMarks(); // Refresh to show updated status
         setShowRejectInput(false);
         setRejectReason("");
       }
@@ -173,9 +175,9 @@ export default function MarksReviewPage() {
               blobType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
               fileName = `${assessmentNameSlug}.xlsx`;
               break;
-            case "pdf":
-              blobType = "application/pdf";
-              fileName = `${assessmentNameSlug}.pdf`;
+            case "pdf": // Basic text PDF for now
+              blobType = "text/plain;charset=utf-8;"; // Changed to text/plain for basic PDF content
+              fileName = `${assessmentNameSlug}.txt`; // Changed extension for clarity
               break;
             case "csv":
             default:
@@ -284,7 +286,7 @@ export default function MarksReviewPage() {
                     <SelectContent>
                         <SelectItem value="csv">CSV</SelectItem>
                         <SelectItem value="xlsx">Excel (XLSX)</SelectItem>
-                        <SelectItem value="pdf">PDF (Basic)</SelectItem>
+                        <SelectItem value="pdf">PDF (Basic Text)</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -313,7 +315,7 @@ export default function MarksReviewPage() {
                  <p className="text-center text-muted-foreground py-8">No marks were part of this submission entry, or the submission was not found.</p>
             )}
           </CardContent>
-          {currentMarks.length > 0 && (
+          {currentMarks.length > 0 && ( // Show action buttons only if there are marks
             <CardContent className="border-t pt-4 space-y-3">
                 <div className="flex flex-wrap gap-2 justify-end">
                     <Button
@@ -386,4 +388,3 @@ export default function MarksReviewPage() {
     </div>
   );
 }
-    

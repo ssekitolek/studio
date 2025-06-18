@@ -138,12 +138,12 @@ export interface TeacherDashboardData {
 // For Firestore structure of markSubmissions
 export interface MarkSubmissionFirestoreRecord {
   teacherId: string;
-  assessmentId: string; // examId_classId_subjectId
-  assessmentName: string; // Class Name - Subject Name - Exam Name
+  assessmentId: string; // Composite key: examId_classId_subjectId
+  assessmentName: string; // Derived: Class Name - Subject Name - Exam Name
   dateSubmitted: import("firebase/firestore").Timestamp; // Firestore Timestamp
   studentCount: number;
   averageScore: number | null;
-  status: string; // Teacher-facing status: "Pending Review (Anomaly Detected)" | "Accepted"
+  status: string; // Teacher-facing status: "Pending Review (Anomaly Detected)" | "Accepted" - reflects AI check
   submittedMarks: Array<{ studentId: string; score: number }>;
   anomalyExplanations: Array<AnomalyExplanation>;
   // D.O.S. specific fields
@@ -162,8 +162,7 @@ export interface SubmissionHistoryDisplayItem {
   dateSubmitted: string; // ISO string
   studentCount: number;
   averageScore: number | null;
-  status: string; // Combined/derived status for display to teacher
+  status: string; // Combined/derived status for display to teacher reflecting D.O.S. review
   dosStatus: 'Pending' | 'Approved' | 'Rejected'; // Actual D.O.S. status
   dosRejectReason?: string;
 }
-

@@ -45,7 +45,7 @@ export default function MarksHistoryPage() {
     }
 
     setCurrentTeacherId(teacherIdFromUrl);
-    setPageError(null);
+    setPageError(null); // Reset page error if teacherId is now valid
     setIsLoading(true);
 
     async function fetchData(validTeacherId: string) {
@@ -53,7 +53,7 @@ export default function MarksHistoryPage() {
         try {
             const submissionData = await getSubmittedMarksHistory(validTeacherId);
             setHistory(submissionData);
-            if (submissionData.length === 0 && !pageError) { // Avoid toasting if there's already a page-level error.
+            if (submissionData.length === 0 && !pageError) { 
                 toast({
                   title: "No History Found",
                   description: "You have not submitted any marks yet, or no submissions match the current filters.",
@@ -70,26 +70,21 @@ export default function MarksHistoryPage() {
             setIsLoading(false);
         }
     }
-    // Only fetch if teacherIdFromUrl is considered valid
-    if (teacherIdFromUrl && teacherIdFromUrl.trim() !== "" && teacherIdFromUrl.toLowerCase() !== "undefined" && teacherIdFromUrl !== "undefined") {
-        fetchData(teacherIdFromUrl);
-    }
-  }, [searchParams, toast, pageError]); // Added pageError to dependency to prevent re-fetch if already in error state.
+    fetchData(teacherIdFromUrl);
+  }, [searchParams, toast]); // Removed pageError from dependency array to allow re-fetch attempts if params change
 
   const getStatusVariantAndClass = (item: SubmissionHistoryDisplayItem): {variant: "default" | "destructive" | "secondary", className: string, icon?: React.ReactNode} => {
-    // Primary logic based on dosStatus
-    if (item.dosStatus === "Approved") return { variant: "default", className: "bg-green-500 hover:bg-green-600 text-white", icon: <CheckCircle2 className="mr-1 inline-block h-3 w-3" /> };
-    if (item.dosStatus === "Rejected") return { variant: "destructive", className: "bg-red-500 hover:bg-red-600 text-white", icon: <AlertTriangle className="mr-1 inline-block h-3 w-3" /> };
-    if (item.dosStatus === "Pending" && item.status && item.status.includes("Anomaly")) return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
-    if (item.dosStatus === "Pending") return { variant: "secondary", className: "bg-blue-500 hover:bg-blue-600 text-white", icon: <Info className="mr-1 inline-block h-3 w-3" /> };
+    // Primary logic based on dosStatus for the teacher's view
+    if (item.status.includes("Approved by D.O.S.")) return { variant: "default", className: "bg-green-500 hover:bg-green-600 text-white", icon: <CheckCircle2 className="mr-1 inline-block h-3 w-3" /> };
+    if (item.status.includes("Rejected by D.O.S.")) return { variant: "destructive", className: "bg-red-500 hover:bg-red-600 text-white", icon: <AlertTriangle className="mr-1 inline-block h-3 w-3" /> };
+    if (item.status.includes("Pending D.O.S. Review (Anomaly)")) return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
+    if (item.status.includes("Pending D.O.S. Review")) return { variant: "secondary", className: "bg-blue-500 hover:bg-blue-600 text-white", icon: <Info className="mr-1 inline-block h-3 w-3" /> };
     
-    // Fallback for original teacher-facing status if dosStatus is not set (older records perhaps or different flow)
-    // This part can be simplified or removed if dosStatus is always expected.
+    // Fallback for any other unhandled status, or if dosStatus was somehow not set and only teacher-facing status is available
     if (item.status && item.status.includes("Anomaly Detected")) return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
-    if (item.status === "Accepted") return { variant: "default", className: "bg-green-500 hover:bg-green-600 text-white", icon: <CheckCircle2 className="mr-1 inline-block h-3 w-3" /> };
+    if (item.status === "Accepted") return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" }; // System accepted, pre-DOS review
     
-    // Default fallback for any other unhandled status
-    return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" };
+    return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" }; // Default fallback
   };
 
 
@@ -113,7 +108,7 @@ export default function MarksHistoryPage() {
     );
   }
 
-  if (isLoading && currentTeacherId) { // Show loading only if we have a valid teacherId and are not in pageError state
+  if (isLoading && currentTeacherId) { 
     return (
       <div className="space-y-6">
           <PageHeader
@@ -129,7 +124,6 @@ export default function MarksHistoryPage() {
     );
   }
 
-  // Case: teacherId is not available/invalid, and not already handled by pageError (e.g. URL param literally "undefined")
   if (!currentTeacherId && !isLoading && !pageError) {
      return (
       <div className="space-y-6">

@@ -583,7 +583,7 @@ export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success:
         description: examPayload.description === null ? undefined : examData.description,
         examDate: examPayload.examDate === null ? undefined : examData.examDate,
         classId: examPayload.classId === null ? undefined : examData.classId,
-        subjectId: examPayload.subjectId === null ? undefined : examPayload.subjectId,
+        subjectId: examPayload.subjectId === null ? undefined : examData.subjectId,
         teacherId: examPayload.teacherId === null ? undefined : examData.teacherId,
         marksSubmissionDeadline: examPayload.marksSubmissionDeadline === null ? undefined : examData.marksSubmissionDeadline,
     };
@@ -909,14 +909,15 @@ export interface MarksForReviewPayload {
 export async function getMarksForReview(classId: string, subjectId: string, examId: string): Promise<MarksForReviewPayload> {
   const defaultPayload: MarksForReviewPayload = { submissionId: null, assessmentName: null, marks: [], dosStatus: undefined, dosRejectReason: undefined };
   if (!db) {
-    console.error("Firestore is not initialized. Cannot fetch marks for review.");
+    console.error("[DOS Action - getMarksForReview] CRITICAL_ERROR_DB_NULL: Firestore db object is null.");
     return defaultPayload;
   }
+  
+  const assessmentId = `${examId}_${classId}_${subjectId}`;
+  console.log(`[DOS Action - getMarksForReview] Fetching marks for classId: ${classId}, subjectId: ${subjectId}, examId: ${examId}. Constructed assessmentId: "${assessmentId}"`);
+  
   try {
-    const assessmentId = `${examId}_${classId}_${subjectId}`;
-    console.log(`[DOS Action - getMarksForReview] Fetching marks for assessmentId: ${assessmentId}`);
     const markSubmissionsRef = collection(db, "markSubmissions");
-    
     const q = query(
       markSubmissionsRef, 
       where("assessmentId", "==", assessmentId),
@@ -924,14 +925,18 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
       limit(1) 
     );
     const submissionSnapshot = await getDocs(q);
+    console.log(`[DOS Action - getMarksForReview] Firestore query for assessmentId: "${assessmentId}". Snapshot empty: ${submissionSnapshot.empty}, Size: ${submissionSnapshot.size}`);
+
 
     if (submissionSnapshot.empty) {
-      console.log(`[DOS Action - getMarksForReview] No mark submissions found for assessmentId: ${assessmentId}`);
+      console.warn(`[DOS Action - getMarksForReview] NO SUBMISSION DOCUMENT FOUND in Firestore for assessmentId: "${assessmentId}"`);
       return defaultPayload; 
     }
 
     const latestSubmissionDoc = submissionSnapshot.docs[0];
     const submissionData = latestSubmissionDoc.data() as MarkSubmissionFirestoreRecord;
+    console.log(`[DOS Action - getMarksForReview] Found submission doc ID: ${latestSubmissionDoc.id} matching assessmentId: "${assessmentId}". Raw data:`, JSON.stringify(submissionData));
+
 
     if (!submissionData.submittedMarks || submissionData.submittedMarks.length === 0) {
       console.log(`[DOS Action - getMarksForReview] Submission found (ID: ${latestSubmissionDoc.id}) but contains no marks for assessmentId: ${assessmentId}`);
@@ -947,7 +952,7 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
       studentName: studentsMap.get(mark.studentId) || "Unknown Student",
     }));
     
-    console.log(`[DOS Action - getMarksForReview] Found ${marksForReview.length} marks for assessmentId: ${assessmentId}. Submission ID: ${latestSubmissionDoc.id}`);
+    console.log(`[DOS Action - getMarksForReview] Processed ${marksForReview.length} marks for assessmentId: ${assessmentId}. Submission ID: ${latestSubmissionDoc.id}`);
     return {
         submissionId: latestSubmissionDoc.id,
         assessmentName: submissionData.assessmentName,
@@ -957,7 +962,7 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
     };
 
   } catch (error) {
-    console.error(`Error fetching marks for review (assessmentId: ${examId}_${classId}_${subjectId}):`, error);
+    console.error(`[DOS Action - getMarksForReview] ERROR fetching marks for review (assessmentId: ${assessmentId}):`, error);
     return defaultPayload; 
   }
 }
@@ -1039,9 +1044,20 @@ export async function updateSubmittedMarksByDOS(
       averageScore: averageScore,
       dosEdited: true,
       dosLastEditedAt: Timestamp.now(),
+      // Note: This action does NOT change dosStatus. D.O.S. must still approve/reject.
     });
 
-    revalidatePath(`/dos/marks-review`);
+    revalidatePath(`/dos/marks-review`); // Revalidate D.O.S. page
+    // Optionally, revalidate teacher history if they can see D.O.S. edits directly
+    // const submissionSnap = await getDoc(submissionRef);
+    // if (submissionSnap.exists()) {
+    //     const teacherId = submissionSnap.data().teacherId;
+    //      if (teacherId) {
+    //         const teacherInfo = await getTeacherById(teacherId);
+    //         const teacherNameParam = teacherInfo?.name ? encodeURIComponent(teacherInfo.name) : "Teacher";
+    //         revalidatePath(`/teacher/marks/history?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
+    //     }
+    // }
     return { success: true, message: "Marks updated by D.O.S. successfully." };
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Unknown error.";
@@ -1362,4 +1378,3 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
         };
     }
 }
-
