@@ -12,7 +12,7 @@ import { getTeacherDashboardData } from "@/lib/actions/teacher-actions";
 import type { TeacherDashboardData, TeacherNotification, TeacherStats } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle as UIAlertTitle } from "@/components/ui/alert";
 import { StatCard } from "@/components/shared/StatCard";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 
 export const dynamic = 'force-dynamic';
@@ -21,7 +21,6 @@ const DEFAULT_FALLBACK_TEACHER_NAME = "Teacher";
 
 export default function TeacherDashboardPage() {
   const searchParams = useSearchParams(); 
-  const router = useRouter();
   const { toast } = useToast();
   
   const initialDefaultStats: TeacherStats = {
@@ -59,6 +58,7 @@ export default function TeacherDashboardPage() {
       try {
         nameFromUrl = decodeURIComponent(nameFromUrl);
       } catch (e) {
+        console.warn("Failed to decode teacherName from URL, using fallback.");
         nameFromUrl = DEFAULT_FALLBACK_TEACHER_NAME;
       }
     } else {
@@ -88,8 +88,10 @@ export default function TeacherDashboardPage() {
     setFetchError(null); 
 
     async function loadDataInternal(validTeacherId: string) {
+      console.log(`[TeacherDashboardPage] Attempting to load data for teacherId: ${validTeacherId}`);
       try {
         const data = await getTeacherDashboardData(validTeacherId);
+        console.log("[TeacherDashboardPage] Received data from getTeacherDashboardData:", data);
         setDashboardData(data);
         if (data.teacherName) { 
           setCurrentTeacherName(data.teacherName);
@@ -108,6 +110,7 @@ export default function TeacherDashboardPage() {
 
       } catch (error) {
          const errorMessageText = error instanceof Error ? error.message : "An unknown error occurred.";
+         console.error("[TeacherDashboardPage] Error in loadDataInternal:", error);
          setFetchError(errorMessageText);
          toast({ title: "Dashboard Load Failed", description: errorMessageText, variant: "destructive"});
          setDashboardData({ 
@@ -259,7 +262,7 @@ export default function TeacherDashboardPage() {
                         Next Deadline: {item.nextDeadlineInfo || "Not set"}
                       </p>
                     </div>
-                    <Button variant="outline" size="sm" asChild disabled={!currentTeacherId}>
+                    <Button variant="outline" size="sm" asChild disabled={!currentTeacherId || !marksSubmissionLink || marksSubmissionLink === "#"}>
                       <Link href={marksSubmissionLink}>
                         <BookOpenCheck className="mr-2 h-4 w-4" /> Enter Marks
                       </Link>
@@ -273,7 +276,7 @@ export default function TeacherDashboardPage() {
                  {currentTeacherId && !fetchError ? (
                   <>
                     <p>No classes or subjects are currently assigned to you for assessment in the active term, or data could not be loaded.</p>
-                    <p className="text-xs mt-1">If you believe this is an error, please contact the D.O.S. office.</p>
+                    <p className="text-xs mt-1">This could be due to missing D.O.S. configurations (e.g., current term not set, or no exams for current term). If you believe this is an error, please contact the D.O.S. office.</p>
                   </>
                  ) : (
                     <p>Cannot load assignments as Teacher ID is not available or an error occurred.</p>
@@ -329,7 +332,7 @@ export default function TeacherDashboardPage() {
                   {paragraph}
                 </p>
               ))}
-              <Button variant="default" className="mt-4" asChild disabled={!currentTeacherId}>
+              <Button variant="default" className="mt-4" asChild disabled={!currentTeacherId || !marksSubmissionLink || marksSubmissionLink === "#"}>
                  <Link href={marksSubmissionLink}>
                   <BookOpenCheck className="mr-2 h-4 w-4" /> Go to Marks Submission
                 </Link>

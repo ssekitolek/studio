@@ -17,7 +17,7 @@ import { BookOpenCheck, Loader2, AlertTriangle, CheckCircle, ShieldAlert, FileWa
 import { getTeacherAssessments, getStudentsForAssessment, submitMarks } from "@/lib/actions/teacher-actions"; 
 import type { Student, AnomalyExplanation } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 const markSchema = z.object({
@@ -45,7 +45,6 @@ interface AssessmentOption {
 export default function SubmitMarksPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   const [isPending, startTransition] = useTransition();
   const [isLoadingAssessments, setIsLoadingAssessments] = useState(true);
@@ -409,7 +408,7 @@ export default function SubmitMarksPage() {
             <div className="flex justify-end">
               <Button 
                 type="submit" 
-                disabled={isPending || isLoadingStudents || isLoadingAssessments || !currentTeacherId } 
+                disabled={isPending || isLoadingStudents || isLoadingAssessments || !currentTeacherId} 
                 size="lg"
               >
                 {isPending ? (
@@ -426,4 +425,5 @@ export default function SubmitMarksPage() {
     </div>
   );
 }
+
 

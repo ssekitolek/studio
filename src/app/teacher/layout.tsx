@@ -10,8 +10,10 @@ interface LayoutProps {
 }
 
 export default function TeacherLayout({ children, searchParams }: LayoutProps) {
-  const teacherIdParam = searchParams?.teacherId as string | undefined;
-  let teacherName = "Teacher"; 
+  // Attempt to get teacherId and teacherName from searchParams (server-side)
+  // These might be undefined if searchParams are not available during initial render or are missing
+  const teacherIdParam = typeof searchParams?.teacherId === 'string' ? searchParams.teacherId : undefined;
+  let teacherName = "Teacher"; // Default
 
   if (searchParams?.teacherName) {
     const nameParam = searchParams.teacherName;
@@ -19,12 +21,14 @@ export default function TeacherLayout({ children, searchParams }: LayoutProps) {
       try {
         teacherName = decodeURIComponent(nameParam);
       } catch (e) {
+        console.warn("Failed to decode teacherName in TeacherLayout (string), using default.");
         // Use default if decoding fails
       }
     } else if (Array.isArray(nameParam) && nameParam.length > 0 && typeof nameParam[0] === 'string') {
       try {
         teacherName = decodeURIComponent(nameParam[0]);
       } catch (e) {
+         console.warn("Failed to decode teacherName in TeacherLayout (array), using default.");
          // Use default if decoding fails
       }
     }

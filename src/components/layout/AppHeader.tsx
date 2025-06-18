@@ -35,18 +35,20 @@ export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teache
   };
 
   const validTeacherId = teacherId && teacherId.toLowerCase() !== "undefined" && teacherId.trim() !== "" ? teacherId : undefined;
-  const validTeacherNameParamForLink = teacherNameParam && teacherNameParam.toLowerCase() !== "undefined" && teacherNameParam.trim() !== "" ? teacherNameParam : displayUserName;
+  const validTeacherNameParamForLink = teacherNameParam && teacherNameParam.toLowerCase() !== "undefined" && teacherNameParam.trim() !== "" 
+                                        ? teacherNameParam 
+                                        : (displayUserName !== "Teacher" ? displayUserName : undefined);
 
 
   const dashboardLink = userRole === "D.O.S." 
     ? "/dos/dashboard" 
-    : (validTeacherId 
+    : (validTeacherId && validTeacherNameParamForLink
         ? `/teacher/dashboard?teacherId=${encodeURIComponent(validTeacherId)}&teacherName=${encodeURIComponent(validTeacherNameParamForLink)}`
         : "/login/teacher"); 
 
   const settingsOrProfileLink = userRole === "D.O.S."
     ? "/dos/settings/general"
-    : (validTeacherId
+    : (validTeacherId && validTeacherNameParamForLink
         ? `/teacher/profile?teacherId=${encodeURIComponent(validTeacherId)}&teacherName=${encodeURIComponent(validTeacherNameParamForLink)}`
         : "/login/teacher"); 
 
@@ -79,7 +81,7 @@ export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teache
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild disabled={!validTeacherId && userRole === "Teacher"}>
+          <DropdownMenuItem asChild disabled={userRole === "Teacher" && (!validTeacherId || !validTeacherNameParamForLink)}>
             <Link href={settingsOrProfileLink}>
               <Settings className="mr-2 h-4 w-4" />
               <span>{userRole === "D.O.S." ? "Settings" : "My Profile"}</span>

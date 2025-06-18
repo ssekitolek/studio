@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { UserCircle, Loader2, AlertTriangle } from "lucide-react";
 import { getTeacherProfileData } from "@/lib/actions/teacher-actions";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle as UIAlertTitle } from "@/components/ui/alert";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -19,7 +19,6 @@ interface TeacherProfile {
 
 export default function TeacherProfilePage() {
   const searchParams = useSearchParams();
-  const router = useRouter(); 
   const { toast } = useToast();
 
   const [profile, setProfile] = useState<TeacherProfile | null>(null);

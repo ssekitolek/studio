@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { History, Eye, Loader2, AlertTriangle } from "lucide-react";
 import { getSubmittedMarksHistory } from "@/lib/actions/teacher-actions";
 import { useToast } from "@/hooks/use-toast";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 interface SubmissionHistoryItem {
@@ -26,7 +26,6 @@ interface SubmissionHistoryItem {
 export default function MarksHistoryPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
-  const router = useRouter(); 
 
   const [isLoading, setIsLoading] = useState(true); 
   const [history, setHistory] = useState<SubmissionHistoryItem[]>([]);
@@ -56,12 +55,12 @@ export default function MarksHistoryPage() {
     setPageError(null); 
     setIsLoading(true);
 
-    async function fetchData() {
+    async function fetchData(validTeacherId: string) {
         try {
-            const submissionData = await getSubmittedMarksHistory(teacherIdFromUrl as string);
+            const submissionData = await getSubmittedMarksHistory(validTeacherId);
             setHistory(submissionData);
-            if (submissionData.length === 0) {
-                toast({ title: "No History", description: "No submission history found.", variant: "default" });
+            if (submissionData.length === 0 && !pageError) { // Only toast if no other error is present
+                toast({ title: "No History", description: "No submission history found for your account.", variant: "default" });
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
@@ -71,8 +70,8 @@ export default function MarksHistoryPage() {
             setIsLoading(false);
         }
     }
-    fetchData();
-  }, [searchParams, toast]); 
+    fetchData(teacherIdFromUrl);
+  }, [searchParams, toast, pageError]); // Added pageError to dependency array to avoid re-toast on error
 
   const getStatusVariant = (status: SubmissionHistoryItem['status']) => {
     if (status.includes("Anomaly Detected")) return "default"; 
@@ -190,3 +189,4 @@ export default function MarksHistoryPage() {
 }
 
     
+

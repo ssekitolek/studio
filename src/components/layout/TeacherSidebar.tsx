@@ -36,31 +36,31 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
 
   const navItems = [
     { 
-      href: validTeacherId ? `/teacher/dashboard?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "/login/teacher", 
+      href: validTeacherId ? `/teacher/dashboard?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#", 
       label: "Dashboard", 
       icon: LayoutDashboard, 
-      tooltip: "View your dashboard",
+      tooltip: validTeacherId ? "View your dashboard" : "Dashboard (Login Required)",
       disabled: !validTeacherId,
     },
     { 
-      href: validTeacherId ? `/teacher/marks/submit?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "/login/teacher", 
+      href: validTeacherId ? `/teacher/marks/submit?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#", 
       label: "Submit Marks", 
       icon: BookOpenCheck, 
-      tooltip: "Submit student marks",
+      tooltip: validTeacherId ? "Submit student marks" : "Submit Marks (Login Required)",
       disabled: !validTeacherId,
     },
     { 
-      href: validTeacherId ? `/teacher/marks/history?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "/login/teacher", 
+      href: validTeacherId ? `/teacher/marks/history?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#", 
       label: "View Submissions", 
       icon: History, 
-      tooltip: "View past mark submissions",
+      tooltip: validTeacherId ? "View past mark submissions" : "View Submissions (Login Required)",
       disabled: !validTeacherId,
     },
     { 
-      href: validTeacherId ? `/teacher/profile?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "/login/teacher", 
+      href: validTeacherId ? `/teacher/profile?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#", 
       label: "My Profile", 
       icon: UserCircle, 
-      tooltip: "View your profile",
+      tooltip: validTeacherId ? "View your profile" : "My Profile (Login Required)",
       disabled: !validTeacherId,
     },
   ];
@@ -97,7 +97,7 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
           <SidebarMenu className="px-2 py-2 space-y-1">
             {navItems.map((item, index) => (
               <SidebarMenuItem key={index}>
-                <Link href={item.disabled ? "#" : item.href} passHref={!item.disabled}>
+                <Link href={item.href} passHref={!item.disabled}>
                   <SidebarMenuButton
                     asChild={false} 
                     isActive={!item.disabled && isItemActive(item.href)}
