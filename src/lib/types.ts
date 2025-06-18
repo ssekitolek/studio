@@ -1,69 +1,66 @@
 
-
 export interface Teacher {
   id: string;
   name: string;
   email: string;
-  password?: string; // Password assigned by D.O.S.
-  subjectsAssigned: Array<{ classId: string; subjectId: string; examIds: string[] }>; // Tracks which exams for which subjects in which classes
+  password?: string; 
+  subjectsAssigned: Array<{ classId: string; subjectId: string; examIds: string[] }>; 
 }
 
 export interface Student {
   id: string;
-  studentIdNumber: string; // Official student ID, e.g., "S1001"
+  studentIdNumber: string; 
   firstName: string;
   lastName: string;
   classId: string; 
-  dateOfBirth?: string; // Stored as YYYY-MM-DD string
+  dateOfBirth?: string; 
   gender?: 'Male' | 'Female' | 'Other';
 }
 
 export interface ClassInfo {
   id: string;
-  name: string; // E.g., "Form 1A"
-  level: string; // E.g., "Form 1"
-  stream?: string; // E.g., "A"
-  classTeacherId?: string; // ID of the main class teacher
-  subjects: Subject[]; // List of subjects taught in this class
+  name: string; 
+  level: string; 
+  stream?: string; 
+  classTeacherId?: string; 
+  subjects: Subject[]; 
 }
 
 export interface Subject {
   id: string;
-  name: string; // E.g., "Mathematics"
-  code?: string; // E.g., "MATH101"
+  name: string; 
+  code?: string; 
 }
 
 export interface Term {
   id: string;
-  name: string; // E.g., "Term 1 2024"
+  name: string; 
   year: number;
-  startDate: string; // ISO date string YYYY-MM-DD
-  endDate: string; // ISO date string YYYY-MM-DD
+  startDate: string; 
+  endDate: string; 
 }
 
-export interface Exam { // Represents an Exam Type or a specific instance
+export interface Exam { 
   id: string;
-  name: string; // E.g., "Midterm Exam", "Final Assessment"
-  termId: string; // Links to an academic term
-  examDate?: string; // Date the exam takes place (YYYY-MM-DD)
-  maxMarks: number; // Default max marks for this exam type
+  name: string; 
+  termId: string; 
+  examDate?: string; 
+  maxMarks: number; 
   description?: string;
-  // New fields for specific assignment
   classId?: string;
   subjectId?: string;
   teacherId?: string;
-  marksSubmissionDeadline?: string; // Specific deadline for marks submission (YYYY-MM-DD)
+  marksSubmissionDeadline?: string; 
 }
 
-// Represents a specific assessment instance for a subject in a class for an exam type
 export interface Assessment {
-    id: string; // Typically examId_classId_subjectId
+    id: string; 
     examId: string;
     classId: string;
     subjectId: string;
-    teacherId: string; // Teacher responsible for this assessment
-    maxMarks: number; // Actual marks this assessment is out of for this specific subject
-    submissionDeadline: string; // ISO date string
+    teacherId: string; 
+    maxMarks: number; 
+    submissionDeadline: string; 
 }
 
 export interface Mark {
@@ -71,24 +68,21 @@ export interface Mark {
   assessmentId: string;
   studentId: string;
   score: number | null;
-  submittedAt?: string; // ISO date string
-  lastUpdatedAt?: string; // ISO date string
+  submittedAt?: string; 
+  lastUpdatedAt?: string; 
   comments?: string;
 }
 
-// For grade anomaly detection input (matches Genkit flow)
 export interface GradeEntry {
-  studentId: string; // This should map to Student.studentIdNumber
+  studentId: string; 
   grade: number;
 }
 
-// For displaying anomalies
 export interface AnomalyExplanation {
   studentId: string;
   explanation: string;
 }
 
-// General settings
 export interface GeneralSettings {
     defaultGradingScale: Array<GradingScaleItem>; 
     currentTermId?: string;
@@ -99,7 +93,6 @@ export interface GeneralSettings {
     teacherDashboardResourcesText?: string; 
 }
 
-// Grading Policy specific types
 export interface GradingScaleItem {
   grade: string;
   minScore: number;
@@ -113,12 +106,11 @@ export interface GradingPolicy {
   isDefault?: boolean;
 }
 
-// Teacher Dashboard specific types
 export interface TeacherDashboardAssignment {
-  id: string; // Now examId_classId_subjectId
+  id: string; 
   className: string;
   subjectName: string; 
-  examName: string; // Added exam name
+  examName: string; 
   nextDeadlineInfo: string;
 }
 
@@ -140,5 +132,35 @@ export interface TeacherDashboardData {
   notifications: TeacherNotification[];
   teacherName?: string;
   resourcesText?: string; 
-  stats: TeacherStats; // Added stats
+  stats: TeacherStats; 
+}
+
+// For Firestore structure of markSubmissions
+export interface MarkSubmissionFirestoreRecord {
+  teacherId: string;
+  assessmentId: string; // examId_classId_subjectId
+  assessmentName: string; // Class Name - Subject Name - Exam Name
+  dateSubmitted: import("firebase/firestore").Timestamp; // Firestore Timestamp
+  studentCount: number;
+  averageScore: number | null;
+  status: "Pending Review (Anomaly Detected)" | "Accepted" | "Rejected" | string; // Original teacher-facing status
+  submittedMarks: Array<{ studentId: string; score: number }>;
+  anomalyExplanations: Array<AnomalyExplanation>;
+  // New D.O.S. specific fields
+  dosStatus?: 'Pending' | 'Approved' | 'Rejected'; // D.O.S. workflow status
+  dosRejectReason?: string;
+  dosLastReviewedBy?: string; // Optional: User ID of D.O.S.
+  dosLastReviewedAt?: import("firebase/firestore").Timestamp; // Optional: Timestamp of D.O.S. review
+}
+
+// For Teacher's View of Submission History
+export interface SubmissionHistoryDisplayItem {
+  id: string; // Firestore document ID of the submission
+  assessmentName: string;
+  dateSubmitted: string; // ISO string
+  studentCount: number;
+  averageScore: number | null;
+  status: string; // Combined/derived status for display
+  dosStatus?: 'Pending' | 'Approved' | 'Rejected';
+  dosRejectReason?: string;
 }

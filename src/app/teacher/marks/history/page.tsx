@@ -8,27 +8,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { History, Eye, Loader2, AlertTriangle, Info } from "lucide-react";
+import { History, Eye, Loader2, AlertTriangle, Info, FileWarning, CheckCircle2 } from "lucide-react";
 import { getSubmittedMarksHistory } from "@/lib/actions/teacher-actions";
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import type { SubmissionHistoryDisplayItem } from "@/lib/types";
 
-interface SubmissionHistoryItem {
-  id: string;
-  assessmentName: string;
-  dateSubmitted: string;
-  studentCount: number;
-  averageScore: number | null;
-  status: "Pending Review (Anomaly Detected)" | "Accepted" | "Rejected";
-}
 
 export default function MarksHistoryPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
 
   const [isLoading, setIsLoading] = useState(true); 
-  const [history, setHistory] = useState<SubmissionHistoryItem[]>([]);
+  const [history, setHistory] = useState<SubmissionHistoryDisplayItem[]>([]);
   const [pageError, setPageError] = useState<string | null>(null);
   const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
 
@@ -72,29 +65,27 @@ export default function MarksHistoryPage() {
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
             toast({ title: "Error Loading History", description: errorMessage, variant: "destructive" });
             setPageError(`Failed to load submission history: ${errorMessage}`);
-            setHistory([]); // Clear history on error
+            setHistory([]); 
         } finally {
             setIsLoading(false);
         }
     }
     fetchData(teacherIdFromUrl);
-  }, [searchParams, toast]); // Removed pageError from deps to avoid re-fetch on error setting
+  }, [searchParams, toast]); 
 
-  const getStatusVariant = (status: SubmissionHistoryItem['status']) => {
-    if (status.includes("Anomaly Detected")) return "default"; 
-    if (status === "Accepted") return "default"; 
-    if (status === "Rejected") return "destructive";
-    return "secondary";
+  const getStatusVariantAndClass = (item: SubmissionHistoryDisplayItem): {variant: "default" | "destructive" | "secondary", className: string, icon?: React.ReactNode} => {
+    if (item.dosStatus === "Approved") return { variant: "default", className: "bg-green-500 hover:bg-green-600 text-white", icon: <CheckCircle2 className="mr-1 inline-block h-3 w-3" /> };
+    if (item.dosStatus === "Rejected") return { variant: "destructive", className: "bg-red-500 hover:bg-red-600 text-white", icon: <AlertTriangle className="mr-1 inline-block h-3 w-3" /> };
+    if (item.dosStatus === "Pending" && item.status.includes("Anomaly")) return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
+    if (item.dosStatus === "Pending") return { variant: "secondary", className: "bg-blue-500 hover:bg-blue-600 text-white", icon: <Info className="mr-1 inline-block h-3 w-3" /> };
+    // Fallback for original status if dosStatus is not set (older records perhaps)
+    if (item.status.includes("Anomaly Detected")) return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
+    if (item.status === "Accepted") return { variant: "default", className: "bg-green-500 hover:bg-green-600 text-white", icon: <CheckCircle2 className="mr-1 inline-block h-3 w-3" /> };
+    return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" };
   };
 
-  const getStatusClass = (status: SubmissionHistoryItem['status']) => {
-    if (status.includes("Anomaly Detected")) return "bg-yellow-500 hover:bg-yellow-600 text-black";
-    if (status === "Accepted") return "bg-green-500 hover:bg-green-600 text-white";
-    return "bg-secondary hover:bg-secondary/80 text-secondary-foreground";
-  }
 
-
-  if (pageError && !isLoading) { // Show error only after loading attempt if error occurs
+  if (pageError && !isLoading) { 
      return (
       <div className="space-y-6">
         <PageHeader
@@ -130,7 +121,7 @@ export default function MarksHistoryPage() {
     );
   }
   
-  if (!currentTeacherId && !isLoading && !pageError) { // Teacher ID missing but no explicit fetch error yet
+  if (!currentTeacherId && !isLoading && !pageError) { 
      return (
       <div className="space-y-6">
         <PageHeader
@@ -160,7 +151,7 @@ export default function MarksHistoryPage() {
         <CardHeader>
           <CardTitle className="font-headline text-xl text-primary">Your Submissions</CardTitle>
           <CardDescription>
-            A log of all marks you have submitted through the portal.
+            A log of all marks you have submitted through the portal. Status reflects D.O.S. review where applicable.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -173,28 +164,35 @@ export default function MarksHistoryPage() {
                   <TableHead className="text-center">Students</TableHead>
                   <TableHead className="text-center">Avg. Score</TableHead>
                   <TableHead className="text-center">Status</TableHead>
+                  <TableHead>D.O.S. Reject Reason</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {history.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.assessmentName}</TableCell>
-                    <TableCell>{new Date(item.dateSubmitted).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-center">{item.studentCount}</TableCell>
-                    <TableCell className="text-center">{item.averageScore !== null ? item.averageScore.toFixed(1) : 'N/A'}</TableCell>
-                    <TableCell className="text-center">
-                       <Badge variant={getStatusVariant(item.status)} className={getStatusClass(item.status)}>
-                        {item.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="outline" size="sm" className="mr-2" disabled> 
-                        <Eye className="mr-1 h-4 w-4" /> View Details
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {history.map((item) => {
+                  const statusStyle = getStatusVariantAndClass(item);
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.assessmentName}</TableCell>
+                      <TableCell>{new Date(item.dateSubmitted).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-center">{item.studentCount}</TableCell>
+                      <TableCell className="text-center">{item.averageScore !== null ? item.averageScore.toFixed(1) : 'N/A'}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant={statusStyle.variant} className={statusStyle.className}>
+                          {statusStyle.icon}{item.status}
+                        </Badge>
+                      </TableCell>
+                       <TableCell className="text-xs text-muted-foreground italic">
+                        {item.dosRejectReason || "N/A"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="outline" size="sm" className="mr-2" disabled> 
+                          <Eye className="mr-1 h-4 w-4" /> View
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           ) : (
@@ -205,19 +203,15 @@ export default function MarksHistoryPage() {
         </CardContent>
       </Card>
 
-      {!isLoading && currentTeacherId && history.some(h => h.status.includes("Anomaly Detected")) && (
-         <Alert variant="default" className="border-yellow-500 bg-yellow-500/10">
-            <AlertTriangle className="h-5 w-5 text-yellow-600" />
-            <AlertTitle className="font-headline text-yellow-700">Review Required</AlertTitle>
-            <AlertDescription className="text-yellow-600">
-            Some of your submissions have potential anomalies flagged by the system.
-            Please review them. The D.O.S. may also contact you regarding these.
+      {!isLoading && currentTeacherId && history.some(h => h.dosStatus === "Rejected") && (
+         <Alert variant="destructive" className="border-red-500 bg-red-500/10">
+            <AlertTriangle className="h-5 w-5 text-red-600" />
+            <AlertTitle className="font-headline text-red-700">Action Required</AlertTitle>
+            <AlertDescription className="text-red-600">
+            One or more of your submissions have been rejected by the D.O.S. Please review the rejection reasons and resubmit the marks for the affected assessments. These assessments will reappear in your "Submit Marks" list.
           </AlertDescription>
         </Alert>
       )}
     </div>
   );
 }
-    
-
-    
