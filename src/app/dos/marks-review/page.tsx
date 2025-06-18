@@ -132,7 +132,7 @@ export default function MarksReviewPage() {
     startSubmissionUpdateTransition(async () => {
       const result = await approveMarkSubmission(marksPayload.submissionId!);
       toast({ title: result.success ? "Success" : "Error", description: result.message, variant: result.success ? "default" : "destructive" });
-      if (result.success) handleFetchMarks(); // Refresh data
+      if (result.success) handleFetchMarks(); 
     });
   };
 
@@ -146,7 +146,7 @@ export default function MarksReviewPage() {
       const result = await rejectMarkSubmission(marksPayload.submissionId!, rejectReason);
       toast({ title: result.success ? "Success" : "Error", description: result.message, variant: result.success ? "default" : "destructive" });
       if (result.success) {
-        handleFetchMarks(); // Refresh data
+        handleFetchMarks(); 
         setShowRejectInput(false);
         setRejectReason("");
       }
@@ -267,12 +267,12 @@ export default function MarksReviewPage() {
             <div>
               <CardTitle className="font-headline text-xl text-primary">Latest Submitted Marks Overview</CardTitle>
               <CardDescription>
-                Marks for the selected criteria. D.O.S. Status: <Badge variant={currentDosStatus === 'Approved' ? 'default' : currentDosStatus === 'Rejected' ? 'destructive' : 'secondary'} className={currentDosStatus === 'Approved' ? 'bg-green-500' : currentDosStatus === 'Rejected' ? 'bg-red-500' : '' }>{currentDosStatus || 'N/A'}</Badge>
+                Marks for the selected criteria. D.O.S. Status: <Badge variant={currentDosStatus === 'Approved' ? 'default' : currentDosStatus === 'Rejected' ? 'destructive' : 'secondary'} className={currentDosStatus === 'Approved' ? 'bg-green-500 text-white' : currentDosStatus === 'Rejected' ? 'bg-red-500 text-white' : '' }>{currentDosStatus || 'N/A'}</Badge>
                 {currentDosStatus === 'Rejected' && currentDosRejectReason && <span className="text-xs italic"> Reason: {currentDosRejectReason}</span>}
               </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
-                <Button onClick={handleAnomalyCheck} disabled={isActionDisabled}>
+                <Button onClick={handleAnomalyCheck} disabled={isActionDisabled || isSubmissionFinalized}>
                 {isProcessingAnomalyCheck ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
                 AI Anomaly Check
                 </Button>
@@ -322,7 +322,7 @@ export default function MarksReviewPage() {
                     disabled={isActionDisabled || isSubmissionFinalized}
                     className="bg-green-600 hover:bg-green-700"
                 >
-                    {isUpdatingSubmission && !isSubmissionFinalized ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ThumbsUp className="mr-2 h-4 w-4"/>}
+                    {isUpdatingSubmission && currentDosStatus !== 'Approved' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ThumbsUp className="mr-2 h-4 w-4"/>}
                     Approve Submission
                 </Button>
             </div>
@@ -335,7 +335,7 @@ export default function MarksReviewPage() {
                         className="min-h-[80px]"
                     />
                     <Button onClick={handleReject} variant="destructive" disabled={isUpdatingSubmission || !rejectReason.trim()}>
-                         {isUpdatingSubmission && !isSubmissionFinalized ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ThumbsDown className="mr-2 h-4 w-4"/>}
+                         {isUpdatingSubmission && currentDosStatus !== 'Rejected' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ThumbsDown className="mr-2 h-4 w-4"/>}
                         Confirm Rejection
                     </Button>
                 </div>

@@ -904,7 +904,7 @@ export async function downloadAllMarks(format: 'csv' | 'xlsx' | 'pdf' = 'csv'): 
 
 export type MarksForReviewEntry = GenkitGradeEntry & { studentName: string };
 export interface MarksForReviewPayload {
-    submissionId: string | null; // Document ID of the markSubmission
+    submissionId: string | null; 
     marks: MarksForReviewEntry[];
     dosStatus?: MarkSubmissionFirestoreRecord['dosStatus'];
     dosRejectReason?: string;
@@ -971,19 +971,20 @@ export async function approveMarkSubmission(submissionId: string): Promise<{ suc
         const submissionRef = doc(db, "markSubmissions", submissionId);
         await updateDoc(submissionRef, {
             dosStatus: 'Approved',
-            dosRejectReason: null, // Clear any previous rejection reason
+            dosRejectReason: null, 
             dosLastReviewedAt: Timestamp.now(),
-            // Optionally, add dosLastReviewedBy if you have user identification for D.O.S.
         });
         revalidatePath("/dos/marks-review");
-        // Also revalidate teacher's history and assessments list
+        
         const submissionSnap = await getDoc(submissionRef);
         if (submissionSnap.exists()) {
             const teacherId = submissionSnap.data().teacherId;
             if (teacherId) {
-                revalidatePath(`/teacher/marks/history?teacherId=${teacherId}`);
-                revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}`);
-                 revalidatePath(`/teacher/dashboard?teacherId=${teacherId}`);
+                const teacherInfo = await getTeacherById(teacherId);
+                const teacherNameParam = teacherInfo?.name ? encodeURIComponent(teacherInfo.name) : "Teacher";
+                revalidatePath(`/teacher/marks/history?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
+                revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
+                revalidatePath(`/teacher/dashboard?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
             }
         }
         return { success: true, message: "Submission approved." };
@@ -1007,10 +1008,12 @@ export async function rejectMarkSubmission(submissionId: string, reason: string)
         const submissionSnap = await getDoc(submissionRef);
         if (submissionSnap.exists()) {
             const teacherId = submissionSnap.data().teacherId;
-            if (teacherId) {
-                revalidatePath(`/teacher/marks/history?teacherId=${teacherId}`);
-                revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}`);
-                revalidatePath(`/teacher/dashboard?teacherId=${teacherId}`);
+             if (teacherId) {
+                const teacherInfo = await getTeacherById(teacherId);
+                const teacherNameParam = teacherInfo?.name ? encodeURIComponent(teacherInfo.name) : "Teacher";
+                revalidatePath(`/teacher/marks/history?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
+                revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
+                revalidatePath(`/teacher/dashboard?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
             }
         }
         return { success: true, message: "Submission rejected with reason." };
@@ -1019,6 +1022,46 @@ export async function rejectMarkSubmission(submissionId: string, reason: string)
         return { success: false, message: `Failed to reject submission: ${msg}` };
     }
 }
+
+export async function updateSubmittedMarksByDOS(
+  submissionId: string,
+  updatedMarks: Array<{ studentId: string; score: number }>
+): Promise<{ success: boolean; message: string }> {
+  if (!db) return { success: false, message: "Firestore not initialized." };
+  if (!submissionId) return { success: false, message: "Submission ID is required." };
+  
+  try {
+    const submissionRef = doc(db, "markSubmissions", submissionId);
+    const studentCount = updatedMarks.length;
+    const totalScore = updatedMarks.reduce((sum, mark) => sum + (mark.score || 0), 0);
+    const averageScore = studentCount > 0 ? totalScore / studentCount : null;
+
+    await updateDoc(submissionRef, {
+      submittedMarks: updatedMarks,
+      studentCount: studentCount,
+      averageScore: averageScore,
+      dosEdited: true,
+      dosLastEditedAt: Timestamp.now(),
+      // Note: dosStatus is NOT changed here. D.O.S. must explicitly approve/reject after edits.
+    });
+
+    revalidatePath(`/dos/marks-review`);
+    // Optionally revalidate teacher history if D.O.S. edits should be immediately visible there.
+    // const submissionSnap = await getDoc(submissionRef);
+    // if (submissionSnap.exists()) {
+    //   const teacherId = submissionSnap.data().teacherId;
+    //   if (teacherId) {
+    //     revalidatePath(`/teacher/marks/history?teacherId=${teacherId}`);
+    //   }
+    // }
+    return { success: true, message: "Marks updated by D.O.S. successfully." };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Unknown error.";
+    console.error(`Error in updateSubmittedMarksByDOS for ${submissionId}:`, error);
+    return { success: false, message: `Failed to update marks: ${msg}` };
+  }
+}
+
 
 export async function downloadSingleMarkSubmission(submissionId: string, format: 'csv' | 'xlsx' | 'pdf'): Promise<{ success: boolean; message: string; data?: string | Uint8Array }> {
   if (!db) {
@@ -1079,12 +1122,12 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
       return { success: true, message: "CSV data prepared.", data: csvData };
     } else if (format === 'xlsx') {
       const worksheet = XLSX.utils.json_to_sheet(reportData);
-      XLSX.utils.sheet_add_aoa(worksheet, [[reportTitle]], { origin: "A1" }); // Add title before header
+      XLSX.utils.sheet_add_aoa(worksheet, [[reportTitle]], { origin: "A1" }); 
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, examName.substring(0,30)); // Sheet name max 31 chars
+      XLSX.utils.book_append_sheet(workbook, worksheet, examName.substring(0,30)); 
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       return { success: true, message: "XLSX data prepared.", data: new Uint8Array(excelBuffer) };
-    } else if (format === 'pdf') { // Basic text PDF
+    } else if (format === 'pdf') { 
       let pdfTextContent = `${reportTitle}\n`;
       pdfTextContent += "====================================\n\n";
       const header = Object.keys(reportData[0]).map(h => h.padEnd(15)).join('\t|\t');

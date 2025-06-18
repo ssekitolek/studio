@@ -143,14 +143,16 @@ export interface MarkSubmissionFirestoreRecord {
   dateSubmitted: import("firebase/firestore").Timestamp; // Firestore Timestamp
   studentCount: number;
   averageScore: number | null;
-  status: "Pending Review (Anomaly Detected)" | "Accepted" | "Rejected" | string; // Original teacher-facing status
+  status: string; // Teacher-facing status: "Pending Review (Anomaly Detected)" | "Accepted"
   submittedMarks: Array<{ studentId: string; score: number }>;
   anomalyExplanations: Array<AnomalyExplanation>;
-  // New D.O.S. specific fields
-  dosStatus?: 'Pending' | 'Approved' | 'Rejected'; // D.O.S. workflow status
+  // D.O.S. specific fields
+  dosStatus: 'Pending' | 'Approved' | 'Rejected'; // D.O.S. workflow status
   dosRejectReason?: string;
-  dosLastReviewedBy?: string; // Optional: User ID of D.O.S.
+  dosLastReviewedBy?: string; // Optional: User ID of D.O.S. (future use)
   dosLastReviewedAt?: import("firebase/firestore").Timestamp; // Optional: Timestamp of D.O.S. review
+  dosEdited?: boolean; // Flag if D.O.S. edited the marks
+  dosLastEditedAt?: import("firebase/firestore").Timestamp; // Timestamp of D.O.S. edit
 }
 
 // For Teacher's View of Submission History
@@ -160,7 +162,7 @@ export interface SubmissionHistoryDisplayItem {
   dateSubmitted: string; // ISO string
   studentCount: number;
   averageScore: number | null;
-  status: string; // Combined/derived status for display
-  dosStatus?: 'Pending' | 'Approved' | 'Rejected';
+  status: string; // Combined/derived status for display to teacher
+  dosStatus: 'Pending' | 'Approved' | 'Rejected'; // Actual D.O.S. status
   dosRejectReason?: string;
 }

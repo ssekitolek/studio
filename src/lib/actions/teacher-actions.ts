@@ -126,17 +126,17 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
   const initialTeacherStatus: MarkSubmissionFirestoreRecord['status'] = anomalyResult?.hasAnomalies ? "Pending Review (Anomaly Detected)" : "Accepted";
   console.log(`[Teacher Action - submitMarks] Setting initial teacher-facing status for submission: ${initialTeacherStatus}`);
 
-  const submissionPayload: Omit<MarkSubmissionFirestoreRecord, 'dosLastReviewedBy' | 'dosLastReviewedAt'> = { // Omit optional fields not set here
+  const submissionPayload: Omit<MarkSubmissionFirestoreRecord, 'dosLastReviewedBy' | 'dosLastReviewedAt' | 'dosEdited' | 'dosLastEditedAt' | 'dosRejectReason'> = {
     teacherId,
     assessmentId: data.assessmentId,
     assessmentName: assessmentDetails.name,
     dateSubmitted: Timestamp.now(),
     studentCount,
     averageScore,
-    status: initialTeacherStatus, // Teacher-facing status based on their submission's AI check
+    status: initialTeacherStatus, 
     submittedMarks: data.marks,
     anomalyExplanations: anomalyResult?.anomalies || [],
-    dosStatus: 'Pending', // Initial D.O.S. status
+    dosStatus: 'Pending', 
   };
   console.log("[Teacher Action - submitMarks] Submission payload prepared:", JSON.stringify(submissionPayload));
 
@@ -151,12 +151,13 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
     return { success: false, message: `Failed to save submission: ${errorMessage}` };
   }
 
-  // Revalidate paths. The teacherName placeholder will be resolved by the client-side logic.
-  const teacherNameParam = "PLACEHOLDER_TEACHER_NAME";
+  const teacherInfo = await getTeacherByIdFromDOS(teacherId);
+  const teacherNameParam = teacherInfo?.name ? encodeURIComponent(teacherInfo.name) : "Teacher";
+
   revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
   revalidatePath(`/teacher/marks/history?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
-  revalidatePath(`/dos/marks-review`);
   revalidatePath(`/teacher/dashboard?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
+  revalidatePath("/dos/marks-review"); // D.O.S. portal also needs revalidation
 
   if (anomalyResult?.hasAnomalies) {
     return { success: true, message: "Marks submitted. Potential anomalies were detected and have been flagged for D.O.S. review.", anomalies: anomalyResult };
@@ -199,7 +200,7 @@ async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName
 
 
     const assessmentName = `${cls?.name || 'Unknown Class'} - ${subject?.name || 'Unknown Subject'} - ${exam?.name || 'Unknown Exam'}`;
-    const historicalAverage = undefined;
+    const historicalAverage = undefined; // Placeholder, not implemented
 
     const result = {
         subjectName: subject?.name || "Unknown Subject",
@@ -260,18 +261,26 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
 
         const history: SubmissionHistoryDisplayItem[] = querySnapshot.docs.map(docSnap => {
             const data = docSnap.data() as MarkSubmissionFirestoreRecord;
+            let displayStatus = data.status; 
 
-            let displayStatus = data.status; // Teacher's initial submission status
-            if (data.dosStatus === 'Approved') {
-                displayStatus = 'Approved by D.O.S.';
-            } else if (data.dosStatus === 'Rejected') {
-                displayStatus = 'Rejected by D.O.S.';
-            } else if (data.dosStatus === 'Pending' && data.status && data.status.includes('Anomaly')) {
-                displayStatus = 'Pending D.O.S. Review (Anomaly)';
-            } else if (data.dosStatus === 'Pending') {
-                 displayStatus = 'Pending D.O.S. Review';
+            switch(data.dosStatus) {
+                case 'Approved':
+                    displayStatus = 'Approved by D.O.S.';
+                    break;
+                case 'Rejected':
+                    displayStatus = 'Rejected by D.O.S.';
+                    break;
+                case 'Pending':
+                    if (data.status && data.status.includes('Anomaly')) {
+                        displayStatus = 'Pending D.O.S. Review (Anomaly)';
+                    } else {
+                        displayStatus = 'Pending D.O.S. Review';
+                    }
+                    break;
+                default:
+                    // If dosStatus is undefined, use the original teacher status
+                    displayStatus = data.status || 'Unknown Status';
             }
-
 
             return {
                 id: docSnap.id,
@@ -279,8 +288,8 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
                 dateSubmitted: data.dateSubmitted instanceof Timestamp ? data.dateSubmitted.toDate().toISOString() : new Date().toISOString(),
                 studentCount: typeof data.studentCount === 'number' ? data.studentCount : 0,
                 averageScore: typeof data.averageScore === 'number' ? data.averageScore : null,
-                status: displayStatus,
-                dosStatus: data.dosStatus,
+                status: displayStatus, // This is the derived status for teacher display
+                dosStatus: data.dosStatus, // Keep the raw D.O.S. status too
                 dosRejectReason: data.dosRejectReason,
             };
         });
@@ -321,7 +330,7 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
 
   const currentTermId = actualGeneralSettings.currentTermId;
   if (!currentTermId) {
-    console.warn(`[LOG_TAR] No current term ID set in general settings (isDefaultTemplate: ${gsIsDefault}, using currentTermId: ${currentTermId}). Cannot determine responsibilities.`);
+    console.warn(`[LOG_TAR] No current term ID set in general settings. Cannot determine responsibilities. General settings isDefault: ${gsIsDefault}, currentTermId from actualGeneralSettings: ${actualGeneralSettings.currentTermId}`);
     return responsibilitiesMap;
   }
   console.log(`[LOG_TAR] Current Term ID: ${currentTermId}`);
@@ -475,40 +484,39 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
 
     responsibilitiesMap.forEach(({ classObj, subjectObj, examObj }, key) => {
         assessmentsForForm.push({
-            id: key, // key is assessmentId: examId_classId_subjectId
+            id: key, 
             name: `${classObj.name} - ${subjectObj.name} - ${examObj.name}`,
             maxMarks: examObj.maxMarks,
         });
     });
 
-    // Filter out assessments that have already been submitted and NOT rejected by D.O.S.
     if (assessmentsForForm.length > 0) {
         const generalSettingsResult = await getGeneralSettings();
         const { isDefaultTemplate: gsIsDefault, ...actualGeneralSettings } = generalSettingsResult;
         const currentTermId = actualGeneralSettings.currentTermId;
 
-        if (currentTermId) { // Only filter if there's a current term to match against
+        if (currentTermId) { 
             const submissionsRef = collection(db, "markSubmissions");
             const q = query(
                 submissionsRef,
                 where("teacherId", "==", teacherId)
             );
             const submissionsSnapshot = await getDocs(q);
-            const submittedAssessmentIdsForCurrentTerm = new Set<string>();
-            const allExams = await getAllExamsFromDOS(); // Fetch all exams once
+            const submittedOrApprovedAssessmentIdsForCurrentTerm = new Set<string>();
+            const allExams = await getAllExamsFromDOS(); 
 
             submissionsSnapshot.forEach(docSnap => {
                 const submission = docSnap.data() as MarkSubmissionFirestoreRecord;
                 const examIdFromSubmission = submission.assessmentId.split('_')[0];
                 const examIsCurrentTerm = allExams.some(e => e.id === examIdFromSubmission && e.termId === currentTermId);
 
-                if (examIsCurrentTerm && submission.dosStatus !== 'Rejected') {
-                    submittedAssessmentIdsForCurrentTerm.add(submission.assessmentId);
+                if (examIsCurrentTerm && (submission.dosStatus === 'Approved' || submission.dosStatus === 'Pending')) {
+                    submittedOrApprovedAssessmentIdsForCurrentTerm.add(submission.assessmentId);
                 }
             });
 
-            assessmentsForForm = assessmentsForForm.filter(assessment => !submittedAssessmentIdsForCurrentTerm.has(assessment.id));
-            console.log(`[getTeacherAssessments] After filtering submitted (and not rejected for current term) assessments, ${assessmentsForForm.length} remain.`);
+            assessmentsForForm = assessmentsForForm.filter(assessment => !submittedOrApprovedAssessmentIdsForCurrentTerm.has(assessment.id));
+            console.log(`[getTeacherAssessments] After filtering submitted (Pending/Approved for current term) assessments, ${assessmentsForForm.length} remain.`);
         } else {
             console.warn("[getTeacherAssessments] No current term ID set, cannot filter by submitted assessments for the current term. All potential assessments will be shown.");
         }
