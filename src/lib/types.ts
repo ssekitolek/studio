@@ -165,7 +165,7 @@ export interface SubmissionHistoryDisplayItem {
   studentCount: number;
   averageScore: number | null;
   status: string; // Combined/derived status for display to teacher reflecting D.O.S. review
-  dosStatus: MarkSubmissionFirestoreRecord['dosStatus']; // direct D.O.S. status
+  dosStatus: MarkSubmissionFirestoreRecord['dosStatus'];
   dosRejectReason?: string;
 }
 

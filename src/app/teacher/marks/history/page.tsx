@@ -87,8 +87,7 @@ export default function MarksHistoryPage() {
         }
         return { variant: "secondary", className: "bg-blue-500 hover:bg-blue-600 text-white", icon: <Info className="mr-1 inline-block h-3 w-3" /> };
     }
-    // Fallback if dosStatus is somehow not set (should not happen with new logic)
-    // but retain original logic for teacher's AI check status if dosStatus is missing
+    
     if (item.status && item.status.includes("Anomaly Detected")) return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
     if (item.status === "Accepted") return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" }; 
     

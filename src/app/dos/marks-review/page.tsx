@@ -135,7 +135,7 @@ export default function MarksReviewPage() {
       const result = await approveMarkSubmission(marksPayload.submissionId!);
       toast({ title: result.success ? "Success" : "Error", description: result.message, variant: result.success ? "default" : "destructive" });
       if (result.success) {
-        handleFetchMarks(); // Refresh to show updated status
+        handleFetchMarks(); 
       }
     });
   };
@@ -150,7 +150,7 @@ export default function MarksReviewPage() {
       const result = await rejectMarkSubmission(marksPayload.submissionId!, rejectReason);
       toast({ title: result.success ? "Success" : "Error", description: result.message, variant: result.success ? "default" : "destructive" });
       if (result.success) {
-        handleFetchMarks(); // Refresh to show updated status
+        handleFetchMarks(); 
         setShowRejectInput(false);
         setRejectReason("");
       }
@@ -176,8 +176,8 @@ export default function MarksReviewPage() {
               fileName = `${assessmentNameSlug}.xlsx`;
               break;
             case "pdf": 
-              blobType = "text/plain;charset=utf-8;"; // Changed to text/plain for basic PDF content
-              fileName = `${assessmentNameSlug}.txt`; // Changed extension for clarity
+              blobType = "text/plain;charset=utf-8;"; 
+              fileName = `${assessmentNameSlug}.txt`; 
               break;
             case "csv":
             default:
@@ -315,7 +315,7 @@ export default function MarksReviewPage() {
                  <p className="text-center text-muted-foreground py-8">No marks were part of this submission entry, or the submission was not found.</p>
             )}
           </CardContent>
-          {currentMarks.length > 0 && ( // Show action buttons only if there are marks
+          {currentMarks.length > 0 && ( 
             <CardContent className="border-t pt-4 space-y-3">
                 <div className="flex flex-wrap gap-2 justify-end">
                     <Button
