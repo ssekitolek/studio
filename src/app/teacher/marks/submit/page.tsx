@@ -116,7 +116,7 @@ export default function SubmitMarksPage() {
     }
     fetchAssessments(teacherIdFromUrl);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, toast]); // Removed pageError from deps to prevent re-fetch loops on pageError set
+  }, [searchParams, toast]);
 
   const handleAssessmentChange = async (assessmentId: string) => {
     form.setValue("assessmentId", assessmentId);
@@ -133,7 +133,7 @@ export default function SubmitMarksPage() {
         const students: Student[] = await getStudentsForAssessment(assessmentId);
         console.log(`[SubmitMarksPage] Received ${students.length} students for assessment ${assessmentId}`);
         const marksData = students.map(student => ({
-          studentId: student.studentIdNumber, // Ensure this is the ID used consistently
+          studentId: student.studentIdNumber,
           studentName: `${student.firstName} ${student.lastName}`,
           score: null,
         }));
@@ -169,7 +169,7 @@ export default function SubmitMarksPage() {
     }
 
     const marksToSubmit = data.marks.map(m => ({
-        studentId: m.studentId, // This should be studentIdNumber
+        studentId: m.studentId,
         score: m.score
     })).filter(m => m.score !== null && m.score !== undefined && m.score.toString().trim() !== '');
 
@@ -203,7 +203,7 @@ export default function SubmitMarksPage() {
       try {
         console.log(`[SubmitMarksPage] Submitting marks for teacherId: ${currentTeacherId}, assessmentId (composite): ${data.assessmentId}`);
         const result = await submitMarks(currentTeacherId, {
-          assessmentId: data.assessmentId, // This is the composite ID
+          assessmentId: data.assessmentId,
           marks: marksToSubmit as Array<{ studentId: string; score: number }>,
         });
         console.log(`[SubmitMarksPage] Submission result for assessmentId ${data.assessmentId}:`, result);
@@ -229,7 +229,6 @@ export default function SubmitMarksPage() {
             setAnomalies([]);
             setShowAnomalyWarning(false);
             
-            // Refresh the list of assessments
             if(currentTeacherId) {
                 setIsLoadingAssessments(true);
                 console.log(`[SubmitMarksPage] Re-fetching assessments for teacherId: ${currentTeacherId} after successful submission.`);
@@ -362,7 +361,7 @@ export default function SubmitMarksPage() {
                       </TableHeader>
                       <TableBody>
                         {fields.map((item, index) => (
-                          <TableRow key={item.id}> {/* Use item.id from useFieldArray */}
+                          <TableRow key={item.id}>
                             <TableCell>{item.studentId}</TableCell>
                             <TableCell>{item.studentName}</TableCell>
                             <TableCell className="text-right">
