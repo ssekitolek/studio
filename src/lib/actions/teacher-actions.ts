@@ -186,10 +186,8 @@ async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName
       return { subjectName: "Error: DB_NULL", examName: "Error: DB_NULL", name: "Error: DB_NULL: Firestore not initialized", maxMarks: 0 };
     }
     
-    // Explicitly check if getDoc is defined in this scope
     if (typeof getDoc !== 'function') {
         console.error("[getAssessmentDetails] CRITICAL_RUNTIME_ERROR: getDoc function IS UNDEFINED at point of use! Firebase SDK might not be loaded correctly or import is missing/corrupted.");
-        // Return a specific error object that submitMarks can check
         return { subjectName: "Error: SDK_ERR", examName: "Error: SDK_ERR", name: "Error: SDK_ERR: getDoc is not defined", maxMarks: 0 };
     }
 
@@ -693,7 +691,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       const submissionsSnapshot = await getCountFromServer(submissionsQuery);
       recentSubmissionsCount = submissionsSnapshot.data().count;
       console.log(`[LOG_TDD] Recent submissions count (last 7 days): ${recentSubmissionsCount}`);
-    } catch (e: any) { // Changed to 'any' to inspect 'code' property
+    } catch (e: any) {
       console.error("[LOG_TDD] Error fetching recent submissions count:", e);
       let errMessage = "Could not fetch recent submission count due to a server error.";
       if (e.code === 'failed-precondition') {
@@ -710,12 +708,13 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
         message: errMessage,
         type: 'warning',
       });
+      // Ensure stats.recentSubmissionsCount remains 0 or 'N/A' will be handled by StatCard
     }
 
     const stats: TeacherStats = {
       assignedClassesCount: uniqueClassIds.size,
       subjectsTaughtCount: uniqueSubjectNames.size,
-      recentSubmissionsCount: recentSubmissionsCount,
+      recentSubmissionsCount: recentSubmissionsCount, // This will be 0 if the try-catch above failed
     };
     console.log(`[LOG_TDD] Calculated stats: ${JSON.stringify(stats)}`);
 
@@ -823,6 +822,9 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       ...defaultResponse,
       notifications: [{ id: 'processing_error_dashboard', message: `Error processing dashboard data for ${teacherNameOnError || `ID ${teacherId}`}: ${errorMessage}.`, type: 'warning' }],
       teacherName: teacherNameOnError,
+      stats: { // Ensure stats object is still complete even on error
+        ...defaultStats, // Use defaultStats which has recentSubmissionsCount: 0
+      },
     };
   }
 }
@@ -850,4 +852,3 @@ export async function getTeacherProfileData(teacherId: string): Promise<{ name?:
     return null;
   }
 }
-
