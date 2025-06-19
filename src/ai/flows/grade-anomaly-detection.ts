@@ -50,9 +50,11 @@ const gradeAnomalyDetectionPrompt = ai.definePrompt({
 
   You will receive a list of student grades for a specific subject and exam. Your task is to identify any unusual patterns or anomalies in the grades, such as:
 
-  - All students receiving the same grade
-  - Grades significantly deviating from the historical average (if provided)
-  - Any other unusual patterns that might indicate a data entry error.
+  - All students receiving the same grade if the class size is greater than 5.
+  - Grades significantly deviating from the historical average (if provided, by more than 2 standard deviations or 20 percentage points).
+  - Any individual grade being drastically different from the mean of the submitted grades for this specific assessment (e.g., more than 3 standard deviations if class size permits, or a large absolute difference).
+  - Unusual clustering of grades at the pass/fail boundary or at maximum/minimum scores.
+  - Any other unusual patterns that might indicate a data entry error or other irregularities.
 
   Subject: {{{subject}}}
   Exam: {{{exam}}}
@@ -66,12 +68,14 @@ const gradeAnomalyDetectionPrompt = ai.definePrompt({
     "hasAnomalies": true/false,
     "anomalies": [
       {
-        "studentId": "student_id",
+        "studentId": "student_id_or_general_observation_if_not_student_specific",
         "explanation": "Explanation of the anomaly"
       },
       ...
     ]
   }
+  If no anomalies are found, "anomalies" should be an empty array and "hasAnomalies" should be false.
+  If an anomaly is about a general pattern (e.g. all students same grade), use a placeholder like "GENERAL" for studentId.
   `,
 });
 
@@ -83,6 +87,11 @@ const gradeAnomalyDetectionFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await gradeAnomalyDetectionPrompt(input);
-    return output!;
+    // Ensure output is not null; if it is, return a default "no anomalies" response
+    if (!output) {
+      console.warn("Anomaly detection prompt returned null output. Defaulting to no anomalies.");
+      return { hasAnomalies: false, anomalies: [] };
+    }
+    return output;
   }
 );

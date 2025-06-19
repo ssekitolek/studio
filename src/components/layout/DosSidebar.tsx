@@ -67,32 +67,15 @@ export function DosSidebar() {
   const pathname = usePathname();
   const { state } = useSidebar();
 
-  const isItemActive = (href: string) => {
-    // For dashboard, only active if it's an exact match
+  const isItemActive = (href: string, isSubItem: boolean = false) => {
+    // Exact match for dashboard
     if (href === "/dos/dashboard") {
-        return pathname === href;
+      return pathname === href;
     }
-    // For section parent links or other specific top-level links
-    // (e.g., /dos/marks-review, /dos/reports/download-marks)
-    if (dosNavItems.some(item => item.href === href && !item.isSection)) {
-        return pathname === href || pathname.startsWith(`${href}/`); // Handles potential child pages if any
-    }
-
-    // For sub-items or section items that act as containers (like /dos/teachers, /dos/settings/terms)
+    // For top-level items that are not section headers (e.g., Marks Review, Download Reports)
+    // and for sub-items.
     // The link is active if the current path starts with the item's href.
-    // We also need to be careful not to activate a parent if a more specific child is active.
-    
-    // Example: If on /dos/teachers/assignments, /dos/teachers should also appear active.
-    // However, if href is /dos/teachers and pathname is /dos/teachers/assignments, it's active.
-    // But if href is /dos/teachers and pathname is /dos/students, it's not.
-
-    // A more precise check for section parents
-    const sectionParent = dosNavItems.find(item => item.isSection && item.subItems?.some(sub => href === sub.href));
-    if (sectionParent) { // This 'href' is a sub-item
-        return pathname.startsWith(href);
-    }
-    
-    // Default for other links if any other logic is needed
+    // This handles cases like /dos/teachers being active for /dos/teachers/new or /dos/teachers/[id]/edit
     return pathname.startsWith(href);
   };
 
@@ -106,7 +89,7 @@ export function DosSidebar() {
               {item.subItems.map((subItem: any, subIndex: number) => (
                 <SidebarMenuSubItem key={`${index}-${subIndex}`}>
                   <Link href={subItem.href}>
-                    <SidebarMenuSubButton isActive={isItemActive(subItem.href)} className="justify-start">
+                    <SidebarMenuSubButton isActive={isItemActive(subItem.href, true)} className="justify-start">
                       <subItem.icon className="h-4 w-4 mr-2" />
                       {state === 'expanded' && <span>{subItem.label}</span>}
                     </SidebarMenuSubButton>
@@ -119,6 +102,7 @@ export function DosSidebar() {
       );
     }
 
+    // For non-section, top-level items
     return (
       <SidebarMenuItem key={index}>
         <Link href={item.href}>
@@ -170,4 +154,3 @@ export function DosSidebar() {
     </Sidebar>
   );
 }
-

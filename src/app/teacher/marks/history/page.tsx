@@ -75,17 +75,19 @@ export default function MarksHistoryPage() {
         }
     }
     fetchData(teacherIdFromUrl);
-  }, [searchParams, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, toast]); // Removed pageError from deps for now.
 
   const getStatusVariantAndClass = (item: SubmissionHistoryDisplayItem): {variant: "default" | "destructive" | "secondary", className: string, icon?: React.ReactNode} => {
     // Prioritize D.O.S. status for display
     if (item.dosStatus === 'Approved') return { variant: "default", className: "bg-green-500 hover:bg-green-600 text-white", icon: <CheckCircle2 className="mr-1 inline-block h-3 w-3" /> };
     if (item.dosStatus === 'Rejected') return { variant: "destructive", className: "bg-red-500 hover:bg-red-600 text-white", icon: <AlertTriangle className="mr-1 inline-block h-3 w-3" /> };
+    // If D.O.S. status is Pending, use the teacher-facing AI status for more nuance
     if (item.dosStatus === 'Pending') {
-        // Original status (teacher-side AI check) can inform color when D.O.S. status is pending
         if (item.status && (item.status.includes("Anomaly Detected") || item.status.includes("Anomaly)"))) { // Check for variations
              return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
         }
+        // If no anomaly detected by AI and D.O.S. status is pending
         return { variant: "secondary", className: "bg-blue-500 hover:bg-blue-600 text-white", icon: <Info className="mr-1 inline-block h-3 w-3" /> };
     }
     
@@ -237,4 +239,3 @@ export default function MarksHistoryPage() {
     </div>
   );
 }
-

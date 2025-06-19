@@ -87,10 +87,16 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
 
   const isItemActive = (href: string) => {
     if (!validTeacherId && href.startsWith("/teacher/")) {
-        return false;
+        return false; // If teacherId is not valid, no teacher links should be active
     }
-    const baseHref = href.split('?')[0];
-    return pathname === baseHref || (baseHref !== "/teacher/dashboard" && pathname.startsWith(baseHref));
+    const baseHref = href.split('?')[0]; // Compare only the path part, ignore query params
+
+    // Exact match for dashboard
+    if (baseHref === "/teacher/dashboard") {
+      return pathname === baseHref;
+    }
+    // For other pages, check if current path starts with the link's base href
+    return pathname.startsWith(baseHref);
   };
 
   return (
@@ -152,4 +158,3 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
     </Sidebar>
   );
 }
-    

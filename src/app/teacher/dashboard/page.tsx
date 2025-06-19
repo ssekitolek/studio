@@ -67,7 +67,7 @@ export default function TeacherDashboardPage() {
     
     setCurrentTeacherName(nameFromUrl); 
 
-    if (!idFromParams || idFromParams.trim() === "" || idFromParams.toLowerCase() === "undefined") {
+    if (!idFromParams || idFromParams.trim() === "" || idFromParams.toLowerCase() === "undefined" || idFromParams === "undefined") {
       const errorMessage = `Teacher ID is invalid or missing from URL (received: '${idFromParams}'). Dashboard cannot be loaded.`;
       setIsLoading(false);
       setFetchError(errorMessage);
@@ -346,8 +346,3 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
-    
-
-    
-
-

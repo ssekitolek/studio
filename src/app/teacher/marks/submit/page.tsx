@@ -88,12 +88,14 @@ export default function SubmitMarksPage() {
     }
 
     setCurrentTeacherId(teacherIdFromUrl);
-    setPageError(null);
+    setPageError(null); // Clear previous errors if ID is now valid
 
     async function fetchAssessments(validTeacherId: string) {
       setIsLoadingAssessments(true);
       try {
+        console.log(`[SubmitMarksPage] Fetching assessments for teacherId: ${validTeacherId}`);
         const assessmentData = await getTeacherAssessments(validTeacherId);
+        console.log(`[SubmitMarksPage] Received ${assessmentData.length} assessments:`, assessmentData);
         setAssessments(assessmentData);
         if (assessmentData.length === 0 && !pageError) { 
             toast({
@@ -107,12 +109,14 @@ export default function SubmitMarksPage() {
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
         toast({ title: "Error Loading Assessments", description: errorMessage, variant: "destructive" });
         setPageError(`Failed to load assessments: ${errorMessage}`);
+        console.error(`[SubmitMarksPage] Error fetching assessments for teacherId ${validTeacherId}:`, error);
       } finally {
         setIsLoadingAssessments(false);
       }
     }
     fetchAssessments(teacherIdFromUrl);
-  }, [searchParams, toast, pageError]); 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, toast]); // Removed pageError from deps to prevent re-fetch loops on pageError set
 
   const handleAssessmentChange = async (assessmentId: string) => {
     form.setValue("assessmentId", assessmentId);
@@ -125,9 +129,11 @@ export default function SubmitMarksPage() {
     if (assessmentId && currentTeacherId) {
       setIsLoadingStudents(true);
       try {
+        console.log(`[SubmitMarksPage] Fetching students for assessmentId (composite): ${assessmentId}`);
         const students: Student[] = await getStudentsForAssessment(assessmentId);
+        console.log(`[SubmitMarksPage] Received ${students.length} students for assessment ${assessmentId}`);
         const marksData = students.map(student => ({
-          studentId: student.studentIdNumber,
+          studentId: student.studentIdNumber, // Ensure this is the ID used consistently
           studentName: `${student.firstName} ${student.lastName}`,
           score: null,
         }));
@@ -136,7 +142,9 @@ export default function SubmitMarksPage() {
             toast({ title: "No Students Found", description: "No students found for the selected assessment. Please check class enrollment or contact D.O.S.", variant: "default" });
         }
       } catch (error) {
-        toast({ title: "Error Loading Students", description: "Failed to load students for this assessment.", variant: "destructive" });
+        const errorMsg = error instanceof Error ? error.message : "Unknown error";
+        toast({ title: "Error Loading Students", description: `Failed to load students for this assessment: ${errorMsg}`, variant: "destructive" });
+        console.error(`[SubmitMarksPage] Error fetching students for assessment ${assessmentId}:`, error);
         replace([]);
       } finally {
         setIsLoadingStudents(false);
@@ -161,7 +169,7 @@ export default function SubmitMarksPage() {
     }
 
     const marksToSubmit = data.marks.map(m => ({
-        studentId: m.studentId,
+        studentId: m.studentId, // This should be studentIdNumber
         score: m.score
     })).filter(m => m.score !== null && m.score !== undefined && m.score.toString().trim() !== '');
 
@@ -193,10 +201,13 @@ export default function SubmitMarksPage() {
 
     startTransition(async () => {
       try {
+        console.log(`[SubmitMarksPage] Submitting marks for teacherId: ${currentTeacherId}, assessmentId (composite): ${data.assessmentId}`);
         const result = await submitMarks(currentTeacherId, {
           assessmentId: data.assessmentId, // This is the composite ID
           marks: marksToSubmit as Array<{ studentId: string; score: number }>,
         });
+        console.log(`[SubmitMarksPage] Submission result for assessmentId ${data.assessmentId}:`, result);
+
         if (result.success) {
           if (result.anomalies?.hasAnomalies) {
             toast({
@@ -218,13 +229,16 @@ export default function SubmitMarksPage() {
             setAnomalies([]);
             setShowAnomalyWarning(false);
             
+            // Refresh the list of assessments
             if(currentTeacherId) {
                 setIsLoadingAssessments(true);
+                console.log(`[SubmitMarksPage] Re-fetching assessments for teacherId: ${currentTeacherId} after successful submission.`);
                 const updatedAssessments = await getTeacherAssessments(currentTeacherId);
                 setAssessments(updatedAssessments);
                 setSelectedAssessment(null); 
                 form.reset({ assessmentId: "", marks: [] }); 
                 setIsLoadingAssessments(false);
+                console.log(`[SubmitMarksPage] Updated assessments list has ${updatedAssessments.length} items.`);
                 if (updatedAssessments.length === 0) {
                     toast({ title: "All Assessments Submitted", description: "No more pending assessments for this term.", variant: "default"});
                 }
@@ -236,6 +250,7 @@ export default function SubmitMarksPage() {
       } catch (error) {
         const e = error as Error;
         toast({ title: "Submission Failed", description: e.message || "An unexpected error occurred.", variant: "destructive" });
+        console.error(`[SubmitMarksPage] Error during submission:`, error);
       }
     });
   };
@@ -347,7 +362,7 @@ export default function SubmitMarksPage() {
                       </TableHeader>
                       <TableBody>
                         {fields.map((item, index) => (
-                          <TableRow key={item.id}>
+                          <TableRow key={item.id}> {/* Use item.id from useFieldArray */}
                             <TableCell>{item.studentId}</TableCell>
                             <TableCell>{item.studentName}</TableCell>
                             <TableCell className="text-right">
@@ -428,4 +443,3 @@ export default function SubmitMarksPage() {
     </div>
   );
 }
-

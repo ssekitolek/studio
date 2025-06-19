@@ -25,7 +25,7 @@ export interface ClassInfo {
   level: string;
   stream?: string;
   classTeacherId?: string;
-  subjects: Subject[];
+  subjects: Subject[]; // Array of Subject objects, not just IDs
 }
 
 export interface Subject {
@@ -38,37 +38,43 @@ export interface Term {
   id: string;
   name: string;
   year: number;
-  startDate: string;
-  endDate: string;
+  startDate: string; // Should be ISO string date e.g., "YYYY-MM-DD"
+  endDate: string;   // Should be ISO string date e.g., "YYYY-MM-DD"
 }
 
 export interface Exam {
   id: string;
   name: string;
   termId: string;
-  examDate?: string;
+  examDate?: string; // Should be ISO string date e.g., "YYYY-MM-DD"
   maxMarks: number;
   description?: string;
-  classId?: string;
-  subjectId?: string;
-  teacherId?: string;
-  marksSubmissionDeadline?: string;
+  classId?: string; // Firestore document ID of the class
+  subjectId?: string; // Firestore document ID of the subject
+  teacherId?: string; // Firestore document ID of the teacher
+  marksSubmissionDeadline?: string; // Should be ISO string date e.g., "YYYY-MM-DD"
 }
 
-export interface Assessment {
-    id: string; // Composite ID: examId_classId_subjectId
-    examId: string;
-    classId: string;
-    subjectId: string;
-    teacherId: string;
+// This type is used for internal representation, e.g., when constructing dropdowns.
+// The actual submission will use the composite assessmentId.
+export interface AssessmentContext {
+    examId: string; // Firestore document ID for the exam
+    classId: string; // Firestore document ID for the class
+    subjectId: string; // Firestore document ID for the subject
+    teacherId: string; // Firestore document ID for the teacher
     maxMarks: number;
-    submissionDeadline: string;
+    submissionDeadline?: string; // ISO string date
+    // Human-readable names
+    className: string;
+    subjectName: string;
+    examName: string;
 }
+
 
 export interface Mark {
-  id: string;
-  assessmentId: string; // Composite ID: examId_classId_subjectId
-  studentId: string; // Student's official ID number
+  id: string; // Firestore document ID of the mark record (if individual marks are stored)
+  assessmentId: string; // Composite ID: examDocId_classDocId_subjectDocId
+  studentId: string; // Student's official ID number (studentIdNumber)
   score: number | null;
   submittedAt?: string; // ISO string
   lastUpdatedAt?: string; // ISO string
@@ -76,12 +82,12 @@ export interface Mark {
 }
 
 export interface GradeEntry {
-  studentId: string; // Student's official ID number
+  studentId: string; // Student's official ID number (studentIdNumber)
   grade: number;
 }
 
 export interface AnomalyExplanation {
-  studentId: string; // Student's official ID number
+  studentId: string; // Student's official ID number (studentIdNumber)
   explanation: string;
 }
 
@@ -108,12 +114,13 @@ export interface GradingPolicy {
   isDefault?: boolean;
 }
 
+// For Teacher Dashboard - list of assessments they need to act on
 export interface TeacherDashboardAssignment {
   id: string; // Composite ID: examDocId_classDocId_subjectDocId
   className: string;
   subjectName: string;
   examName: string;
-  nextDeadlineInfo: string;
+  nextDeadlineInfo: string; // Formatted deadline string
 }
 
 export interface TeacherNotification {
@@ -126,7 +133,7 @@ export interface TeacherNotification {
 export interface TeacherStats {
   assignedClassesCount: number;
   subjectsTaughtCount: number;
-  recentSubmissionsCount: number;
+  recentSubmissionsCount: number; // Number of submissions in the last 7 days by this teacher
 }
 
 export interface TeacherDashboardData {
@@ -142,7 +149,7 @@ export interface MarkSubmissionFirestoreRecord {
   teacherId: string;
   assessmentId: string; // Composite key: examDocumentId_classDocumentId_subjectDocumentId
   assessmentName: string; // Derived human-readable: Class Name - Subject Name - Exam Name
-  dateSubmitted: Timestamp;
+  dateSubmitted: Timestamp; // Firestore Timestamp
   studentCount: number;
   averageScore: number | null;
   status: string; // Teacher-facing status from AI check: "Pending Review (Anomaly Detected)" | "Accepted"
@@ -151,31 +158,30 @@ export interface MarkSubmissionFirestoreRecord {
   // D.O.S. specific fields
   dosStatus: 'Pending' | 'Approved' | 'Rejected';
   dosRejectReason?: string;
-  dosLastReviewedBy?: string; // User ID of D.O.S.
-  dosLastReviewedAt?: Timestamp;
+  dosLastReviewedBy?: string; // User ID of D.O.S. (future use)
+  dosLastReviewedAt?: Timestamp; // Firestore Timestamp
   dosEdited?: boolean; // Flag if D.O.S. edited the marks
-  dosLastEditedAt?: Timestamp;
+  dosLastEditedAt?: Timestamp; // Firestore Timestamp
 }
 
 // For Teacher's View of Submission History
 export interface SubmissionHistoryDisplayItem {
   id: string; // Firestore document ID of the submission
   assessmentName: string; // Human-readable name from MarkSubmissionFirestoreRecord.assessmentName
-  dateSubmitted: string; // ISO string
+  dateSubmitted: string; // ISO string for display
   studentCount: number;
   averageScore: number | null;
   status: string; // Combined/derived status for display to teacher reflecting D.O.S. review
-  dosStatus: MarkSubmissionFirestoreRecord['dosStatus'];
+  dosStatus: MarkSubmissionFirestoreRecord['dosStatus']; // Raw D.O.S. status
   dosRejectReason?: string;
 }
 
 // For D.O.S. Marks Review Page
 export type MarksForReviewEntry = GradeEntry & { studentName: string };
 export interface MarksForReviewPayload {
-    submissionId: string | null;
+    submissionId: string | null; // Firestore document ID of the submission
     assessmentName: string | null; // Human-readable name from MarkSubmissionFirestoreRecord.assessmentName
     marks: MarksForReviewEntry[];
     dosStatus?: MarkSubmissionFirestoreRecord['dosStatus'];
     dosRejectReason?: string;
 }
-

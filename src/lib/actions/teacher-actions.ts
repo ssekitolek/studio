@@ -1,18 +1,18 @@
 
 "use server";
 
-import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation, Exam as ExamTypeFirebase, TeacherStats, MarkSubmissionFirestoreRecord, SubmissionHistoryDisplayItem } from "@/lib/types";
+import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation, Exam as ExamTypeFirebase, TeacherStats, MarkSubmissionFirestoreRecord, SubmissionHistoryDisplayItem, ClassInfo, Subject as SubjectType } from "@/lib/types";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
 import { revalidatePath } from "next/cache";
 import { getClasses, getSubjects, getExams as getAllExamsFromDOS, getGeneralSettings, getTeacherById as getTeacherByIdFromDOS, getTerms, getStudents as getAllStudents } from '@/lib/actions/dos-actions';
-import type { ClassInfo, Subject as SubjectType, GeneralSettings, Term } from '@/lib/types';
+import type { GeneralSettings, Term } from '@/lib/types';
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, limit, addDoc, orderBy, Timestamp, doc, getCountFromServer, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, limit, addDoc, orderBy, Timestamp, doc, getDoc, getCountFromServer } from "firebase/firestore";
 import { subDays } from "date-fns";
 
 
 interface MarksSubmissionData {
-  assessmentId: string; // Composite: examDocId_classDocId_subjectDocId
+  assessmentId: string; // Composite ID: examDocId_classDocId_subjectDocId
   marks: Array<{ studentId: string; score: number }>; // studentId is studentIdNumber
 }
 
@@ -89,7 +89,7 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
   const assessmentDetails = await getAssessmentDetails(data.assessmentId);
   console.log(`[Teacher Action - submitMarks] Fetched assessment details (for assessmentName & AI check): ${JSON.stringify(assessmentDetails)}`);
   
-  if (assessmentDetails.name.startsWith("Error:")) { // Check if getAssessmentDetails returned an error object
+  if (assessmentDetails.name.startsWith("Error:")) { 
      console.error(`[Teacher Action - submitMarks] ABORTING_SUBMISSION due to error in getAssessmentDetails: ${assessmentDetails.name}`);
      return { success: false, message: `Failed to retrieve assessment details: ${assessmentDetails.name}. Marks not saved.` };
   }
@@ -186,10 +186,8 @@ async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName
       return { subjectName: "Error: DB_NULL", examName: "Error: DB_NULL", name: "Error: DB_NULL: Firestore not initialized", maxMarks: 0 };
     }
     
-    // Explicitly check if getDoc is defined in this scope
     if (typeof getDoc !== 'function') {
         console.error("[getAssessmentDetails] CRITICAL_RUNTIME_ERROR: getDoc function IS UNDEFINED at point of use! Firebase SDK might not be loaded correctly or import is missing/corrupted.");
-        // Return a specific error object that submitMarks can check
         return { subjectName: "Error: SDK_ERR", examName: "Error: SDK_ERR", name: "Error: SDK_ERR: getDoc is not defined", maxMarks: 0 };
     }
 
@@ -215,7 +213,7 @@ async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName
 
         const exam = examDocSnap.exists() ? { id: examDocSnap.id, ...examDocSnap.data() } as ExamTypeFirebase : null;
         const subject = subjectDocSnap.exists() ? { id: subjectDocSnap.id, ...subjectDocSnap.data() } as SubjectType : null;
-        const cls = classDocSnap.exists() ? { id: classDocSnap.id, ...classDocSnap.data() } as ClassInfo : null;
+        const cls = classDocSnap.exists() ? { id: classDocSnap.id, ...classDocSnap.data() } as ClassInfo : null; // ClassInfo might need subjects fetched if not already on the object
 
         let errorMessages: string[] = [];
         if (!exam) {
@@ -337,16 +335,18 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
 
                 if (!(data.dateSubmitted instanceof Timestamp)) {
                     console.warn(`[getSubmittedMarksHistory] Malformed 'dateSubmitted' for doc ID ${docId}. Expected Firestore Timestamp, got ${typeof data.dateSubmitted}. Record will be skipped or have incorrect date.`);
+                    // Potentially skip this record or use a default date
+                    // For now, let's proceed and it might use an incorrect date if not a Timestamp
                 }
                 if (typeof data.assessmentName !== 'string' || !data.assessmentName) {
-                     console.warn(`[getSubmittedMarksHistory] Missing or invalid 'assessmentName' for doc ID ${docId}. It should be a string like "Class - Subject - Exam". Record will be skipped or have 'N/A'. Value: ${data.assessmentName}`);
+                     console.warn(`[getSubmittedMarksHistory] Missing or invalid 'assessmentName' for doc ID ${docId}. It should be a string like "Class - Subject - Exam". Record will use 'N/A - Error'. Value: ${data.assessmentName}`);
                 }
 
 
                 const item: SubmissionHistoryDisplayItem = {
                     id: docId,
                     assessmentName: data.assessmentName || "N/A - Error in Record Name", 
-                    dateSubmitted: data.dateSubmitted instanceof Timestamp ? data.dateSubmitted.toDate().toISOString() : new Date().toISOString(), 
+                    dateSubmitted: data.dateSubmitted instanceof Timestamp ? data.dateSubmitted.toDate().toISOString() : new Date(0).toISOString(), // Default to epoch if invalid
                     studentCount: typeof data.studentCount === 'number' ? data.studentCount : 0,
                     averageScore: typeof data.averageScore === 'number' ? data.averageScore : null,
                     status: displayStatus,
@@ -368,6 +368,7 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
     }
 }
 
+// Helper to determine all unique assessment responsibilities for a teacher in the current term
 async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<Map<string, { classObj: ClassInfo; subjectObj: SubjectType; examObj: ExamTypeFirebase }>> {
   const responsibilitiesMap = new Map<string, { classObj: ClassInfo; subjectObj: SubjectType; examObj: ExamTypeFirebase }>();
   console.log(`[LOG_TAR] ACTION START for teacherId: "${teacherId}"`);
@@ -410,6 +411,7 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
   console.log(`[LOG_TAR] Processing ${examsForCurrentTerm.length} exams for current term ID: ${currentTermId}.`);
 
   
+  // 1. Process specific assignments from teacher.subjectsAssigned
   const specificAssignments = Array.isArray(teacherDocument.subjectsAssigned) ? teacherDocument.subjectsAssigned : [];
   specificAssignments.forEach(assignment => {
     const classObj = allClasses.find(c => c.id === assignment.classId);
@@ -417,22 +419,26 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
 
     if (classObj && subjectObj && Array.isArray(assignment.examIds)) {
         assignment.examIds.forEach(assignedExamId => {
-            const examObj = examsForCurrentTerm.find(e => e.id === assignedExamId);
+            const examObj = examsForCurrentTerm.find(e => e.id === assignedExamId); // Exam must be in current term
             
             if (examObj) { 
+                // Check if this exam (which is in the current term) is relevant in context of class & subject
+                // An exam is relevant if:
+                // - It's a general exam (not specific to a class/subject/teacher) OR
+                // - It's specific to THIS class, AND/OR THIS subject, AND/OR THIS teacher
                 const isExamRelevant = 
                     (!examObj.classId || examObj.classId === classObj.id) &&
                     (!examObj.subjectId || examObj.subjectId === subjectObj.id) &&
                     (!examObj.teacherId || examObj.teacherId === teacherId);
 
                 if (isExamRelevant) {
-                    const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`; 
+                    const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`; // Composite ID for the responsibility
                     if (!responsibilitiesMap.has(key)) { 
                         responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
                         console.log(`[LOG_TAR] Added specific responsibility (via subjectsAssigned matching current term exam): ${key} for Exam: ${examObj.name}, Class: ${classObj.name}, Subject: ${subjectObj.name}`);
                     }
                 } else {
-                     console.log(`[LOG_TAR] Specific assignment exam ${examObj.name} (ID: ${examObj.id}) for class ${classObj.name} / subject ${subjectObj.name} IS NOT RELEVANT (Class-specific exam for different class? Subject-specific for different subject? Teacher-specific for different teacher?)`);
+                     console.log(`[LOG_TAR] Specific assignment exam ${examObj.name} (ID: ${examObj.id}) for class ${classObj.name} / subject ${subjectObj.name} IS NOT RELEVANT to this specific context (e.g., exam might be class-specific for a *different* class).`);
                 }
             } else {
                  console.log(`[LOG_TAR] Exam ID ${assignedExamId} from teacher's specific assignment not found in current term's exams. Class: ${classObj.name}, Subject: ${subjectObj.name}`);
@@ -441,36 +447,39 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
     }
   });
   
+  // 2. Process assignments derived from being a Class Teacher
   allClasses.forEach(classObj => {
     if (classObj.classTeacherId === teacherId && Array.isArray(classObj.subjects)) {
       classObj.subjects.forEach(subjectObj => {
-        examsForCurrentTerm.forEach(examObj => { 
+        examsForCurrentTerm.forEach(examObj => { // Iterate through exams for the current term
+          // Exam is relevant if general, or specific to this class/subject/teacher context
           const isRelevantForClassTeacher =
             (!examObj.classId || examObj.classId === classObj.id ) &&
             (!examObj.subjectId || examObj.subjectId === subjectObj.id ) &&
             (!examObj.teacherId || examObj.teacherId === teacherId );
 
           if (isRelevantForClassTeacher) {
-            const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`; 
+            const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`; // Composite ID
             if (!responsibilitiesMap.has(key)) { 
               responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
               console.log(`[LOG_TAR] Added responsibility via class teacher role: ${key} for Exam: ${examObj.name}, Class: ${classObj.name}, Subject: ${subjectObj.name}`);
             }
           } else {
-             console.log(`[LOG_TAR] Exam ${examObj.name} (ID: ${examObj.id}) for class teacher ${teacherDocument.name} of class ${classObj.name} / subject ${subjectObj.name} IS NOT RELEVANT (Class-specific exam for different class? Subject-specific for different subject? Teacher-specific for different teacher?)`);
+             console.log(`[LOG_TAR] Exam ${examObj.name} (ID: ${examObj.id}) for class teacher ${teacherDocument.name} of class ${classObj.name} / subject ${subjectObj.name} IS NOT RELEVANT to this specific context.`);
           }
         });
       });
     }
   });
   
-  examsForCurrentTerm.forEach(examObj => { 
+  // 3. Process exams explicitly assigned to this teacher (if they also have class and subject)
+  examsForCurrentTerm.forEach(examObj => { // Iterate through exams for the current term
     if (examObj.teacherId === teacherId && examObj.classId && examObj.subjectId) {
       const classForExam = allClasses.find(c => c.id === examObj.classId);
       const subjectForExam = allSubjects.find(s => s.id === examObj.subjectId);
 
       if (classForExam && subjectForExam) {
-        const key = `${examObj.id}_${classForExam.id}_${subjectForExam.id}`; 
+        const key = `${examObj.id}_${classForExam.id}_${subjectForExam.id}`; // Composite ID
         if (!responsibilitiesMap.has(key)) {
           responsibilitiesMap.set(key, { classObj: classForExam, subjectObj: subjectForExam, examObj });
            console.log(`[LOG_TAR] Added responsibility via exam explicitly assigned to teacher: ${key} for Exam: ${examObj.name}, Class: ${classForExam.name}, Subject: ${subjectForExam.name}`);
@@ -478,7 +487,7 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
       }
     }
   });
-  console.log(`[LOG_TAR] END for teacherId: "${teacherId}". Total responsibilities found: ${responsibilitiesMap.size}`);
+  console.log(`[LOG_TAR] END for teacherId: "${teacherId}". Total unique responsibilities found for current term: ${responsibilitiesMap.size}`);
   return responsibilitiesMap;
 }
 
@@ -497,23 +506,20 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
     const responsibilitiesMap = await getTeacherAssessmentResponsibilities(teacherId);
     let assessmentsForForm: Array<{id: string, name: string, maxMarks: number}> = [];
 
-    // Use a for...of loop to allow await inside for getAssessmentDetails
-    for (const [key, { examObj }] of responsibilitiesMap) {
-        // The key is already the composite ID: examDocId_classDocId_subjectDocId
-        // We need the human-readable name for the dropdown
-        const details = await getAssessmentDetails(key); 
+    for (const [compositeId, { examObj }] of responsibilitiesMap) {
+        const details = await getAssessmentDetails(compositeId); 
         if (!details.name.startsWith("Error:")) {
             assessmentsForForm.push({
-                id: key,
-                name: details.name, // Human-readable name
+                id: compositeId, // This is the composite ID: examDocId_classDocId_subjectDocId
+                name: details.name, // Human-readable name derived by getAssessmentDetails
                 maxMarks: examObj.maxMarks,
             });
         } else {
-            console.warn(`[getTeacherAssessments] Could not get valid details for responsibility key ${key}. Details: ${JSON.stringify(details)}`);
+            console.warn(`[getTeacherAssessments] Could not get valid details for responsibility composite ID ${compositeId}. Details: ${JSON.stringify(details)}`);
         }
     }
     
-    console.log(`[getTeacherAssessments] Initial potential assessments for teacher ${teacherId}: ${assessmentsForForm.length}. Composite IDs: ${assessmentsForForm.map(a=>a.id).join(', ')}`);
+    console.log(`[getTeacherAssessments] Initial potential assessments (responsibilities) for teacher ${teacherId}: ${assessmentsForForm.length}. Composite IDs: ${assessmentsForForm.map(a=>a.id).join(', ')}`);
 
 
     if (assessmentsForForm.length > 0) {
@@ -533,7 +539,7 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
             } else {
                 // Fetch all submissions for the teacher for the potentially relevant assessments.
                 // Firestore 'in' queries are limited to 30 elements. If responsibilities exceed this, this query needs chunking.
-                // For now, assuming responsibilities are <30.
+                // For now, assuming responsibilities are <30. A more robust solution might query all teacher submissions and then filter in code.
                 const q = query(
                     markSubmissionsRef,
                     where("teacherId", "==", teacherId),
@@ -546,10 +552,11 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
 
                 submissionsSnapshot.forEach(docSnap => {
                     const submission = docSnap.data() as MarkSubmissionFirestoreRecord;
-                    // An assessment is considered "done" if it's Pending or Approved by D.O.S.
+                    // An assessment is considered "done" (and thus removed from "To Submit" list) 
+                    // if it's Pending D.O.S. review or Approved by D.O.S.
                     // If it's 'Rejected', it should reappear in the "To Submit" list.
                     if (submission.dosStatus === 'Approved' || submission.dosStatus === 'Pending') {
-                        submittedOrFinalizedAssessmentIds.add(submission.assessmentId);
+                        submittedOrFinalizedAssessmentIds.add(submission.assessmentId); // assessmentId here is the composite key
                         console.log(`[getTeacherAssessments] Marking composite assessment ${submission.assessmentId} for filtering (dosStatus: ${submission.dosStatus}).`);
                     } else if (submission.dosStatus === 'Rejected') {
                         console.log(`[getTeacherAssessments] Composite assessment ${submission.assessmentId} is 'Rejected', so it WILL NOT be filtered out from submittable list.`);
@@ -654,12 +661,13 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     const currentTerm = currentTermId ? allTerms.find(t => t.id === currentTermId) : null;
     console.log(`[LOG_TDD] Current term determined: ${currentTerm ? currentTerm.name : 'None'}`);
 
+    // Get assessments that are PENDING submission (not yet submitted or are rejected)
     const assessmentsToSubmit = currentTermId ? await getTeacherAssessments(teacherId) : [];
     
     const dashboardAssignments: TeacherDashboardAssignment[] = assessmentsToSubmit.map(assessment => {
         // assessment.id is the composite ID: examDocId_classDocId_subjectDocId
         // assessment.name is the human-readable: Class Name - Subject Name - Exam Name
-        const parts = assessment.name.split(' - ');
+        const parts = assessment.name.split(' - '); // Assumes "Class - Subject - Exam" format
         const examIdFromKey = assessment.id.split('_')[0]; // Get examDocId from composite key
         const examForDeadline = allExamsForDeadlineLookup.find(e => e.id === examIdFromKey && e.termId === currentTermId);
         
@@ -673,7 +681,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
         }
 
         return {
-            id: assessment.id,
+            id: assessment.id, // Composite ID
             className: parts[0] || 'N/A',
             subjectName: parts[1] || 'N/A',
             examName: parts[2] || 'N/A',
@@ -683,9 +691,10 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
 
     console.log(`[LOG_TDD] Processed ${dashboardAssignments.length} dashboard assignments (assessments to submit).`);
     
+    // For stats, we need ALL responsibilities in the current term, regardless of submission status
     const allResponsibilitiesMap = currentTermId ? await getTeacherAssessmentResponsibilities(teacherId) : new Map(); 
     const uniqueClassIds = new Set<string>();
-    const uniqueSubjectNames = new Set<string>();
+    const uniqueSubjectNames = new Set<string>(); // Using subject name for count as per existing logic
     allResponsibilitiesMap.forEach(({ classObj, subjectObj }) => {
         uniqueClassIds.add(classObj.id);
         uniqueSubjectNames.add(subjectObj.name); 
@@ -722,10 +731,11 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       });
     }
 
+    // Determine the earliest deadline for any *pending* assignment
     let earliestOverallDeadline: Date | null = null;
     let earliestOverallDeadlineText: string = "Not set";
 
-    if (dashboardAssignments.length > 0) {
+    if (dashboardAssignments.length > 0) { // Only consider deadlines for assignments that are PENDING
         dashboardAssignments.forEach(da => {
             const examIdForDeadline = da.id.split('_')[0];
             const examForDeadline = allExamsForDeadlineLookup.find(e => e.id === examIdForDeadline && e.termId === currentTermId);
@@ -764,7 +774,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       const diffTime = deadlineForComparison.getTime() - today.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-      if (diffDays >= 0 && diffDays <= 7) {
+      if (diffDays >= 0 && diffDays <= 7) { // Deadline is today or within the next 7 days
          const deadlineTypeForMessage = earliestOverallDeadlineText.startsWith("Exam") ? "An exam submission deadline"
                                      : earliestOverallDeadlineText.startsWith("Global") ? "The global marks submission deadline"
                                      : "The current term submission deadline";
@@ -779,6 +789,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       }
     }
 
+    // If there are responsibilities but no pending assignments to submit, and general settings are not default
     if (currentTermId && dashboardAssignments.length === 0 && allResponsibilitiesMap.size > 0 && !gsIsDefault) {
        notifications.push({
         id: 'all_marks_submitted_info',
@@ -786,11 +797,11 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
         type: 'info',
       });
       console.log(`[LOG_TDD] Added 'all marks submitted' notification.`);
-    } else if (currentTermId && allResponsibilitiesMap.size === 0 && !gsIsDefault) {
-        let noAssignmentMessage = 'No teaching assignments found for the current term.';
+    } else if (currentTermId && allResponsibilitiesMap.size === 0 && !gsIsDefault) { // No responsibilities at all for the current term
+        let noAssignmentMessage = 'No teaching assignments found for the current academic term.';
         const examsForThisTerm = allExamsForDeadlineLookup.filter(e => e.termId === currentTermId);
         if (examsForThisTerm.length === 0) {
-            noAssignmentMessage = 'No exams are scheduled for the current academic term. Assignments cannot be determined.';
+            noAssignmentMessage = 'No exams are currently scheduled for the current academic term. Assignments cannot be determined.';
         }
         notifications.push({
             id: 'no_assignments_info',
@@ -809,6 +820,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     console.error(`[LOG_TDD] CRITICAL ERROR processing dashboard for teacherId ${teacherId}:`, errorMessage, error);
     let teacherNameOnError: string | undefined = undefined;
     try {
+      // Attempt to fetch teacher name even on error for better error message context
       const existingTeacherDoc = await getTeacherByIdFromDOS(teacherId);
       teacherNameOnError = existingTeacherDoc?.name;
     } catch (nestedError) {
@@ -845,5 +857,3 @@ export async function getTeacherProfileData(teacherId: string): Promise<{ name?:
     return null;
   }
 }
-    
-

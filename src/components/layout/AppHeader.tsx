@@ -27,6 +27,9 @@ export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teache
   const displayUserName = userName || (userRole === "Teacher" ? (teacherNameParam || "Teacher") : "Admin");
   
   const getInitials = (name: string) => {
+    if (!name || name.trim() === "") {
+      return userRole === "Teacher" ? "T" : "A";
+    }
     return name
       .split(" ")
       .map((n) => n[0])
@@ -34,23 +37,31 @@ export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teache
       .toUpperCase() || (userRole === "Teacher" ? "T" : "A");
   };
 
-  const validTeacherId = teacherId && teacherId.toLowerCase() !== "undefined" && teacherId.trim() !== "" ? teacherId : undefined;
-  const validTeacherNameParamForLink = teacherNameParam && teacherNameParam.toLowerCase() !== "undefined" && teacherNameParam.trim() !== "" 
-                                        ? teacherNameParam 
-                                        : (displayUserName !== "Teacher" ? displayUserName : undefined);
+  // Ensure validTeacherId and validTeacherNameParamForLink are defined or fallback appropriately for link construction
+  const validTeacherIdForLink = teacherId && teacherId.toLowerCase() !== "undefined" && teacherId.trim() !== "" ? teacherId : undefined;
+  let validTeacherNameForLink: string | undefined;
+
+  if (teacherNameParam && teacherNameParam.toLowerCase() !== "undefined" && teacherNameParam.trim() !== "") {
+    validTeacherNameForLink = teacherNameParam;
+  } else if (displayUserName && displayUserName !== "Teacher" && displayUserName !== "Admin") {
+    // Use displayUserName if it's specific and not the default fallback
+    validTeacherNameForLink = displayUserName;
+  } else {
+    validTeacherNameForLink = userRole === "Teacher" ? "Teacher" : undefined; // Fallback for teacher if nothing specific
+  }
 
 
   const dashboardLink = userRole === "D.O.S." 
     ? "/dos/dashboard" 
-    : (validTeacherId && validTeacherNameParamForLink
-        ? `/teacher/dashboard?teacherId=${encodeURIComponent(validTeacherId)}&teacherName=${encodeURIComponent(validTeacherNameParamForLink)}`
-        : "/login/teacher"); 
+    : (validTeacherIdForLink && validTeacherNameForLink
+        ? `/teacher/dashboard?teacherId=${encodeURIComponent(validTeacherIdForLink)}&teacherName=${encodeURIComponent(validTeacherNameForLink)}`
+        : "/login/teacher"); // Fallback to login if IDs are missing for teacher
 
   const settingsOrProfileLink = userRole === "D.O.S."
     ? "/dos/settings/general"
-    : (validTeacherId && validTeacherNameParamForLink
-        ? `/teacher/profile?teacherId=${encodeURIComponent(validTeacherId)}&teacherName=${encodeURIComponent(validTeacherNameParamForLink)}`
-        : "/login/teacher"); 
+    : (validTeacherIdForLink && validTeacherNameForLink
+        ? `/teacher/profile?teacherId=${encodeURIComponent(validTeacherIdForLink)}&teacherName=${encodeURIComponent(validTeacherNameForLink)}`
+        : "/login/teacher"); // Fallback to login for profile link too
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6 shadow-sm">
@@ -81,15 +92,15 @@ export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teache
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild disabled={userRole === "Teacher" && (!validTeacherId || !validTeacherNameParamForLink)}>
+          <DropdownMenuItem asChild disabled={userRole === "Teacher" && (!validTeacherIdForLink || !validTeacherNameForLink)}>
             <Link href={settingsOrProfileLink}>
-              <Settings className="mr-2 h-4 w-4" />
+              {userRole === "D.O.S." ? <Settings className="mr-2 h-4 w-4" /> : <UserCircle className="mr-2 h-4 w-4" />}
               <span>{userRole === "D.O.S." ? "Settings" : "My Profile"}</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <Link href="/">
+            <Link href="/"> {/* Always logout to main landing page */}
               <LogOut className="mr-2 h-4 w-4" />
               <span>Log out</span>
             </Link>
@@ -99,5 +110,3 @@ export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teache
     </header>
   );
 }
-
-    

@@ -180,7 +180,7 @@ export default function MarksReviewPage() {
         if (result.success && result.data) {
           let blobType: string;
           let fileName: string;
-          const assessmentNameSlug = marksPayload.assessmentName?.replace(/[^a-zA-Z0-9_]/g, '_') || "submission";
+          const assessmentNameSlug = (marksPayload.assessmentName || "submission").replace(/[^a-zA-Z0-9_]/g, '_');
 
           switch (format) {
             case "xlsx":
@@ -188,9 +188,8 @@ export default function MarksReviewPage() {
               fileName = `${assessmentNameSlug}.xlsx`;
               break;
             case "pdf": 
-              // For basic text PDF as implemented
               blobType = "text/plain;charset=utf-8;"; 
-              fileName = `${assessmentNameSlug}_report.txt`; // changed to .txt to reflect content
+              fileName = `${assessmentNameSlug}_report.txt`;
               break;
             case "csv":
             default:
@@ -218,7 +217,7 @@ export default function MarksReviewPage() {
   };
 
   const handleEditMarkChange = (studentId: string, newGrade: string) => {
-    const newScore = newGrade === "" ? 0 : parseFloat(newGrade); // Treat empty string as 0 for now, or handle as null
+    const newScore = newGrade === "" ? 0 : parseFloat(newGrade); 
     setEditableMarks(prev =>
       prev.map(mark =>
         mark.studentId === studentId ? { ...mark, grade: isNaN(newScore) ? 0 : newScore } : mark
@@ -388,7 +387,7 @@ export default function MarksReviewPage() {
               </Button>
             </CardContent>
           )}
-          {!isEditingMarks && currentMarks.length > 0 && ( 
+          {!isEditingMarks && currentMarks.length > 0 && !isSubmissionFinalized && ( 
             <CardContent className="border-t pt-4 space-y-3">
                 <div className="flex flex-wrap gap-2 justify-end">
                     <Button
@@ -461,4 +460,3 @@ export default function MarksReviewPage() {
     </div>
   );
 }
-

@@ -25,7 +25,7 @@ export async function createTeacher(teacherData: Omit<Teacher, 'id' | 'subjectsA
       name: teacherData.name,
       email: teacherData.email,
       password: teacherData.password,
-      subjectsAssigned: [],
+      subjectsAssigned: [], // Initialize with empty array
     };
 
     const docRef = await addDoc(collection(db, "teachers"), teacherPayload);
@@ -53,7 +53,7 @@ export async function getTeacherById(teacherId: string): Promise<Teacher | null>
         id: teacherSnap.id,
         name: data.name,
         email: data.email,
-        password: data.password,
+        password: data.password, // Be cautious about exposing password hashes if they are ever stored
         subjectsAssigned: data.subjectsAssigned || [],
       } as Teacher;
     }
@@ -71,18 +71,29 @@ export async function updateTeacher(teacherId: string, teacherData: Partial<Omit
   try {
     const teacherRef = doc(db, "teachers", teacherId);
 
+    // Build the update payload carefully to avoid overwriting fields with undefined
     const updatePayload: { [key: string]: any } = {};
 
     if (teacherData.name !== undefined) {
       updatePayload.name = teacherData.name;
     }
     if (teacherData.email !== undefined) {
+      // Potentially add check for email uniqueness if changing
       updatePayload.email = teacherData.email;
     }
     if (teacherData.password && teacherData.password.trim() !== "") {
+      // Add password hashing here if implementing actual auth
       updatePayload.password = teacherData.password;
     }
+    // Ensure subjectsAssigned is handled correctly, even if not explicitly passed
+    // If `teacherData.subjectsAssigned` is part of the update (e.g. from assignment form),
+    // it should be validated and set. If not, existing assignments shouldn't be wiped.
+    // The updateTeacherAssignments action is preferred for managing assignments.
+    // If this `updateTeacher` is ONLY for name/email/password, then subjectsAssigned shouldn't be touched.
+    // For now, assuming this action doesn't primarily manage assignments, leave it out unless explicitly passed.
+    // If it IS meant to update them, ensure it's handled correctly:
     if (teacherData.subjectsAssigned !== undefined) {
+      // Ensure valid array structure for subjectsAssigned
       if (Array.isArray(teacherData.subjectsAssigned)) {
         updatePayload.subjectsAssigned = teacherData.subjectsAssigned.filter(
           (assignment: any) =>
@@ -91,7 +102,7 @@ export async function updateTeacher(teacherId: string, teacherData: Partial<Omit
             typeof assignment.subjectId === 'string' &&
             Array.isArray(assignment.examIds) &&
             assignment.examIds.every((id: any) => typeof id === 'string')
-        ).map((assignment: any) => ({
+        ).map((assignment: any) => ({ // Map to ensure only expected fields
             classId: assignment.classId,
             subjectId: assignment.subjectId,
             examIds: assignment.examIds
@@ -103,6 +114,7 @@ export async function updateTeacher(teacherId: string, teacherData: Partial<Omit
 
 
     if (Object.keys(updatePayload).length === 0) {
+      // Fetch the current teacher data to return if no actual changes are made
       const currentTeacher = await getTeacherById(teacherId);
       return { success: true, message: "No changes provided to update teacher.", teacher: currentTeacher ?? undefined };
     }
@@ -124,9 +136,19 @@ export async function deleteTeacher(teacherId: string): Promise<{ success: boole
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
+    // Add logic here to unassign this teacher from any classes they are a classTeacher for
+    const classesQuery = query(collection(db, "classes"), where("classTeacherId", "==", teacherId));
+    const classesSnapshot = await getDocs(classesQuery);
+    const batch = writeBatch(db);
+    classesSnapshot.forEach(classDoc => {
+      batch.update(classDoc.ref, { classTeacherId: null });
+    });
+    await batch.commit();
+
     await deleteDoc(doc(db, "teachers", teacherId));
     revalidatePath("/dos/teachers");
-    return { success: true, message: "Teacher deleted successfully." };
+    revalidatePath("/dos/classes"); // Revalidate classes as classTeacher might change
+    return { success: true, message: "Teacher deleted successfully and unassigned from classes." };
   } catch (error) {
     console.error(`Error in deleteTeacher for ${teacherId}:`, error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
@@ -145,6 +167,7 @@ export async function updateTeacherAssignments(
     return { success: false, message: "Firestore is not initialized." };
   }
 
+  // Validate and sanitize specificSubjectAssignments
   const validSpecificAssignments = Array.isArray(data.specificSubjectAssignments)
   ? data.specificSubjectAssignments.filter(
       (assignment) =>
@@ -155,7 +178,7 @@ export async function updateTeacherAssignments(
         assignment.subjectId.trim() !== '' &&
         Array.isArray(assignment.examIds) &&
         assignment.examIds.every(id => typeof id === 'string' && id.trim() !== '') &&
-        assignment.examIds.length > 0
+        assignment.examIds.length > 0 // Only include if there are selected exams
     ).map(a => ({ classId: a.classId, subjectId: a.subjectId, examIds: a.examIds }))
   : [];
 
@@ -167,22 +190,29 @@ export async function updateTeacherAssignments(
         throw new Error(`Teacher with ID ${teacherId} not found.`);
       }
 
+      // Update teacher's specific assignments
       transaction.update(teacherRef, { subjectsAssigned: validSpecificAssignments });
 
+      // Update classTeacherId on classes
+      // This part requires fetching all classes, which is not ideal in a transaction due to read limits.
+      // A more scalable approach might involve a separate process or careful consideration.
+      // For this context, we'll proceed but acknowledge the limitation.
       const classesQuery = query(collection(db, "classes"));
-      const classesSnapshot = await getDocs(classesQuery); // Not ideal in a transaction, but necessary here
+      const classesSnapshot = await getDocs(classesQuery); // Not using transaction.get for this potentially large read
 
       classesSnapshot.forEach(classDoc => {
         const classRef = doc(db, "classes", classDoc.id);
         const currentClassTeacher = classDoc.data().classTeacherId;
 
         if (data.classTeacherForClassIds.includes(classDoc.id)) {
+          // If this class is selected to be taught by this teacher
           if (currentClassTeacher !== teacherId) {
             transaction.update(classRef, { classTeacherId: teacherId });
           }
         } else {
-          if (currentClassTeacher === teacherId) {
-            transaction.update(classRef, { classTeacherId: null });
+          // If this class is NOT selected for this teacher
+          if (currentClassTeacher === teacherId) { // And this teacher was previously the class teacher
+            transaction.update(classRef, { classTeacherId: null }); // Unassign
           }
         }
       });
@@ -216,8 +246,8 @@ export async function createStudent(studentData: Omit<Student, 'id'>): Promise<{
 
     const studentPayload: Omit<Student, 'id'> = {
       ...studentData,
-      dateOfBirth: studentData.dateOfBirth || undefined,
-      gender: studentData.gender || undefined,
+      dateOfBirth: studentData.dateOfBirth || undefined, // Store as undefined if not provided
+      gender: studentData.gender || undefined,       // Store as undefined if not provided
     };
 
     const docRef = await addDoc(collection(db, "students"), studentPayload);
@@ -244,6 +274,7 @@ export async function getStudentById(studentId: string): Promise<Student | null>
       return {
         id: studentSnap.id,
         ...data,
+        // Ensure optional fields are handled correctly if they are null/undefined in Firestore
         dateOfBirth: data.dateOfBirth ? data.dateOfBirth : undefined,
         gender: data.gender ? data.gender : undefined,
        } as Student;
@@ -262,10 +293,11 @@ export async function updateStudent(studentId: string, studentData: Partial<Omit
   }
   try {
     const studentRef = doc(db, "students", studentId);
+    // Prepare data to update, ensuring optional fields are handled
     const dataToUpdate = {
       ...studentData,
-      dateOfBirth: studentData.dateOfBirth || null,
-      gender: studentData.gender || null,
+      dateOfBirth: studentData.dateOfBirth || null, // Use null to remove if empty, or Firestore specific delete
+      gender: studentData.gender || null,         // Use null to remove if empty
     };
     await updateDoc(studentRef, dataToUpdate);
     revalidatePath("/dos/students");
@@ -284,6 +316,7 @@ export async function deleteStudent(studentId: string): Promise<{ success: boole
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
+    // Future: Add logic to delete related student marks if necessary
     await deleteDoc(doc(db, "students", studentId));
     revalidatePath("/dos/students");
     return { success: true, message: "Student deleted successfully." };
@@ -304,17 +337,19 @@ export async function createClass(
   try {
     const { subjectIds, ...restOfClassData } = classData;
 
+    // Convert subject IDs to Firestore DocumentReferences
     const subjectReferences: DocumentReference[] = subjectIds.map(id => doc(db, "subjects", id));
 
     const classDataToSave = {
       ...restOfClassData,
-      classTeacherId: restOfClassData.classTeacherId || null,
-      stream: restOfClassData.stream || null,
-      subjectReferences: subjectReferences
+      classTeacherId: restOfClassData.classTeacherId || null, // Store null if not provided
+      stream: restOfClassData.stream || null,                 // Store null if not provided
+      subjectReferences: subjectReferences // Store array of references
     };
 
     const docRef = await addDoc(collection(db, "classes"), classDataToSave);
 
+    // For returning the ClassInfo, fetch the subject objects
     const subjects: Subject[] = [];
     for (const subjectId of subjectIds) {
         const subjectDocRef = doc(db, "subjects", subjectId);
@@ -322,13 +357,14 @@ export async function createClass(
         if (subjectDocSnap.exists()) {
             subjects.push({ id: subjectDocSnap.id, ...subjectDocSnap.data() } as Subject);
         } else {
+            // Handle case where a subject ID might be invalid, though form should prevent this
             subjects.push({ id: subjectId, name: `Unknown Subject (${subjectId})` });
         }
     }
     const newClass: ClassInfo = {
         ...restOfClassData,
         id: docRef.id,
-        subjects,
+        subjects, // Populated subject objects
         stream: classDataToSave.stream === null ? undefined : classDataToSave.stream,
         classTeacherId: classDataToSave.classTeacherId === null ? undefined : classDataToSave.classTeacherId,
     };
@@ -358,11 +394,13 @@ export async function getClassById(classId: string): Promise<ClassInfo | null> {
     const classData = classSnap.data();
     let subjectsArray: Subject[] = [];
 
+    // If subjectReferences exist and is an array, resolve them
     if (classData.subjectReferences && Array.isArray(classData.subjectReferences)) {
       for (const subjectRef of classData.subjectReferences) {
+        // Ensure subjectRef is a DocumentReference and has an id
         if (subjectRef && typeof subjectRef.id === 'string') {
           try {
-            const subjectDocSnap = await getDoc(doc(db, "subjects", subjectRef.id));
+            const subjectDocSnap = await getDoc(doc(db, "subjects", subjectRef.id)); // Use the ID from the reference
             if (subjectDocSnap.exists()) {
               const subjData = subjectDocSnap.data();
               subjectsArray.push({
@@ -371,6 +409,7 @@ export async function getClassById(classId: string): Promise<ClassInfo | null> {
                 code: subjData.code === null ? undefined : subjData.code
               } as Subject);
             } else {
+              // Subject document doesn't exist for this reference
               subjectsArray.push({ id: subjectRef.id, name: `Unknown Subject (${subjectRef.id})` });
             }
           } catch (e) {
@@ -384,8 +423,8 @@ export async function getClassById(classId: string): Promise<ClassInfo | null> {
       id: classSnap.id,
       name: classData.name || "Unnamed Class",
       level: classData.level || "Unknown Level",
-      stream: classData.stream === null ? undefined : classData.stream,
-      classTeacherId: classData.classTeacherId === null ? undefined : classData.classTeacherId,
+      stream: classData.stream === null ? undefined : classData.stream, // Handle null from Firestore
+      classTeacherId: classData.classTeacherId === null ? undefined : classData.classTeacherId, // Handle null
       subjects: subjectsArray
     } as ClassInfo;
   } catch (error) {
@@ -408,6 +447,7 @@ export async function updateClass(classId: string, classData: Partial<Omit<Class
     if (subjectIds) {
       dataToUpdate.subjectReferences = subjectIds.map(id => doc(db, "subjects", id));
     }
+    // Ensure optional fields are set to null if they are meant to be cleared
     dataToUpdate.classTeacherId = dataToUpdate.classTeacherId || null;
     dataToUpdate.stream = dataToUpdate.stream || null;
 
@@ -431,7 +471,7 @@ export async function createSubject(subjectData: Omit<Subject, 'id'>): Promise<{
   try {
     const subjectDataToSave = {
         ...subjectData,
-        code: subjectData.code || null,
+        code: subjectData.code || null, // Store null if code is empty/undefined
     };
     const docRef = await addDoc(collection(db, "subjects"), subjectDataToSave);
     const newSubject: Subject = { id: docRef.id, ...subjectDataToSave, code: subjectDataToSave.code === null ? undefined : subjectDataToSave.code };
@@ -457,7 +497,7 @@ export async function getSubjectById(subjectId: string): Promise<Subject | null>
       return {
         id: subjectSnap.id,
         name: data.name,
-        code: data.code === null ? undefined : data.code,
+        code: data.code === null ? undefined : data.code, // Handle null from Firestore
       } as Subject;
     }
     return null;
@@ -475,7 +515,7 @@ export async function updateSubject(subjectId: string, subjectData: Partial<Omit
     const subjectRef = doc(db, "subjects", subjectId);
     const dataToUpdate = {
         ...subjectData,
-        code: subjectData.code || null,
+        code: subjectData.code || null, // Store null if code is empty/undefined
     };
     await updateDoc(subjectRef, dataToUpdate);
     revalidatePath("/dos/classes");
@@ -498,7 +538,7 @@ export async function createTerm(termData: Omit<Term, 'id'>): Promise<{ success:
   try {
     const termPayload = {
       ...termData,
-      year: Number(termData.year),
+      year: Number(termData.year), // Ensure year is stored as a number
     };
     const docRef = await addDoc(collection(db, "terms"), termPayload);
     const newTerm: Term = { id: docRef.id, ...termPayload };
@@ -544,8 +584,8 @@ export async function getTermById(termId: string): Promise<Term | null> {
                 id: termSnap.id,
                 name: data.name,
                 year: data.year,
-                startDate: data.startDate,
-                endDate: data.endDate,
+                startDate: data.startDate, // Assumes stored as ISO string or compatible
+                endDate: data.endDate,     // Assumes stored as ISO string or compatible
             } as Term;
         }
         return null;
@@ -572,6 +612,7 @@ export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success:
       marksSubmissionDeadline: examData.marksSubmissionDeadline || null,
     };
     const docRef = await addDoc(collection(db, "exams"), examPayload);
+    // Construct the newExam object ensuring optional fields are undefined if null from payload
     const newExam: Exam = {
         id: docRef.id,
         name: examPayload.name,
@@ -629,15 +670,16 @@ export async function updateExam(examId: string, examData: Partial<Omit<Exam, 'i
   }
   try {
     const examRef = doc(db, "exams", examId);
-    const examPayload: any = { ...examData };
+    const examPayload: any = { ...examData }; // Use 'any' for easier manipulation here
 
     if (examPayload.maxMarks !== undefined) {
       examPayload.maxMarks = Number(examPayload.maxMarks);
     }
+    // Ensure optional fields are set to null if they are meant to be cleared/empty
     const fieldsToPotentiallyNullify = ['description', 'examDate', 'classId', 'subjectId', 'teacherId', 'marksSubmissionDeadline'];
     fieldsToPotentiallyNullify.forEach(field => {
-        if (examPayload.hasOwnProperty(field)) {
-            examPayload[field] = examPayload[field] || null;
+        if (examPayload.hasOwnProperty(field)) { // Check if the key exists in the input data
+            examPayload[field] = examPayload[field] || null; // Set to null if falsy (empty string, undefined)
         }
     });
 
@@ -662,6 +704,7 @@ export async function createGradingPolicy(policyData: Omit<GradingPolicy, 'id'>)
   try {
     const policyPayload = { ...policyData };
 
+    // If this policy is being set as default, unset any other default policy
     if (policyPayload.isDefault) {
       const policiesRef = collection(db, "gradingPolicies");
       const q = query(policiesRef, where("isDefault", "==", true));
@@ -692,12 +735,14 @@ export async function updateGradingPolicy(policyId: string, policyData: Omit<Gra
     const policyRef = doc(db, "gradingPolicies", policyId);
     const policyPayload = { ...policyData };
 
+    // If this policy is being set as default, unset any other default policy
     if (policyPayload.isDefault) {
         const policiesRef = collection(db, "gradingPolicies");
         const q = query(policiesRef, where("isDefault", "==", true));
         const querySnapshot = await getDocs(q);
         const batch = writeBatch(db);
         querySnapshot.forEach((doc) => {
+          // Make sure not to unset the current policy if it's already the default one being updated
           if (doc.id !== policyId) {
             batch.update(doc.ref, { isDefault: false });
           }
@@ -750,13 +795,14 @@ export async function getGradingPolicies(): Promise<GradingPolicy[]> {
   }
 }
 
-
+// --- General Settings ---
 export async function updateGeneralSettings(settings: GeneralSettings): Promise<{ success: boolean; message: string }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
     const settingsRef = doc(db, "settings", "general");
+    // Ensure optional fields are stored as null if undefined/empty, or as their value
     const settingsToSave: any = {
         ...settings,
         currentTermId: settings.currentTermId || null,
@@ -765,11 +811,12 @@ export async function updateGeneralSettings(settings: GeneralSettings): Promise<
         dosGlobalAnnouncementType: settings.dosGlobalAnnouncementType || null,
         teacherDashboardResourcesText: settings.teacherDashboardResourcesText || null,
     };
+    // Ensure defaultGradingScale is an array, even if empty
     settingsToSave.defaultGradingScale = Array.isArray(settings.defaultGradingScale) ? settings.defaultGradingScale : [];
 
-    await setDoc(settingsRef, settingsToSave, { merge: true });
+    await setDoc(settingsRef, settingsToSave, { merge: true }); // Use setDoc with merge for creating/updating
     revalidatePath("/dos/settings/general");
-    revalidatePath("/dos/dashboard");
+    revalidatePath("/dos/dashboard"); // Revalidate dashboards as settings might affect them
     revalidatePath("/teacher/dashboard");
     console.log("[DOS Action - updateGeneralSettings] General settings updated/created successfully in Firestore.");
     return { success: true, message: "General settings updated." };
@@ -790,6 +837,8 @@ interface ReportRow {
   'Score': number | string;
   'Date Submitted': string;
   'Submitted By (Teacher ID)': string;
+  'D.O.S. Status': string;
+  'D.O.S. Reject Reason'?: string;
 }
 
 
@@ -800,7 +849,7 @@ async function getAllSubmittedMarksData(): Promise<ReportRow[]> {
   }
   try {
     const markSubmissionsRef = collection(db, "markSubmissions");
-    const submissionsSnapshot = await getDocs(markSubmissionsRef);
+    const submissionsSnapshot = await getDocs(query(markSubmissionsRef, orderBy("dateSubmitted", "desc")));
 
     if (submissionsSnapshot.empty) {
       return [];
@@ -815,21 +864,20 @@ async function getAllSubmittedMarksData(): Promise<ReportRow[]> {
       const submission = submissionDoc.data() as MarkSubmissionFirestoreRecord;
       const dateSubmitted = submission.dateSubmitted.toDate().toLocaleDateString();
 
+      // assessmentName is now directly stored
       const assessmentName = submission.assessmentName || 'N/A - N/A - N/A';
-      // const assessmentParts = assessmentName.split(' - ');
-      // const className = assessmentParts[0] || 'N/A';
-      // const subjectName = assessmentParts[1] || 'N/A';
-      // const examName = assessmentParts[2] || 'N/A';
-
       let className = 'N/A', subjectName = 'N/A', examName = 'N/A';
         if (assessmentName && assessmentName !== 'N/A - N/A - N/A') {
             const parts = assessmentName.split(' - ');
-            if (parts.length === 3) {
+            if (parts.length >= 3) { // Allow for names with more than 3 parts, take first 3
                 className = parts[0].trim();
                 subjectName = parts[1].trim();
-                examName = parts[2].trim();
+                examName = parts.slice(2).join(' - ').trim(); // Join remaining parts for exam name
             } else {
-                console.warn(`[getAllSubmittedMarksData] Unexpected assessmentName format: "${assessmentName}" for submission ID ${submissionDoc.id}.`);
+                console.warn(`[getAllSubmittedMarksData] Unexpected assessmentName format: "${assessmentName}" for submission ID ${submissionDoc.id}. Using parts as available.`);
+                if(parts.length > 0) className = parts[0].trim();
+                if(parts.length > 1) subjectName = parts[1].trim();
+                // examName remains N/A if not enough parts
             }
         } else {
             console.warn(`[getAllSubmittedMarksData] Missing or default assessmentName for submission ID ${submissionDoc.id}.`);
@@ -846,6 +894,8 @@ async function getAllSubmittedMarksData(): Promise<ReportRow[]> {
           'Score': mark.score,
           'Date Submitted': dateSubmitted,
           'Submitted By (Teacher ID)': submission.teacherId,
+          'D.O.S. Status': submission.dosStatus || 'N/A',
+          'D.O.S. Reject Reason': submission.dosRejectReason || '',
         });
       });
     }
@@ -887,11 +937,12 @@ export async function downloadAllMarks(format: 'csv' | 'xlsx' | 'pdf' = 'csv'): 
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       return { success: true, message: "XLSX data prepared.", data: new Uint8Array(excelBuffer) };
     } else if (format === 'pdf') {
+      // Basic text "PDF" for simplicity, actual PDF generation is complex
       let pdfTextContent = "Marks Report\n";
       pdfTextContent += "====================================\n\n";
       const header = Object.keys(reportData[0]).join('\t|\t');
       pdfTextContent += header + '\n';
-      pdfTextContent += "-".repeat(header.length * 1.5) + '\n';
+      pdfTextContent += "-".repeat(header.length * 1.5) + '\n'; // Simple separator
 
       reportData.forEach(row => {
         pdfTextContent += Object.values(row).map(val => String(val).padEnd(15)).join('\t|\t') + '\n';
@@ -926,7 +977,7 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
     const markSubmissionsRef = collection(db, "markSubmissions");
     const q = query(
       markSubmissionsRef,
-      where("assessmentId", "==", compositeAssessmentId), 
+      where("assessmentId", "==", compositeAssessmentId), // Query by the composite ID
       orderBy("dateSubmitted", "desc"),
       limit(1)
     );
@@ -943,10 +994,12 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
     const submissionData = latestSubmissionDoc.data() as MarkSubmissionFirestoreRecord;
     console.log(`[DOS Action - getMarksForReview] Found submission doc ID: ${latestSubmissionDoc.id} matching composite assessmentId: "${compositeAssessmentId}". Raw data: ${JSON.stringify(submissionData)}`);
 
+    // Crucially, use the stored assessmentName
+    const assessmentName = submissionData.assessmentName || "Assessment Name Not Recorded";
 
     if (!submissionData.submittedMarks || submissionData.submittedMarks.length === 0) {
       console.log(`[DOS Action - getMarksForReview] Submission found (ID: ${latestSubmissionDoc.id}) but contains no marks for composite assessmentId: ${compositeAssessmentId}`);
-      return { ...defaultPayload, submissionId: latestSubmissionDoc.id, assessmentName: submissionData.assessmentName, dosStatus: submissionData.dosStatus, dosRejectReason: submissionData.dosRejectReason };
+      return { ...defaultPayload, submissionId: latestSubmissionDoc.id, assessmentName: assessmentName, dosStatus: submissionData.dosStatus, dosRejectReason: submissionData.dosRejectReason };
     }
 
     const allStudents = await getStudents();
@@ -958,10 +1011,10 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
       studentName: studentsMap.get(mark.studentId) || "Unknown Student",
     }));
 
-    console.log(`[DOS Action - getMarksForReview] Processed ${marksForReview.length} marks for composite assessmentId: ${compositeAssessmentId}. Submission ID: ${latestSubmissionDoc.id}. Assessment Name from record: ${submissionData.assessmentName}`);
+    console.log(`[DOS Action - getMarksForReview] Processed ${marksForReview.length} marks for composite assessmentId: ${compositeAssessmentId}. Submission ID: ${latestSubmissionDoc.id}. Assessment Name from record: ${assessmentName}`);
     return {
         submissionId: latestSubmissionDoc.id,
-        assessmentName: submissionData.assessmentName, // Use the stored human-readable name
+        assessmentName: assessmentName,
         marks: marksForReview,
         dosStatus: submissionData.dosStatus,
         dosRejectReason: submissionData.dosRejectReason
@@ -979,19 +1032,20 @@ export async function approveMarkSubmission(submissionId: string): Promise<{ suc
         const submissionRef = doc(db, "markSubmissions", submissionId);
         await updateDoc(submissionRef, {
             dosStatus: 'Approved',
-            dosRejectReason: null,
+            dosRejectReason: null, // Clear any previous rejection reason
             dosLastReviewedAt: Timestamp.now(),
         });
-        revalidatePath("/dos/marks-review");
+        revalidatePath("/dos/marks-review"); // Revalidate D.O.S. review page
 
+        // Revalidate relevant teacher pages
         const submissionSnap = await getDoc(submissionRef);
         if (submissionSnap.exists()) {
             const teacherId = submissionSnap.data().teacherId;
             if (teacherId) {
-                const teacherInfo = await getTeacherById(teacherId); 
+                const teacherInfo = await getTeacherById(teacherId); // Use the local getTeacherById
                 const teacherNameParam = teacherInfo?.name ? encodeURIComponent(teacherInfo.name) : "Teacher";
                 revalidatePath(`/teacher/marks/history?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
-                revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
+                revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}&teacherName=${teacherNameParam}`); // As approved submission might affect "to submit" list
                 revalidatePath(`/teacher/dashboard?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
             }
         }
@@ -1013,6 +1067,7 @@ export async function rejectMarkSubmission(submissionId: string, reason: string)
             dosLastReviewedAt: Timestamp.now(),
         });
         revalidatePath("/dos/marks-review");
+        // Revalidate relevant teacher pages
         const submissionSnap = await getDoc(submissionRef);
         if (submissionSnap.exists()) {
             const teacherId = submissionSnap.data().teacherId;
@@ -1020,7 +1075,7 @@ export async function rejectMarkSubmission(submissionId: string, reason: string)
                 const teacherInfo = await getTeacherById(teacherId); 
                 const teacherNameParam = teacherInfo?.name ? encodeURIComponent(teacherInfo.name) : "Teacher";
                 revalidatePath(`/teacher/marks/history?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
-                revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
+                revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}&teacherName=${teacherNameParam}`); // Rejected items should reappear
                 revalidatePath(`/teacher/dashboard?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
             }
         }
@@ -1050,9 +1105,12 @@ export async function updateSubmittedMarksByDOS(
       averageScore: averageScore,
       dosEdited: true,
       dosLastEditedAt: Timestamp.now(),
+      // Optionally, D.O.S. edit might imply re-pending approval if it was previously approved/rejected
+      // For now, we assume edit doesn't automatically change dosStatus. Can be added if needed.
+      // dosStatus: 'Pending' 
     });
 
-    revalidatePath(`/dos/marks-review`);
+    revalidatePath(`/dos/marks-review`); // Revalidate the D.O.S. review page
     return { success: true, message: "Marks updated by D.O.S. successfully." };
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Unknown error.";
@@ -1088,17 +1146,13 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
     const studentsMap = new Map(allStudents.map(s => [s.studentIdNumber, `${s.firstName} ${s.lastName}`]));
 
     const assessmentName = submissionData.assessmentName || 'N/A - N/A - N/A';
-    // const assessmentParts = assessmentName.split(' - ');
-    // const className = assessmentParts[0] || 'N/A';
-    // const subjectName = assessmentParts[1] || 'N/A';
-    // const examName = assessmentParts[2] || 'N/A';
     let className = 'N/A', subjectName = 'N/A', examName = 'N/A';
     if (assessmentName && assessmentName !== 'N/A - N/A - N/A') {
         const parts = assessmentName.split(' - ');
-        if (parts.length === 3) {
+        if (parts.length >= 3) {
             className = parts[0].trim();
             subjectName = parts[1].trim();
-            examName = parts[2].trim();
+            examName = parts.slice(2).join(' - ').trim();
         }
     }
 
@@ -1113,6 +1167,8 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
       'Score': mark.score,
       'Date Submitted': dateSubmitted,
       'Submitted By (Teacher ID)': submissionData.teacherId,
+      'D.O.S. Status': submissionData.dosStatus || 'N/A',
+      'D.O.S. Reject Reason': submissionData.dosRejectReason || '',
     }));
 
     const reportTitle = `Marks for ${assessmentName} (Submitted ${dateSubmitted})`;
@@ -1132,12 +1188,13 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
       return { success: true, message: "CSV data prepared.", data: csvData };
     } else if (format === 'xlsx') {
       const worksheet = XLSX.utils.json_to_sheet(reportData);
-      XLSX.utils.sheet_add_aoa(worksheet, [[reportTitle]], { origin: "A1" });
+      XLSX.utils.sheet_add_aoa(worksheet, [[reportTitle]], { origin: "A1" }); // Add title row
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, examName.substring(0,30));
+      XLSX.utils.book_append_sheet(workbook, worksheet, examName.substring(0,30)); // Sheet name
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       return { success: true, message: "XLSX data prepared.", data: new Uint8Array(excelBuffer) };
     } else if (format === 'pdf') {
+      // Basic text "PDF"
       let pdfTextContent = `${reportTitle}\n`;
       pdfTextContent += "====================================\n\n";
       const header = Object.keys(reportData[0]).map(h => h.padEnd(15)).join('\t|\t');
@@ -1161,7 +1218,7 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
   }
 }
 
-// Data fetch functions
+// Data fetch functions used across the D.O.S. portal
 export async function getTeachers(): Promise<Teacher[]> {
   if (!db) {
     console.error("Firestore is not initialized. Check Firebase configuration.");
@@ -1176,8 +1233,8 @@ export async function getTeachers(): Promise<Teacher[]> {
         id: docSnap.id,
         name: data.name,
         email: data.email,
-        password: data.password,
-        subjectsAssigned: data.subjectsAssigned || []
+        password: data.password, // Be cautious with passwords
+        subjectsAssigned: data.subjectsAssigned || [] // Ensure it defaults to an empty array
       } as Teacher;
     });
     return teachersList;
@@ -1202,9 +1259,9 @@ export async function getStudents(): Promise<Student[]> {
         studentIdNumber: data.studentIdNumber,
         firstName: data.firstName,
         lastName: data.lastName,
-        classId: data.classId, 
-        dateOfBirth: data.dateOfBirth,
-        gender: data.gender,
+        classId: data.classId, // Document ID of the class
+        dateOfBirth: data.dateOfBirth, // Optional
+        gender: data.gender,         // Optional
        } as Student;
     });
     return studentsList;
@@ -1226,19 +1283,22 @@ export async function getClasses(): Promise<ClassInfo[]> {
             const classData = classDoc.data();
             let subjectsArray: Subject[] = [];
 
+            // If subjectReferences exist and is an array, resolve them
             if (classData.subjectReferences && Array.isArray(classData.subjectReferences)) {
                 for (const subjectRef of classData.subjectReferences) {
-                    if (subjectRef && typeof subjectRef.id === 'string') { 
+                    // subjectRef should be a DocumentReference
+                    if (subjectRef && typeof subjectRef.id === 'string') { // Check if it's a valid-like reference
                         try {
-                            const subjectDocSnap = await getDoc(doc(db, "subjects", subjectRef.id));
+                            const subjectDocSnap = await getDoc(doc(db, "subjects", subjectRef.id)); // Use the ID from the reference
                             if (subjectDocSnap.exists()) {
                                 const subjData = subjectDocSnap.data();
                                 subjectsArray.push({
                                     id: subjectDocSnap.id,
                                     name: subjData.name,
-                                    code: subjData.code === null ? undefined : subjData.code
+                                    code: subjData.code === null ? undefined : subjData.code // Handle null code
                                 } as Subject);
                             } else {
+                                // Subject document doesn't exist for this reference
                                 subjectsArray.push({ id: subjectRef.id, name: `Unknown Subject (${subjectRef.id})` });
                             }
                         } catch (e) {
@@ -1252,8 +1312,8 @@ export async function getClasses(): Promise<ClassInfo[]> {
                 id: classDoc.id,
                 name: classData.name || "Unnamed Class",
                 level: classData.level || "Unknown Level",
-                stream: classData.stream === null ? undefined : classData.stream,
-                classTeacherId: classData.classTeacherId === null ? undefined : classData.classTeacherId,
+                stream: classData.stream === null ? undefined : classData.stream, // Handle null from Firestore
+                classTeacherId: classData.classTeacherId === null ? undefined : classData.classTeacherId, // Handle null
                 subjects: subjectsArray
             } as ClassInfo;
         });
@@ -1359,8 +1419,9 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
                 isDefaultTemplate: false,
             } as GeneralSettings & { isDefaultTemplate: boolean };
         }
-        console.warn("Error: [DOS Action - getGeneralSettings] 'settings/general' document does not exist. Returning default template settings.");
-        return {
+        // If the document doesn't exist, create it with defaults
+        console.warn("[DOS Action - getGeneralSettings] 'settings/general' document does not exist. Creating with default template settings.");
+        const defaultSettings: GeneralSettings & { isDefaultTemplate: boolean } = {
             defaultGradingScale: [{ grade: 'A', minScore: 80, maxScore: 100 }, { grade: 'B', minScore: 70, maxScore: 79 }],
             markSubmissionTimeZone: 'UTC',
             currentTermId: undefined,
@@ -1370,9 +1431,20 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
             teacherDashboardResourcesText: "Access your teaching schedule, submit student marks, and view historical submission data using the sidebar navigation. Stay updated with notifications from the D.O.S. and ensure timely submission of grades. If you encounter any issues, please contact the administration.",
             isDefaultTemplate: true,
         };
+        await setDoc(settingsRef, {
+            defaultGradingScale: defaultSettings.defaultGradingScale,
+            markSubmissionTimeZone: defaultSettings.markSubmissionTimeZone,
+            currentTermId: defaultSettings.currentTermId || null,
+            globalMarksSubmissionDeadline: defaultSettings.globalMarksSubmissionDeadline || null,
+            dosGlobalAnnouncementText: defaultSettings.dosGlobalAnnouncementText || null,
+            dosGlobalAnnouncementType: defaultSettings.dosGlobalAnnouncementType || null,
+            teacherDashboardResourcesText: defaultSettings.teacherDashboardResourcesText || null,
+        });
+        revalidatePath("/dos/settings/general");
+        return defaultSettings;
     } catch (error) {
         console.error("[DOS Action - getGeneralSettings] Error fetching general settings:", error);
-        return {
+        return { // Fallback in case of error even after trying to create
             defaultGradingScale: [],
             markSubmissionTimeZone: 'UTC',
             currentTermId: undefined,
@@ -1384,4 +1456,3 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
         };
     }
 }
-
