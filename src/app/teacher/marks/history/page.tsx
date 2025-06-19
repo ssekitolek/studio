@@ -76,7 +76,7 @@ export default function MarksHistoryPage() {
     }
     fetchData(teacherIdFromUrl);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, toast]); // Removed pageError from deps for now.
+  }, [searchParams, toast]); 
 
   const getStatusVariantAndClass = (item: SubmissionHistoryDisplayItem): {variant: "default" | "destructive" | "secondary", className: string, icon?: React.ReactNode} => {
     // Prioritize D.O.S. status for display
@@ -239,3 +239,4 @@ export default function MarksHistoryPage() {
     </div>
   );
 }
+

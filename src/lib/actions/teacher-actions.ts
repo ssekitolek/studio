@@ -70,7 +70,7 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
 
 
 export async function submitMarks(teacherId: string, data: MarksSubmissionData): Promise<{ success: boolean; message: string; anomalies?: GradeAnomalyDetectionOutput }> {
-  console.log(`[Teacher Action - submitMarks] START - Teacher ID: ${teacherId}, Form Assessment ID (Composite): ${data.assessmentId}`);
+  console.log(`[Teacher Action - submitMarks] START - Teacher ID: "${teacherId}", Form Assessment ID (Composite): "${data.assessmentId}"`);
   
   if (!db) {
     console.error("[Teacher Action - submitMarks] CRITICAL_ERROR_DB_NULL: Firestore db object is null. Cannot proceed with submission.");
@@ -180,14 +180,16 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
 
 
 async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName: string; examName: string; name: string; maxMarks: number; historicalAverage?: number }> {
-    console.log(`[getAssessmentDetails] Called for assessmentId (Composite): ${assessmentId}`);
+    console.log(`[getAssessmentDetails] Called for assessmentId (Composite): "${assessmentId}"`);
     if (!db) {
       console.error("[getAssessmentDetails] CRITICAL_ERROR_DB_NULL: Firestore db object is null. Returning error details.");
       return { subjectName: "Error: DB_NULL", examName: "Error: DB_NULL", name: "Error: DB_NULL: Firestore not initialized", maxMarks: 0 };
     }
     
+    // Explicitly check if getDoc is defined in this scope
     if (typeof getDoc !== 'function') {
         console.error("[getAssessmentDetails] CRITICAL_RUNTIME_ERROR: getDoc function IS UNDEFINED at point of use! Firebase SDK might not be loaded correctly or import is missing/corrupted.");
+        // Return a specific error object that submitMarks can check
         return { subjectName: "Error: SDK_ERR", examName: "Error: SDK_ERR", name: "Error: SDK_ERR: getDoc is not defined", maxMarks: 0 };
     }
 
@@ -335,8 +337,6 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
 
                 if (!(data.dateSubmitted instanceof Timestamp)) {
                     console.warn(`[getSubmittedMarksHistory] Malformed 'dateSubmitted' for doc ID ${docId}. Expected Firestore Timestamp, got ${typeof data.dateSubmitted}. Record will be skipped or have incorrect date.`);
-                    // Potentially skip this record or use a default date
-                    // For now, let's proceed and it might use an incorrect date if not a Timestamp
                 }
                 if (typeof data.assessmentName !== 'string' || !data.assessmentName) {
                      console.warn(`[getSubmittedMarksHistory] Missing or invalid 'assessmentName' for doc ID ${docId}. It should be a string like "Class - Subject - Exam". Record will use 'N/A - Error'. Value: ${data.assessmentName}`);
@@ -857,3 +857,4 @@ export async function getTeacherProfileData(teacherId: string): Promise<{ name?:
     return null;
   }
 }
+
