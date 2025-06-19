@@ -90,7 +90,7 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
   console.log(`[Teacher Action - submitMarks] Fetched assessment details (for assessmentName & AI check): ${JSON.stringify(assessmentDetails)}`);
   
   if (assessmentDetails.name.startsWith("Error:")) { 
-     console.error(`[Teacher Action - submitMarks] ABORTING_SUBMISSION due to error in getAssessmentDetails: ${assessmentDetails.name}`);
+     console.error(`[Teacher Action - submitMarks] ABORTING_SUBMISSION due to error in getAssessmentDetails: ${assessmentDetails.name}. Marks not saved.`);
      return { success: false, message: `Failed to retrieve assessment details: ${assessmentDetails.name}. Marks not saved.` };
   }
 
@@ -360,8 +360,17 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
 
         console.log(`[getSubmittedMarksHistory] END - Successfully processed ${history.length} history items for teacherId: ${teacherId}`);
         return history;
-    } catch (error) {
+    } catch (error: any) {
         console.error(`[getSubmittedMarksHistory] CRITICAL ERROR fetching history for teacherId ${teacherId}:`, error);
+        if (error.code === 'failed-precondition') {
+            console.error("*********************************************************************************");
+            console.error("FIRESTORE ERROR (getSubmittedMarksHistory): The query requires an index.");
+            console.error("This typically involves 'teacherId' and 'dateSubmitted' fields on the 'markSubmissions' collection.");
+            console.error("Please create the required composite index in your Firebase Firestore console.");
+            console.error("The full error message from Firebase (containing a direct link to create the index) should be in your server logs.");
+            console.error(`Example Index fields: 'teacherId' (Ascending), 'dateSubmitted' (Descending) on 'markSubmissions' collection.`);
+            console.error("*********************************************************************************");
+        }
         return []; 
     }
 }
@@ -709,7 +718,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
         message: errMessage,
         type: 'warning',
       });
-      recentSubmissionsCount = 0; // Ensure it defaults to 0 if query fails
+      recentSubmissionsCount = 0; 
     }
 
     const stats: TeacherStats = {
