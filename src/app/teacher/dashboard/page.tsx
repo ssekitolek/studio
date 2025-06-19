@@ -157,7 +157,7 @@ export default function TeacherDashboardPage() {
   const dashboardStats = [
     { title: "Assigned Classes", value: stats.assignedClassesCount, icon: BookCopy, description: "Unique classes you manage." },
     { title: "Subjects Taught", value: stats.subjectsTaughtCount, icon: ListChecks, description: "Unique subjects you teach." },
-    { title: "Recent Submissions", value: currentTeacherId && !fetchError ? stats.recentSubmissionsCount : 'N/A', icon: CheckSquare, description: "Marks submitted in last 7 days." },
+    { title: "Recent Submissions", value: currentTeacherId && !fetchError && stats.recentSubmissionsCount !== undefined ? stats.recentSubmissionsCount : 'N/A', icon: CheckSquare, description: "Marks submitted in last 7 days." },
   ];
 
   const marksSubmissionLink = currentTeacherId 
@@ -346,3 +346,4 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
+
