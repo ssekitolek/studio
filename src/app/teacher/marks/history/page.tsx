@@ -83,14 +83,14 @@ export default function MarksHistoryPage() {
     if (item.dosStatus === 'Rejected') return { variant: "destructive", className: "bg-red-500 hover:bg-red-600 text-white", icon: <AlertTriangle className="mr-1 inline-block h-3 w-3" /> };
     if (item.dosStatus === 'Pending') {
         // Original status (teacher-side AI check) can inform color when D.O.S. status is pending
-        if (item.status && item.status.includes("Anomaly Detected")) {
+        if (item.status && (item.status.includes("Anomaly Detected") || item.status.includes("Anomaly)"))) { // Check for variations
              return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
         }
         return { variant: "secondary", className: "bg-blue-500 hover:bg-blue-600 text-white", icon: <Info className="mr-1 inline-block h-3 w-3" /> };
     }
     
     // Fallback to original status if dosStatus is somehow undefined or unexpected (should not happen with current logic)
-    if (item.status && item.status.includes("Anomaly Detected")) return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
+    if (item.status && (item.status.includes("Anomaly Detected") || item.status.includes("Anomaly)"))) return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
     if (item.status === "Accepted") return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" }; // Should be rare if dosStatus is always set
     
     return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" }; // Default fallback
@@ -237,3 +237,4 @@ export default function MarksHistoryPage() {
     </div>
   );
 }
+

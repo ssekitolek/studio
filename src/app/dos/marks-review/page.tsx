@@ -188,8 +188,9 @@ export default function MarksReviewPage() {
               fileName = `${assessmentNameSlug}.xlsx`;
               break;
             case "pdf": 
+              // For basic text PDF as implemented
               blobType = "text/plain;charset=utf-8;"; 
-              fileName = `${assessmentNameSlug}.txt`; 
+              fileName = `${assessmentNameSlug}_report.txt`; // changed to .txt to reflect content
               break;
             case "csv":
             default:
@@ -460,3 +461,4 @@ export default function MarksReviewPage() {
     </div>
   );
 }
+

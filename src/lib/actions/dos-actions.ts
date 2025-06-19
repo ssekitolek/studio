@@ -170,7 +170,7 @@ export async function updateTeacherAssignments(
       transaction.update(teacherRef, { subjectsAssigned: validSpecificAssignments });
 
       const classesQuery = query(collection(db, "classes"));
-      const classesSnapshot = await getDocs(classesQuery);
+      const classesSnapshot = await getDocs(classesQuery); // Not ideal in a transaction, but necessary here
 
       classesSnapshot.forEach(classDoc => {
         const classRef = doc(db, "classes", classDoc.id);
@@ -816,10 +816,25 @@ async function getAllSubmittedMarksData(): Promise<ReportRow[]> {
       const dateSubmitted = submission.dateSubmitted.toDate().toLocaleDateString();
 
       const assessmentName = submission.assessmentName || 'N/A - N/A - N/A';
-      const assessmentParts = assessmentName.split(' - ');
-      const className = assessmentParts[0] || 'N/A';
-      const subjectName = assessmentParts[1] || 'N/A';
-      const examName = assessmentParts[2] || 'N/A';
+      // const assessmentParts = assessmentName.split(' - ');
+      // const className = assessmentParts[0] || 'N/A';
+      // const subjectName = assessmentParts[1] || 'N/A';
+      // const examName = assessmentParts[2] || 'N/A';
+
+      let className = 'N/A', subjectName = 'N/A', examName = 'N/A';
+        if (assessmentName && assessmentName !== 'N/A - N/A - N/A') {
+            const parts = assessmentName.split(' - ');
+            if (parts.length === 3) {
+                className = parts[0].trim();
+                subjectName = parts[1].trim();
+                examName = parts[2].trim();
+            } else {
+                console.warn(`[getAllSubmittedMarksData] Unexpected assessmentName format: "${assessmentName}" for submission ID ${submissionDoc.id}.`);
+            }
+        } else {
+            console.warn(`[getAllSubmittedMarksData] Missing or default assessmentName for submission ID ${submissionDoc.id}.`);
+        }
+
 
       submission.submittedMarks.forEach(mark => {
         reportRows.push({
@@ -1073,10 +1088,20 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
     const studentsMap = new Map(allStudents.map(s => [s.studentIdNumber, `${s.firstName} ${s.lastName}`]));
 
     const assessmentName = submissionData.assessmentName || 'N/A - N/A - N/A';
-    const assessmentParts = assessmentName.split(' - ');
-    const className = assessmentParts[0] || 'N/A';
-    const subjectName = assessmentParts[1] || 'N/A';
-    const examName = assessmentParts[2] || 'N/A';
+    // const assessmentParts = assessmentName.split(' - ');
+    // const className = assessmentParts[0] || 'N/A';
+    // const subjectName = assessmentParts[1] || 'N/A';
+    // const examName = assessmentParts[2] || 'N/A';
+    let className = 'N/A', subjectName = 'N/A', examName = 'N/A';
+    if (assessmentName && assessmentName !== 'N/A - N/A - N/A') {
+        const parts = assessmentName.split(' - ');
+        if (parts.length === 3) {
+            className = parts[0].trim();
+            subjectName = parts[1].trim();
+            examName = parts[2].trim();
+        }
+    }
+
     const dateSubmitted = submissionData.dateSubmitted.toDate().toLocaleDateString();
 
     const reportData: ReportRow[] = submissionData.submittedMarks.map(mark => ({
@@ -1359,3 +1384,4 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
         };
     }
 }
+

@@ -109,7 +109,7 @@ export interface GradingPolicy {
 }
 
 export interface TeacherDashboardAssignment {
-  id: string; // Composite ID: examId_classId_subjectId
+  id: string; // Composite ID: examDocId_classDocId_subjectDocId
   className: string;
   subjectName: string;
   examName: string;
@@ -178,3 +178,4 @@ export interface MarksForReviewPayload {
     dosStatus?: MarkSubmissionFirestoreRecord['dosStatus'];
     dosRejectReason?: string;
 }
+

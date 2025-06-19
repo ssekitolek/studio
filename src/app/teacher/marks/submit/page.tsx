@@ -37,8 +37,8 @@ const marksSubmissionSchema = z.object({
 type MarksSubmissionFormValues = z.infer<typeof marksSubmissionSchema>;
 
 interface AssessmentOption {
-  id: string;
-  name: string;
+  id: string; // Composite ID: examDocId_classDocId_subjectDocId
+  name: string; // Human-readable name: Class Name - Subject Name - Exam Name
   maxMarks: number;
 }
 
@@ -95,10 +95,10 @@ export default function SubmitMarksPage() {
       try {
         const assessmentData = await getTeacherAssessments(validTeacherId);
         setAssessments(assessmentData);
-        if (assessmentData.length === 0 && !pageError) { // Only show if no other page error
+        if (assessmentData.length === 0 && !pageError) { 
             toast({
                 title: "No Assessments Available",
-                description: "No pending assessments found for your assignments in the current term. This could be due to system settings (like current term) not being configured by the D.O.S., or all marks have been submitted and are pending/approved. Please contact administration if this is unexpected.",
+                description: "No pending assessments found for your assignments in the current term. This could be due to system settings (like current term) not being configured by the D.O.S., or all marks have been submitted and are pending/approved. Please check 'View Submissions' or contact administration if this is unexpected.",
                 variant: "default",
                 duration: 10000,
             });
@@ -112,7 +112,7 @@ export default function SubmitMarksPage() {
       }
     }
     fetchAssessments(teacherIdFromUrl);
-  }, [searchParams, toast, pageError]); // Added pageError to dependency to avoid re-toast
+  }, [searchParams, toast, pageError]); 
 
   const handleAssessmentChange = async (assessmentId: string) => {
     form.setValue("assessmentId", assessmentId);
@@ -194,7 +194,7 @@ export default function SubmitMarksPage() {
     startTransition(async () => {
       try {
         const result = await submitMarks(currentTeacherId, {
-          assessmentId: data.assessmentId,
+          assessmentId: data.assessmentId, // This is the composite ID
           marks: marksToSubmit as Array<{ studentId: string; score: number }>,
         });
         if (result.success) {
@@ -208,7 +208,6 @@ export default function SubmitMarksPage() {
             });
             setAnomalies(result.anomalies.anomalies);
             setShowAnomalyWarning(true);
-            // Keep form data for teacher review if anomalies
           } else {
             toast({
                 title: "Marks Submitted Successfully!",
@@ -219,13 +218,12 @@ export default function SubmitMarksPage() {
             setAnomalies([]);
             setShowAnomalyWarning(false);
             
-            // Refetch assessments to remove the submitted one from the list
             if(currentTeacherId) {
                 setIsLoadingAssessments(true);
                 const updatedAssessments = await getTeacherAssessments(currentTeacherId);
                 setAssessments(updatedAssessments);
-                setSelectedAssessment(null); // Deselect assessment after submission
-                form.reset({ assessmentId: "", marks: [] }); // Fully reset form
+                setSelectedAssessment(null); 
+                form.reset({ assessmentId: "", marks: [] }); 
                 setIsLoadingAssessments(false);
                 if (updatedAssessments.length === 0) {
                     toast({ title: "All Assessments Submitted", description: "No more pending assessments for this term.", variant: "default"});
@@ -430,3 +428,4 @@ export default function SubmitMarksPage() {
     </div>
   );
 }
+

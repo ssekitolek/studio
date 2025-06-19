@@ -87,9 +87,9 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
   console.log(`[Teacher Action - submitMarks] Valid teacherId: ${teacherId} and composite assessmentId: ${data.assessmentId} received. Proceeding to get assessment details.`);
 
   const assessmentDetails = await getAssessmentDetails(data.assessmentId);
-  console.log(`[Teacher Action - submitMarks] Fetched assessment details: ${JSON.stringify(assessmentDetails)}`);
+  console.log(`[Teacher Action - submitMarks] Fetched assessment details (for assessmentName & AI check): ${JSON.stringify(assessmentDetails)}`);
   
-  if (assessmentDetails.name.startsWith("Error:")) { 
+  if (assessmentDetails.name.startsWith("Error:")) { // Check if getAssessmentDetails returned an error object
      console.error(`[Teacher Action - submitMarks] ABORTING_SUBMISSION due to error in getAssessmentDetails: ${assessmentDetails.name}`);
      return { success: false, message: `Failed to retrieve assessment details: ${assessmentDetails.name}. Marks not saved.` };
   }
@@ -141,7 +141,7 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
     status: initialTeacherStatus, 
     submittedMarks: data.marks, 
     anomalyExplanations: anomalyResult?.anomalies || [],
-    dosStatus: 'Pending', 
+    dosStatus: 'Pending', // CRITICAL: Initialize D.O.S. status to Pending
   };
   console.log(`[Teacher Action - submitMarks] PREPARED_SUBMISSION_PAYLOAD_FOR_FIRESTORE (composite assessmentId ${data.assessmentId}):`, JSON.stringify(submissionPayload, null, 2));
 
@@ -497,13 +497,22 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
     const responsibilitiesMap = await getTeacherAssessmentResponsibilities(teacherId);
     let assessmentsForForm: Array<{id: string, name: string, maxMarks: number}> = [];
 
-    responsibilitiesMap.forEach(({ classObj, subjectObj, examObj }, key) => {
-        assessmentsForForm.push({
-            id: key, // This is the composite ID: examDocId_classDocId_subjectDocId
-            name: `${classObj.name} - ${subjectObj.name} - ${examObj.name}`,
-            maxMarks: examObj.maxMarks,
-        });
-    });
+    // Use a for...of loop to allow await inside for getAssessmentDetails
+    for (const [key, { examObj }] of responsibilitiesMap) {
+        // The key is already the composite ID: examDocId_classDocId_subjectDocId
+        // We need the human-readable name for the dropdown
+        const details = await getAssessmentDetails(key); 
+        if (!details.name.startsWith("Error:")) {
+            assessmentsForForm.push({
+                id: key,
+                name: details.name, // Human-readable name
+                maxMarks: examObj.maxMarks,
+            });
+        } else {
+            console.warn(`[getTeacherAssessments] Could not get valid details for responsibility key ${key}. Details: ${JSON.stringify(details)}`);
+        }
+    }
+    
     console.log(`[getTeacherAssessments] Initial potential assessments for teacher ${teacherId}: ${assessmentsForForm.length}. Composite IDs: ${assessmentsForForm.map(a=>a.id).join(', ')}`);
 
 
@@ -522,10 +531,13 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
             if (assessmentIdsForCurrentTermResponsibilities.length === 0) {
                 console.log(`[getTeacherAssessments] No responsibilities found for teacher ${teacherId} in current term ${currentTermId}. No submissions to filter by. All potential assessments (if any) will be shown.`);
             } else {
+                // Fetch all submissions for the teacher for the potentially relevant assessments.
+                // Firestore 'in' queries are limited to 30 elements. If responsibilities exceed this, this query needs chunking.
+                // For now, assuming responsibilities are <30.
                 const q = query(
                     markSubmissionsRef,
                     where("teacherId", "==", teacherId),
-                    where("assessmentId", "in", assessmentIdsForCurrentTermResponsibilities) 
+                    where("assessmentId", "in", assessmentIdsForCurrentTermResponsibilities.length > 0 ? assessmentIdsForCurrentTermResponsibilities : ["_DUMMY_ID_TO_AVOID_EMPTY_IN_QUERY_ERROR_"]) 
                 );
                 const submissionsSnapshot = await getDocs(q);
                 console.log(`[getTeacherAssessments] Fetched ${submissionsSnapshot.size} submissions for teacher ${teacherId} matching current term responsibilities.`);
@@ -534,8 +546,8 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
 
                 submissionsSnapshot.forEach(docSnap => {
                     const submission = docSnap.data() as MarkSubmissionFirestoreRecord;
-                    // An assessment is considered "done" if it's Pending or Approved.
-                    // If it's Rejected, it should reappear in the "To Submit" list.
+                    // An assessment is considered "done" if it's Pending or Approved by D.O.S.
+                    // If it's 'Rejected', it should reappear in the "To Submit" list.
                     if (submission.dosStatus === 'Approved' || submission.dosStatus === 'Pending') {
                         submittedOrFinalizedAssessmentIds.add(submission.assessmentId);
                         console.log(`[getTeacherAssessments] Marking composite assessment ${submission.assessmentId} for filtering (dosStatus: ${submission.dosStatus}).`);
@@ -645,8 +657,10 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     const assessmentsToSubmit = currentTermId ? await getTeacherAssessments(teacherId) : [];
     
     const dashboardAssignments: TeacherDashboardAssignment[] = assessmentsToSubmit.map(assessment => {
-        const parts = assessment.id.split('_'); 
-        const examIdFromKey = parts[0];
+        // assessment.id is the composite ID: examDocId_classDocId_subjectDocId
+        // assessment.name is the human-readable: Class Name - Subject Name - Exam Name
+        const parts = assessment.name.split(' - ');
+        const examIdFromKey = assessment.id.split('_')[0]; // Get examDocId from composite key
         const examForDeadline = allExamsForDeadlineLookup.find(e => e.id === examIdFromKey && e.termId === currentTermId);
         
         let deadlineText = "Not set";
@@ -660,9 +674,9 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
 
         return {
             id: assessment.id,
-            className: assessment.name.split(' - ')[0] || 'N/A',
-            subjectName: assessment.name.split(' - ')[1] || 'N/A',
-            examName: assessment.name.split(' - ')[2] || 'N/A',
+            className: parts[0] || 'N/A',
+            subjectName: parts[1] || 'N/A',
+            examName: parts[2] || 'N/A',
             nextDeadlineInfo: deadlineText, 
         };
     });
@@ -832,3 +846,4 @@ export async function getTeacherProfileData(teacherId: string): Promise<{ name?:
   }
 }
     
+

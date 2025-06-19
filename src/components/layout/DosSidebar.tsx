@@ -72,12 +72,27 @@ export function DosSidebar() {
     if (href === "/dos/dashboard") {
         return pathname === href;
     }
-    // For other main links or section parent links, active if pathname starts with href
-    // Ensure exact match for edit pages like /dos/teachers/[teacherId]/edit vs /dos/teachers/assignments
-    if (pathname.includes("/edit") || pathname.includes("/new")) {
-        const basePath = href.split("/")[2]; // e.g., "teachers", "students"
-        return pathname.startsWith(`/dos/${basePath}`) && href.startsWith(`/dos/${basePath}`);
+    // For section parent links or other specific top-level links
+    // (e.g., /dos/marks-review, /dos/reports/download-marks)
+    if (dosNavItems.some(item => item.href === href && !item.isSection)) {
+        return pathname === href || pathname.startsWith(`${href}/`); // Handles potential child pages if any
     }
+
+    // For sub-items or section items that act as containers (like /dos/teachers, /dos/settings/terms)
+    // The link is active if the current path starts with the item's href.
+    // We also need to be careful not to activate a parent if a more specific child is active.
+    
+    // Example: If on /dos/teachers/assignments, /dos/teachers should also appear active.
+    // However, if href is /dos/teachers and pathname is /dos/teachers/assignments, it's active.
+    // But if href is /dos/teachers and pathname is /dos/students, it's not.
+
+    // A more precise check for section parents
+    const sectionParent = dosNavItems.find(item => item.isSection && item.subItems?.some(sub => href === sub.href));
+    if (sectionParent) { // This 'href' is a sub-item
+        return pathname.startsWith(href);
+    }
+    
+    // Default for other links if any other logic is needed
     return pathname.startsWith(href);
   };
 
@@ -155,3 +170,4 @@ export function DosSidebar() {
     </Sidebar>
   );
 }
+
