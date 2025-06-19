@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { getClasses, getSubjects, getExams as getAllExamsFromDOS, getGeneralSettings, getTeacherById as getTeacherByIdFromDOS, getTerms, getStudents as getAllStudents } from '@/lib/actions/dos-actions';
 import type { GeneralSettings, Term } from '@/lib/types';
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, limit, addDoc, orderBy, Timestamp, doc, getDoc, getCountFromServer } from "firebase/firestore";
+import { collection, query, where, getDocs, limit, addDoc, orderBy, Timestamp, doc, getDoc, getCountFromServer, FieldPath } from "firebase/firestore";
 import { subDays } from "date-fns";
 
 
@@ -186,8 +186,10 @@ async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName
       return { subjectName: "Error: DB_NULL", examName: "Error: DB_NULL", name: "Error: DB_NULL: Firestore not initialized", maxMarks: 0 };
     }
     
+    // Explicitly check if getDoc is defined in this scope
     if (typeof getDoc !== 'function') {
         console.error("[getAssessmentDetails] CRITICAL_RUNTIME_ERROR: getDoc function IS UNDEFINED at point of use! Firebase SDK might not be loaded correctly or import is missing/corrupted.");
+        // Return a specific error object that submitMarks can check
         return { subjectName: "Error: SDK_ERR", examName: "Error: SDK_ERR", name: "Error: SDK_ERR: getDoc is not defined", maxMarks: 0 };
     }
 
@@ -691,11 +693,21 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       const submissionsSnapshot = await getCountFromServer(submissionsQuery);
       recentSubmissionsCount = submissionsSnapshot.data().count;
       console.log(`[LOG_TDD] Recent submissions count (last 7 days): ${recentSubmissionsCount}`);
-    } catch (e) {
+    } catch (e: any) { // Changed to 'any' to inspect 'code' property
       console.error("[LOG_TDD] Error fetching recent submissions count:", e);
+      let errMessage = "Could not fetch recent submission count due to a server error.";
+      if (e.code === 'failed-precondition') {
+        errMessage = "Could not fetch recent submissions count. Firestore requires an index for this query. Please check server logs for a link to create it in the Firebase console.";
+         console.error("*********************************************************************************");
+         console.error("FIRESTORE ERROR (Recent Submissions): The query requires an index. This is a common issue when querying across multiple fields or ordering.");
+         console.error("Please create the required composite index in your Firebase Firestore console.");
+         console.error("The error message from Firebase usually includes a direct link to create the index. Look for it in these logs.");
+         console.error("Example Index fields for this query: 'teacherId' (Ascending), 'dateSubmitted' (Ascending/Descending) on 'markSubmissions' collection.");
+         console.error("*********************************************************************************");
+      }
        notifications.push({
         id: 'error_fetching_recent_submissions',
-        message: "Could not fetch recent submission count due to a server error.",
+        message: errMessage,
         type: 'warning',
       });
     }
