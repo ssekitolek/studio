@@ -683,6 +683,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     let recentSubmissionsCount = 0;
     try {
       const sevenDaysAgo = subDays(new Date(), 7);
+      console.log(`[LOG_TDD] Querying for recent submissions for teacherId: "${teacherId}" since ${sevenDaysAgo.toISOString()}`);
       const submissionsQuery = query(
         collection(db, "markSubmissions"),
         where("teacherId", "==", teacherId),
@@ -693,28 +694,28 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       console.log(`[LOG_TDD] Recent submissions count (last 7 days): ${recentSubmissionsCount}`);
     } catch (e: any) {
       console.error("[LOG_TDD] Error fetching recent submissions count:", e);
-      let errMessage = "Could not fetch recent submission count due to a server error.";
+      let errMessage = `Could not fetch recent submission count due to a server error: ${e.message || String(e)}`;
       if (e.code === 'failed-precondition') {
-        errMessage = "Could not fetch recent submissions count. Firestore requires an index for this query. Please check server logs for a link to create it in the Firebase console.";
-         console.error("*********************************************************************************");
-         console.error("FIRESTORE ERROR (Recent Submissions): The query requires an index. This is a common issue when querying across multiple fields or ordering.");
-         console.error("Please create the required composite index in your Firebase Firestore console.");
-         console.error("The error message from Firebase usually includes a direct link to create the index. Look for it in these logs.");
-         console.error("Example Index fields for this query: 'teacherId' (Ascending), 'dateSubmitted' (Ascending/Descending) on 'markSubmissions' collection.");
-         console.error("*********************************************************************************");
+        console.error("*********************************************************************************");
+        console.error("FIRESTORE ERROR (Recent Submissions Query): The query requires an index.");
+        console.error("PLEASE CREATE THE REQUIRED COMPOSITE INDEX IN YOUR FIREBASE FIRESTORE CONSOLE.");
+        console.error("The full error message from Firebase (containing a direct link to create the index) should appear in your server logs when this specific error occurs.");
+        console.error("Example Index fields for this query: 'teacherId' (Ascending) AND 'dateSubmitted' (Ascending or Descending) on 'markSubmissions' collection.");
+        console.error("*********************************************************************************");
+        errMessage = "Could not fetch recent submissions. Firestore Database Index Required. Please check server logs for a Firebase link to create the index (collection: 'markSubmissions', fields: 'teacherId' and 'dateSubmitted').";
       }
        notifications.push({
         id: 'error_fetching_recent_submissions',
         message: errMessage,
         type: 'warning',
       });
-      // Ensure stats.recentSubmissionsCount remains 0 or 'N/A' will be handled by StatCard
+      recentSubmissionsCount = 0; // Ensure it defaults to 0 if query fails
     }
 
     const stats: TeacherStats = {
       assignedClassesCount: uniqueClassIds.size,
       subjectsTaughtCount: uniqueSubjectNames.size,
-      recentSubmissionsCount: recentSubmissionsCount, // This will be 0 if the try-catch above failed
+      recentSubmissionsCount: recentSubmissionsCount,
     };
     console.log(`[LOG_TDD] Calculated stats: ${JSON.stringify(stats)}`);
 
@@ -822,8 +823,8 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       ...defaultResponse,
       notifications: [{ id: 'processing_error_dashboard', message: `Error processing dashboard data for ${teacherNameOnError || `ID ${teacherId}`}: ${errorMessage}.`, type: 'warning' }],
       teacherName: teacherNameOnError,
-      stats: { // Ensure stats object is still complete even on error
-        ...defaultStats, // Use defaultStats which has recentSubmissionsCount: 0
+      stats: { 
+        ...defaultStats,
       },
     };
   }
@@ -852,3 +853,4 @@ export async function getTeacherProfileData(teacherId: string): Promise<{ name?:
     return null;
   }
 }
+
