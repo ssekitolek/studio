@@ -91,7 +91,7 @@ export async function updateTeacher(teacherId: string, teacherData: Partial<Omit
             typeof assignment.subjectId === 'string' &&
             Array.isArray(assignment.examIds) &&
             assignment.examIds.every((id: any) => typeof id === 'string')
-        ).map((assignment: any) => ({ 
+        ).map((assignment: any) => ({
             classId: assignment.classId,
             subjectId: assignment.subjectId,
             examIds: assignment.examIds
@@ -133,7 +133,7 @@ export async function deleteTeacher(teacherId: string): Promise<{ success: boole
 
     await deleteDoc(doc(db, "teachers", teacherId));
     revalidatePath("/dos/teachers");
-    revalidatePath("/dos/classes"); 
+    revalidatePath("/dos/classes");
     return { success: true, message: "Teacher deleted successfully and unassigned from classes." };
   } catch (error) {
     console.error(`Error in deleteTeacher for ${teacherId}:`, error);
@@ -163,7 +163,7 @@ export async function updateTeacherAssignments(
         assignment.subjectId.trim() !== '' &&
         Array.isArray(assignment.examIds) &&
         assignment.examIds.every(id => typeof id === 'string' && id.trim() !== '') &&
-        assignment.examIds.length > 0 
+        assignment.examIds.length > 0
     ).map(a => ({ classId: a.classId, subjectId: a.subjectId, examIds: a.examIds }))
   : [];
 
@@ -178,7 +178,7 @@ export async function updateTeacherAssignments(
       transaction.update(teacherRef, { subjectsAssigned: validSpecificAssignments });
 
       const classesQuery = query(collection(db, "classes"));
-      const classesSnapshot = await getDocs(classesQuery); 
+      const classesSnapshot = await getDocs(classesQuery);
 
       classesSnapshot.forEach(classDoc => {
         const classRef = doc(db, "classes", classDoc.id);
@@ -189,8 +189,8 @@ export async function updateTeacherAssignments(
             transaction.update(classRef, { classTeacherId: teacherId });
           }
         } else {
-          if (currentClassTeacher === teacherId) { 
-            transaction.update(classRef, { classTeacherId: null }); 
+          if (currentClassTeacher === teacherId) {
+            transaction.update(classRef, { classTeacherId: null });
           }
         }
       });
@@ -223,8 +223,8 @@ export async function createStudent(studentData: Omit<Student, 'id'>): Promise<{
 
     const studentPayload: Omit<Student, 'id'> = {
       ...studentData,
-      dateOfBirth: studentData.dateOfBirth || undefined, 
-      gender: studentData.gender || undefined,       
+      dateOfBirth: studentData.dateOfBirth || undefined,
+      gender: studentData.gender || undefined,
     };
 
     const docRef = await addDoc(collection(db, "students"), studentPayload);
@@ -270,8 +270,8 @@ export async function updateStudent(studentId: string, studentData: Partial<Omit
     const studentRef = doc(db, "students", studentId);
     const dataToUpdate = {
       ...studentData,
-      dateOfBirth: studentData.dateOfBirth || null, 
-      gender: studentData.gender || null,         
+      dateOfBirth: studentData.dateOfBirth || null,
+      gender: studentData.gender || null,
     };
     await updateDoc(studentRef, dataToUpdate);
     revalidatePath("/dos/students");
@@ -313,9 +313,9 @@ export async function createClass(
 
     const classDataToSave = {
       ...restOfClassData,
-      classTeacherId: restOfClassData.classTeacherId || null, 
-      stream: restOfClassData.stream || null,                 
-      subjectReferences: subjectReferences 
+      classTeacherId: restOfClassData.classTeacherId || null,
+      stream: restOfClassData.stream || null,
+      subjectReferences: subjectReferences
     };
 
     const docRef = await addDoc(collection(db, "classes"), classDataToSave);
@@ -333,7 +333,7 @@ export async function createClass(
     const newClass: ClassInfo = {
         ...restOfClassData,
         id: docRef.id,
-        subjects, 
+        subjects,
         stream: classDataToSave.stream === null ? undefined : classDataToSave.stream,
         classTeacherId: classDataToSave.classTeacherId === null ? undefined : classDataToSave.classTeacherId,
     };
@@ -365,9 +365,9 @@ export async function getClassById(classId: string): Promise<ClassInfo | null> {
 
     if (classData.subjectReferences && Array.isArray(classData.subjectReferences)) {
       for (const subjectRef of classData.subjectReferences) {
-        if (subjectRef && typeof subjectRef.id === 'string') { 
+        if (subjectRef && typeof subjectRef.id === 'string') {
           try {
-            const subjectDocSnap = await getDoc(doc(db, "subjects", subjectRef.id)); 
+            const subjectDocSnap = await getDoc(doc(db, "subjects", subjectRef.id));
             if (subjectDocSnap.exists()) {
               const subjData = subjectDocSnap.data();
               subjectsArray.push({
@@ -389,8 +389,8 @@ export async function getClassById(classId: string): Promise<ClassInfo | null> {
       id: classSnap.id,
       name: classData.name || "Unnamed Class",
       level: classData.level || "Unknown Level",
-      stream: classData.stream === null ? undefined : classData.stream, 
-      classTeacherId: classData.classTeacherId === null ? undefined : classData.classTeacherId, 
+      stream: classData.stream === null ? undefined : classData.stream,
+      classTeacherId: classData.classTeacherId === null ? undefined : classData.classTeacherId,
       subjects: subjectsArray
     } as ClassInfo;
   } catch (error) {
@@ -432,7 +432,7 @@ export async function createSubject(subjectData: Omit<Subject, 'id'>): Promise<{
   try {
     const subjectDataToSave = {
         ...subjectData,
-        code: subjectData.code || null, 
+        code: subjectData.code || null,
     };
     const docRef = await addDoc(collection(db, "subjects"), subjectDataToSave);
     const newSubject: Subject = { id: docRef.id, ...subjectDataToSave, code: subjectDataToSave.code === null ? undefined : subjectDataToSave.code };
@@ -458,7 +458,7 @@ export async function getSubjectById(subjectId: string): Promise<Subject | null>
       return {
         id: subjectSnap.id,
         name: data.name,
-        code: data.code === null ? undefined : data.code, 
+        code: data.code === null ? undefined : data.code,
       } as Subject;
     }
     return null;
@@ -476,7 +476,7 @@ export async function updateSubject(subjectId: string, subjectData: Partial<Omit
     const subjectRef = doc(db, "subjects", subjectId);
     const dataToUpdate = {
         ...subjectData,
-        code: subjectData.code || null, 
+        code: subjectData.code || null,
     };
     await updateDoc(subjectRef, dataToUpdate);
     revalidatePath("/dos/classes");
@@ -498,7 +498,7 @@ export async function createTerm(termData: Omit<Term, 'id'>): Promise<{ success:
   try {
     const termPayload = {
       ...termData,
-      year: Number(termData.year), 
+      year: Number(termData.year),
     };
     const docRef = await addDoc(collection(db, "terms"), termPayload);
     const newTerm: Term = { id: docRef.id, ...termPayload };
@@ -544,8 +544,8 @@ export async function getTermById(termId: string): Promise<Term | null> {
                 id: termSnap.id,
                 name: data.name,
                 year: data.year,
-                startDate: data.startDate, 
-                endDate: data.endDate,     
+                startDate: data.startDate,
+                endDate: data.endDate,
             } as Term;
         }
         return null;
@@ -628,15 +628,15 @@ export async function updateExam(examId: string, examData: Partial<Omit<Exam, 'i
   }
   try {
     const examRef = doc(db, "exams", examId);
-    const examPayload: any = { ...examData }; 
+    const examPayload: any = { ...examData };
 
     if (examPayload.maxMarks !== undefined) {
       examPayload.maxMarks = Number(examPayload.maxMarks);
     }
     const fieldsToPotentiallyNullify = ['description', 'examDate', 'classId', 'subjectId', 'teacherId', 'marksSubmissionDeadline'];
     fieldsToPotentiallyNullify.forEach(field => {
-        if (examPayload.hasOwnProperty(field)) { 
-            examPayload[field] = examPayload[field] || null; 
+        if (examPayload.hasOwnProperty(field)) {
+            examPayload[field] = examPayload[field] || null;
         }
     });
 
@@ -765,9 +765,9 @@ export async function updateGeneralSettings(settings: GeneralSettings): Promise<
     };
     settingsToSave.defaultGradingScale = Array.isArray(settings.defaultGradingScale) ? settings.defaultGradingScale : [];
 
-    await setDoc(settingsRef, settingsToSave, { merge: true }); 
+    await setDoc(settingsRef, settingsToSave, { merge: true });
     revalidatePath("/dos/settings/general");
-    revalidatePath("/dos/dashboard"); 
+    revalidatePath("/dos/dashboard");
     revalidatePath("/teacher/dashboard");
     console.log("[DOS Action - updateGeneralSettings] General settings updated/created successfully in Firestore.");
     return { success: true, message: "General settings updated." };
@@ -786,7 +786,7 @@ interface ReportRow {
   'Exam': string;
   'Score': number | string;
   'Date Submitted': string;
-  'Submitted By (Teacher ID)': string;
+  'Submitted By': string; // Teacher Name or ID
   'D.O.S. Status': string;
   'D.O.S. Reject Reason'?: string;
 }
@@ -807,6 +807,9 @@ async function getAllSubmittedMarksData(): Promise<ReportRow[]> {
     const allStudents = await getStudents();
     const studentsMap = new Map(allStudents.map(s => [s.studentIdNumber, `${s.firstName} ${s.lastName}`]));
 
+    const allTeachers = await getTeachers();
+    const teachersMap = new Map(allTeachers.map(t => [t.id, t.name]));
+
     const reportRows: ReportRow[] = [];
 
     for (const submissionDoc of submissionsSnapshot.docs) {
@@ -816,17 +819,14 @@ async function getAllSubmittedMarksData(): Promise<ReportRow[]> {
       let className = 'N/A', subjectName = 'N/A', examName = 'N/A';
         if (assessmentName && assessmentName !== 'N/A - N/A - N/A') {
             const parts = assessmentName.split(' - ');
-            if (parts.length >= 3) { 
+            if (parts.length >= 3) {
                 className = parts[0].trim();
                 subjectName = parts[1].trim();
-                examName = parts.slice(2).join(' - ').trim(); 
+                examName = parts.slice(2).join(' - ').trim();
             } else {
-                console.warn(`[getAllSubmittedMarksData] Unexpected assessmentName format: "${assessmentName}" for submission ID ${submissionDoc.id}. Using parts as available.`);
                 if(parts.length > 0) className = parts[0].trim();
                 if(parts.length > 1) subjectName = parts[1].trim();
             }
-        } else {
-            console.warn(`[getAllSubmittedMarksData] Missing or default assessmentName for submission ID ${submissionDoc.id}.`);
         }
 
       submission.submittedMarks.forEach(mark => {
@@ -838,7 +838,7 @@ async function getAllSubmittedMarksData(): Promise<ReportRow[]> {
           'Exam': examName,
           'Score': mark.score,
           'Date Submitted': dateSubmitted,
-          'Submitted By (Teacher ID)': submission.teacherId,
+          'Submitted By': teachersMap.get(submission.teacherId) || submission.teacherId,
           'D.O.S. Status': submission.dosStatus || 'N/A',
           'D.O.S. Reject Reason': submission.dosRejectReason || '',
         });
@@ -850,6 +850,16 @@ async function getAllSubmittedMarksData(): Promise<ReportRow[]> {
     return [];
   }
 }
+
+function formatTextReportRow(row: any, columnWidths: Record<string, number>): string {
+  let line = "";
+  (Object.keys(columnWidths) as Array<keyof typeof columnWidths>).forEach(key => {
+    const value = String(row[key] === null || row[key] === undefined ? 'N/A' : row[key]);
+    line += value.padEnd(columnWidths[key]) + " | ";
+  });
+  return line.slice(0, -3); // Remove trailing " | "
+}
+
 
 export async function downloadAllMarks(format: 'csv' | 'xlsx' | 'pdf' = 'csv'): Promise<{ success: boolean; message: string; data?: string | Uint8Array }> {
   if (!db) {
@@ -865,8 +875,8 @@ export async function downloadAllMarks(format: 'csv' | 'xlsx' | 'pdf' = 'csv'): 
     if (format === 'csv') {
       const header = Object.keys(reportData[0]).join(',');
       const rows = reportData.map(row =>
-        Object.values(row).map(value => {
-          const stringValue = String(value);
+        (Object.values(row) as Array<string | number | undefined>).map(value => {
+          const stringValue = String(value === undefined || value === null ? '' : value);
           if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
             return `"${stringValue.replace(/"/g, '""')}"`;
           }
@@ -876,22 +886,45 @@ export async function downloadAllMarks(format: 'csv' | 'xlsx' | 'pdf' = 'csv'): 
       const csvData = `${header}\n${rows.join('\n')}`;
       return { success: true, message: "CSV data prepared.", data: csvData };
     } else if (format === 'xlsx') {
-      const worksheet = XLSX.utils.json_to_sheet(reportData);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Marks Report");
-      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-      return { success: true, message: "XLSX data prepared.", data: new Uint8Array(excelBuffer) };
+        const wsData = [
+            ["GradeCentral - All Marks Report"],
+            [`Generated on: ${new Date().toLocaleDateString()}`],
+            [], // Blank row for spacing
+            Object.keys(reportData[0]) // Headers
+        ];
+        reportData.forEach(row => {
+            wsData.push(Object.values(row).map(val => String(val === undefined || val === null ? '' : val)));
+        });
+        const worksheet = XLSX.utils.aoa_to_sheet(wsData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "All Marks Report");
+        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        return { success: true, message: "XLSX data prepared.", data: new Uint8Array(excelBuffer) };
     } else if (format === 'pdf') {
-      let pdfTextContent = "Marks Report\n";
-      pdfTextContent += "====================================\n\n";
-      const header = Object.keys(reportData[0]).join('\t|\t');
-      pdfTextContent += header + '\n';
-      pdfTextContent += "-".repeat(header.length * 1.5) + '\n'; 
+      const columnWidths: Record<keyof ReportRow, number> = {
+        'Student ID': 15,
+        'Student Name': 25,
+        'Class': 20,
+        'Subject': 20,
+        'Exam': 25,
+        'Score': 8,
+        'Date Submitted': 12,
+        'Submitted By': 30,
+        'D.O.S. Status': 20,
+        'D.O.S. Reject Reason': 30,
+      };
+
+      let pdfTextContent = "GradeCentral - All Marks Report\n";
+      pdfTextContent += `Generated on: ${new Date().toLocaleDateString()}\n`;
+      pdfTextContent += "========================================================================================================================================================================================================================\n\n";
+
+      const headerValues = (Object.keys(reportData[0]) as Array<keyof ReportRow>);
+      pdfTextContent += headerValues.map(h => h.padEnd(columnWidths[h])).join(" | ") + "\n";
+      pdfTextContent += headerValues.map(h => "-".repeat(columnWidths[h])).join("-|-") + "\n";
 
       reportData.forEach(row => {
-        pdfTextContent += Object.values(row).map(val => String(val).padEnd(15)).join('\t|\t') + '\n';
+        pdfTextContent += formatTextReportRow(row, columnWidths) + "\n";
       });
-
       pdfTextContent += "\nGenerated by GradeCentral";
       return { success: true, message: "Basic PDF data prepared.", data: pdfTextContent };
     }
@@ -912,13 +945,13 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
 
   const compositeAssessmentId = `${examId}_${classId}_${subjectId}`;
   console.log(`[DOS Action - getMarksForReview] Fetching marks for Class ID: ${classId}, Subject ID: ${subjectId}, Exam ID: ${examId}. Constructed composite assessmentId for query: "${compositeAssessmentId}"`);
-  console.log(`[DOS Action - getMarksForReview] Preparing to query 'markSubmissions' where 'assessmentId' == '${compositeAssessmentId}', ordered by 'dateSubmitted' desc, limit 1.`);
 
   try {
     const markSubmissionsRef = collection(db, "markSubmissions");
+    console.log(`[DOS Action - getMarksForReview] Preparing to query 'markSubmissions' where 'assessmentId' == '${compositeAssessmentId}', ordered by 'dateSubmitted' desc, limit 1.`);
     const q = query(
       markSubmissionsRef,
-      where("assessmentId", "==", compositeAssessmentId), 
+      where("assessmentId", "==", compositeAssessmentId),
       orderBy("dateSubmitted", "desc"),
       limit(1)
     );
@@ -945,7 +978,7 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
     const studentsMap = new Map(allStudents.map(s => [s.studentIdNumber, `${s.firstName} ${s.lastName}`]));
 
     const marksForReview: MarksForReviewEntry[] = submissionData.submittedMarks.map(mark => ({
-      studentId: mark.studentId, 
+      studentId: mark.studentId,
       grade: mark.score,
       studentName: studentsMap.get(mark.studentId) || "Unknown Student",
     }));
@@ -980,19 +1013,19 @@ export async function approveMarkSubmission(submissionId: string): Promise<{ suc
         const submissionRef = doc(db, "markSubmissions", submissionId);
         await updateDoc(submissionRef, {
             dosStatus: 'Approved',
-            dosRejectReason: null, 
+            dosRejectReason: null,
             dosLastReviewedAt: Timestamp.now(),
         });
-        revalidatePath("/dos/marks-review"); 
+        revalidatePath("/dos/marks-review");
 
         const submissionSnap = await getDoc(submissionRef);
         if (submissionSnap.exists()) {
             const teacherId = submissionSnap.data().teacherId;
             if (teacherId) {
-                const teacherInfo = await getTeacherById(teacherId); 
+                const teacherInfo = await getTeacherById(teacherId);
                 const teacherNameParam = teacherInfo?.name ? encodeURIComponent(teacherInfo.name) : "Teacher";
                 revalidatePath(`/teacher/marks/history?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
-                revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}&teacherName=${teacherNameParam}`); 
+                revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
                 revalidatePath(`/teacher/dashboard?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
             }
         }
@@ -1018,10 +1051,10 @@ export async function rejectMarkSubmission(submissionId: string, reason: string)
         if (submissionSnap.exists()) {
             const teacherId = submissionSnap.data().teacherId;
              if (teacherId) {
-                const teacherInfo = await getTeacherById(teacherId); 
+                const teacherInfo = await getTeacherById(teacherId);
                 const teacherNameParam = teacherInfo?.name ? encodeURIComponent(teacherInfo.name) : "Teacher";
                 revalidatePath(`/teacher/marks/history?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
-                revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}&teacherName=${teacherNameParam}`); 
+                revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
                 revalidatePath(`/teacher/dashboard?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
             }
         }
@@ -1034,7 +1067,7 @@ export async function rejectMarkSubmission(submissionId: string, reason: string)
 
 export async function updateSubmittedMarksByDOS(
   submissionId: string,
-  updatedMarks: Array<{ studentId: string; score: number }> 
+  updatedMarks: Array<{ studentId: string; score: number }>
 ): Promise<{ success: boolean; message: string }> {
   if (!db) return { success: false, message: "Firestore not initialized." };
   if (!submissionId) return { success: false, message: "Submission ID is required." };
@@ -1053,7 +1086,7 @@ export async function updateSubmittedMarksByDOS(
       dosLastEditedAt: Timestamp.now(),
     });
 
-    revalidatePath(`/dos/marks-review`); 
+    revalidatePath(`/dos/marks-review`);
     return { success: true, message: "Marks updated by D.O.S. successfully." };
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Unknown error.";
@@ -1087,65 +1120,94 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
     const allStudents = await getStudents();
     const studentsMap = new Map(allStudents.map(s => [s.studentIdNumber, `${s.firstName} ${s.lastName}`]));
 
-    const assessmentName = submissionData.assessmentName || 'N/A - N/A - N/A';
-    let className = 'N/A', subjectName = 'N/A', examName = 'N/A';
-    if (assessmentName && assessmentName !== 'N/A - N/A - N/A') {
-        const parts = assessmentName.split(' - ');
-        if (parts.length >= 3) {
-            className = parts[0].trim();
-            subjectName = parts[1].trim();
-            examName = parts.slice(2).join(' - ').trim();
-        }
+    let teacherNameForReport = submissionData.teacherId;
+    if(submissionData.teacherId) {
+        const teacher = await getTeacherById(submissionData.teacherId);
+        if(teacher) teacherNameForReport = teacher.name;
     }
 
+    const assessmentName = submissionData.assessmentName || 'N/A - N/A - N/A';
     const dateSubmitted = submissionData.dateSubmitted.toDate().toLocaleDateString();
+    const assessmentNameSlug = (submissionData.assessmentName || "submission").replace(/[^a-zA-Z0-9_]/g, '_');
 
-    const reportData: ReportRow[] = submissionData.submittedMarks.map(mark => ({
-      'Student ID': mark.studentId, 
+
+    // This is the actual table data of student marks for this submission
+    const studentMarksData = submissionData.submittedMarks.map(mark => ({
+      'Student ID': mark.studentId,
       'Student Name': studentsMap.get(mark.studentId) || 'Unknown Student',
-      'Class': className,
-      'Subject': subjectName,
-      'Exam': examName,
       'Score': mark.score,
-      'Date Submitted': dateSubmitted,
-      'Submitted By (Teacher ID)': submissionData.teacherId,
-      'D.O.S. Status': submissionData.dosStatus || 'N/A',
-      'D.O.S. Reject Reason': submissionData.dosRejectReason || '',
     }));
 
-    const reportTitle = `Marks for ${assessmentName} (Submitted ${dateSubmitted})`;
 
     if (format === 'csv') {
-      const header = Object.keys(reportData[0]).join(',');
-      const rows = reportData.map(row =>
-        Object.values(row).map(value => {
-          const stringValue = String(value);
+      // CSV for single submission will be just the marks table for simplicity
+      const header = Object.keys(studentMarksData[0]).join(',');
+      const rows = studentMarksData.map(row =>
+        (Object.values(row) as Array<string | number | undefined>).map(value => {
+          const stringValue = String(value === undefined || value === null ? '' : value);
           if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
             return `"${stringValue.replace(/"/g, '""')}"`;
           }
           return stringValue;
         }).join(',')
       );
-      const csvData = `${reportTitle}\n${header}\n${rows.join('\n')}`;
+      const csvData = `${header}\n${rows.join('\n')}`;
       return { success: true, message: "CSV data prepared.", data: csvData };
     } else if (format === 'xlsx') {
-      const worksheet = XLSX.utils.json_to_sheet(reportData);
-      XLSX.utils.sheet_add_aoa(worksheet, [[reportTitle]], { origin: "A1" }); 
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, examName.substring(0,30)); 
-      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-      return { success: true, message: "XLSX data prepared.", data: new Uint8Array(excelBuffer) };
+        const xlsxHeaderRows = [
+            ["Report Title:", `Marks for ${assessmentName}`],
+            ["Submitted By:", teacherNameForReport],
+            ["Date Submitted:", dateSubmitted],
+            ["D.O.S. Status:", submissionData.dosStatus || 'N/A'],
+        ];
+        if (submissionData.dosRejectReason) {
+            xlsxHeaderRows.push(["Reject Reason:", submissionData.dosRejectReason]);
+        }
+        xlsxHeaderRows.push([]); // Empty row as separator
+        xlsxHeaderRows.push(Object.keys(studentMarksData[0])); // Actual data headers
+
+        const wsDataSingle = [...xlsxHeaderRows];
+        studentMarksData.forEach(row => {
+            wsDataSingle.push(Object.values(row).map(val => String(val === undefined || val === null ? '' : val)));
+        });
+
+        const worksheetSingle = XLSX.utils.aoa_to_sheet(wsDataSingle);
+        const workbookSingle = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbookSingle, worksheetSingle, assessmentNameSlug.substring(0,30) || "Submission");
+        const excelBufferSingle = XLSX.write(workbookSingle, { bookType: 'xlsx', type: 'array' });
+        return { success: true, message: "XLSX data prepared.", data: new Uint8Array(excelBufferSingle) };
+
     } else if (format === 'pdf') {
-      let pdfTextContent = `${reportTitle}\n`;
-      pdfTextContent += "====================================\n\n";
-      const header = Object.keys(reportData[0]).map(h => h.padEnd(15)).join('\t|\t');
-      pdfTextContent += header + '\n';
-      pdfTextContent += "-".repeat(header.length + (Object.keys(reportData[0]).length * 3)) + '\n';
+      const columnWidthsSingle: Record<keyof typeof studentMarksData[0], number> = {
+        'Student ID': 15,
+        'Student Name': 30,
+        'Score': 8,
+      };
 
-      reportData.forEach(row => {
-        pdfTextContent += Object.values(row).map(val => String(val).padEnd(15)).join('\t|\t') + '\n';
+      let pdfTextContent = `GradeCentral - Mark Submission Details\n`;
+      pdfTextContent += `========================================\n`;
+      pdfTextContent += `Assessment:      ${assessmentName}\n`;
+      pdfTextContent += `Submitted By:    ${teacherNameForReport}\n`;
+      pdfTextContent += `Date Submitted:  ${dateSubmitted}\n`;
+      pdfTextContent += `D.O.S. Status:   ${submissionData.dosStatus || 'N/A'}\n`;
+      if (submissionData.dosRejectReason) {
+        pdfTextContent += `Reject Reason:   ${submissionData.dosRejectReason}\n`;
+      }
+      pdfTextContent += `----------------------------------------\n\n`;
+      pdfTextContent += `Student Marks:\n`;
+
+      const studentHeaderValues = (Object.keys(columnWidthsSingle) as Array<keyof typeof columnWidthsSingle>);
+      pdfTextContent += studentHeaderValues.map(h => h.padEnd(columnWidthsSingle[h])).join(" | ") + "\n";
+      pdfTextContent += studentHeaderValues.map(h => "-".repeat(columnWidthsSingle[h])).join("-|-") + "\n";
+
+      studentMarksData.forEach(markRow => {
+          let line = "";
+          (Object.keys(markRow) as Array<keyof typeof markRow>).forEach(key => {
+              const value = String(markRow[key] === null || markRow[key] === undefined ? 'N/A' : markRow[key]);
+              line += value.padEnd(columnWidthsSingle[key]) + " | ";
+          });
+          pdfTextContent += line.slice(0, -3) + "\n";
       });
-
       pdfTextContent += `\nGenerated by GradeCentral for Submission ID: ${submissionId}`;
       return { success: true, message: "Basic PDF data prepared.", data: pdfTextContent };
     }
@@ -1172,8 +1234,8 @@ export async function getTeachers(): Promise<Teacher[]> {
         id: docSnap.id,
         name: data.name,
         email: data.email,
-        password: data.password, 
-        subjectsAssigned: data.subjectsAssigned || [] 
+        password: data.password,
+        subjectsAssigned: data.subjectsAssigned || []
       } as Teacher;
     });
     return teachersList;
@@ -1198,9 +1260,9 @@ export async function getStudents(): Promise<Student[]> {
         studentIdNumber: data.studentIdNumber,
         firstName: data.firstName,
         lastName: data.lastName,
-        classId: data.classId, 
-        dateOfBirth: data.dateOfBirth, 
-        gender: data.gender,         
+        classId: data.classId,
+        dateOfBirth: data.dateOfBirth,
+        gender: data.gender,
        } as Student;
     });
     return studentsList;
@@ -1224,15 +1286,15 @@ export async function getClasses(): Promise<ClassInfo[]> {
 
             if (classData.subjectReferences && Array.isArray(classData.subjectReferences)) {
                 for (const subjectRef of classData.subjectReferences) {
-                    if (subjectRef && typeof subjectRef.id === 'string') { 
+                    if (subjectRef && typeof subjectRef.id === 'string') {
                         try {
-                            const subjectDocSnap = await getDoc(doc(db, "subjects", subjectRef.id)); 
+                            const subjectDocSnap = await getDoc(doc(db, "subjects", subjectRef.id));
                             if (subjectDocSnap.exists()) {
                                 const subjData = subjectDocSnap.data();
                                 subjectsArray.push({
                                     id: subjectDocSnap.id,
                                     name: subjData.name,
-                                    code: subjData.code === null ? undefined : subjData.code 
+                                    code: subjData.code === null ? undefined : subjData.code
                                 } as Subject);
                             } else {
                                 subjectsArray.push({ id: subjectRef.id, name: `Unknown Subject (${subjectRef.id})` });
@@ -1248,8 +1310,8 @@ export async function getClasses(): Promise<ClassInfo[]> {
                 id: classDoc.id,
                 name: classData.name || "Unnamed Class",
                 level: classData.level || "Unknown Level",
-                stream: classData.stream === null ? undefined : classData.stream, 
-                classTeacherId: classData.classTeacherId === null ? undefined : classData.classTeacherId, 
+                stream: classData.stream === null ? undefined : classData.stream,
+                classTeacherId: classData.classTeacherId === null ? undefined : classData.classTeacherId,
                 subjects: subjectsArray
             } as ClassInfo;
         });
@@ -1303,15 +1365,15 @@ export async function getExams(): Promise<Exam[]> {
         const examsList = examSnapshot.docs.map(docSnap => {
             const data = docSnap.data();
             return {
-                id: docSnap.id, 
+                id: docSnap.id,
                 name: data.name,
-                termId: data.termId, 
+                termId: data.termId,
                 maxMarks: data.maxMarks,
                 description: data.description === null ? undefined : data.description,
                 examDate: data.examDate === null ? undefined : data.examDate,
-                classId: data.classId === null ? undefined : data.classId, 
-                subjectId: data.subjectId === null ? undefined : data.subjectId, 
-                teacherId: data.teacherId === null ? undefined : data.teacherId, 
+                classId: data.classId === null ? undefined : data.classId,
+                subjectId: data.subjectId === null ? undefined : data.subjectId,
+                teacherId: data.teacherId === null ? undefined : data.teacherId,
                 marksSubmissionDeadline: data.marksSubmissionDeadline === null ? undefined : data.marksSubmissionDeadline,
             } as Exam;
         });
@@ -1345,7 +1407,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
             const defaultGradingScale = Array.isArray(data.defaultGradingScale) ? data.defaultGradingScale : [];
             console.log("[DOS Action - getGeneralSettings] Successfully fetched 'settings/general' document.");
             return {
-                currentTermId: data.currentTermId === null ? undefined : data.currentTermId, 
+                currentTermId: data.currentTermId === null ? undefined : data.currentTermId,
                 defaultGradingScale,
                 markSubmissionTimeZone: data.markSubmissionTimeZone || 'UTC',
                 globalMarksSubmissionDeadline: data.globalMarksSubmissionDeadline === null ? undefined : data.globalMarksSubmissionDeadline,
@@ -1379,7 +1441,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
         return defaultSettings;
     } catch (error) {
         console.error("[DOS Action - getGeneralSettings] Error fetching general settings:", error);
-        return { 
+        return {
             defaultGradingScale: [],
             markSubmissionTimeZone: 'UTC',
             currentTermId: undefined,
@@ -1391,3 +1453,5 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
         };
     }
 }
+
+    
