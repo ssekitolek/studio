@@ -186,10 +186,8 @@ async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName
       return { subjectName: "Error: DB_NULL", examName: "Error: DB_NULL", name: "Error: DB_NULL: Firestore not initialized", maxMarks: 0 };
     }
     
-    // Explicitly check if getDoc is defined in this scope
     if (typeof getDoc !== 'function') {
         console.error("[getAssessmentDetails] CRITICAL_RUNTIME_ERROR: getDoc function IS UNDEFINED at point of use! Firebase SDK might not be loaded correctly or import is missing/corrupted.");
-        // Return a specific error object that submitMarks can check
         return { subjectName: "Error: SDK_ERR", examName: "Error: SDK_ERR", name: "Error: SDK_ERR: getDoc is not defined", maxMarks: 0 };
     }
 
@@ -215,7 +213,7 @@ async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName
 
         const exam = examDocSnap.exists() ? { id: examDocSnap.id, ...examDocSnap.data() } as ExamTypeFirebase : null;
         const subject = subjectDocSnap.exists() ? { id: subjectDocSnap.id, ...subjectDocSnap.data() } as SubjectType : null;
-        const cls = classDocSnap.exists() ? { id: classDocSnap.id, ...classDocSnap.data() } as ClassInfo : null; // ClassInfo might need subjects fetched if not already on the object
+        const cls = classDocSnap.exists() ? { id: classDocSnap.id, ...classDocSnap.data() } as ClassInfo : null;
 
         let errorMessages: string[] = [];
         if (!exam) {
@@ -331,12 +329,15 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
                         }
                         break;
                     default: 
+                        // If dosStatus is not one of the expected values, use the teacher-facing status, or fallback.
                         displayStatus = data.status || 'Status Unknown';
                         console.warn(`[getSubmittedMarksHistory] Doc ID ${docId} has unexpected dosStatus: '${data.dosStatus}'. Falling back to teacher status: '${displayStatus}'`);
                 }
 
+                // Validate and ensure fields exist before trying to use them
                 if (!(data.dateSubmitted instanceof Timestamp)) {
                     console.warn(`[getSubmittedMarksHistory] Malformed 'dateSubmitted' for doc ID ${docId}. Expected Firestore Timestamp, got ${typeof data.dateSubmitted}. Record will be skipped or have incorrect date.`);
+                    // Optionally skip this record: return; or use a default date
                 }
                 if (typeof data.assessmentName !== 'string' || !data.assessmentName) {
                      console.warn(`[getSubmittedMarksHistory] Missing or invalid 'assessmentName' for doc ID ${docId}. It should be a string like "Class - Subject - Exam". Record will use 'N/A - Error'. Value: ${data.assessmentName}`);
@@ -345,18 +346,19 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
 
                 const item: SubmissionHistoryDisplayItem = {
                     id: docId,
-                    assessmentName: data.assessmentName || "N/A - Error in Record Name", 
+                    assessmentName: data.assessmentName || "N/A - Error in Record Name", // Use stored name
                     dateSubmitted: data.dateSubmitted instanceof Timestamp ? data.dateSubmitted.toDate().toISOString() : new Date(0).toISOString(), // Default to epoch if invalid
                     studentCount: typeof data.studentCount === 'number' ? data.studentCount : 0,
                     averageScore: typeof data.averageScore === 'number' ? data.averageScore : null,
-                    status: displayStatus,
-                    dosStatus: data.dosStatus, 
+                    status: displayStatus, // This is the derived status for display
+                    dosStatus: data.dosStatus, // Keep the raw D.O.S. status for potential specific styling/logic
                     dosRejectReason: data.dosRejectReason,
                 };
                 history.push(item);
                 console.log(`[getSubmittedMarksHistory] Successfully mapped doc ID ${docId} to display item: ${JSON.stringify(item)}`);
             } catch (mapError) {
                 console.error(`[getSubmittedMarksHistory] ERROR transforming document ${docId} to SubmissionHistoryDisplayItem:`, mapError, "Raw Data:", rawData);
+                // Do not push a broken item, or push a placeholder error item if desired
             }
         });
 

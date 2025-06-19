@@ -82,18 +82,21 @@ export default function MarksHistoryPage() {
     // Prioritize D.O.S. status for display
     if (item.dosStatus === 'Approved') return { variant: "default", className: "bg-green-500 hover:bg-green-600 text-white", icon: <CheckCircle2 className="mr-1 inline-block h-3 w-3" /> };
     if (item.dosStatus === 'Rejected') return { variant: "destructive", className: "bg-red-500 hover:bg-red-600 text-white", icon: <AlertTriangle className="mr-1 inline-block h-3 w-3" /> };
-    // If D.O.S. status is Pending, use the teacher-facing AI status for more nuance
+    
+    // If D.O.S. status is Pending, use the teacher-facing AI status (derived in `getSubmittedMarksHistory`) for more nuance
     if (item.dosStatus === 'Pending') {
-        if (item.status && (item.status.includes("Anomaly Detected") || item.status.includes("Anomaly)"))) { // Check for variations
+        // The `item.status` already reflects the combined logic (e.g., "Pending D.O.S. Review (Anomaly)")
+        if (item.status && (item.status.includes("Anomaly Detected") || item.status.includes("Anomaly)"))) {
              return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
         }
         // If no anomaly detected by AI and D.O.S. status is pending
         return { variant: "secondary", className: "bg-blue-500 hover:bg-blue-600 text-white", icon: <Info className="mr-1 inline-block h-3 w-3" /> };
     }
     
-    // Fallback to original status if dosStatus is somehow undefined or unexpected (should not happen with current logic)
+    // Fallback for unexpected dosStatus values (should not happen ideally)
+    console.warn(`[MarksHistoryPage] Unexpected dosStatus value: "${item.dosStatus}" for submission ID: ${item.id}. Using default styling.`);
     if (item.status && (item.status.includes("Anomaly Detected") || item.status.includes("Anomaly)"))) return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
-    if (item.status === "Accepted") return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" }; // Should be rare if dosStatus is always set
+    if (item.status === "Accepted") return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" };
     
     return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" }; // Default fallback
   };
@@ -239,4 +242,3 @@ export default function MarksHistoryPage() {
     </div>
   );
 }
-
