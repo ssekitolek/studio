@@ -71,29 +71,18 @@ export async function updateTeacher(teacherId: string, teacherData: Partial<Omit
   try {
     const teacherRef = doc(db, "teachers", teacherId);
 
-    // Build the update payload carefully to avoid overwriting fields with undefined
     const updatePayload: { [key: string]: any } = {};
 
     if (teacherData.name !== undefined) {
       updatePayload.name = teacherData.name;
     }
     if (teacherData.email !== undefined) {
-      // Potentially add check for email uniqueness if changing
       updatePayload.email = teacherData.email;
     }
     if (teacherData.password && teacherData.password.trim() !== "") {
-      // Add password hashing here if implementing actual auth
       updatePayload.password = teacherData.password;
     }
-    // Ensure subjectsAssigned is handled correctly, even if not explicitly passed
-    // If `teacherData.subjectsAssigned` is part of the update (e.g. from assignment form),
-    // it should be validated and set. If not, existing assignments shouldn't be wiped.
-    // The updateTeacherAssignments action is preferred for managing assignments.
-    // If this `updateTeacher` is ONLY for name/email/password, then subjectsAssigned shouldn't be touched.
-    // For now, assuming this action doesn't primarily manage assignments, leave it out unless explicitly passed.
-    // If it IS meant to update them, ensure it's handled correctly:
     if (teacherData.subjectsAssigned !== undefined) {
-      // Ensure valid array structure for subjectsAssigned
       if (Array.isArray(teacherData.subjectsAssigned)) {
         updatePayload.subjectsAssigned = teacherData.subjectsAssigned.filter(
           (assignment: any) =>
@@ -102,7 +91,7 @@ export async function updateTeacher(teacherId: string, teacherData: Partial<Omit
             typeof assignment.subjectId === 'string' &&
             Array.isArray(assignment.examIds) &&
             assignment.examIds.every((id: any) => typeof id === 'string')
-        ).map((assignment: any) => ({ // Map to ensure only expected fields
+        ).map((assignment: any) => ({ 
             classId: assignment.classId,
             subjectId: assignment.subjectId,
             examIds: assignment.examIds
@@ -112,9 +101,7 @@ export async function updateTeacher(teacherId: string, teacherData: Partial<Omit
       }
     }
 
-
     if (Object.keys(updatePayload).length === 0) {
-      // Fetch the current teacher data to return if no actual changes are made
       const currentTeacher = await getTeacherById(teacherId);
       return { success: true, message: "No changes provided to update teacher.", teacher: currentTeacher ?? undefined };
     }
@@ -136,7 +123,6 @@ export async function deleteTeacher(teacherId: string): Promise<{ success: boole
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
-    // Add logic here to unassign this teacher from any classes they are a classTeacher for
     const classesQuery = query(collection(db, "classes"), where("classTeacherId", "==", teacherId));
     const classesSnapshot = await getDocs(classesQuery);
     const batch = writeBatch(db);
@@ -147,7 +133,7 @@ export async function deleteTeacher(teacherId: string): Promise<{ success: boole
 
     await deleteDoc(doc(db, "teachers", teacherId));
     revalidatePath("/dos/teachers");
-    revalidatePath("/dos/classes"); // Revalidate classes as classTeacher might change
+    revalidatePath("/dos/classes"); 
     return { success: true, message: "Teacher deleted successfully and unassigned from classes." };
   } catch (error) {
     console.error(`Error in deleteTeacher for ${teacherId}:`, error);
@@ -167,7 +153,6 @@ export async function updateTeacherAssignments(
     return { success: false, message: "Firestore is not initialized." };
   }
 
-  // Validate and sanitize specificSubjectAssignments
   const validSpecificAssignments = Array.isArray(data.specificSubjectAssignments)
   ? data.specificSubjectAssignments.filter(
       (assignment) =>
@@ -178,7 +163,7 @@ export async function updateTeacherAssignments(
         assignment.subjectId.trim() !== '' &&
         Array.isArray(assignment.examIds) &&
         assignment.examIds.every(id => typeof id === 'string' && id.trim() !== '') &&
-        assignment.examIds.length > 0 // Only include if there are selected exams
+        assignment.examIds.length > 0 
     ).map(a => ({ classId: a.classId, subjectId: a.subjectId, examIds: a.examIds }))
   : [];
 
@@ -190,29 +175,22 @@ export async function updateTeacherAssignments(
         throw new Error(`Teacher with ID ${teacherId} not found.`);
       }
 
-      // Update teacher's specific assignments
       transaction.update(teacherRef, { subjectsAssigned: validSpecificAssignments });
 
-      // Update classTeacherId on classes
-      // This part requires fetching all classes, which is not ideal in a transaction due to read limits.
-      // A more scalable approach might involve a separate process or careful consideration.
-      // For this context, we'll proceed but acknowledge the limitation.
       const classesQuery = query(collection(db, "classes"));
-      const classesSnapshot = await getDocs(classesQuery); // Not using transaction.get for this potentially large read
+      const classesSnapshot = await getDocs(classesQuery); 
 
       classesSnapshot.forEach(classDoc => {
         const classRef = doc(db, "classes", classDoc.id);
         const currentClassTeacher = classDoc.data().classTeacherId;
 
         if (data.classTeacherForClassIds.includes(classDoc.id)) {
-          // If this class is selected to be taught by this teacher
           if (currentClassTeacher !== teacherId) {
             transaction.update(classRef, { classTeacherId: teacherId });
           }
         } else {
-          // If this class is NOT selected for this teacher
-          if (currentClassTeacher === teacherId) { // And this teacher was previously the class teacher
-            transaction.update(classRef, { classTeacherId: null }); // Unassign
+          if (currentClassTeacher === teacherId) { 
+            transaction.update(classRef, { classTeacherId: null }); 
           }
         }
       });
@@ -228,7 +206,6 @@ export async function updateTeacherAssignments(
     return { success: false, message: `Failed to update assignments: ${errorMessage}` };
   }
 }
-
 
 // --- Student Management ---
 export async function createStudent(studentData: Omit<Student, 'id'>): Promise<{ success: boolean; message: string; student?: Student }> {
@@ -246,8 +223,8 @@ export async function createStudent(studentData: Omit<Student, 'id'>): Promise<{
 
     const studentPayload: Omit<Student, 'id'> = {
       ...studentData,
-      dateOfBirth: studentData.dateOfBirth || undefined, // Store as undefined if not provided
-      gender: studentData.gender || undefined,       // Store as undefined if not provided
+      dateOfBirth: studentData.dateOfBirth || undefined, 
+      gender: studentData.gender || undefined,       
     };
 
     const docRef = await addDoc(collection(db, "students"), studentPayload);
@@ -274,7 +251,6 @@ export async function getStudentById(studentId: string): Promise<Student | null>
       return {
         id: studentSnap.id,
         ...data,
-        // Ensure optional fields are handled correctly if they are null/undefined in Firestore
         dateOfBirth: data.dateOfBirth ? data.dateOfBirth : undefined,
         gender: data.gender ? data.gender : undefined,
        } as Student;
@@ -286,18 +262,16 @@ export async function getStudentById(studentId: string): Promise<Student | null>
   }
 }
 
-
 export async function updateStudent(studentId: string, studentData: Partial<Omit<Student, 'id'>>): Promise<{ success: boolean; message: string, student?: Student }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
     const studentRef = doc(db, "students", studentId);
-    // Prepare data to update, ensuring optional fields are handled
     const dataToUpdate = {
       ...studentData,
-      dateOfBirth: studentData.dateOfBirth || null, // Use null to remove if empty, or Firestore specific delete
-      gender: studentData.gender || null,         // Use null to remove if empty
+      dateOfBirth: studentData.dateOfBirth || null, 
+      gender: studentData.gender || null,         
     };
     await updateDoc(studentRef, dataToUpdate);
     revalidatePath("/dos/students");
@@ -316,7 +290,6 @@ export async function deleteStudent(studentId: string): Promise<{ success: boole
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
-    // Future: Add logic to delete related student marks if necessary
     await deleteDoc(doc(db, "students", studentId));
     revalidatePath("/dos/students");
     return { success: true, message: "Student deleted successfully." };
@@ -336,20 +309,17 @@ export async function createClass(
   }
   try {
     const { subjectIds, ...restOfClassData } = classData;
-
-    // Convert subject IDs to Firestore DocumentReferences
     const subjectReferences: DocumentReference[] = subjectIds.map(id => doc(db, "subjects", id));
 
     const classDataToSave = {
       ...restOfClassData,
-      classTeacherId: restOfClassData.classTeacherId || null, // Store null if not provided
-      stream: restOfClassData.stream || null,                 // Store null if not provided
-      subjectReferences: subjectReferences // Store array of references
+      classTeacherId: restOfClassData.classTeacherId || null, 
+      stream: restOfClassData.stream || null,                 
+      subjectReferences: subjectReferences 
     };
 
     const docRef = await addDoc(collection(db, "classes"), classDataToSave);
 
-    // For returning the ClassInfo, fetch the subject objects
     const subjects: Subject[] = [];
     for (const subjectId of subjectIds) {
         const subjectDocRef = doc(db, "subjects", subjectId);
@@ -357,14 +327,13 @@ export async function createClass(
         if (subjectDocSnap.exists()) {
             subjects.push({ id: subjectDocSnap.id, ...subjectDocSnap.data() } as Subject);
         } else {
-            // Handle case where a subject ID might be invalid, though form should prevent this
             subjects.push({ id: subjectId, name: `Unknown Subject (${subjectId})` });
         }
     }
     const newClass: ClassInfo = {
         ...restOfClassData,
         id: docRef.id,
-        subjects, // Populated subject objects
+        subjects, 
         stream: classDataToSave.stream === null ? undefined : classDataToSave.stream,
         classTeacherId: classDataToSave.classTeacherId === null ? undefined : classDataToSave.classTeacherId,
     };
@@ -394,13 +363,11 @@ export async function getClassById(classId: string): Promise<ClassInfo | null> {
     const classData = classSnap.data();
     let subjectsArray: Subject[] = [];
 
-    // If subjectReferences exist and is an array, resolve them
     if (classData.subjectReferences && Array.isArray(classData.subjectReferences)) {
       for (const subjectRef of classData.subjectReferences) {
-        // Ensure subjectRef is a DocumentReference and has an id
-        if (subjectRef && typeof subjectRef.id === 'string') {
+        if (subjectRef && typeof subjectRef.id === 'string') { 
           try {
-            const subjectDocSnap = await getDoc(doc(db, "subjects", subjectRef.id)); // Use the ID from the reference
+            const subjectDocSnap = await getDoc(doc(db, "subjects", subjectRef.id)); 
             if (subjectDocSnap.exists()) {
               const subjData = subjectDocSnap.data();
               subjectsArray.push({
@@ -409,7 +376,6 @@ export async function getClassById(classId: string): Promise<ClassInfo | null> {
                 code: subjData.code === null ? undefined : subjData.code
               } as Subject);
             } else {
-              // Subject document doesn't exist for this reference
               subjectsArray.push({ id: subjectRef.id, name: `Unknown Subject (${subjectRef.id})` });
             }
           } catch (e) {
@@ -423,8 +389,8 @@ export async function getClassById(classId: string): Promise<ClassInfo | null> {
       id: classSnap.id,
       name: classData.name || "Unnamed Class",
       level: classData.level || "Unknown Level",
-      stream: classData.stream === null ? undefined : classData.stream, // Handle null from Firestore
-      classTeacherId: classData.classTeacherId === null ? undefined : classData.classTeacherId, // Handle null
+      stream: classData.stream === null ? undefined : classData.stream, 
+      classTeacherId: classData.classTeacherId === null ? undefined : classData.classTeacherId, 
       subjects: subjectsArray
     } as ClassInfo;
   } catch (error) {
@@ -433,31 +399,26 @@ export async function getClassById(classId: string): Promise<ClassInfo | null> {
   }
 }
 
-
 export async function updateClass(classId: string, classData: Partial<Omit<ClassInfo, 'id' | 'subjects'>> & { subjectIds?: string[] }): Promise<{ success: boolean; message: string }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
     const classRef = doc(db, "classes", classId);
-
     const { subjectIds, ...restOfClassData } = classData;
     let dataToUpdate: any = { ...restOfClassData };
 
     if (subjectIds) {
       dataToUpdate.subjectReferences = subjectIds.map(id => doc(db, "subjects", id));
     }
-    // Ensure optional fields are set to null if they are meant to be cleared
     dataToUpdate.classTeacherId = dataToUpdate.classTeacherId || null;
     dataToUpdate.stream = dataToUpdate.stream || null;
-
 
     await updateDoc(classRef, dataToUpdate);
     revalidatePath("/dos/classes");
     revalidatePath(`/dos/classes/${classId}/edit`);
     return { success: true, message: "Class updated successfully." };
-  } catch (error)
-{
+  } catch (error) {
     console.error(`Error in updateClass for ${classId}:`, error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
     return { success: false, message: `Failed to update class: ${errorMessage}` };
@@ -471,7 +432,7 @@ export async function createSubject(subjectData: Omit<Subject, 'id'>): Promise<{
   try {
     const subjectDataToSave = {
         ...subjectData,
-        code: subjectData.code || null, // Store null if code is empty/undefined
+        code: subjectData.code || null, 
     };
     const docRef = await addDoc(collection(db, "subjects"), subjectDataToSave);
     const newSubject: Subject = { id: docRef.id, ...subjectDataToSave, code: subjectDataToSave.code === null ? undefined : subjectDataToSave.code };
@@ -497,7 +458,7 @@ export async function getSubjectById(subjectId: string): Promise<Subject | null>
       return {
         id: subjectSnap.id,
         name: data.name,
-        code: data.code === null ? undefined : data.code, // Handle null from Firestore
+        code: data.code === null ? undefined : data.code, 
       } as Subject;
     }
     return null;
@@ -515,7 +476,7 @@ export async function updateSubject(subjectId: string, subjectData: Partial<Omit
     const subjectRef = doc(db, "subjects", subjectId);
     const dataToUpdate = {
         ...subjectData,
-        code: subjectData.code || null, // Store null if code is empty/undefined
+        code: subjectData.code || null, 
     };
     await updateDoc(subjectRef, dataToUpdate);
     revalidatePath("/dos/classes");
@@ -529,7 +490,6 @@ export async function updateSubject(subjectId: string, subjectData: Partial<Omit
   }
 }
 
-
 // --- Term & Exam Management ---
 export async function createTerm(termData: Omit<Term, 'id'>): Promise<{ success: boolean; message: string; term?: Term }> {
   if (!db) {
@@ -538,7 +498,7 @@ export async function createTerm(termData: Omit<Term, 'id'>): Promise<{ success:
   try {
     const termPayload = {
       ...termData,
-      year: Number(termData.year), // Ensure year is stored as a number
+      year: Number(termData.year), 
     };
     const docRef = await addDoc(collection(db, "terms"), termPayload);
     const newTerm: Term = { id: docRef.id, ...termPayload };
@@ -584,8 +544,8 @@ export async function getTermById(termId: string): Promise<Term | null> {
                 id: termSnap.id,
                 name: data.name,
                 year: data.year,
-                startDate: data.startDate, // Assumes stored as ISO string or compatible
-                endDate: data.endDate,     // Assumes stored as ISO string or compatible
+                startDate: data.startDate, 
+                endDate: data.endDate,     
             } as Term;
         }
         return null;
@@ -594,7 +554,6 @@ export async function getTermById(termId: string): Promise<Term | null> {
         return null;
     }
 }
-
 
 export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success: boolean; message: string; exam?: Exam }> {
   if (!db) {
@@ -612,7 +571,6 @@ export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success:
       marksSubmissionDeadline: examData.marksSubmissionDeadline || null,
     };
     const docRef = await addDoc(collection(db, "exams"), examPayload);
-    // Construct the newExam object ensuring optional fields are undefined if null from payload
     const newExam: Exam = {
         id: docRef.id,
         name: examPayload.name,
@@ -670,16 +628,15 @@ export async function updateExam(examId: string, examData: Partial<Omit<Exam, 'i
   }
   try {
     const examRef = doc(db, "exams", examId);
-    const examPayload: any = { ...examData }; // Use 'any' for easier manipulation here
+    const examPayload: any = { ...examData }; 
 
     if (examPayload.maxMarks !== undefined) {
       examPayload.maxMarks = Number(examPayload.maxMarks);
     }
-    // Ensure optional fields are set to null if they are meant to be cleared/empty
     const fieldsToPotentiallyNullify = ['description', 'examDate', 'classId', 'subjectId', 'teacherId', 'marksSubmissionDeadline'];
     fieldsToPotentiallyNullify.forEach(field => {
-        if (examPayload.hasOwnProperty(field)) { // Check if the key exists in the input data
-            examPayload[field] = examPayload[field] || null; // Set to null if falsy (empty string, undefined)
+        if (examPayload.hasOwnProperty(field)) { 
+            examPayload[field] = examPayload[field] || null; 
         }
     });
 
@@ -695,7 +652,6 @@ export async function updateExam(examId: string, examData: Partial<Omit<Exam, 'i
   }
 }
 
-
 // --- Grading Policy Management ---
 export async function createGradingPolicy(policyData: Omit<GradingPolicy, 'id'>): Promise<{ success: boolean; message: string; policy?: GradingPolicy }> {
   if (!db) {
@@ -704,7 +660,6 @@ export async function createGradingPolicy(policyData: Omit<GradingPolicy, 'id'>)
   try {
     const policyPayload = { ...policyData };
 
-    // If this policy is being set as default, unset any other default policy
     if (policyPayload.isDefault) {
       const policiesRef = collection(db, "gradingPolicies");
       const q = query(policiesRef, where("isDefault", "==", true));
@@ -735,14 +690,12 @@ export async function updateGradingPolicy(policyId: string, policyData: Omit<Gra
     const policyRef = doc(db, "gradingPolicies", policyId);
     const policyPayload = { ...policyData };
 
-    // If this policy is being set as default, unset any other default policy
     if (policyPayload.isDefault) {
         const policiesRef = collection(db, "gradingPolicies");
         const q = query(policiesRef, where("isDefault", "==", true));
         const querySnapshot = await getDocs(q);
         const batch = writeBatch(db);
         querySnapshot.forEach((doc) => {
-          // Make sure not to unset the current policy if it's already the default one being updated
           if (doc.id !== policyId) {
             batch.update(doc.ref, { isDefault: false });
           }
@@ -802,7 +755,6 @@ export async function updateGeneralSettings(settings: GeneralSettings): Promise<
   }
   try {
     const settingsRef = doc(db, "settings", "general");
-    // Ensure optional fields are stored as null if undefined/empty, or as their value
     const settingsToSave: any = {
         ...settings,
         currentTermId: settings.currentTermId || null,
@@ -811,12 +763,11 @@ export async function updateGeneralSettings(settings: GeneralSettings): Promise<
         dosGlobalAnnouncementType: settings.dosGlobalAnnouncementType || null,
         teacherDashboardResourcesText: settings.teacherDashboardResourcesText || null,
     };
-    // Ensure defaultGradingScale is an array, even if empty
     settingsToSave.defaultGradingScale = Array.isArray(settings.defaultGradingScale) ? settings.defaultGradingScale : [];
 
-    await setDoc(settingsRef, settingsToSave, { merge: true }); // Use setDoc with merge for creating/updating
+    await setDoc(settingsRef, settingsToSave, { merge: true }); 
     revalidatePath("/dos/settings/general");
-    revalidatePath("/dos/dashboard"); // Revalidate dashboards as settings might affect them
+    revalidatePath("/dos/dashboard"); 
     revalidatePath("/teacher/dashboard");
     console.log("[DOS Action - updateGeneralSettings] General settings updated/created successfully in Firestore.");
     return { success: true, message: "General settings updated." };
@@ -826,7 +777,6 @@ export async function updateGeneralSettings(settings: GeneralSettings): Promise<
     return { success: false, message: `Failed to update general settings: ${errorMessage}` };
   }
 }
-
 
 interface ReportRow {
   'Student ID': string;
@@ -840,7 +790,6 @@ interface ReportRow {
   'D.O.S. Status': string;
   'D.O.S. Reject Reason'?: string;
 }
-
 
 async function getAllSubmittedMarksData(): Promise<ReportRow[]> {
   if (!db) {
@@ -863,26 +812,22 @@ async function getAllSubmittedMarksData(): Promise<ReportRow[]> {
     for (const submissionDoc of submissionsSnapshot.docs) {
       const submission = submissionDoc.data() as MarkSubmissionFirestoreRecord;
       const dateSubmitted = submission.dateSubmitted.toDate().toLocaleDateString();
-
-      // assessmentName is now directly stored
       const assessmentName = submission.assessmentName || 'N/A - N/A - N/A';
       let className = 'N/A', subjectName = 'N/A', examName = 'N/A';
         if (assessmentName && assessmentName !== 'N/A - N/A - N/A') {
             const parts = assessmentName.split(' - ');
-            if (parts.length >= 3) { // Allow for names with more than 3 parts, take first 3
+            if (parts.length >= 3) { 
                 className = parts[0].trim();
                 subjectName = parts[1].trim();
-                examName = parts.slice(2).join(' - ').trim(); // Join remaining parts for exam name
+                examName = parts.slice(2).join(' - ').trim(); 
             } else {
                 console.warn(`[getAllSubmittedMarksData] Unexpected assessmentName format: "${assessmentName}" for submission ID ${submissionDoc.id}. Using parts as available.`);
                 if(parts.length > 0) className = parts[0].trim();
                 if(parts.length > 1) subjectName = parts[1].trim();
-                // examName remains N/A if not enough parts
             }
         } else {
             console.warn(`[getAllSubmittedMarksData] Missing or default assessmentName for submission ID ${submissionDoc.id}.`);
         }
-
 
       submission.submittedMarks.forEach(mark => {
         reportRows.push({
@@ -937,12 +882,11 @@ export async function downloadAllMarks(format: 'csv' | 'xlsx' | 'pdf' = 'csv'): 
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       return { success: true, message: "XLSX data prepared.", data: new Uint8Array(excelBuffer) };
     } else if (format === 'pdf') {
-      // Basic text "PDF" for simplicity, actual PDF generation is complex
       let pdfTextContent = "Marks Report\n";
       pdfTextContent += "====================================\n\n";
       const header = Object.keys(reportData[0]).join('\t|\t');
       pdfTextContent += header + '\n';
-      pdfTextContent += "-".repeat(header.length * 1.5) + '\n'; // Simple separator
+      pdfTextContent += "-".repeat(header.length * 1.5) + '\n'; 
 
       reportData.forEach(row => {
         pdfTextContent += Object.values(row).map(val => String(val).padEnd(15)).join('\t|\t') + '\n';
@@ -951,16 +895,13 @@ export async function downloadAllMarks(format: 'csv' | 'xlsx' | 'pdf' = 'csv'): 
       pdfTextContent += "\nGenerated by GradeCentral";
       return { success: true, message: "Basic PDF data prepared.", data: pdfTextContent };
     }
-
     return { success: false, message: "Invalid format selected." };
-
   } catch (error) {
     console.error("Error in downloadAllMarks:", error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
     return { success: false, message: `Failed to prepare marks data: ${errorMessage}` };
   }
 }
-
 
 export async function getMarksForReview(classId: string, subjectId: string, examId: string): Promise<MarksForReviewPayload> {
   const defaultPayload: MarksForReviewPayload = { submissionId: null, assessmentName: null, marks: [], dosStatus: undefined, dosRejectReason: undefined };
@@ -969,21 +910,20 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
     return defaultPayload;
   }
 
-  // Construct the composite assessmentId using the actual Firestore document IDs
   const compositeAssessmentId = `${examId}_${classId}_${subjectId}`;
   console.log(`[DOS Action - getMarksForReview] Fetching marks for Class ID: ${classId}, Subject ID: ${subjectId}, Exam ID: ${examId}. Constructed composite assessmentId for query: "${compositeAssessmentId}"`);
+  console.log(`[DOS Action - getMarksForReview] Preparing to query 'markSubmissions' where 'assessmentId' == '${compositeAssessmentId}', ordered by 'dateSubmitted' desc, limit 1.`);
 
   try {
     const markSubmissionsRef = collection(db, "markSubmissions");
     const q = query(
       markSubmissionsRef,
-      where("assessmentId", "==", compositeAssessmentId), // Query by the composite ID
+      where("assessmentId", "==", compositeAssessmentId), 
       orderBy("dateSubmitted", "desc"),
       limit(1)
     );
     const submissionSnapshot = await getDocs(q);
     console.log(`[DOS Action - getMarksForReview] Firestore query for composite assessmentId: "${compositeAssessmentId}". Snapshot empty: ${submissionSnapshot.empty}, Size: ${submissionSnapshot.size}`);
-
 
     if (submissionSnapshot.empty) {
       console.warn(`[DOS Action - getMarksForReview] NO SUBMISSION DOCUMENT FOUND in Firestore for composite assessmentId: "${compositeAssessmentId}"`);
@@ -994,7 +934,6 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
     const submissionData = latestSubmissionDoc.data() as MarkSubmissionFirestoreRecord;
     console.log(`[DOS Action - getMarksForReview] Found submission doc ID: ${latestSubmissionDoc.id} matching composite assessmentId: "${compositeAssessmentId}". Raw data: ${JSON.stringify(submissionData)}`);
 
-    // Crucially, use the stored assessmentName
     const assessmentName = submissionData.assessmentName || "Assessment Name Not Recorded";
 
     if (!submissionData.submittedMarks || submissionData.submittedMarks.length === 0) {
@@ -1006,7 +945,7 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
     const studentsMap = new Map(allStudents.map(s => [s.studentIdNumber, `${s.firstName} ${s.lastName}`]));
 
     const marksForReview: MarksForReviewEntry[] = submissionData.submittedMarks.map(mark => ({
-      studentId: mark.studentId, // This is studentIdNumber
+      studentId: mark.studentId, 
       grade: mark.score,
       studentName: studentsMap.get(mark.studentId) || "Unknown Student",
     }));
@@ -1020,8 +959,17 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
         dosRejectReason: submissionData.dosRejectReason
     };
 
-  } catch (error) {
+  } catch (error: any) {
     console.error(`[DOS Action - getMarksForReview] ERROR fetching marks for review (composite assessmentId: ${compositeAssessmentId}):`, error);
+    if (error.code === 'failed-precondition') {
+      console.error("*********************************************************************************");
+      console.error("FIRESTORE ERROR: The query requires an index. This is a common issue when querying across multiple fields or ordering.");
+      console.error("Please create the required composite index in your Firebase Firestore console.");
+      console.error("The error message from Firebase usually includes a direct link to create the index. Look for it in these logs.");
+      console.error("Example Index fields for this query: 'assessmentId' (Ascending), 'dateSubmitted' (Descending) on 'markSubmissions' collection.");
+      console.error("*********************************************************************************");
+      return { ...defaultPayload, submissionId: `ERROR_MISSING_INDEX_${compositeAssessmentId}`, assessmentName: "Error: Missing Database Index" };
+    }
     return defaultPayload;
   }
 }
@@ -1032,20 +980,19 @@ export async function approveMarkSubmission(submissionId: string): Promise<{ suc
         const submissionRef = doc(db, "markSubmissions", submissionId);
         await updateDoc(submissionRef, {
             dosStatus: 'Approved',
-            dosRejectReason: null, // Clear any previous rejection reason
+            dosRejectReason: null, 
             dosLastReviewedAt: Timestamp.now(),
         });
-        revalidatePath("/dos/marks-review"); // Revalidate D.O.S. review page
+        revalidatePath("/dos/marks-review"); 
 
-        // Revalidate relevant teacher pages
         const submissionSnap = await getDoc(submissionRef);
         if (submissionSnap.exists()) {
             const teacherId = submissionSnap.data().teacherId;
             if (teacherId) {
-                const teacherInfo = await getTeacherById(teacherId); // Use the local getTeacherById
+                const teacherInfo = await getTeacherById(teacherId); 
                 const teacherNameParam = teacherInfo?.name ? encodeURIComponent(teacherInfo.name) : "Teacher";
                 revalidatePath(`/teacher/marks/history?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
-                revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}&teacherName=${teacherNameParam}`); // As approved submission might affect "to submit" list
+                revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}&teacherName=${teacherNameParam}`); 
                 revalidatePath(`/teacher/dashboard?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
             }
         }
@@ -1067,7 +1014,6 @@ export async function rejectMarkSubmission(submissionId: string, reason: string)
             dosLastReviewedAt: Timestamp.now(),
         });
         revalidatePath("/dos/marks-review");
-        // Revalidate relevant teacher pages
         const submissionSnap = await getDoc(submissionRef);
         if (submissionSnap.exists()) {
             const teacherId = submissionSnap.data().teacherId;
@@ -1075,7 +1021,7 @@ export async function rejectMarkSubmission(submissionId: string, reason: string)
                 const teacherInfo = await getTeacherById(teacherId); 
                 const teacherNameParam = teacherInfo?.name ? encodeURIComponent(teacherInfo.name) : "Teacher";
                 revalidatePath(`/teacher/marks/history?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
-                revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}&teacherName=${teacherNameParam}`); // Rejected items should reappear
+                revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}&teacherName=${teacherNameParam}`); 
                 revalidatePath(`/teacher/dashboard?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
             }
         }
@@ -1088,7 +1034,7 @@ export async function rejectMarkSubmission(submissionId: string, reason: string)
 
 export async function updateSubmittedMarksByDOS(
   submissionId: string,
-  updatedMarks: Array<{ studentId: string; score: number }> // studentId is studentIdNumber
+  updatedMarks: Array<{ studentId: string; score: number }> 
 ): Promise<{ success: boolean; message: string }> {
   if (!db) return { success: false, message: "Firestore not initialized." };
   if (!submissionId) return { success: false, message: "Submission ID is required." };
@@ -1105,12 +1051,9 @@ export async function updateSubmittedMarksByDOS(
       averageScore: averageScore,
       dosEdited: true,
       dosLastEditedAt: Timestamp.now(),
-      // Optionally, D.O.S. edit might imply re-pending approval if it was previously approved/rejected
-      // For now, we assume edit doesn't automatically change dosStatus. Can be added if needed.
-      // dosStatus: 'Pending' 
     });
 
-    revalidatePath(`/dos/marks-review`); // Revalidate the D.O.S. review page
+    revalidatePath(`/dos/marks-review`); 
     return { success: true, message: "Marks updated by D.O.S. successfully." };
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Unknown error.";
@@ -1118,7 +1061,6 @@ export async function updateSubmittedMarksByDOS(
     return { success: false, message: `Failed to update marks: ${msg}` };
   }
 }
-
 
 export async function downloadSingleMarkSubmission(submissionId: string, format: 'csv' | 'xlsx' | 'pdf'): Promise<{ success: boolean; message: string; data?: string | Uint8Array }> {
   if (!db) {
@@ -1159,7 +1101,7 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
     const dateSubmitted = submissionData.dateSubmitted.toDate().toLocaleDateString();
 
     const reportData: ReportRow[] = submissionData.submittedMarks.map(mark => ({
-      'Student ID': mark.studentId, // This is studentIdNumber
+      'Student ID': mark.studentId, 
       'Student Name': studentsMap.get(mark.studentId) || 'Unknown Student',
       'Class': className,
       'Subject': subjectName,
@@ -1188,13 +1130,12 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
       return { success: true, message: "CSV data prepared.", data: csvData };
     } else if (format === 'xlsx') {
       const worksheet = XLSX.utils.json_to_sheet(reportData);
-      XLSX.utils.sheet_add_aoa(worksheet, [[reportTitle]], { origin: "A1" }); // Add title row
+      XLSX.utils.sheet_add_aoa(worksheet, [[reportTitle]], { origin: "A1" }); 
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, examName.substring(0,30)); // Sheet name
+      XLSX.utils.book_append_sheet(workbook, worksheet, examName.substring(0,30)); 
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       return { success: true, message: "XLSX data prepared.", data: new Uint8Array(excelBuffer) };
     } else if (format === 'pdf') {
-      // Basic text "PDF"
       let pdfTextContent = `${reportTitle}\n`;
       pdfTextContent += "====================================\n\n";
       const header = Object.keys(reportData[0]).map(h => h.padEnd(15)).join('\t|\t');
@@ -1208,9 +1149,7 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
       pdfTextContent += `\nGenerated by GradeCentral for Submission ID: ${submissionId}`;
       return { success: true, message: "Basic PDF data prepared.", data: pdfTextContent };
     }
-
     return { success: false, message: "Invalid format selected." };
-
   } catch (error) {
     console.error(`Error in downloadSingleMarkSubmission for ID ${submissionId}:`, error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
@@ -1233,8 +1172,8 @@ export async function getTeachers(): Promise<Teacher[]> {
         id: docSnap.id,
         name: data.name,
         email: data.email,
-        password: data.password, // Be cautious with passwords
-        subjectsAssigned: data.subjectsAssigned || [] // Ensure it defaults to an empty array
+        password: data.password, 
+        subjectsAssigned: data.subjectsAssigned || [] 
       } as Teacher;
     });
     return teachersList;
@@ -1259,9 +1198,9 @@ export async function getStudents(): Promise<Student[]> {
         studentIdNumber: data.studentIdNumber,
         firstName: data.firstName,
         lastName: data.lastName,
-        classId: data.classId, // Document ID of the class
-        dateOfBirth: data.dateOfBirth, // Optional
-        gender: data.gender,         // Optional
+        classId: data.classId, 
+        dateOfBirth: data.dateOfBirth, 
+        gender: data.gender,         
        } as Student;
     });
     return studentsList;
@@ -1283,22 +1222,19 @@ export async function getClasses(): Promise<ClassInfo[]> {
             const classData = classDoc.data();
             let subjectsArray: Subject[] = [];
 
-            // If subjectReferences exist and is an array, resolve them
             if (classData.subjectReferences && Array.isArray(classData.subjectReferences)) {
                 for (const subjectRef of classData.subjectReferences) {
-                    // subjectRef should be a DocumentReference
-                    if (subjectRef && typeof subjectRef.id === 'string') { // Check if it's a valid-like reference
+                    if (subjectRef && typeof subjectRef.id === 'string') { 
                         try {
-                            const subjectDocSnap = await getDoc(doc(db, "subjects", subjectRef.id)); // Use the ID from the reference
+                            const subjectDocSnap = await getDoc(doc(db, "subjects", subjectRef.id)); 
                             if (subjectDocSnap.exists()) {
                                 const subjData = subjectDocSnap.data();
                                 subjectsArray.push({
                                     id: subjectDocSnap.id,
                                     name: subjData.name,
-                                    code: subjData.code === null ? undefined : subjData.code // Handle null code
+                                    code: subjData.code === null ? undefined : subjData.code 
                                 } as Subject);
                             } else {
-                                // Subject document doesn't exist for this reference
                                 subjectsArray.push({ id: subjectRef.id, name: `Unknown Subject (${subjectRef.id})` });
                             }
                         } catch (e) {
@@ -1312,8 +1248,8 @@ export async function getClasses(): Promise<ClassInfo[]> {
                 id: classDoc.id,
                 name: classData.name || "Unnamed Class",
                 level: classData.level || "Unknown Level",
-                stream: classData.stream === null ? undefined : classData.stream, // Handle null from Firestore
-                classTeacherId: classData.classTeacherId === null ? undefined : classData.classTeacherId, // Handle null
+                stream: classData.stream === null ? undefined : classData.stream, 
+                classTeacherId: classData.classTeacherId === null ? undefined : classData.classTeacherId, 
                 subjects: subjectsArray
             } as ClassInfo;
         });
@@ -1419,7 +1355,6 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
                 isDefaultTemplate: false,
             } as GeneralSettings & { isDefaultTemplate: boolean };
         }
-        // If the document doesn't exist, create it with defaults
         console.warn("[DOS Action - getGeneralSettings] 'settings/general' document does not exist. Creating with default template settings.");
         const defaultSettings: GeneralSettings & { isDefaultTemplate: boolean } = {
             defaultGradingScale: [{ grade: 'A', minScore: 80, maxScore: 100 }, { grade: 'B', minScore: 70, maxScore: 79 }],
@@ -1444,7 +1379,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
         return defaultSettings;
     } catch (error) {
         console.error("[DOS Action - getGeneralSettings] Error fetching general settings:", error);
-        return { // Fallback in case of error even after trying to create
+        return { 
             defaultGradingScale: [],
             markSubmissionTimeZone: 'UTC',
             currentTermId: undefined,
@@ -1456,4 +1391,3 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
         };
     }
 }
-
