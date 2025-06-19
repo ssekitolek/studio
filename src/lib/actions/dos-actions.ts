@@ -903,8 +903,9 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
     return defaultPayload;
   }
 
+  // Construct the composite assessmentId using the actual Firestore document IDs
   const compositeAssessmentId = `${examId}_${classId}_${subjectId}`;
-  console.log(`[DOS Action - getMarksForReview] Fetching marks for classId: ${classId}, subjectId: ${subjectId}, examId: ${examId}. Constructed composite assessmentId for query: "${compositeAssessmentId}"`);
+  console.log(`[DOS Action - getMarksForReview] Fetching marks for Class ID: ${classId}, Subject ID: ${subjectId}, Exam ID: ${examId}. Constructed composite assessmentId for query: "${compositeAssessmentId}"`);
 
   try {
     const markSubmissionsRef = collection(db, "markSubmissions");

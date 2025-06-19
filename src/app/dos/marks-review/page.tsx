@@ -11,11 +11,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { ShieldAlert, Loader2, CheckCircle, Search, FileWarning, Info, Download, ThumbsUp, ThumbsDown } from "lucide-react";
-import { getClasses, getSubjects, getExams, getMarksForReview, approveMarkSubmission, rejectMarkSubmission, downloadSingleMarkSubmission } from "@/lib/actions/dos-actions";
+import { ShieldAlert, Loader2, CheckCircle, Search, FileWarning, Info, Download, ThumbsUp, ThumbsDown, Edit2 } from "lucide-react";
+import { getClasses, getSubjects, getExams, getMarksForReview, approveMarkSubmission, rejectMarkSubmission, downloadSingleMarkSubmission, updateSubmittedMarksByDOS } from "@/lib/actions/dos-actions";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
 import type { ClassInfo, Subject as SubjectType, Exam, AnomalyExplanation, GradeEntry as GenkitGradeEntry } from "@/lib/types";
-import type { MarksForReviewPayload } from "@/lib/types";
+import type { MarksForReviewPayload, MarksForReviewEntry } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
 export default function MarksReviewPage() {
@@ -23,6 +23,8 @@ export default function MarksReviewPage() {
   const [isProcessingAnomalyCheck, startAnomalyCheckTransition] = useTransition();
   const [isUpdatingSubmission, startSubmissionUpdateTransition] = useTransition();
   const [isDownloading, startDownloadTransition] = useTransition();
+  const [isUpdatingMarks, startMarksUpdateTransition] = useTransition();
+
 
   const [isLoadingInitialData, setIsLoadingInitialData] = useState(true);
   const [isLoadingMarks, setIsLoadingMarks] = useState(false);
@@ -40,6 +42,10 @@ export default function MarksReviewPage() {
   const [historicalAverage, setHistoricalAverage] = useState<number | undefined>(undefined);
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectInput, setShowRejectInput] = useState(false);
+
+  // For inline editing
+  const [isEditingMarks, setIsEditingMarks] = useState(false);
+  const [editableMarks, setEditableMarks] = useState<MarksForReviewEntry[]>([]);
 
 
   useEffect(() => {
@@ -73,10 +79,16 @@ export default function MarksReviewPage() {
     setAiAnomalies([]);
     setShowRejectInput(false);
     setRejectReason("");
+    setIsEditingMarks(false); // Reset editing state
     console.log(`[MarksReviewPage] Fetching marks for Class: ${selectedClass}, Subject: ${selectedSubject}, Exam: ${selectedExam}`);
     try {
       const fetchedPayload = await getMarksForReview(selectedClass, selectedSubject, selectedExam);
       setMarksPayload(fetchedPayload);
+      if (fetchedPayload && fetchedPayload.marks) {
+        setEditableMarks(JSON.parse(JSON.stringify(fetchedPayload.marks))); // Deep copy for editing
+      } else {
+        setEditableMarks([]);
+      }
       console.log(`[MarksReviewPage] Received payload:`, fetchedPayload);
       if (!fetchedPayload.submissionId || fetchedPayload.marks.length === 0) {
         toast({ title: "No Marks Found", description: "No marks data found for the selected criteria. This could mean no marks were submitted by the teacher yet, or the submission was empty.", variant: "default", action: <Info className="text-blue-500"/> });
@@ -204,11 +216,44 @@ export default function MarksReviewPage() {
     });
   };
 
+  const handleEditMarkChange = (studentId: string, newGrade: string) => {
+    const newScore = newGrade === "" ? 0 : parseFloat(newGrade); // Treat empty string as 0 for now, or handle as null
+    setEditableMarks(prev =>
+      prev.map(mark =>
+        mark.studentId === studentId ? { ...mark, grade: isNaN(newScore) ? 0 : newScore } : mark
+      )
+    );
+  };
+
+  const handleSaveEditedMarks = () => {
+    if (!marksPayload?.submissionId || !editableMarks) return;
+    
+    const currentExamDetails = exams.find(e => e.id === selectedExam);
+    const maxMarksForCurrentExam = currentExamDetails?.maxMarks || 100;
+
+    const invalidScores = editableMarks.filter(mark => mark.grade < 0 || mark.grade > maxMarksForCurrentExam);
+    if (invalidScores.length > 0) {
+      toast({ title: "Invalid Scores", description: `One or more scores are outside the valid range (0-${maxMarksForCurrentExam}).`, variant: "destructive" });
+      return;
+    }
+
+    startMarksUpdateTransition(async () => {
+      const marksToUpdate = editableMarks.map(em => ({ studentId: em.studentId, score: em.grade }));
+      const result = await updateSubmittedMarksByDOS(marksPayload.submissionId!, marksToUpdate);
+      toast({ title: result.success ? "Success" : "Error", description: result.message, variant: result.success ? "default" : "destructive" });
+      if (result.success) {
+        setIsEditingMarks(false);
+        handleFetchMarks(); // Refresh data
+      }
+    });
+  };
+
+
   const currentMarks = marksPayload?.marks || [];
   const currentDosStatus = marksPayload?.dosStatus;
   const currentDosRejectReason = marksPayload?.dosRejectReason;
 
-  const isActionDisabled = isProcessingAnomalyCheck || isLoadingMarks || isUpdatingSubmission || !marksPayload?.submissionId;
+  const isActionDisabled = isProcessingAnomalyCheck || isLoadingMarks || isUpdatingSubmission || !marksPayload?.submissionId || isUpdatingMarks;
   const isSubmissionFinalized = currentDosStatus === 'Approved' || currentDosStatus === 'Rejected';
 
   return (
@@ -289,6 +334,11 @@ export default function MarksReviewPage() {
                         <SelectItem value="pdf">PDF (Basic Text)</SelectItem>
                     </SelectContent>
                 </Select>
+                {!isSubmissionFinalized && currentMarks.length > 0 && (
+                  <Button variant="outline" onClick={() => setIsEditingMarks(s => !s)} disabled={isActionDisabled}>
+                    <Edit2 className="mr-2 h-4 w-4" /> {isEditingMarks ? "Cancel Edit" : "Edit Marks"}
+                  </Button>
+                )}
             </div>
           </CardHeader>
           <CardContent>
@@ -302,11 +352,25 @@ export default function MarksReviewPage() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {currentMarks.map((mark, index) => (
+                    {(isEditingMarks ? editableMarks : currentMarks).map((mark, index) => (
                     <TableRow key={`${mark.studentId}-${index}`}>
                         <TableCell>{mark.studentId}</TableCell>
                         <TableCell>{mark.studentName}</TableCell>
-                        <TableCell className="text-right">{mark.grade}</TableCell>
+                        <TableCell className="text-right">
+                        {isEditingMarks ? (
+                            <Input
+                            type="number"
+                            value={mark.grade}
+                            onChange={(e) => handleEditMarkChange(mark.studentId, e.target.value)}
+                            className="max-w-[100px] ml-auto text-right"
+                            min="0"
+                            max={exams.find(e => e.id === selectedExam)?.maxMarks || 100}
+                            disabled={isUpdatingMarks}
+                            />
+                        ) : (
+                            mark.grade
+                        )}
+                        </TableCell>
                     </TableRow>
                     ))}
                 </TableBody>
@@ -315,7 +379,15 @@ export default function MarksReviewPage() {
                  <p className="text-center text-muted-foreground py-8">No marks were part of this submission entry, or the submission was not found.</p>
             )}
           </CardContent>
-          {currentMarks.length > 0 && ( 
+          {isEditingMarks && currentMarks.length > 0 && !isSubmissionFinalized && (
+            <CardContent className="border-t pt-4 flex justify-end">
+              <Button onClick={handleSaveEditedMarks} disabled={isUpdatingMarks || isActionDisabled}>
+                {isUpdatingMarks ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                Save Edited Marks
+              </Button>
+            </CardContent>
+          )}
+          {!isEditingMarks && currentMarks.length > 0 && ( 
             <CardContent className="border-t pt-4 space-y-3">
                 <div className="flex flex-wrap gap-2 justify-end">
                     <Button

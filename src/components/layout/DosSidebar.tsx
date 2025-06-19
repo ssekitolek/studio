@@ -73,6 +73,11 @@ export function DosSidebar() {
         return pathname === href;
     }
     // For other main links or section parent links, active if pathname starts with href
+    // Ensure exact match for edit pages like /dos/teachers/[teacherId]/edit vs /dos/teachers/assignments
+    if (pathname.includes("/edit") || pathname.includes("/new")) {
+        const basePath = href.split("/")[2]; // e.g., "teachers", "students"
+        return pathname.startsWith(`/dos/${basePath}`) && href.startsWith(`/dos/${basePath}`);
+    }
     return pathname.startsWith(href);
   };
 

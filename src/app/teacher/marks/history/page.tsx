@@ -54,7 +54,7 @@ export default function MarksHistoryPage() {
         console.log(`[MarksHistoryPage] Fetching data for teacherId: ${validTeacherId}`);
         try {
             const submissionData = await getSubmittedMarksHistory(validTeacherId);
-            console.log(`[MarksHistoryPage] Received ${submissionData.length} submission items from action.`);
+            console.log(`[MarksHistoryPage] Received ${submissionData.length} submission items from action for teacherId ${validTeacherId}.`);
             setHistory(submissionData);
             if (submissionData.length === 0 && !pageError) { 
                 toast({
@@ -82,16 +82,18 @@ export default function MarksHistoryPage() {
     if (item.dosStatus === 'Approved') return { variant: "default", className: "bg-green-500 hover:bg-green-600 text-white", icon: <CheckCircle2 className="mr-1 inline-block h-3 w-3" /> };
     if (item.dosStatus === 'Rejected') return { variant: "destructive", className: "bg-red-500 hover:bg-red-600 text-white", icon: <AlertTriangle className="mr-1 inline-block h-3 w-3" /> };
     if (item.dosStatus === 'Pending') {
-        if (item.status && item.status.includes("Anomaly Detected")) { // Check original teacher-side AI status
+        // Original status (teacher-side AI check) can inform color when D.O.S. status is pending
+        if (item.status && item.status.includes("Anomaly Detected")) {
              return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
         }
         return { variant: "secondary", className: "bg-blue-500 hover:bg-blue-600 text-white", icon: <Info className="mr-1 inline-block h-3 w-3" /> };
     }
     
+    // Fallback to original status if dosStatus is somehow undefined or unexpected (should not happen with current logic)
     if (item.status && item.status.includes("Anomaly Detected")) return { variant: "default", className: "bg-yellow-500 hover:bg-yellow-600 text-black", icon: <FileWarning className="mr-1 inline-block h-3 w-3" /> };
-    if (item.status === "Accepted") return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" }; 
+    if (item.status === "Accepted") return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" }; // Should be rare if dosStatus is always set
     
-    return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" }; 
+    return { variant: "secondary", className: "bg-gray-400 hover:bg-gray-500 text-white" }; // Default fallback
   };
 
 
@@ -183,7 +185,7 @@ export default function MarksHistoryPage() {
                   const statusStyle = getStatusVariantAndClass(item);
                   return (
                     <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.assessmentName}</TableCell>
+                      <TableCell className="font-medium">{item.assessmentName || "N/A (Check Logs)"}</TableCell>
                       <TableCell>{new Date(item.dateSubmitted).toLocaleDateString()}</TableCell>
                       <TableCell className="text-center">{item.studentCount}</TableCell>
                       <TableCell className="text-center">{item.averageScore !== null ? item.averageScore.toFixed(1) : 'N/A'}</TableCell>
@@ -235,4 +237,3 @@ export default function MarksHistoryPage() {
     </div>
   );
 }
-
