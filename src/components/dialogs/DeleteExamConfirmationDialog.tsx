@@ -1,0 +1,89 @@
+
+"use client";
+
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { deleteExam } from "@/lib/actions/dos-actions";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, Trash2 } from "lucide-react";
+
+interface DeleteExamConfirmationDialogProps {
+  examId: string;
+  examName: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function DeleteExamConfirmationDialog({
+  examId,
+  examName,
+  open,
+  onOpenChange,
+}: DeleteExamConfirmationDialogProps) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [isPending, startTransition] = useTransition();
+
+  const handleDelete = async () => {
+    startTransition(async () => {
+      const result = await deleteExam(examId);
+      if (result.success) {
+        toast({
+          title: "Exam Deleted",
+          description: `Exam type "${examName}" has been successfully deleted. ${result.message.includes('Note:') ? result.message.substring(result.message.indexOf('Note:')) : ''}`,
+        });
+        onOpenChange(false); 
+        router.push("/dos/settings/exams"); 
+        router.refresh(); 
+      } else {
+        toast({
+          title: "Error Deleting Exam",
+          description: result.message || "Failed to delete exam type.",
+          variant: "destructive",
+        });
+      }
+    });
+  };
+
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action will permanently delete the exam type: <strong>{examName}</strong> (ID: {examId}). 
+            This action cannot be undone. 
+            <br />
+            <strong className="text-destructive">Important:</strong> Deleting this exam type does not automatically handle associated marks or teacher assignments. Please ensure this is the intended action.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDelete}
+            disabled={isPending}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="mr-2 h-4 w-4" />
+            )}
+            Delete Exam Type
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}

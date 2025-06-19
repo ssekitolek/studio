@@ -1,11 +1,17 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { UserCircle, Loader2, AlertTriangle } from "lucide-react";
-import { getTeacherProfileData } from "@/lib/actions/teacher-actions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { UserCircle, Loader2, AlertTriangle, KeyRound, Save } from "lucide-react";
+import { getTeacherProfileData, changeTeacherPassword } from "@/lib/actions/teacher-actions";
 import { useSearchParams } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle as UIAlertTitle } from "@/components/ui/alert";
 import Link from "next/link";
@@ -17,19 +23,40 @@ interface TeacherProfile {
   email?: string;
 }
 
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required."),
+  newPassword: z.string().min(6, "New password must be at least 6 characters."),
+  confirmNewPassword: z.string().min(6, "Please confirm your new password."),
+}).refine(data => data.newPassword === data.confirmNewPassword, {
+  message: "New passwords do not match.",
+  path: ["confirmNewPassword"],
+});
+
+type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
+
 export default function TeacherProfilePage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
   const [profile, setProfile] = useState<TeacherProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
   const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
+  const [isPasswordPending, startPasswordTransition] = useTransition();
+
+  const passwordForm = useForm<ChangePasswordFormValues>({
+    resolver: zodResolver(changePasswordSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmNewPassword: "",
+    },
+  });
 
   useEffect(() => {
     if (!searchParams) {
         setPageError("Could not access URL parameters. Please try reloading or logging in again.");
-        setIsLoading(false);
+        setIsLoadingProfile(false);
         toast({ title: "Error", description: "URL parameters unavailable.", variant: "destructive" });
         return;
     }
@@ -41,13 +68,13 @@ export default function TeacherProfilePage() {
       toast({ title: "Access Denied", description: msg, variant: "destructive" });
       setPageError(msg);
       setCurrentTeacherId(null);
-      setIsLoading(false); 
+      setIsLoadingProfile(false); 
       return;
     }
 
     setCurrentTeacherId(teacherIdFromUrl);
     setPageError(null); 
-    setIsLoading(true);
+    setIsLoadingProfile(true);
 
     async function fetchData(validTeacherId: string) {
       try {
@@ -64,13 +91,29 @@ export default function TeacherProfilePage() {
         setPageError(errorMsg);
         toast({ title: "Error Loading Profile", description: errorMsg, variant: "destructive" });
       } finally {
-        setIsLoading(false);
+        setIsLoadingProfile(false);
       }
     }
     fetchData(teacherIdFromUrl);
   }, [searchParams, toast]); 
 
-  if (isLoading && currentTeacherId) { 
+  const onPasswordSubmit = (data: ChangePasswordFormValues) => {
+    if (!currentTeacherId) {
+      toast({ title: "Error", description: "Teacher ID not available. Cannot change password.", variant: "destructive" });
+      return;
+    }
+    startPasswordTransition(async () => {
+      const result = await changeTeacherPassword(currentTeacherId, data.currentPassword, data.newPassword);
+      if (result.success) {
+        toast({ title: "Success", description: result.message });
+        passwordForm.reset();
+      } else {
+        toast({ title: "Error", description: result.message, variant: "destructive" });
+      }
+    });
+  };
+
+  if (isLoadingProfile && currentTeacherId) { 
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -100,7 +143,7 @@ export default function TeacherProfilePage() {
     );
   }
 
-  if (!profile && !isLoading && currentTeacherId) { 
+  if (!profile && !isLoadingProfile && currentTeacherId) { 
      return (
       <div className="space-y-6">
         <PageHeader
@@ -117,7 +160,7 @@ export default function TeacherProfilePage() {
     );
   }
   
-  if (!currentTeacherId && !isLoading && !pageError) { 
+  if (!currentTeacherId && !isLoadingProfile && !pageError) { 
      return (
       <div className="space-y-6">
         <PageHeader
@@ -139,27 +182,91 @@ export default function TeacherProfilePage() {
     <div className="space-y-6">
       <PageHeader
         title="My Profile"
-        description="View your personal information and settings."
+        description="View your personal information and manage your account settings."
         icon={UserCircle}
       />
-      <Card className="shadow-md">
-        <CardHeader>
-          <CardTitle className="font-headline text-xl text-primary">{profile?.name || "N/A"}</CardTitle>
-          <CardDescription>Teacher Profile Details</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">Full Name</h3>
-            <p className="text-foreground">{profile?.name || "Not specified"}</p>
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">Email Address</h3>
-            <p className="text-foreground">{profile?.email || "Not specified"}</p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="shadow-md">
+          <CardHeader>
+            <CardTitle className="font-headline text-xl text-primary">{profile?.name || "N/A"}</CardTitle>
+            <CardDescription>Teacher Profile Details</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Full Name</h3>
+              <p className="text-foreground">{profile?.name || "Not specified"}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Email Address</h3>
+              <p className="text-foreground">{profile?.email || "Not specified"}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-md">
+          <CardHeader>
+            <CardTitle className="font-headline text-xl text-primary flex items-center">
+              <KeyRound className="mr-2 h-5 w-5" /> Change Password
+            </CardTitle>
+            <CardDescription>Update your login password.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...passwordForm}>
+              <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+                <FormField
+                  control={passwordForm.control}
+                  name="currentPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Current Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Enter your current password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={passwordForm.control}
+                  name="newPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>New Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Enter new password (min. 6 characters)" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={passwordForm.control}
+                  name="confirmNewPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirm New Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Confirm your new password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="flex justify-end pt-2">
+                  <Button type="submit" disabled={isPasswordPending}>
+                    {isPasswordPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
+                    Change Password
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
-
-    

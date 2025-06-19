@@ -655,6 +655,27 @@ export async function updateExam(examId: string, examData: Partial<Omit<Exam, 'i
   }
 }
 
+export async function deleteExam(examId: string): Promise<{ success: boolean; message: string }> {
+  if (!db) {
+    return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
+  }
+  try {
+    // TODO: Implement dependency checks before deleting an exam.
+    // For example, check if there are markSubmissions associated with this exam.
+    // Also, remove this examId from Teacher's subjectsAssigned.examIds array.
+    console.warn(`[deleteExam] Deleting exam ${examId}. IMPORTANT: Dependency checks (markSubmissions, teacher assignments) are not yet implemented.`);
+    
+    await deleteDoc(doc(db, "exams", examId));
+    revalidatePath("/dos/settings/exams");
+    return { success: true, message: "Exam deleted successfully. Note: Associated marks or teacher assignments were not automatically unlinked." };
+  } catch (error) {
+    console.error(`Error in deleteExam for ${examId}:`, error);
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+    return { success: false, message: `Failed to delete exam: ${errorMessage}` };
+  }
+}
+
+
 // --- Grading Policy Management ---
 export async function createGradingPolicy(policyData: Omit<GradingPolicy, 'id'>): Promise<{ success: boolean; message: string; policy?: GradingPolicy }> {
   if (!db) {
@@ -858,7 +879,7 @@ async function generatePdfDocument(
   title: string,
   metadata: Array<{ label: string, value: string }>,
   headers: string[],
-  dataRows: (string|number)[][], // Allow numbers for scores
+  dataRows: (string|number)[][],
   footer: string
 ): Promise<Uint8Array> {
   const doc = new jsPDF();
@@ -886,10 +907,10 @@ async function generatePdfDocument(
       head: [headers],
       body: dataRows,
       theme: 'grid',
-      headStyles: { fillColor: [52, 73, 94], textColor: 255, fontStyle: 'bold' }, // Darker blue for header
+      headStyles: { fillColor: [52, 73, 94], textColor: 255, fontStyle: 'bold' },
       styles: { fontSize: 9, cellPadding: 2 },
       columnStyles: {
-        'Score': { halign: 'right' }, // Align score column to the right
+        'Score': { halign: 'right' },
       },
       margin: { top: currentY },
       didDrawPage: (data) => { 
@@ -948,19 +969,19 @@ export async function downloadAllMarks(format: 'csv' | 'xlsx' | 'pdf' = 'csv'): 
       const csvData = `${headerRow}\n${dataRows.join('\n')}`;
       return { success: true, message: "CSV data prepared.", data: csvData };
     } else if (format === 'xlsx') {
-        const wsData: (string | number | {v: string | number | Date, s?: XLSX.CellStyle, t?: string})[][] = [ // Adjusted type for wsData
-            [{v: reportTitle, s: {font: {bold: true, sz: 16, color: {rgb: "FF2C3E50"}}, alignment: { horizontal: "center"}}}], // Title, bold, larger, dark color
-            [{v: `Generated on: ${generationDate}`, s: {font: {italic: true, sz: 10, color: {rgb: "FF7F8C8D"}}, alignment: { horizontal: "center"}}}], // Date, italic, smaller, grey
+        const wsData: (string | number | {v: string | number | Date, s?: XLSX.CellStyle, t?: string})[][] = [
+            [{v: reportTitle, s: {font: {bold: true, sz: 16, color: {rgb: "FF2C3E50"}}, alignment: { horizontal: "center"}}}],
+            [{v: `Generated on: ${generationDate}`, s: {font: {italic: true, sz: 10, color: {rgb: "FF7F8C8D"}}, alignment: { horizontal: "center"}}}],
             [], 
         ];
         
-        wsData.push(headers.map(h => ({ v: h, s: { font: { bold: true, color: {rgb: "FFFFFFFF"}}, fill: { fgColor: { rgb: "FF34495E" } }, alignment: {horizontal: "center"} } }))); // Dark blue fill, white text for headers
+        wsData.push(headers.map(h => ({ v: h, s: { font: { bold: true, color: {rgb: "FFFFFFFF"}}, fill: { fgColor: { rgb: "FF34495E" } }, alignment: {horizontal: "center"} } })));
 
         reportData.forEach(row => {
             wsData.push(headers.map(header => {
                 const val = row[header];
                 if (header === 'Score' && typeof val === 'number') {
-                    return { v: val, t: 'n' }; // 'n' for number type
+                    return { v: val, t: 'n' };
                 }
                 return String(val === undefined || val === null ? '' : val);
             }));
@@ -968,14 +989,14 @@ export async function downloadAllMarks(format: 'csv' | 'xlsx' | 'pdf' = 'csv'): 
         wsData.push([]);
         wsData.push([{v: reportFooter, s: {font: {italic: true, sz: 9, color: {rgb: "FF7F8C8D"}}} }]);
 
-        const worksheet = XLSX.utils.aoa_to_sheet(wsData, { cellDates: true }); // cellDates true for date handling
+        const worksheet = XLSX.utils.aoa_to_sheet(wsData, { cellDates: true });
         
         worksheet["!merges"] = [
-            { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length -1 } }, // Merge title cell
-            { s: { r: 1, c: 0 }, e: { r: 1, c: headers.length -1 } }, // Merge date cell
+            { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length -1 } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: headers.length -1 } },
         ];
         
-        const colWidths = headers.map(header => ({wch: Math.max(String(header).length, 12)})); // Default width 12 or header length
+        const colWidths = headers.map(header => ({wch: Math.max(String(header).length, 12)}));
         reportData.forEach(row => {
             headers.forEach((header, i) => {
                 const val = row[header];
@@ -983,7 +1004,7 @@ export async function downloadAllMarks(format: 'csv' | 'xlsx' | 'pdf' = 'csv'): 
                 if (colWidths[i].wch < len) colWidths[i].wch = len;
             });
         });
-        worksheet['!cols'] = colWidths.map(w => ({wch: Math.min(w.wch + 2, 50)})); // Add padding, max width 50
+        worksheet['!cols'] = colWidths.map(w => ({wch: Math.min(w.wch + 2, 50)}));
 
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "All Marks Report");
@@ -1278,7 +1299,7 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
 
     } else if (format === 'pdf') {
         const pdfReportTitle = `Marks for ${assessmentName}`;
-        const pdfTableDataRows = studentMarksData.map(row => tableHeaders.map(header => row[header]));
+        const pdfTableDataRows = studentMarksData.map(row => tableHeaders.map(header => row[header] ?? ''));
         const pdfBytes = await generatePdfDocument(pdfReportTitle, metadataItems, tableHeaders, pdfTableDataRows, reportFooter);
         return { success: true, message: "PDF document prepared.", data: pdfBytes };
     }

@@ -3,9 +3,11 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { FileText, PlusCircle, Scale, CalendarClock, UserCircle, BookOpen, Tag } from "lucide-react";
+import { FileText, PlusCircle, Scale, CalendarClock, UserCircle, BookOpen, Tag, Edit3, Trash2, MoreHorizontal } from "lucide-react";
 import { getExams, getGradingPolicies, getTeachers, getClasses, getSubjects } from "@/lib/actions/dos-actions";
 import type { Exam, GradingPolicy, Teacher, ClassInfo, Subject } from "@/lib/types";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+
 
 export default async function ManageExamsAndGradingPage() {
   const [exams, gradingPolicies, teachers, classes, subjects] = await Promise.all([
@@ -45,18 +47,44 @@ export default async function ManageExamsAndGradingPage() {
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle className="font-headline text-xl text-primary">Exam List</CardTitle>
-          <CardDescription>All defined exams in the system. Click 'Edit Exam' to see full details or modify.</CardDescription>
+          <CardDescription>All defined exams in the system.</CardDescription>
         </CardHeader>
         <CardContent>
           {exams.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {exams.map((exam) => (
                 <Card key={exam.id} className="hover:shadow-lg transition-shadow flex flex-col justify-between">
-                  <CardHeader>
-                    <CardTitle>{exam.name}</CardTitle>
-                    <CardDescription>Term ID: {exam.termId} - Max Marks: {exam.maxMarks}</CardDescription>
+                    <CardHeader className="flex-row items-start justify-between">
+                        <div>
+                            <CardTitle>{exam.name}</CardTitle>
+                            <CardDescription>Term ID: {exam.termId} - Max: {exam.maxMarks}</CardDescription>
+                        </div>
+                        <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link href={`/dos/settings/exams/${exam.id}/edit`}>
+                              <Edit3 className="mr-2 h-4 w-4" /> Edit
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator/>
+                           <DropdownMenuItem 
+                            className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            asChild
+                           >
+                             <Link href={`/dos/settings/exams/${exam.id}/edit?action=delete_prompt`}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                             </Link>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                   </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
+                  <CardContent className="space-y-2 text-sm flex-grow">
                     {exam.description && <p className="text-muted-foreground italic text-xs line-clamp-2">{exam.description}</p>}
                     {exam.examDate && (
                         <div className="flex items-center gap-1 text-muted-foreground">
@@ -70,26 +98,21 @@ export default async function ManageExamsAndGradingPage() {
                     )}
                      {exam.classId && (
                         <div className="flex items-center gap-1 text-muted-foreground">
-                            <Tag className="h-4 w-4"/> Class: {getClassName(exam.classId)} (ID: {exam.classId})
+                            <Tag className="h-4 w-4"/> Class: {getClassName(exam.classId)}
                         </div>
                     )}
                     {exam.subjectId && (
                         <div className="flex items-center gap-1 text-muted-foreground">
-                            <BookOpen className="h-4 w-4"/> Subject: {getSubjectName(exam.subjectId)} (ID: {exam.subjectId})
+                            <BookOpen className="h-4 w-4"/> Subject: {getSubjectName(exam.subjectId)}
                         </div>
                     )}
                     {exam.teacherId && (
                         <div className="flex items-center gap-1 text-muted-foreground">
-                            <UserCircle className="h-4 w-4"/> Teacher: {getTeacherName(exam.teacherId)} (ID: {exam.teacherId})
+                            <UserCircle className="h-4 w-4"/> Teacher: {getTeacherName(exam.teacherId)}
                         </div>
                     )}
                    
                   </CardContent>
-                   <CardContent>
-                     <Button variant="outline" size="sm" className="w-full mt-2" asChild>
-                        <Link href={`/dos/settings/exams/${exam.id}/edit`}>Edit Exam</Link>
-                    </Button>
-                   </CardContent>
                 </Card>
               ))}
             </div>
