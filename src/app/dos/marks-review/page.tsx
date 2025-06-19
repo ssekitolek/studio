@@ -185,20 +185,21 @@ export default function MarksReviewPage() {
           switch (format) {
             case "xlsx":
               blobType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-              fileName = `${assessmentNameSlug}.xlsx`;
+              fileName = `${assessmentNameSlug}_report.xlsx`;
               break;
             case "pdf": 
-              blobType = "text/plain;charset=utf-8;"; 
-              fileName = `${assessmentNameSlug}_report.txt`;
+              blobType = "application/pdf"; 
+              fileName = `${assessmentNameSlug}_report.pdf`;
               break;
             case "csv":
             default:
               blobType = "text/csv;charset=utf-8;";
-              fileName = `${assessmentNameSlug}.csv`;
+              fileName = `${assessmentNameSlug}_report.csv`;
               break;
           }
-
-          const blob = new Blob([result.data], { type: blobType });
+          
+          const dataToUse = typeof result.data === 'string' ? new TextEncoder().encode(result.data) : result.data;
+          const blob = new Blob([dataToUse], { type: blobType });
           const link = document.createElement("a");
           link.href = URL.createObjectURL(blob);
           link.setAttribute("download", fileName);
@@ -331,7 +332,7 @@ export default function MarksReviewPage() {
                     <SelectContent>
                         <SelectItem value="csv">CSV</SelectItem>
                         <SelectItem value="xlsx">Excel (XLSX)</SelectItem>
-                        <SelectItem value="pdf">PDF (Basic Text)</SelectItem>
+                        <SelectItem value="pdf">PDF Document</SelectItem>
                     </SelectContent>
                 </Select>
                 {!isSubmissionFinalized && currentMarks.length > 0 && (

@@ -14,7 +14,6 @@ export default function DownloadMarksPage() {
   const { toast } = useToast();
   const [isDownloading, startTransition] = useTransition();
   const [selectedFormat, setSelectedFormat] = useState<"csv" | "xlsx" | "pdf">("csv");
-  // Add more state for filters if needed, e.g., term, class, exam
 
   const handleDownload = async () => {
     startTransition(async () => {
@@ -28,20 +27,21 @@ export default function DownloadMarksPage() {
           switch (selectedFormat) {
             case "xlsx":
               blobType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-              fileName = "all_marks.xlsx";
+              fileName = "all_marks_report.xlsx";
               break;
             case "pdf":
-              blobType = "application/pdf"; // Or "text/plain" if it's just text
-              fileName = "all_marks.pdf";
+              blobType = "application/pdf";
+              fileName = "all_marks_report.pdf";
               break;
             case "csv":
             default:
               blobType = "text/csv;charset=utf-8;";
-              fileName = "all_marks.csv";
+              fileName = "all_marks_report.csv";
               break;
           }
-
-          const blob = new Blob([result.data], { type: blobType });
+          
+          const dataToUse = typeof result.data === 'string' ? new TextEncoder().encode(result.data) : result.data;
+          const blob = new Blob([dataToUse], { type: blobType });
           const link = document.createElement("a");
           link.href = URL.createObjectURL(blob);
           link.setAttribute("download", fileName);
@@ -73,8 +73,6 @@ export default function DownloadMarksPage() {
           <CardDescription>Select format for your report. Filters will be added in the future.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Add filter selection here - e.g., Term, Class, Exam (Future implementation) */}
-          
           <Select value={selectedFormat} onValueChange={(value: "csv" | "xlsx" | "pdf") => setSelectedFormat(value)}>
             <SelectTrigger className="w-full md:w-1/3">
               <SelectValue placeholder="Select Format" />
@@ -82,7 +80,7 @@ export default function DownloadMarksPage() {
             <SelectContent>
               <SelectItem value="csv">CSV (Comma Separated Values)</SelectItem>
               <SelectItem value="xlsx">Excel (XLSX)</SelectItem>
-              <SelectItem value="pdf">PDF (Basic Text)</SelectItem>
+              <SelectItem value="pdf">PDF Document</SelectItem>
             </SelectContent>
           </Select>
         </CardContent>
