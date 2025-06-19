@@ -927,7 +927,7 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
 
     const latestSubmissionDoc = submissionSnapshot.docs[0];
     const submissionData = latestSubmissionDoc.data() as MarkSubmissionFirestoreRecord;
-    console.log(`[DOS Action - getMarksForReview] Found submission doc ID: ${latestSubmissionDoc.id} matching composite assessmentId: "${assessmentId}". Raw data:`, JSON.stringify(submissionData));
+    console.log(`[DOS Action - getMarksForReview] Found submission doc ID: ${latestSubmissionDoc.id} matching composite assessmentId: "${assessmentId}". Raw data: ${JSON.stringify(submissionData)}`);
 
 
     if (!submissionData.submittedMarks || submissionData.submittedMarks.length === 0) {

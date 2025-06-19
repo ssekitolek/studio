@@ -160,7 +160,7 @@ export interface MarkSubmissionFirestoreRecord {
 // For Teacher's View of Submission History
 export interface SubmissionHistoryDisplayItem {
   id: string; // Firestore document ID of the submission
-  assessmentName: string; // Human-readable name
+  assessmentName: string; // Human-readable name from MarkSubmissionFirestoreRecord.assessmentName
   dateSubmitted: string; // ISO string
   studentCount: number;
   averageScore: number | null;
@@ -173,7 +173,7 @@ export interface SubmissionHistoryDisplayItem {
 export type MarksForReviewEntry = GradeEntry & { studentName: string };
 export interface MarksForReviewPayload {
     submissionId: string | null;
-    assessmentName: string | null;
+    assessmentName: string | null; // Human-readable name from MarkSubmissionFirestoreRecord.assessmentName
     marks: MarksForReviewEntry[];
     dosStatus?: MarkSubmissionFirestoreRecord['dosStatus'];
     dosRejectReason?: string;

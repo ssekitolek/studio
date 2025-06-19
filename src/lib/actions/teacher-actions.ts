@@ -70,7 +70,7 @@ export async function loginTeacherByEmailPassword(email: string, passwordToVerif
 
 
 export async function submitMarks(teacherId: string, data: MarksSubmissionData): Promise<{ success: boolean; message: string; anomalies?: GradeAnomalyDetectionOutput }> {
-  console.log(`[Teacher Action - submitMarks] START - Teacher ID: ${teacherId}, Assessment ID (Composite from form): ${data.assessmentId}`);
+  console.log(`[Teacher Action - submitMarks] START - Teacher ID: ${teacherId}, Form Assessment ID (Composite): ${data.assessmentId}`);
   
   if (!db) {
     console.error("[Teacher Action - submitMarks] CRITICAL_ERROR_DB_NULL: Firestore db object is null. Cannot proceed with submission.");
@@ -133,8 +133,8 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
 
   const submissionPayload: MarkSubmissionFirestoreRecord = {
     teacherId, 
-    assessmentId: data.assessmentId, 
-    assessmentName: assessmentDetails.name, 
+    assessmentId: data.assessmentId, // This is the composite ID: examDocId_classDocId_subjectDocId
+    assessmentName: assessmentDetails.name, // This is human-readable: Class Name - Subject Name - Exam Name
     dateSubmitted: Timestamp.now(),
     studentCount,
     averageScore,
@@ -186,9 +186,11 @@ async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName
       return { subjectName: "Error: DB_NULL", examName: "Error: DB_NULL", name: "Error: DB_NULL: Firestore not initialized", maxMarks: 0 };
     }
     
+    // Explicitly check if getDoc is defined in this scope
     if (typeof getDoc !== 'function') {
         console.error("[getAssessmentDetails] CRITICAL_RUNTIME_ERROR: getDoc function IS UNDEFINED at point of use! Firebase SDK might not be loaded correctly or import is missing/corrupted.");
-        return { subjectName: "Error: SDK_ERR_GETDOC_UNDEFINED", examName: "Error: SDK_ERR_GETDOC_UNDEFINED", name: "Error: SDK_ERR_GETDOC_UNDEFINED: getDoc is not defined", maxMarks: 0 };
+        // Return a specific error object that submitMarks can check
+        return { subjectName: "Error: SDK_ERR", examName: "Error: SDK_ERR", name: "Error: SDK_ERR: getDoc is not defined", maxMarks: 0 };
     }
 
     const parts = assessmentId.split('_');
@@ -230,7 +232,7 @@ async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName
         }
 
         if (errorMessages.length > 0) {
-             const combinedError = `Error fetching details: ${errorMessages.join('; ')}`;
+             const combinedError = `Error: MissingData: ${errorMessages.join('; ')}`;
              console.error(`[getAssessmentDetails] ${combinedError}`);
              return { subjectName: "Error: MissingData", examName: "Error: MissingData", name: combinedError, maxMarks: 0 };
         }
@@ -308,7 +310,7 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
         querySnapshot.docs.forEach(docSnap => {
             const docId = docSnap.id;
             const rawData = docSnap.data();
-            console.log(`[getSubmittedMarksHistory] Processing document ID: ${docId}. Raw data (first 200 chars): ${JSON.stringify(rawData).substring(0,200)}...`);
+            console.log(`[getSubmittedMarksHistory] Processing document ID: ${docId}. Raw data: ${JSON.stringify(rawData)}`);
 
             try {
                 const data = rawData as MarkSubmissionFirestoreRecord;
@@ -335,6 +337,7 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
 
                 if (!(data.dateSubmitted instanceof Timestamp)) {
                     console.warn(`[getSubmittedMarksHistory] Malformed 'dateSubmitted' for doc ID ${docId}. Expected Firestore Timestamp, got ${typeof data.dateSubmitted}. Record will be skipped or have incorrect date.`);
+                    // Potentially skip this record or use a default date. For now, let it proceed and log.
                 }
                 if (typeof data.assessmentName !== 'string' || !data.assessmentName) {
                      console.warn(`[getSubmittedMarksHistory] Missing or invalid 'assessmentName' for doc ID ${docId}. It should be a string like "Class - Subject - Exam". Record will be skipped or have 'N/A'. Value: ${data.assessmentName}`);
@@ -352,7 +355,7 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
                     dosRejectReason: data.dosRejectReason,
                 };
                 history.push(item);
-                // console.log(`[getSubmittedMarksHistory] Successfully mapped doc ID ${docId} to display item: ${JSON.stringify(item)}`);
+                console.log(`[getSubmittedMarksHistory] Successfully mapped doc ID ${docId} to display item: ${JSON.stringify(item)}`);
             } catch (mapError) {
                 console.error(`[getSubmittedMarksHistory] ERROR transforming document ${docId} to SubmissionHistoryDisplayItem:`, mapError, "Raw Data:", rawData);
             }
@@ -368,7 +371,7 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
 
 async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<Map<string, { classObj: ClassInfo; subjectObj: SubjectType; examObj: ExamTypeFirebase }>> {
   const responsibilitiesMap = new Map<string, { classObj: ClassInfo; subjectObj: SubjectType; examObj: ExamTypeFirebase }>();
-  console.log(`[LOG_TAR] ACTION START for teacherId: "${teacherId}"`);
+  // console.log(`[LOG_TAR] ACTION START for teacherId: "${teacherId}"`);
 
   if (!db) {
     console.error("[LOG_TAR] CRITICAL_ERROR_DB_NULL: Firestore db object is null.");
@@ -384,28 +387,28 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
     console.warn(`[LOG_TAR] Teacher not found for ID: "${teacherId}". Returning empty map.`);
     return responsibilitiesMap;
   }
-  console.log(`[LOG_TAR] Fetched teacherDocument: ${teacherDocument.name}, ID: ${teacherDocument.id}, subjectsAssigned: ${JSON.stringify(teacherDocument.subjectsAssigned)}`);
+  // console.log(`[LOG_TAR] Fetched teacherDocument: ${teacherDocument.name}, ID: ${teacherDocument.id}, subjectsAssigned: ${JSON.stringify(teacherDocument.subjectsAssigned)}`);
 
   const [allClasses, allSubjects, allExamsFromSystem, generalSettingsResult] = await Promise.all([
     getClasses(), getSubjects(), getAllExamsFromDOS(), getGeneralSettings(),
   ]);
-  console.log(`[LOG_TAR] Fetched allClasses: ${allClasses.length}, allSubjects: ${allSubjects.length}, allExamsFromSystem: ${allExamsFromSystem.length}`);
+  // console.log(`[LOG_TAR] Fetched allClasses: ${allClasses.length}, allSubjects: ${allSubjects.length}, allExamsFromSystem: ${allExamsFromSystem.length}`);
   const { isDefaultTemplate: gsIsDefault, ...actualGeneralSettings } = generalSettingsResult;
-  console.log(`[LOG_TAR] General Settings result: isDefaultTemplate=${gsIsDefault}, currentTermId=${actualGeneralSettings.currentTermId}`);
+  // console.log(`[LOG_TAR] General Settings result: isDefaultTemplate=${gsIsDefault}, currentTermId=${actualGeneralSettings.currentTermId}`);
 
   const currentTermId = actualGeneralSettings.currentTermId;
   if (!currentTermId) {
     console.warn(`[LOG_TAR] No current term ID set in general settings. Cannot determine responsibilities. General settings isDefault: ${gsIsDefault}, currentTermId from actualGeneralSettings: ${actualGeneralSettings.currentTermId}`);
     return responsibilitiesMap;
   }
-  console.log(`[LOG_TAR] Current Term ID: ${currentTermId}`);
+  // console.log(`[LOG_TAR] Current Term ID: ${currentTermId}`);
 
   const examsForCurrentTerm = allExamsFromSystem.filter(exam => exam.termId === currentTermId);
   if (examsForCurrentTerm.length === 0) {
     console.warn(`[LOG_TAR] No exams found for current term ID: ${currentTermId}. Teacher responsibilities cannot be determined.`);
     return responsibilitiesMap;
   }
-  console.log(`[LOG_TAR] Processing ${examsForCurrentTerm.length} exams for current term ID: ${currentTermId}.`);
+  // console.log(`[LOG_TAR] Processing ${examsForCurrentTerm.length} exams for current term ID: ${currentTermId}.`);
 
   
   const specificAssignments = Array.isArray(teacherDocument.subjectsAssigned) ? teacherDocument.subjectsAssigned : [];
@@ -428,17 +431,11 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
                     const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`; 
                     if (!responsibilitiesMap.has(key)) { 
                         responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
-                        console.log(`[LOG_TAR] Added specific responsibility (via subjectsAssigned matching current term exam): ${key} for Exam: ${examObj.name}, Class: ${classObj.name}, Subject: ${subjectObj.name}`);
+                        // console.log(`[LOG_TAR] Added specific responsibility (via subjectsAssigned matching current term exam): ${key} for Exam: ${examObj.name}, Class: ${classObj.name}, Subject: ${subjectObj.name}`);
                     }
-                } else {
-                    // console.log(`[LOG_TAR] Specific assignment's exam ${examObj.name} (ID: ${assignedExamId}) is for current term, but not relevant to class/subject/teacher context: C:${examObj.classId}, S:${examObj.subjectId}, T:${examObj.teacherId}.`);
                 }
-            } else {
-                 // console.log(`[LOG_TAR] Specific assignment's exam ID ${assignedExamId} not found among exams for the current term. Assignment: ${JSON.stringify(assignment)}`);
-            }
+            } 
         });
-    } else {
-        // console.log(`[LOG_TAR] Skipped specific assignment: Class or Subject not found, or examIds not an array. Assignment: ${JSON.stringify(assignment)}`);
     }
   });
 
@@ -446,7 +443,6 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
   
   allClasses.forEach(classObj => {
     if (classObj.classTeacherId === teacherId && Array.isArray(classObj.subjects)) {
-      // console.log(`[LOG_TAR] Teacher ${teacherId} is class teacher for ${classObj.name}. Processing subjects: ${classObj.subjects.map(s=>s.name).join(', ')}`);
       classObj.subjects.forEach(subjectObj => {
         examsForCurrentTerm.forEach(examObj => { 
           const isRelevantForClassTeacher =
@@ -458,7 +454,7 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
             const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`; 
             if (!responsibilitiesMap.has(key)) { 
               responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
-              console.log(`[LOG_TAR] Added responsibility via class teacher role: ${key} for Exam: ${examObj.name}, Class: ${classObj.name}, Subject: ${subjectObj.name}`);
+              // console.log(`[LOG_TAR] Added responsibility via class teacher role: ${key} for Exam: ${examObj.name}, Class: ${classObj.name}, Subject: ${subjectObj.name}`);
             }
           }
         });
@@ -469,7 +465,6 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
   
   examsForCurrentTerm.forEach(examObj => { 
     if (examObj.teacherId === teacherId && examObj.classId && examObj.subjectId) {
-      // console.log(`[LOG_TAR] Exam ${examObj.name} (ID: ${examObj.id}) is directly assigned to teacher ${teacherId} with class and subject, and is in current term.`);
       const classForExam = allClasses.find(c => c.id === examObj.classId);
       const subjectForExam = allSubjects.find(s => s.id === examObj.subjectId);
 
@@ -477,14 +472,11 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
         const key = `${examObj.id}_${classForExam.id}_${subjectForExam.id}`; 
         if (!responsibilitiesMap.has(key)) {
           responsibilitiesMap.set(key, { classObj: classForExam, subjectObj: subjectForExam, examObj });
-          // console.log(`[LOG_TAR] Added responsibility via direct exam assignment (class & subject specific, current term): ${key}`);
         }
-      } else {
-        // console.log(`[LOG_TAR] Direct exam assignment for ${examObj.name} to teacher ${teacherId} is missing valid class or subject mapping. Class found: ${!!classForExam}, Subject found: ${!!subjectForExam}`);
       }
     }
   });
-  console.log(`[LOG_TAR] END for teacherId: "${teacherId}". Total responsibilities found: ${responsibilitiesMap.size}`);
+  // console.log(`[LOG_TAR] END for teacherId: "${teacherId}". Total responsibilities found: ${responsibilitiesMap.size}`);
   return responsibilitiesMap;
 }
 
@@ -505,12 +497,12 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
 
     responsibilitiesMap.forEach(({ classObj, subjectObj, examObj }, key) => {
         assessmentsForForm.push({
-            id: key, 
+            id: key, // This is the composite ID: examDocId_classDocId_subjectDocId
             name: `${classObj.name} - ${subjectObj.name} - ${examObj.name}`,
             maxMarks: examObj.maxMarks,
         });
     });
-    // console.log(`[getTeacherAssessments] Initial potential assessments for teacher ${teacherId}: ${assessmentsForForm.length}. IDs: ${assessmentsForForm.map(a=>a.id).join(', ')}`);
+    console.log(`[getTeacherAssessments] Initial potential assessments for teacher ${teacherId}: ${assessmentsForForm.length}. IDs: ${assessmentsForForm.map(a=>a.id).join(', ')}`);
 
 
     if (assessmentsForForm.length > 0) {
@@ -519,14 +511,14 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
         const currentTermId = actualGeneralSettings.currentTermId;
 
         if (currentTermId) { 
-            // console.log(`[getTeacherAssessments] Current term ID: ${currentTermId}. Fetching submissions for filtering for teacher ${teacherId}.`);
+            console.log(`[getTeacherAssessments] Current term ID: ${currentTermId}. Fetching submissions for filtering for teacher ${teacherId}.`);
             const submissionsRef = collection(db, "markSubmissions");
             
             const assessmentIdsForCurrentTermResponsibilities = Array.from(responsibilitiesMap.keys());
-            // console.log(`[getTeacherAssessments] Teacher ${teacherId} is responsible for ${assessmentIdsForCurrentTermResponsibilities.length} assessments in the current term.`);
+            console.log(`[getTeacherAssessments] Teacher ${teacherId} is responsible for ${assessmentIdsForCurrentTermResponsibilities.length} assessments in the current term.`);
 
             if (assessmentIdsForCurrentTermResponsibilities.length === 0) {
-                // console.log(`[getTeacherAssessments] No responsibilities found for teacher ${teacherId} in current term ${currentTermId}. No submissions to filter by. All potential assessments (if any) will be shown.`);
+                console.log(`[getTeacherAssessments] No responsibilities found for teacher ${teacherId} in current term ${currentTermId}. No submissions to filter by. All potential assessments (if any) will be shown.`);
             } else {
                 const q = query(
                     submissionsRef,
@@ -534,7 +526,7 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
                     where("assessmentId", "in", assessmentIdsForCurrentTermResponsibilities) 
                 );
                 const submissionsSnapshot = await getDocs(q);
-                // console.log(`[getTeacherAssessments] Fetched ${submissionsSnapshot.size} submissions for teacher ${teacherId} matching current term responsibilities.`);
+                console.log(`[getTeacherAssessments] Fetched ${submissionsSnapshot.size} submissions for teacher ${teacherId} matching current term responsibilities.`);
                 
                 const submittedOrFinalizedAssessmentIds = new Set<string>();
 
@@ -542,21 +534,21 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{i
                     const submission = docSnap.data() as MarkSubmissionFirestoreRecord;
                     if (submission.dosStatus === 'Approved' || submission.dosStatus === 'Pending') {
                         submittedOrFinalizedAssessmentIds.add(submission.assessmentId);
-                        // console.log(`[getTeacherAssessments] Marking assessment ${submission.assessmentId} for filtering (dosStatus: ${submission.dosStatus}).`);
+                        console.log(`[getTeacherAssessments] Marking assessment ${submission.assessmentId} for filtering (dosStatus: ${submission.dosStatus}).`);
                     } else if (submission.dosStatus === 'Rejected') {
-                        // console.log(`[getTeacherAssessments] Assessment ${submission.assessmentId} is 'Rejected', so it WILL NOT be filtered out from submittable list.`);
+                        console.log(`[getTeacherAssessments] Assessment ${submission.assessmentId} is 'Rejected', so it WILL NOT be filtered out from submittable list.`);
                     }
                 });
 
                 const originalCount = assessmentsForForm.length;
                 assessmentsForForm = assessmentsForForm.filter(assessment => {
                     const shouldKeep = !submittedOrFinalizedAssessmentIds.has(assessment.id);
-                    // if (!shouldKeep) {
-                        // console.log(`[getTeacherAssessments] Filtering out assessment ${assessment.id} as it's already submitted & (Pending or Approved).`);
-                    // }
+                    if (!shouldKeep) {
+                        console.log(`[getTeacherAssessments] Filtering out assessment ${assessment.id} as it's already submitted & (Pending or Approved).`);
+                    }
                     return shouldKeep;
                 });
-                // console.log(`[getTeacherAssessments] After filtering by D.O.S. status (Approved/Pending) (Removed: ${originalCount - assessmentsForForm.length}, Kept: ${assessmentsForForm.length}) for teacherId ${teacherId}.`);
+                console.log(`[getTeacherAssessments] After filtering by D.O.S. status (Approved/Pending) (Removed: ${originalCount - assessmentsForForm.length}, Kept: ${assessmentsForForm.length}) for teacherId ${teacherId}.`);
             }
         } else {
             console.warn("[getTeacherAssessments] No current term ID set. Cannot filter by submitted assessments for the current term. All potential assessments will be shown.");
