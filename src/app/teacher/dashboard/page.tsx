@@ -157,7 +157,7 @@ export default function TeacherDashboardPage() {
   const dashboardStats = [
     { title: "Assigned Classes", value: stats.assignedClassesCount, icon: BookCopy, description: "Unique classes you manage." },
     { title: "Subjects Taught", value: stats.subjectsTaughtCount, icon: ListChecks, description: "Unique subjects you teach." },
-    { title: "Recent Submissions", value: stats.recentSubmissionsCount, icon: CheckSquare, description: "Marks submitted in last 7 days." },
+    { title: "Recent Submissions", value: currentTeacherId && !fetchError ? stats.recentSubmissionsCount : 'N/A', icon: CheckSquare, description: "Marks submitted in last 7 days." },
   ];
 
   const marksSubmissionLink = currentTeacherId 
@@ -233,7 +233,7 @@ export default function TeacherDashboardPage() {
             <StatCard
               key={stat.title}
               title={stat.title}
-              value={currentTeacherId && !fetchError ? stat.value : 'N/A'}
+              value={stat.value}
               icon={stat.icon}
               description={stat.description}
               className="shadow-sm hover:shadow-md transition-shadow border"

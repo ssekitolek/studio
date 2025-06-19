@@ -185,4 +185,3 @@ export interface MarksForReviewPayload {
     dosStatus?: MarkSubmissionFirestoreRecord['dosStatus'];
     dosRejectReason?: string;
 }
-
