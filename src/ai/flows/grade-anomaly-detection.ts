@@ -44,6 +44,7 @@ export async function gradeAnomalyDetection(input: GradeAnomalyDetectionInput): 
 
 const gradeAnomalyDetectionPrompt = ai.definePrompt({
   name: 'gradeAnomalyDetectionPrompt',
+  model: 'googleai/gemini-1.5-flash-latest', // Explicitly specify the model
   input: {schema: GradeAnomalyDetectionInputSchema},
   output: {schema: GradeAnomalyDetectionOutputSchema},
   prompt: `You are an AI assistant specialized in detecting anomalies in student grades. 
@@ -95,3 +96,4 @@ const gradeAnomalyDetectionFlow = ai.defineFlow(
     return output;
   }
 );
+
