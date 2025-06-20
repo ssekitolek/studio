@@ -2,9 +2,10 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import Link from "next/link";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,9 +13,9 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Settings2, Save, PlusCircle, Trash2, Loader2 } from "lucide-react";
+import { Settings2, Save, Loader2, Scale } from "lucide-react";
 import { getGeneralSettings, updateGeneralSettings, getTerms } from "@/lib/actions/dos-actions";
-import type { GeneralSettings, Term } from "@/lib/types";
+import type { GeneralSettings, Term, GradingScaleItem } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
 // Create a simple DatePicker if not already available
@@ -32,23 +33,14 @@ const SimpleDatePicker = ({ value, onChange }: { value?: string, onChange: (date
 };
 
 
-const gradingScaleItemSchema = z.object({
-  grade: z.string().min(1, "Grade cannot be empty."),
-  minScore: z.coerce.number().min(0).max(100),
-  maxScore: z.coerce.number().min(0).max(100),
-}).refine(data => data.minScore <= data.maxScore, {
-  message: "Min score cannot exceed max score.",
-  path: ["minScore"],
-});
-
+// Schema no longer includes defaultGradingScale as it is not managed here
 const generalSettingsSchema = z.object({
   currentTermId: z.string().optional(),
-  defaultGradingScale: z.array(gradingScaleItemSchema),
   markSubmissionTimeZone: z.string().min(1, "Timezone is required."),
   globalMarksSubmissionDeadline: z.string().optional(), 
   dosGlobalAnnouncementText: z.string().optional(),
   dosGlobalAnnouncementType: z.enum(["info", "warning", ""]).optional(),
-  teacherDashboardResourcesText: z.string().optional(), // New schema field
+  teacherDashboardResourcesText: z.string().optional(),
 });
 
 type GeneralSettingsFormValues = z.infer<typeof generalSettingsSchema>;
@@ -58,23 +50,18 @@ export default function GeneralSettingsPage() {
   const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState(true);
   const [terms, setTerms] = useState<Term[]>([]);
+  const [defaultGradingScale, setDefaultGradingScale] = useState<GradingScaleItem[]>([]);
 
   const form = useForm<GeneralSettingsFormValues>({
     resolver: zodResolver(generalSettingsSchema),
     defaultValues: {
       currentTermId: "",
-      defaultGradingScale: [{ grade: "A", minScore: 80, maxScore: 100 }],
       markSubmissionTimeZone: "UTC",
       globalMarksSubmissionDeadline: undefined,
       dosGlobalAnnouncementText: "",
       dosGlobalAnnouncementType: "",
-      teacherDashboardResourcesText: "", // Default for new field
+      teacherDashboardResourcesText: "",
     },
-  });
-
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: "defaultGradingScale"
   });
 
   useEffect(() => {
@@ -84,13 +71,13 @@ export default function GeneralSettingsPage() {
         const [settings, termsData] = await Promise.all([getGeneralSettings(), getTerms()]);
         form.reset({
           currentTermId: settings.currentTermId || "",
-          defaultGradingScale: settings.defaultGradingScale && settings.defaultGradingScale.length > 0 ? settings.defaultGradingScale : [{ grade: "A", minScore: 80, maxScore: 100 }],
           markSubmissionTimeZone: settings.markSubmissionTimeZone || "UTC",
           globalMarksSubmissionDeadline: settings.globalMarksSubmissionDeadline || undefined,
           dosGlobalAnnouncementText: settings.dosGlobalAnnouncementText || "",
           dosGlobalAnnouncementType: settings.dosGlobalAnnouncementType || "",
-          teacherDashboardResourcesText: settings.teacherDashboardResourcesText || "", // Load new field
+          teacherDashboardResourcesText: settings.teacherDashboardResourcesText || "",
         });
+        setDefaultGradingScale(settings.defaultGradingScale || []);
         setTerms(termsData);
       } catch (error) {
         toast({ title: "Error", description: "Failed to load settings.", variant: "destructive" });
@@ -104,10 +91,10 @@ export default function GeneralSettingsPage() {
   const onSubmit = (data: GeneralSettingsFormValues) => {
     startTransition(async () => {
       try {
-        const settingsToSave: GeneralSettings = {
+        const settingsToSave: Partial<GeneralSettings> = {
           ...data,
           dosGlobalAnnouncementType: data.dosGlobalAnnouncementType === "" ? undefined : data.dosGlobalAnnouncementType,
-          teacherDashboardResourcesText: data.teacherDashboardResourcesText || undefined, // Save new field
+          teacherDashboardResourcesText: data.teacherDashboardResourcesText || undefined,
         };
         const result = await updateGeneralSettings(settingsToSave); 
         if (result.success) {
@@ -255,61 +242,28 @@ export default function GeneralSettingsPage() {
           <Card className="shadow-md">
             <CardHeader>
               <CardTitle className="font-headline text-xl text-primary">Default Grading Scale</CardTitle>
-              <CardDescription>Define the default grading scale used across the system unless a specific policy overrides it.</CardDescription>
+              <CardDescription>
+                This is the current default grading scale used across the system. It is managed via Grading Policies on the "Exams &amp; Grading" page.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {fields.map((item, index) => (
-                <div key={item.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end p-4 border rounded-md">
-                  <FormField
-                    control={form.control}
-                    name={`defaultGradingScale.${index}.grade`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Grade</FormLabel>
-                        <FormControl><Input placeholder="e.g., A+" {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`defaultGradingScale.${index}.minScore`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Min Score (%)</FormLabel>
-                        <FormControl><Input type="number" placeholder="e.g., 90" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`defaultGradingScale.${index}.maxScore`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Max Score (%)</FormLabel>
-                        <FormControl><Input type="number" placeholder="e.g., 100" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={() => remove(index)}
-                    className="w-full md:w-auto"
-                    disabled={fields.length <=1}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" /> Remove
-                  </Button>
+              {defaultGradingScale.length > 0 ? (
+                <div className="space-y-2 rounded-md border p-4 bg-muted/50">
+                  {defaultGradingScale.map((item, index) => (
+                    <div key={index} className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-1 text-sm">
+                      <div><span className="font-semibold text-muted-foreground">Grade:</span> {item.grade}</div>
+                      <div><span className="font-semibold text-muted-foreground">Min Score:</span> {item.minScore}%</div>
+                      <div><span className="font-semibold text-muted-foreground">Max Score:</span> {item.maxScore}%</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => append({ grade: "", minScore: 0, maxScore: 0 })}
-              >
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Grade Tier
+              ) : (
+                <p className="text-muted-foreground text-center py-4">No default grading scale is set. Please set a default policy on the Exams &amp; Grading page.</p>
+              )}
+              <Button variant="outline" asChild>
+                <Link href="/dos/settings/exams">
+                  <Scale className="mr-2 h-4 w-4" /> Manage Grading Policies
+                </Link>
               </Button>
             </CardContent>
           </Card>

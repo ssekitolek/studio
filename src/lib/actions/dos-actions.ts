@@ -729,11 +729,16 @@ export async function createGradingPolicy(policyData: Omit<GradingPolicy, 'id'>)
         batch.update(doc.ref, { isDefault: false });
       });
       await batch.commit();
+      
+      // Also update the defaultGradingScale in general settings
+      const settingsRef = doc(db, "settings", "general");
+      await setDoc(settingsRef, { defaultGradingScale: policyPayload.scale }, { merge: true });
     }
 
     const docRef = await addDoc(collection(db, "gradingPolicies"), policyPayload);
     const newPolicy: GradingPolicy = { id: docRef.id, ...policyPayload };
     revalidatePath("/dos/settings/exams");
+    revalidatePath("/dos/settings/general"); // Revalidate general settings page
     return { success: true, message: "Grading policy created successfully.", policy: newPolicy };
   } catch (error) {
     console.error("Error in createGradingPolicy:", error);
@@ -761,11 +766,16 @@ export async function updateGradingPolicy(policyId: string, policyData: Omit<Gra
           }
         });
         await batch.commit();
+
+        // Also update the defaultGradingScale in general settings
+        const settingsRef = doc(db, "settings", "general");
+        await setDoc(settingsRef, { defaultGradingScale: policyPayload.scale }, { merge: true });
     }
 
     await updateDoc(policyRef, policyPayload);
     revalidatePath("/dos/settings/exams");
     revalidatePath(`/dos/settings/grading/${policyId}/edit`);
+    revalidatePath("/dos/settings/general"); // Revalidate general settings page
     const updatedPolicyDoc = await getDoc(policyRef);
     const updatedPolicy = { id: updatedPolicyDoc.id, ...updatedPolicyDoc.data() } as GradingPolicy;
     return { success: true, message: "Grading policy updated successfully.", policy: updatedPolicy };
@@ -809,23 +819,40 @@ export async function getGradingPolicies(): Promise<GradingPolicy[]> {
 }
 
 // --- General Settings ---
-export async function updateGeneralSettings(settings: GeneralSettings): Promise<{ success: boolean; message: string }> {
+export async function updateGeneralSettings(settings: Partial<GeneralSettings>): Promise<{ success: boolean; message: string }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
     const settingsRef = doc(db, "settings", "general");
-    const settingsToSave: any = {
-        ...settings,
-        currentTermId: settings.currentTermId || null,
-        globalMarksSubmissionDeadline: settings.globalMarksSubmissionDeadline || null,
-        dosGlobalAnnouncementText: settings.dosGlobalAnnouncementText || null,
-        dosGlobalAnnouncementType: settings.dosGlobalAnnouncementType || null,
-        teacherDashboardResourcesText: settings.teacherDashboardResourcesText || null,
-    };
-    settingsToSave.defaultGradingScale = Array.isArray(settings.defaultGradingScale) ? settings.defaultGradingScale : [];
+    
+    // Build a payload with only the fields that are explicitly passed in.
+    // This prevents accidentally overwriting fields (like defaultGradingScale) that are managed elsewhere.
+    const settingsToSave: { [key: string]: any } = {};
+
+    // Iterate over the keys in the input 'settings' object
+    for (const key in settings) {
+        if (Object.prototype.hasOwnProperty.call(settings, key)) {
+            const typedKey = key as keyof GeneralSettings;
+            const value = settings[typedKey];
+
+            // For fields that can be cleared, store null instead of empty string/undefined
+            if (['currentTermId', 'globalMarksSubmissionDeadline', 'dosGlobalAnnouncementText', 'dosGlobalAnnouncementType', 'teacherDashboardResourcesText'].includes(typedKey)) {
+                settingsToSave[typedKey] = value || null;
+            } else if (typedKey === 'defaultGradingScale') { // Handle grading scale separately
+                settingsToSave[typedKey] = Array.isArray(value) ? value : [];
+            } else { // Handle other fields like markSubmissionTimeZone
+                settingsToSave[typedKey] = value;
+            }
+        }
+    }
+
+    if (Object.keys(settingsToSave).length === 0) {
+        return { success: true, message: "No settings were provided to update." };
+    }
 
     await setDoc(settingsRef, settingsToSave, { merge: true });
+    
     revalidatePath("/dos/settings/general");
     revalidatePath("/dos/dashboard");
     revalidatePath("/teacher/dashboard");
@@ -837,6 +864,7 @@ export async function updateGeneralSettings(settings: GeneralSettings): Promise<
     return { success: false, message: `Failed to update general settings: ${errorMessage}` };
   }
 }
+
 
 interface ReportRow {
   'Student ID': string;
@@ -1295,6 +1323,7 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
         
         wsData.push([{v: `Marks for ${assessmentName}`, s:{font:{bold:true, sz:14, color: {rgb: "FF2C3E50"}}, alignment: { horizontal: "center" }}}]);
         wsData.push([{v: `Generated on: ${generationDate}`, s:{font:{italic:true, sz:10, color: {rgb: "FF7F8C8D"}}, alignment: { horizontal: "center"}}}]);
+        wsData.push([]);
         metadataItems.forEach(item => {
           wsData.push([{v: item.label, s:{font:{bold:true, color: {rgb:"FF34495E"}}}}, item.value]);
         });
@@ -1319,7 +1348,6 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
         worksheet["!merges"] = [
             { s: { r: 0, c: 0 }, e: { r: 0, c: tableHeaders.length -1 } },
             { s: { r: 1, c: 0 }, e: { r: 1, c: tableHeaders.length -1 } },
-            ...metadataItems.map((_, idx) => ({ s: { r: 2 + idx, c: 0 }, e: { r: 2 + idx, c: tableHeaders.length -1 } })) // Merge metadata rows
         ];
 
         const colWidths = tableHeaders.map(header => ({wch: Math.max(String(header).length, 12)}));
