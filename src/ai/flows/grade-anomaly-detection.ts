@@ -38,61 +38,72 @@ const GradeAnomalyDetectionOutputSchema = z.object({
 
 export type GradeAnomalyDetectionOutput = z.infer<typeof GradeAnomalyDetectionOutputSchema>;
 
-export async function gradeAnomalyDetection(input: GradeAnomalyDetectionInput): Promise<GradeAnomalyDetectionOutput> {
-  return gradeAnomalyDetectionFlow(input);
+const isAiConfigured = !!process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
+
+let gradeAnomalyDetectionFlow: ((input: GradeAnomalyDetectionInput) => Promise<GradeAnomalyDetectionOutput>) | undefined;
+
+// Only define the prompt and flow if the AI is configured. This prevents a server crash on startup.
+if (isAiConfigured) {
+  const gradeAnomalyDetectionPrompt = ai.definePrompt({
+    name: 'gradeAnomalyDetectionPrompt',
+    model: 'googleai/gemini-1.5-flash-latest', // Explicitly specify the model
+    input: {schema: GradeAnomalyDetectionInputSchema},
+    output: {schema: GradeAnomalyDetectionOutputSchema},
+    prompt: `You are an AI assistant specialized in detecting anomalies in student grades. 
+
+    You will receive a list of student grades for a specific subject and exam. Your task is to identify any unusual patterns or anomalies in the grades, such as:
+
+    - All students receiving the same grade if the class size is greater than 5.
+    - Grades significantly deviating from the historical average (if provided, by more than 2 standard deviations or 20 percentage points).
+    - Any individual grade being drastically different from the mean of the submitted grades for this specific assessment (e.g., more than 3 standard deviations if class size permits, or a large absolute difference).
+    - Unusual clustering of grades at the pass/fail boundary or at maximum/minimum scores.
+    - Any other unusual patterns that might indicate a data entry error or other irregularities.
+
+    Subject: {{{subject}}}
+    Exam: {{{exam}}}
+    Grades: {{#each grades}}{{{studentId}}}: {{{grade}}}, {{/each}}
+    {{#if historicalAverage}}Historical Average: {{{historicalAverage}}}{{/if}}
+    
+    Based on the provided information, determine if there are any anomalies in the grade submissions. If anomalies are detected, provide clear explanations for each anomaly, including the student ID and a description of the issue.
+
+    Return your output in the following JSON format:
+    {
+      "hasAnomalies": true/false,
+      "anomalies": [
+        {
+          "studentId": "student_id_or_general_observation_if_not_student_specific",
+          "explanation": "Explanation of the anomaly"
+        },
+        ...
+      ]
+    }
+    If no anomalies are found, "anomalies" should be an empty array and "hasAnomalies" should be false.
+    If an anomaly is about a general pattern (e.g. all students same grade), use a placeholder like "GENERAL" for studentId.
+    `,
+  });
+
+  gradeAnomalyDetectionFlow = ai.defineFlow(
+    {
+      name: 'gradeAnomalyDetectionFlow',
+      inputSchema: GradeAnomalyDetectionInputSchema,
+      outputSchema: GradeAnomalyDetectionOutputSchema,
+    },
+    async input => {
+      const {output} = await gradeAnomalyDetectionPrompt(input);
+      // Ensure output is not null; if it is, return a default "no anomalies" response
+      if (!output) {
+        console.warn("Anomaly detection prompt returned null output. Defaulting to no anomalies.");
+        return { hasAnomalies: false, anomalies: [] };
+      }
+      return output;
+    }
+  );
 }
 
-const gradeAnomalyDetectionPrompt = ai.definePrompt({
-  name: 'gradeAnomalyDetectionPrompt',
-  model: 'googleai/gemini-1.5-flash-latest', // Explicitly specify the model
-  input: {schema: GradeAnomalyDetectionInputSchema},
-  output: {schema: GradeAnomalyDetectionOutputSchema},
-  prompt: `You are an AI assistant specialized in detecting anomalies in student grades. 
-
-  You will receive a list of student grades for a specific subject and exam. Your task is to identify any unusual patterns or anomalies in the grades, such as:
-
-  - All students receiving the same grade if the class size is greater than 5.
-  - Grades significantly deviating from the historical average (if provided, by more than 2 standard deviations or 20 percentage points).
-  - Any individual grade being drastically different from the mean of the submitted grades for this specific assessment (e.g., more than 3 standard deviations if class size permits, or a large absolute difference).
-  - Unusual clustering of grades at the pass/fail boundary or at maximum/minimum scores.
-  - Any other unusual patterns that might indicate a data entry error or other irregularities.
-
-  Subject: {{{subject}}}
-  Exam: {{{exam}}}
-  Grades: {{#each grades}}{{{studentId}}}: {{{grade}}}, {{/each}}
-  {{#if historicalAverage}}Historical Average: {{{historicalAverage}}}{{/if}}
-  
-  Based on the provided information, determine if there are any anomalies in the grade submissions. If anomalies are detected, provide clear explanations for each anomaly, including the student ID and a description of the issue.
-
-  Return your output in the following JSON format:
-  {
-    "hasAnomalies": true/false,
-    "anomalies": [
-      {
-        "studentId": "student_id_or_general_observation_if_not_student_specific",
-        "explanation": "Explanation of the anomaly"
-      },
-      ...
-    ]
+export async function gradeAnomalyDetection(input: GradeAnomalyDetectionInput): Promise<GradeAnomalyDetectionOutput> {
+  if (!isAiConfigured || !gradeAnomalyDetectionFlow) {
+    // Throw an error that the client-side component can catch and display in a toast.
+    throw new Error("AI features are not configured. Please set NEXT_PUBLIC_GOOGLE_API_KEY in your .env file.");
   }
-  If no anomalies are found, "anomalies" should be an empty array and "hasAnomalies" should be false.
-  If an anomaly is about a general pattern (e.g. all students same grade), use a placeholder like "GENERAL" for studentId.
-  `,
-});
-
-const gradeAnomalyDetectionFlow = ai.defineFlow(
-  {
-    name: 'gradeAnomalyDetectionFlow',
-    inputSchema: GradeAnomalyDetectionInputSchema,
-    outputSchema: GradeAnomalyDetectionOutputSchema,
-  },
-  async input => {
-    const {output} = await gradeAnomalyDetectionPrompt(input);
-    // Ensure output is not null; if it is, return a default "no anomalies" response
-    if (!output) {
-      console.warn("Anomaly detection prompt returned null output. Defaulting to no anomalies.");
-      return { hasAnomalies: false, anomalies: [] };
-    }
-    return output;
-  }
-);
+  return gradeAnomalyDetectionFlow(input);
+}
