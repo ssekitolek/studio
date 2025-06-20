@@ -1,4 +1,5 @@
 
+
 "use server";
 
 import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData } from "@/lib/types";
@@ -1438,9 +1439,19 @@ export async function downloadAnalysisReport(classId: string, subjectId: string,
         },
         headStyles: { halign: 'center' }
     });
-    currentY = (doc as any).lastAutoTable.finalY + 10;
+    currentY = (doc as any).lastAutoTable.finalY + 15; // Increased spacing
 
     // Full Marks List
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const remainingSpace = pageHeight - currentY;
+    // Estimate height: 15 for title + 6 per row. Check if there's space for title and at least 3 rows.
+    const marksTableHeightEstimate = 15 + (4 * 6); 
+    
+    if (remainingSpace < marksTableHeightEstimate) {
+        doc.addPage();
+        currentY = 20; // Margin from top on new page
+    }
+
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
     doc.text("Full Marks List (Ranked)", 14, currentY);
