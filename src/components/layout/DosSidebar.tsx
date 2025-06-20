@@ -1,6 +1,7 @@
 
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -81,40 +82,42 @@ export function DosSidebar() {
       const isSectionActive = item.subItems.some((sub: any) => isItemActive(sub.href));
 
       return (
-        <SidebarMenuItem key={index} className="mt-2">
-          {/* Header for Expanded state */}
-          <div className="group-data-[state=collapsed]:hidden h-auto p-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 pointer-events-none flex items-center gap-2">
-            <item.icon className="h-5 w-5 shrink-0" />
-            <span>{item.label}</span>
-          </div>
-
-          {/* Icon for Collapsed state */}
-          <div className="group-data-[state=expanded]:hidden">
+        <React.Fragment key={index}>
+          {/* ---- RENDER FOR COLLAPSED STATE ---- */}
+          <SidebarMenuItem className="group-data-[state=expanded]:hidden mt-2">
             <Link href={firstSubItemHref}>
               <SidebarMenuButton 
-                  isActive={isSectionActive} 
-                  tooltip={item.label}
-                  className="justify-center"
+                isActive={isSectionActive} 
+                tooltip={item.label} 
+                className="justify-center"
               >
-                  <item.icon className="h-5 w-5 shrink-0" />
+                <item.icon className="h-5 w-5" />
               </SidebarMenuButton>
             </Link>
-          </div>
-          
-          {/* Sub menu for Expanded state */}
-          <SidebarMenuSub className="group-data-[state=collapsed]:hidden">
-            {item.subItems && item.subItems.map((subItem: any, subIndex: number) => (
-              <SidebarMenuSubItem key={`${index}-${subIndex}`}>
-                <Link href={subItem.href}>
-                  <SidebarMenuSubButton isActive={isItemActive(subItem.href)} className="justify-start">
-                    <subItem.icon className="h-4 w-4 mr-2" />
-                    <span>{subItem.label}</span>
-                  </SidebarMenuSubButton>
-                </Link>
-              </SidebarMenuSubItem>
-            ))}
-          </SidebarMenuSub>
-        </SidebarMenuItem>
+          </SidebarMenuItem>
+
+          {/* ---- RENDER FOR EXPANDED STATE ---- */}
+          <SidebarMenuItem className="group-data-[state=collapsed]:hidden mt-2">
+            {/* Non-clickable header */}
+            <div className="h-auto p-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 pointer-events-none flex items-center gap-2">
+              <item.icon className="h-5 w-5 shrink-0" />
+              <span>{item.label}</span>
+            </div>
+            {/* Clickable sub-items */}
+            <SidebarMenuSub>
+              {item.subItems && item.subItems.map((subItem: any, subIndex: number) => (
+                <SidebarMenuSubItem key={`${index}-${subIndex}`}>
+                  <Link href={subItem.href}>
+                    <SidebarMenuSubButton isActive={isItemActive(subItem.href)} className="justify-start">
+                      <subItem.icon className="h-4 w-4 mr-2" />
+                      <span>{subItem.label}</span>
+                    </SidebarMenuSubButton>
+                  </Link>
+                </SidebarMenuSubItem>
+              ))}
+            </SidebarMenuSub>
+          </SidebarMenuItem>
+        </React.Fragment>
       );
     }
 
