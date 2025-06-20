@@ -1404,52 +1404,48 @@ export async function downloadAnalysisReport(classId: string, subjectId: string,
     });
     currentY = (doc as any).lastAutoTable.finalY + 10;
     
-    // Distributions
-    autoTable(doc, {
-        startY: currentY,
-        head: [['Grade Distribution', 'Score Frequency']],
-        body: [[
-          { content: '', styles: { cellWidth: 'auto' } },
-          { content: '', styles: { cellWidth: 'auto' } }
-        ]],
-        didDrawCell: (hookData) => {
-            if (hookData.section === 'body') {
-                if(hookData.column.index === 0) {
-                    autoTable(doc, {
-                        head: [['Grade', 'Count']],
-                        body: data.gradeDistribution.map(g => [g.grade, g.count]),
-                        startY: hookData.cell.y + 2,
-                        margin: { left: hookData.cell.x + 2 },
-                        tableWidth: hookData.cell.width - 4,
-                        styles: { fontSize: 9, cellPadding: 1 },
-                        headStyles: { fillColor: [76, 175, 80] },
-                    })
-                } else {
-                     autoTable(doc, {
-                        head: [['Range', 'Count']],
-                        body: data.scoreFrequency.map(s => [s.range, s.count]),
-                        startY: hookData.cell.y + 2,
-                        margin: { left: hookData.cell.x + 2 },
-                        tableWidth: hookData.cell.width - 4,
-                        styles: { fontSize: 9, cellPadding: 1 },
-                        headStyles: { fillColor: [255, 152, 0] },
-                    })
-                }
-            }
-        },
-        headStyles: { halign: 'center' }
-    });
-    currentY = (doc as any).lastAutoTable.finalY + 15; // Increased spacing
+    // --- Distributions Section (Refactored) ---
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("Distributions", 14, currentY);
+    currentY += 8;
 
-    // Full Marks List
+    const distTableWidth = (doc.internal.pageSize.getWidth() - 28 - 10) / 2; // Page width - left/right margins - gap
+
+    // Grade Distribution Table
+    autoTable(doc, {
+        head: [['Grade', 'Count']],
+        body: data.gradeDistribution.map(g => [g.grade, g.count]),
+        startY: currentY,
+        margin: { left: 14 },
+        tableWidth: distTableWidth,
+        styles: { fontSize: 9, cellPadding: 1, halign: 'center' },
+        headStyles: { fillColor: [76, 175, 80] },
+    });
+    const gradeDistFinalY = (doc as any).lastAutoTable.finalY;
+
+    // Score Frequency Table
+    autoTable(doc, {
+        head: [['Range', 'Count']],
+        body: data.scoreFrequency.map(s => [s.range, s.count]),
+        startY: currentY,
+        margin: { left: 14 + distTableWidth + 10 }, // Start after first table + gap
+        tableWidth: distTableWidth,
+        styles: { fontSize: 9, cellPadding: 1, halign: 'center' },
+        headStyles: { fillColor: [255, 152, 0] },
+    });
+    const scoreFreqFinalY = (doc as any).lastAutoTable.finalY;
+
+    // Update currentY to be below the taller of the two tables
+    currentY = Math.max(gradeDistFinalY, scoreFreqFinalY) + 15;
+
+    // --- Full Marks List Section ---
     const pageHeight = doc.internal.pageSize.getHeight();
-    const remainingSpace = pageHeight - currentY;
-    // Estimate height: 15 for title + 6 per row. Check if there's space for title and at least 3 rows.
-    const marksTableHeightEstimate = 15 + (4 * 6); 
+    const marksTableHeightEstimate = 15 + (4 * 6); // Title height + 4 rows
     
-    if (remainingSpace < marksTableHeightEstimate) {
+    if (pageHeight - currentY < marksTableHeightEstimate) {
         doc.addPage();
-        currentY = 20; // Margin from top on new page
+        currentY = 20; 
     }
 
     doc.setFontSize(14);
