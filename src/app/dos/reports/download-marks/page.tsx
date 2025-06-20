@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
@@ -9,13 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BarChart3, Loader2, Search, Info, Download, AlertTriangle, ChevronsDown, ChevronsUp } from "lucide-react";
-import { getClasses, getSubjects, getExams, getAssessmentAnalysisData, downloadAnalysisReport } from "@/lib/actions/dos-actions";
+import { getClasses, getSubjects, getExams, getAssessmentAnalysisData } from "@/lib/actions/dos-actions";
 import type { ClassInfo, Subject as SubjectType, Exam, AssessmentAnalysisData } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Badge } from "@/components/ui/badge";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default function DataAnalysisPage() {
   const { toast } = useToast();
@@ -72,29 +73,111 @@ export default function DataAnalysisPage() {
   };
 
   const handleDownload = () => {
-    if (!selectedClass || !selectedSubject || !selectedExam || !analysisData) {
+    if (!analysisData) {
         toast({ title: "Error", description: "No analysis data loaded to download.", variant: "destructive" });
         return;
     }
-    startDownloadTransition(async () => {
-      try {
-        const result = await downloadAnalysisReport(selectedClass, selectedSubject, selectedExam);
-        if (result.success && result.data) {
-          const blob = new Blob([result.data], { type: 'application/pdf' });
-          const link = document.createElement("a");
-          link.href = URL.createObjectURL(blob);
-          const assessmentNameSlug = (analysisData.assessmentName || "analysis").replace(/[^a-zA-Z0-9_]/g, '_');
-          link.setAttribute("download", `${assessmentNameSlug}_analysis_report.pdf`);
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          toast({ title: "Download Started", description: result.message });
-        } else {
-          toast({ title: "Download Failed", description: result.message, variant: "destructive" });
+    startDownloadTransition(() => {
+        try {
+            const doc = new jsPDF();
+            const data = analysisData;
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 14;
+            
+            doc.setFontSize(20);
+            doc.setFont("helvetica", "bold");
+            doc.text("Assessment Analysis Report", doc.internal.pageSize.getWidth() / 2, 20, { align: "center" });
+
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "normal");
+            doc.text(data.assessmentName, doc.internal.pageSize.getWidth() / 2, 30, { align: "center" });
+
+            let currentY = 45;
+
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.text("Summary Statistics", margin, currentY);
+            currentY += 8;
+            
+            const summaryBody = [
+                ['Students Assessed', data.summary.count],
+                ['Mean Score', data.summary.mean.toFixed(2)],
+                ['Median', data.summary.median.toFixed(2)],
+                ['Mode(s)', data.summary.mode.join(', ')],
+                ['Standard Deviation', data.summary.stdDev.toFixed(2)],
+                ['Highest Score', data.summary.highest],
+                ['Lowest Score', data.summary.lowest],
+            ];
+
+            autoTable(doc, {
+                startY: currentY,
+                body: summaryBody,
+                theme: 'plain',
+                styles: { fontSize: 10 },
+                columnStyles: { 0: { fontStyle: 'bold' } }
+            });
+            currentY = (doc as any).lastAutoTable.finalY + 10;
+
+            if (pageHeight - currentY < 40) {
+                doc.addPage();
+                currentY = margin;
+            }
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.text("Distributions", margin, currentY);
+            currentY += 8;
+
+            const distTableWidth = (doc.internal.pageSize.getWidth() - (margin * 2) - 10) / 2;
+
+            autoTable(doc, {
+                head: [['Grade', 'Count']],
+                body: data.gradeDistribution.map(g => [g.grade, g.count]),
+                startY: currentY,
+                margin: { left: margin },
+                tableWidth: distTableWidth,
+                styles: { fontSize: 9, cellPadding: 1, halign: 'center' },
+                headStyles: { fillColor: [76, 175, 80], textColor: [255, 255, 255] },
+            });
+            const gradeDistFinalY = (doc as any).lastAutoTable.finalY;
+
+            autoTable(doc, {
+                head: [['Range', 'Count']],
+                body: data.scoreFrequency.map(s => [s.range, s.count]),
+                startY: currentY,
+                margin: { left: margin + distTableWidth + 10 },
+                tableWidth: distTableWidth,
+                styles: { fontSize: 9, cellPadding: 1, halign: 'center' },
+                headStyles: { fillColor: [255, 152, 0], textColor: [255, 255, 255] },
+            });
+            const scoreFreqFinalY = (doc as any).lastAutoTable.finalY;
+            currentY = Math.max(gradeDistFinalY, scoreFreqFinalY) + 15;
+
+            const marksTableHeightEstimate = 15 + (4 * 6);
+            if (pageHeight - currentY < marksTableHeightEstimate) {
+                doc.addPage();
+                currentY = margin; 
+            }
+
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.text("Full Marks List (Ranked)", margin, currentY);
+            currentY += 8;
+
+            autoTable(doc, {
+                startY: currentY,
+                head: [['Rank', 'Student ID', 'Student Name', 'Score', 'Grade']],
+                body: data.marks.map(m => [m.rank, m.studentId, m.studentName, m.score, m.grade]),
+                theme: 'grid',
+                headStyles: { fillColor: [52, 73, 94], textColor: [255, 255, 255] },
+            });
+            
+            const assessmentNameSlug = (analysisData.assessmentName || "analysis").replace(/[^a-zA-Z0-9_]/g, '_');
+            doc.save(`${assessmentNameSlug}_analysis_report.pdf`);
+            toast({ title: "Download Started", description: "Your PDF report is being generated." });
+
+        } catch (error) {
+            toast({ title: "Error", description: `PDF generation failed: ${error instanceof Error ? error.message : String(error)}`, variant: "destructive" });
         }
-      } catch (error) {
-         toast({ title: "Error", description: `Download failed: ${error instanceof Error ? error.message : String(error)}`, variant: "destructive" });
-      }
     });
   };
 
