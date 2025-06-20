@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ShieldAlert, Loader2, CheckCircle, Search, FileWarning, Info, Download, ThumbsUp, ThumbsDown, Edit2 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getClasses, getSubjects, getExams, getMarksForReview, approveMarkSubmission, rejectMarkSubmission, downloadSingleMarkSubmission, updateSubmittedMarksByDOS } from "@/lib/actions/dos-actions";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
 import type { ClassInfo, Subject as SubjectType, Exam, AnomalyExplanation, GradeEntry as GenkitGradeEntry } from "@/lib/types";
@@ -25,8 +24,6 @@ export default function MarksReviewPage() {
   const [isUpdatingSubmission, startSubmissionUpdateTransition] = useTransition();
   const [isDownloading, startDownloadTransition] = useTransition();
   const [isUpdatingMarks, startMarksUpdateTransition] = useTransition();
-
-  const isAiEnabled = !!process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
 
   const [isLoadingInitialData, setIsLoadingInitialData] = useState(true);
   const [isLoadingMarks, setIsLoadingMarks] = useState(false);
@@ -104,15 +101,6 @@ export default function MarksReviewPage() {
   };
 
   const handleAnomalyCheck = async () => {
-    if (!isAiEnabled) {
-      toast({
-          title: "AI Feature Not Configured",
-          description: "Please set your NEXT_PUBLIC_GOOGLE_API_KEY in the .env file to use this feature.",
-          variant: "destructive",
-      });
-      return;
-    }
-
     if (!marksPayload?.submissionId || marksPayload.marks.length === 0) {
       toast({ title: "No Marks", description: "No marks loaded to check for anomalies.", variant: "destructive" });
       return;
@@ -332,26 +320,13 @@ export default function MarksReviewPage() {
               </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="inline-block"> {/* Wrapper div for tooltip on disabled button */}
-                        <Button
-                          onClick={handleAnomalyCheck}
-                          disabled={isActionDisabled || isSubmissionFinalized || currentMarks.length === 0 || !isAiEnabled}
-                        >
-                          {isProcessingAnomalyCheck ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
-                          AI Anomaly Check
-                        </Button>
-                      </div>
-                    </TooltipTrigger>
-                    {!isAiEnabled && (
-                      <TooltipContent>
-                        <p>AI features disabled. Set NEXT_PUBLIC_GOOGLE_API_KEY in .env</p>
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                </TooltipProvider>
+                <Button
+                  onClick={handleAnomalyCheck}
+                  disabled={isActionDisabled || isSubmissionFinalized || currentMarks.length === 0}
+                >
+                  {isProcessingAnomalyCheck ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
+                  AI Anomaly Check
+                </Button>
                 <Select onValueChange={(value: 'csv' | 'xlsx' | 'pdf') => handleDownload(value)} disabled={isDownloading || !marksPayload?.submissionId || currentMarks.length === 0}>
                     <SelectTrigger className="w-auto" disabled={isDownloading || !marksPayload?.submissionId || currentMarks.length === 0}>
                         <SelectValue placeholder={isDownloading ? "Downloading..." : "Download As"} />

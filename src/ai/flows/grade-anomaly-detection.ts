@@ -10,7 +10,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'zod';
+import {z} from 'genkit';
 
 const GradeEntrySchema = z.object({
   studentId: z.string().describe('Unique identifier for the student.'),
