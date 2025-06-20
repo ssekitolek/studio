@@ -35,6 +35,8 @@ import {
   ShieldAlert,
   UserCheck
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 const dosNavItems = [
   { href: "/dos/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -81,23 +83,53 @@ export function DosSidebar() {
 
   const renderNavItem = (item: any, index: number) => {
     if (item.isSection) {
+      const firstSubItemHref = item.subItems?.[0]?.href || "#";
+      const isSectionActive = item.subItems.some((sub: any) => isItemActive(sub.href, true));
+
+      const sectionHeader = (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href={firstSubItemHref}
+                className={cn(
+                  "flex items-center gap-2 rounded-md transition-colors",
+                  // Styles for expanded state (looks like a text label)
+                  "group-data-[state=expanded]:h-auto group-data-[state=expanded]:p-2 group-data-[state=expanded]:text-xs group-data-[state=expanded]:font-semibold group-data-[state=expanded]:uppercase group-data-[state=expanded]:tracking-wider group-data-[state=expanded]:text-sidebar-foreground/70 group-data-[state=expanded]:pointer-events-none",
+                  // Styles for collapsed state (looks like a button)
+                  "group-data-[state=collapsed]:size-8 group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:hover:bg-sidebar-accent group-data-[state=collapsed]:hover:text-sidebar-accent-foreground",
+                  isSectionActive && "group-data-[state=collapsed]:bg-sidebar-accent group-data-[state=collapsed]:text-sidebar-accent-foreground"
+                )}
+                aria-disabled={state === 'expanded'}
+                tabIndex={state === 'expanded' ? -1 : 0}
+                onClick={(e) => { if (state === 'expanded') e.preventDefault(); }}
+              >
+                <item.icon className="h-5 w-5 shrink-0" />
+                <span className="group-data-[state=collapsed]:hidden">{item.label}</span>
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="right" align="center" hidden={state === 'expanded'}>
+              {item.label}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+
       return (
         <SidebarMenuItem key={index} className="mt-2">
-          {state === 'expanded' && <span className="px-2 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider">{item.label}</span>}
-          {item.subItems && (
-             <SidebarMenuSub>
-              {item.subItems.map((subItem: any, subIndex: number) => (
-                <SidebarMenuSubItem key={`${index}-${subIndex}`}>
-                  <Link href={subItem.href}>
-                    <SidebarMenuSubButton isActive={isItemActive(subItem.href, true)} className="justify-start">
-                      <subItem.icon className="h-4 w-4 mr-2" />
-                      {state === 'expanded' && <span>{subItem.label}</span>}
-                    </SidebarMenuSubButton>
-                  </Link>
-                </SidebarMenuSubItem>
-              ))}
-            </SidebarMenuSub>
-          )}
+          {sectionHeader}
+          <SidebarMenuSub className="group-data-[state=collapsed]:hidden">
+            {item.subItems && item.subItems.map((subItem: any, subIndex: number) => (
+              <SidebarMenuSubItem key={`${index}-${subIndex}`}>
+                <Link href={subItem.href}>
+                  <SidebarMenuSubButton isActive={isItemActive(subItem.href, true)} className="justify-start">
+                    <subItem.icon className="h-4 w-4 mr-2" />
+                    <span>{subItem.label}</span>
+                  </SidebarMenuSubButton>
+                </Link>
+              </SidebarMenuSubItem>
+            ))}
+          </SidebarMenuSub>
         </SidebarMenuItem>
       );
     }
@@ -108,7 +140,7 @@ export function DosSidebar() {
         <Link href={item.href}>
           <SidebarMenuButton isActive={isItemActive(item.href)} tooltip={item.tooltip} className="justify-start">
             <item.icon className="h-5 w-5" />
-            {state === 'expanded' && <span>{item.label}</span>}
+            <span className="group-data-[state=collapsed]:hidden">{item.label}</span>
           </SidebarMenuButton>
         </Link>
       </SidebarMenuItem>
@@ -147,7 +179,7 @@ export function DosSidebar() {
         <Link href="/">
           <SidebarMenuButton tooltip="Log Out" className="justify-start">
             <LogOut className="h-5 w-5" />
-            {state === 'expanded' && <span>Log Out</span>}
+            <span className="group-data-[state=collapsed]:hidden">Log Out</span>
           </SidebarMenuButton>
         </Link>
       </SidebarFooter>
