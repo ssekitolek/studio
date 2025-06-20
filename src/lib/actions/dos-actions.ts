@@ -608,6 +608,7 @@ export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success:
       subjectId: examData.subjectId || null,
       teacherId: examData.teacherId || null,
       marksSubmissionDeadline: examData.marksSubmissionDeadline || null,
+      gradingPolicyId: examData.gradingPolicyId || null,
     };
     const docRef = await addDoc(collection(db, "exams"), examPayload);
     const newExam: Exam = {
@@ -621,6 +622,7 @@ export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success:
         subjectId: examPayload.subjectId === null ? undefined : examData.subjectId,
         teacherId: examPayload.teacherId === null ? undefined : examData.teacherId,
         marksSubmissionDeadline: examPayload.marksSubmissionDeadline === null ? undefined : examData.marksSubmissionDeadline,
+        gradingPolicyId: examPayload.gradingPolicyId === null ? undefined : examData.gradingPolicyId,
     };
     revalidatePath("/dos/settings/exams");
     return { success: true, message: "Exam created successfully.", exam: newExam };
@@ -652,6 +654,7 @@ export async function getExamById(examId: string): Promise<Exam | null> {
         subjectId: data.subjectId === null ? undefined : data.subjectId,
         teacherId: data.teacherId === null ? undefined : data.teacherId,
         marksSubmissionDeadline: data.marksSubmissionDeadline === null ? undefined : data.marksSubmissionDeadline,
+        gradingPolicyId: data.gradingPolicyId === null ? undefined : data.gradingPolicyId,
       } as Exam;
     }
     return null;
@@ -672,7 +675,7 @@ export async function updateExam(examId: string, examData: Partial<Omit<Exam, 'i
     if (examPayload.maxMarks !== undefined) {
       examPayload.maxMarks = Number(examPayload.maxMarks);
     }
-    const fieldsToPotentiallyNullify = ['description', 'examDate', 'classId', 'subjectId', 'teacherId', 'marksSubmissionDeadline'];
+    const fieldsToPotentiallyNullify = ['description', 'examDate', 'classId', 'subjectId', 'teacherId', 'marksSubmissionDeadline', 'gradingPolicyId'];
     fieldsToPotentiallyNullify.forEach(field => {
         if (examPayload.hasOwnProperty(field)) {
             examPayload[field] = examPayload[field] || null;
@@ -1535,6 +1538,7 @@ export async function getExams(): Promise<Exam[]> {
                 subjectId: data.subjectId === null ? undefined : data.subjectId,
                 teacherId: data.teacherId === null ? undefined : data.teacherId,
                 marksSubmissionDeadline: data.marksSubmissionDeadline === null ? undefined : data.marksSubmissionDeadline,
+                gradingPolicyId: data.gradingPolicyId === null ? undefined : data.gradingPolicyId,
             } as Exam;
         });
         return examsList;
@@ -1614,4 +1618,3 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
     }
 }
     
-

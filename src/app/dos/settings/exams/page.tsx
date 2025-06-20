@@ -21,6 +21,11 @@ export default async function ManageExamsAndGradingPage() {
   const getTeacherName = (teacherId?: string) => teachers.find(t => t.id === teacherId)?.name || 'N/A';
   const getClassName = (classId?: string) => classes.find(c => c.id === classId)?.name || 'N/A';
   const getSubjectName = (subjectId?: string) => subjects.find(s => s.id === subjectId)?.name || 'N/A';
+  const getPolicyName = (policyId?: string) => {
+    if (!policyId) return 'System Default';
+    const policy = gradingPolicies.find(p => p.id === policyId);
+    return policy ? policy.name : 'Unknown Policy';
+  };
 
   return (
     <div className="space-y-6">
@@ -86,6 +91,9 @@ export default async function ManageExamsAndGradingPage() {
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm flex-grow">
                     {exam.description && <p className="text-muted-foreground italic text-xs line-clamp-2">{exam.description}</p>}
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                        <Scale className="h-4 w-4"/> Grading: {getPolicyName(exam.gradingPolicyId)}
+                    </div>
                     {exam.examDate && (
                         <div className="flex items-center gap-1 text-muted-foreground">
                             <CalendarClock className="h-4 w-4"/> Exam Date: {new Date(exam.examDate).toLocaleDateString()}

@@ -53,6 +53,7 @@ export interface Exam {
   subjectId?: string; // Firestore document ID of the subject
   teacherId?: string; // Firestore document ID of the teacher
   marksSubmissionDeadline?: string; // Should be ISO string date e.g., "YYYY-MM-DD"
+  gradingPolicyId?: string; // The ID of the assigned GradingPolicy
 }
 
 // This type is used for internal representation, e.g., when constructing dropdowns.

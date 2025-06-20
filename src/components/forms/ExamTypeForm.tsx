@@ -21,8 +21,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DatePicker } from "@/components/ui/date-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Added imports
 import { useToast } from "@/hooks/use-toast";
-import { createExam, getTerms, updateExam, getClasses, getSubjects, getTeachers } from "@/lib/actions/dos-actions";
-import type { Term, Exam, ClassInfo, Subject, Teacher } from "@/lib/types";
+import { createExam, getTerms, updateExam, getClasses, getSubjects, getTeachers, getGradingPolicies } from "@/lib/actions/dos-actions";
+import type { Term, Exam, ClassInfo, Subject, Teacher, GradingPolicy } from "@/lib/types";
 import { Loader2, Save, PlusCircle, Edit3 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
@@ -37,6 +37,7 @@ const examTypeFormSchema = z.object({
   subjectId: z.string().optional(),
   teacherId: z.string().optional(),
   marksSubmissionDeadline: z.date().optional(),
+  gradingPolicyId: z.string().optional(),
 }).refine(data => {
   // If classId is selected (and not the EMPTY_OPTION_VALUE) and subjectId is not selected (or is EMPTY_OPTION_VALUE), then it's an error.
   if (data.classId && data.classId !== EMPTY_OPTION_VALUE && (!data.subjectId || data.subjectId === EMPTY_OPTION_VALUE)) {
@@ -57,6 +58,7 @@ interface ExamTypeFormProps {
 }
 
 const EMPTY_OPTION_VALUE = "_NONE_";
+const DEFAULT_POLICY_VALUE = "_DEFAULT_";
 
 export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormProps) {
   const { toast } = useToast();
@@ -68,6 +70,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
   const [classes, setClasses] = React.useState<ClassInfo[]>([]);
   const [subjects, setSubjects] = React.useState<Subject[]>([]);
   const [teachers, setTeachers] = React.useState<Teacher[]>([]);
+  const [gradingPolicies, setGradingPolicies] = React.useState<GradingPolicy[]>([]);
 
   const isEditMode = !!examId && !!initialData;
 
@@ -83,6 +86,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
       subjectId: initialData?.subjectId || EMPTY_OPTION_VALUE,
       teacherId: initialData?.teacherId || EMPTY_OPTION_VALUE,
       marksSubmissionDeadline: initialData?.marksSubmissionDeadline ? new Date(initialData.marksSubmissionDeadline) : undefined,
+      gradingPolicyId: initialData?.gradingPolicyId || DEFAULT_POLICY_VALUE,
     },
   });
 
@@ -90,16 +94,18 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
     async function fetchData() {
       setIsLoadingData(true);
       try {
-        const [termsData, classesData, subjectsData, teachersData] = await Promise.all([
+        const [termsData, classesData, subjectsData, teachersData, policiesData] = await Promise.all([
           getTerms(),
           getClasses(),
           getSubjects(),
           getTeachers(),
+          getGradingPolicies(),
         ]);
         setTerms(termsData);
         setClasses(classesData);
         setSubjects(subjectsData);
         setTeachers(teachersData);
+        setGradingPolicies(policiesData);
       } catch (error) {
         toast({ title: "Error", description: "Failed to load supporting data (terms, classes, etc.).", variant: "destructive" });
       } finally {
@@ -121,6 +127,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
         subjectId: initialData.subjectId || EMPTY_OPTION_VALUE,
         teacherId: initialData.teacherId || EMPTY_OPTION_VALUE,
         marksSubmissionDeadline: initialData.marksSubmissionDeadline ? new Date(initialData.marksSubmissionDeadline) : undefined,
+        gradingPolicyId: initialData.gradingPolicyId || DEFAULT_POLICY_VALUE,
       });
     }
   }, [initialData, form, isEditMode]);
@@ -134,6 +141,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
         classId: data.classId === EMPTY_OPTION_VALUE ? undefined : data.classId,
         subjectId: data.subjectId === EMPTY_OPTION_VALUE ? undefined : data.subjectId,
         teacherId: data.teacherId === EMPTY_OPTION_VALUE ? undefined : data.teacherId,
+        gradingPolicyId: data.gradingPolicyId === DEFAULT_POLICY_VALUE ? undefined : data.gradingPolicyId,
       };
 
       try {
@@ -152,7 +160,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
               title: "Exam Created",
               description: `Exam "${result.exam.name}" has been successfully created.`,
             });
-            form.reset({ name: "", termId: "", maxMarks: 100, description: "", examDate: undefined, classId: EMPTY_OPTION_VALUE, subjectId: EMPTY_OPTION_VALUE, teacherId: EMPTY_OPTION_VALUE, marksSubmissionDeadline: undefined });
+            form.reset({ name: "", termId: "", maxMarks: 100, description: "", examDate: undefined, classId: EMPTY_OPTION_VALUE, subjectId: EMPTY_OPTION_VALUE, teacherId: EMPTY_OPTION_VALUE, marksSubmissionDeadline: undefined, gradingPolicyId: DEFAULT_POLICY_VALUE });
             if (onSuccess) onSuccess(); else router.push("/dos/settings/exams");
           } else {
             toast({
@@ -238,6 +246,32 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
                             placeholder="Select exam date"
                         />
                         <FormDescription>The specific date of this exam, if applicable.</FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="gradingPolicyId"
+                    render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                        <FormLabel>Grading Policy</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || DEFAULT_POLICY_VALUE} disabled={isLoadingData}>
+                        <FormControl>
+                            <SelectTrigger>
+                            <SelectValue placeholder={isLoadingData ? "Loading policies..." : "Select a grading policy"} />
+                            </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            <SelectItem value={DEFAULT_POLICY_VALUE}>Use System Default Policy</SelectItem>
+                            {!isLoadingData && gradingPolicies.map(policy => (
+                                <SelectItem key={policy.id} value={policy.id}>
+                                    {policy.name} {policy.isDefault && "(Default)"}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                        </Select>
+                        <FormDescription>Select a specific grading scale for this exam, or use the system-wide default.</FormDescription>
                         <FormMessage />
                     </FormItem>
                     )}
