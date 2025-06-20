@@ -192,15 +192,13 @@ export interface MarksForReviewPayload {
 
 export interface SummaryStatistics {
   mean: number;
-  median: number; // p50
+  median: number;
   mode: number[];
   stdDev: number;
   highest: number;
   lowest: number;
   range: number;
   count: number;
-  p25: number; // 25th Percentile (Q1)
-  p75: number; // 75th Percentile (Q3)
 }
 
 export interface GradeDistributionItem {
@@ -211,13 +209,6 @@ export interface GradeDistributionItem {
 export interface ScoreFrequencyItem {
   range: string; // e.g., "81-90"
   count: number;
-}
-
-export interface Outlier {
-    studentId: string;
-    studentName: string;
-    score: number;
-    type: 'High' | 'Low';
 }
 
 export interface AssessmentAnalysisData {
@@ -233,5 +224,4 @@ export interface AssessmentAnalysisData {
     score: number;
     grade: string;
   }>;
-  outliers: Outlier[];
 }

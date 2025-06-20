@@ -2,7 +2,7 @@
 
 "use server";
 
-import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData, Outlier } from "@/lib/types";
+import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference, runTransaction, writeBatch, Timestamp, orderBy, setDoc } from "firebase/firestore";
@@ -1311,24 +1311,9 @@ export async function getAssessmentAnalysisData(classId: string, subjectId: stri
   const sum = scores.reduce((a, b) => a + b, 0);
   const mean = sum / count;
   const sortedScores = [...scores].sort((a, b) => a - b);
+  const mid = Math.floor(count / 2);
+  const median = count % 2 === 0 ? (sortedScores[mid - 1] + sortedScores[mid]) / 2 : sortedScores[mid];
   
-  // Percentile helper function
-  const getPercentile = (arr: number[], q: number): number => {
-    if (arr.length === 0) return 0;
-    const pos = (arr.length - 1) * q;
-    const base = Math.floor(pos);
-    const rest = pos - base;
-    if (arr[base + 1] !== undefined) {
-        return arr[base] + rest * (arr[base + 1] - arr[base]);
-    } else {
-        return arr[base];
-    }
-  };
-
-  const p25 = getPercentile(sortedScores, 0.25);
-  const median = getPercentile(sortedScores, 0.50);
-  const p75 = getPercentile(sortedScores, 0.75);
-
   const highest = Math.max(...scores);
   const lowest = Math.min(...scores);
   const range = highest - lowest;
@@ -1347,21 +1332,6 @@ export async function getAssessmentAnalysisData(classId: string, subjectId: stri
       modes.push(score);
     }
   });
-
-  // Outlier detection using IQR method
-  const iqr = p75 - p25;
-  const lowerBound = p25 - 1.5 * iqr;
-  const upperBound = p75 + 1.5 * iqr;
-
-  const outliers: Outlier[] = [];
-  marksWithGrades.forEach(mark => {
-      if (mark.score > upperBound) {
-          outliers.push({ studentId: mark.studentId, studentName: mark.studentName, score: mark.score, type: 'High' });
-      } else if (mark.score < lowerBound) {
-          outliers.push({ studentId: mark.studentId, studentName: mark.studentName, score: mark.score, type: 'Low' });
-      }
-  });
-
 
   // Grade Distribution
   const gradeDistMap = new Map<string, number>();
@@ -1382,11 +1352,10 @@ export async function getAssessmentAnalysisData(classId: string, subjectId: stri
   const analysisData: AssessmentAnalysisData = {
     submissionId: marksPayload.submissionId,
     assessmentName: marksPayload.assessmentName || 'Unnamed Assessment',
-    summary: { count, mean, median, mode: modes, stdDev, highest, lowest, range, p25, p75 },
+    summary: { count, mean, median, mode: modes, stdDev, highest, lowest, range },
     gradeDistribution,
     scoreFrequency,
     marks: marksWithGrades,
-    outliers,
   };
 
   return { success: true, message: "Analysis complete.", data: analysisData };
@@ -1423,11 +1392,9 @@ export async function downloadAnalysisReport(classId: string, subjectId: string,
     const summaryBody = [
         ['Students Assessed', data.summary.count],
         ['Mean Score', data.summary.mean.toFixed(2)],
-        ['Median (P50)', data.summary.median.toFixed(2)],
+        ['Median', data.summary.median.toFixed(2)],
         ['Mode(s)', data.summary.mode.join(', ')],
         ['Standard Deviation', data.summary.stdDev.toFixed(2)],
-        ['25th Percentile (Q1)', data.summary.p25.toFixed(2)],
-        ['75th Percentile (Q3)', data.summary.p75.toFixed(2)],
         ['Highest Score', data.summary.highest],
         ['Lowest Score', data.summary.lowest],
     ];
@@ -1441,27 +1408,6 @@ export async function downloadAnalysisReport(classId: string, subjectId: string,
     });
     currentY = (doc as any).lastAutoTable.finalY + 10;
     
-    // Add Outliers section if any exist
-    if (data.outliers && data.outliers.length > 0) {
-        if (pageHeight - currentY < 40) { // Check if there's enough space for the section
-            doc.addPage();
-            currentY = margin;
-        }
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "bold");
-        doc.text("Identified Outliers", margin, currentY);
-        currentY += 8;
-
-        autoTable(doc, {
-            head: [['Student Name', 'Score', 'Type']],
-            body: data.outliers.map(o => [o.studentName, o.score, o.type]),
-            startY: currentY,
-            theme: 'striped',
-            styles: { fontSize: 9 },
-            headStyles: { fillColor: [220, 53, 69] } // Destructive-like color
-        });
-        currentY = (doc as any).lastAutoTable.finalY + 15;
-    }
 
     // --- Distributions Section ---
     if (pageHeight - currentY < 40) {

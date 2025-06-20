@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BarChart3, Loader2, Search, Info, Download, AlertTriangle, ChevronsDown, ChevronsUp } from "lucide-react";
 import { getClasses, getSubjects, getExams, getAssessmentAnalysisData, downloadAnalysisReport } from "@/lib/actions/dos-actions";
-import type { ClassInfo, Subject as SubjectType, Exam, AssessmentAnalysisData, Outlier } from "@/lib/types";
+import type { ClassInfo, Subject as SubjectType, Exam, AssessmentAnalysisData } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
@@ -166,7 +166,7 @@ export default function DataAnalysisPage() {
                 <p className="text-2xl font-bold text-primary">{analysisData.summary.mean.toFixed(2)}</p>
               </div>
               <div className="p-3 bg-muted/50 rounded-lg">
-                <p className="text-sm text-muted-foreground">Median (P50)</p>
+                <p className="text-sm text-muted-foreground">Median</p>
                 <p className="text-2xl font-bold text-primary">{analysisData.summary.median.toFixed(2)}</p>
               </div>
                <div className="p-3 bg-muted/50 rounded-lg">
@@ -184,14 +184,6 @@ export default function DataAnalysisPage() {
                <div className="p-3 bg-muted/50 rounded-lg">
                 <p className="text-sm text-muted-foreground">Mode</p>
                 <p className="text-xl font-bold text-primary truncate">{analysisData.summary.mode.join(', ')}</p>
-              </div>
-               <div className="p-3 bg-muted/50 rounded-lg">
-                <p className="text-sm text-muted-foreground">25th Percentile (Q1)</p>
-                <p className="text-2xl font-bold text-primary">{analysisData.summary.p25.toFixed(2)}</p>
-              </div>
-              <div className="p-3 bg-muted/50 rounded-lg">
-                <p className="text-sm text-muted-foreground">75th Percentile (Q3)</p>
-                <p className="text-2xl font-bold text-primary">{analysisData.summary.p75.toFixed(2)}</p>
               </div>
             </CardContent>
           </Card>
@@ -226,40 +218,6 @@ export default function DataAnalysisPage() {
               </CardContent>
             </Card>
           </div>
-          
-          {analysisData.outliers.length > 0 && (
-            <Card className="shadow-md">
-              <CardHeader>
-                <CardTitle className="font-headline text-lg text-primary">Identified Outliers</CardTitle>
-                <CardDescription>Students with scores significantly higher or lower than the rest of the group (based on Interquartile Range).</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Student Name</TableHead>
-                      <TableHead className="text-right">Score</TableHead>
-                      <TableHead>Type</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {analysisData.outliers.map((outlier, index) => (
-                      <TableRow key={`${outlier.studentId}-${index}`} className={outlier.type === 'Low' ? 'bg-red-500/10' : 'bg-green-500/10'}>
-                        <TableCell>{outlier.studentName}</TableCell>
-                        <TableCell className="text-right font-medium">{outlier.score}</TableCell>
-                        <TableCell>
-                           <Badge variant={outlier.type === 'Low' ? 'destructive' : 'default'} className={outlier.type === 'Low' ? '' : 'bg-green-600'}>
-                                {outlier.type === 'Low' ? <ChevronsDown className="mr-1 h-3 w-3"/> : <ChevronsUp className="mr-1 h-3 w-3"/>}
-                                {outlier.type}
-                            </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
 
            <Card className="shadow-md">
             <CardHeader><CardTitle className="font-headline text-lg text-primary">Full Marks List (Ranked)</CardTitle></CardHeader>
