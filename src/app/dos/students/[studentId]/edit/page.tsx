@@ -4,12 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft, Edit3, AlertTriangle } from "lucide-react";
-import { StudentRegistrationForm } from "@/components/forms/StudentRegistrationForm";
 import { getStudentById } from "@/lib/actions/dos-actions";
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from "@/components/ui/alert";
+import { StudentEditView } from "./StudentEditView"; // New component
 
-export default async function EditStudentPage({ params }: { params: { studentId: string } }) {
+interface EditStudentPageProps {
+  params: { studentId: string };
+  searchParams?: { action?: string };
+}
+
+export default async function EditStudentPage({ params, searchParams }: EditStudentPageProps) {
   const student = await getStudentById(params.studentId);
+  const showDeletePrompt = searchParams?.action === 'delete_prompt';
 
   if (!student) {
     return (
@@ -38,30 +44,6 @@ export default async function EditStudentPage({ params }: { params: { studentId:
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title={`Edit Student: ${student.firstName} ${student.lastName}`}
-        description="Update the student's details."
-        icon={Edit3}
-        actionButton={
-          <Button variant="outline" asChild>
-            <Link href="/dos/students">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Students
-            </Link>
-          </Button>
-        }
-      />
-      <Card className="shadow-md">
-        <CardHeader>
-          <CardTitle className="font-headline text-xl text-primary">Edit Student Form</CardTitle>
-          <CardDescription>Modify the details for student {student.studentIdNumber} (ID: {params.studentId}).</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <StudentRegistrationForm initialData={student} studentDocumentId={params.studentId} />
-        </CardContent>
-      </Card>
-    </div>
-  );
+  return <StudentEditView student={student} showDeletePromptInitially={showDeletePrompt} />;
 }
+

@@ -293,9 +293,12 @@ export async function deleteStudent(studentId: string): Promise<{ success: boole
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
+    // TODO: Implement dependency checks before deleting a student.
+    // E.g., check if student has marks in markSubmissions. For now, direct delete.
+    console.warn(`[deleteStudent] Deleting student ${studentId}. IMPORTANT: Dependency checks (e.g., mark submissions) are not yet implemented.`);
     await deleteDoc(doc(db, "students", studentId));
     revalidatePath("/dos/students");
-    return { success: true, message: "Student deleted successfully." };
+    return { success: true, message: "Student deleted successfully. Note: Associated marks or historical data were not automatically handled." };
   } catch (error) {
     console.error(`Error in deleteStudent for ${studentId}:`, error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
@@ -492,6 +495,39 @@ export async function updateSubject(subjectId: string, subjectData: Partial<Omit
     return { success: false, message: `Failed to update subject: ${errorMessage}` };
   }
 }
+
+export async function deleteSubject(subjectId: string): Promise<{ success: boolean; message: string }> {
+  if (!db) {
+    return { success: false, message: "Firestore is not initialized." };
+  }
+  try {
+    // Dependency check: Check if the subject is assigned to any class
+    const subjectRefToDelete = doc(db, "subjects", subjectId);
+    const classesRef = collection(db, "classes");
+    const q = query(classesRef, where("subjectReferences", "array-contains", subjectRefToDelete));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      const classNames = querySnapshot.docs.map(d => d.data().name).join(', ');
+      return { 
+        success: false, 
+        message: `Cannot delete subject. It is currently assigned to the following class(es): ${classNames}. Please unassign it first.` 
+      };
+    }
+
+    // TODO: Consider checking if this subject is used in any 'exams' or 'markSubmissions'
+    console.warn(`[deleteSubject] Deleting subject ${subjectId}. Further dependency checks (e.g., exams, mark submissions) are not yet implemented.`);
+
+    await deleteDoc(subjectRefToDelete);
+    revalidatePath("/dos/classes"); // Revalidate page showing subjects
+    return { success: true, message: "Subject deleted successfully." };
+  } catch (error) {
+    console.error(`Error deleting subject ${subjectId}:`, error);
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+    return { success: false, message: `Failed to delete subject: ${errorMessage}` };
+  }
+}
+
 
 // --- Term & Exam Management ---
 export async function createTerm(termData: Omit<Term, 'id'>): Promise<{ success: boolean; message: string; term?: Term }> {
@@ -969,7 +1005,7 @@ export async function downloadAllMarks(format: 'csv' | 'xlsx' | 'pdf' = 'csv'): 
       const csvData = `${headerRow}\n${dataRows.join('\n')}`;
       return { success: true, message: "CSV data prepared.", data: csvData };
     } else if (format === 'xlsx') {
-        const wsData: (string | number | {v: string | number | Date, s?: XLSX.CellStyle, t?: string})[][] = [
+        const wsData: (string | number | Date | {v: string | number | Date, s?: XLSX.CellStyle, t?: string})[][] = [
             [{v: reportTitle, s: {font: {bold: true, sz: 16, color: {rgb: "FF2C3E50"}}, alignment: { horizontal: "center"}}}],
             [{v: `Generated on: ${generationDate}`, s: {font: {italic: true, sz: 10, color: {rgb: "FF7F8C8D"}}, alignment: { horizontal: "center"}}}],
             [], 
@@ -982,6 +1018,9 @@ export async function downloadAllMarks(format: 'csv' | 'xlsx' | 'pdf' = 'csv'): 
                 const val = row[header];
                 if (header === 'Score' && typeof val === 'number') {
                     return { v: val, t: 'n' };
+                }
+                 if (header === 'Date Submitted' && typeof val === 'string' && !isNaN(Date.parse(val))) {
+                    return { v: new Date(val), t: 'd', s: { numFmt: 'yyyy-mm-dd'} };
                 }
                 return String(val === undefined || val === null ? '' : val);
             }));
@@ -1252,7 +1291,7 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
       const csvData = `${headerRow}\n${dataRows.join('\n')}`;
       return { success: true, message: "CSV data prepared.", data: csvData };
     } else if (format === 'xlsx') {
-        const wsData: (string | number | {v: string | number | Date, s?: XLSX.CellStyle, t?: string})[][] = [];
+        const wsData: (string | number | Date | {v: string | number | Date, s?: XLSX.CellStyle, t?: string})[][] = [];
         
         wsData.push([{v: `Marks for ${assessmentName}`, s:{font:{bold:true, sz:14, color: {rgb: "FF2C3E50"}}, alignment: { horizontal: "center" }}}]);
         wsData.push([{v: `Generated on: ${generationDate}`, s:{font:{italic:true, sz:10, color: {rgb: "FF7F8C8D"}}, alignment: { horizontal: "center"}}}]);
@@ -1280,6 +1319,7 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
         worksheet["!merges"] = [
             { s: { r: 0, c: 0 }, e: { r: 0, c: tableHeaders.length -1 } },
             { s: { r: 1, c: 0 }, e: { r: 1, c: tableHeaders.length -1 } },
+            ...metadataItems.map((_, idx) => ({ s: { r: 2 + idx, c: 0 }, e: { r: 2 + idx, c: tableHeaders.length -1 } })) // Merge metadata rows
         ];
 
         const colWidths = tableHeaders.map(header => ({wch: Math.max(String(header).length, 12)}));
@@ -1299,7 +1339,7 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
 
     } else if (format === 'pdf') {
         const pdfReportTitle = `Marks for ${assessmentName}`;
-        const pdfTableDataRows = studentMarksData.map(row => tableHeaders.map(header => row[header] ?? ''));
+        const pdfTableDataRows = studentMarksData.map(row => tableHeaders.map(header => String(row[header] ?? '')));
         const pdfBytes = await generatePdfDocument(pdfReportTitle, metadataItems, tableHeaders, pdfTableDataRows, reportFooter);
         return { success: true, message: "PDF document prepared.", data: pdfBytes };
     }
@@ -1546,3 +1586,4 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
     }
 }
     
+
