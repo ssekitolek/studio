@@ -34,7 +34,8 @@ import {
   BookUser,
   CalendarDays,
   ShieldAlert,
-  UserCheck
+  UserCheck,
+  BarChart3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -62,7 +63,7 @@ const dosNavItems = [
     ],
   },
   { href: "/dos/marks-review", label: "Marks Review", icon: ShieldAlert, tooltip: "Review submitted marks and check for anomalies"},
-  { href: "/dos/reports/download-marks", label: "Download Reports", icon: Download, tooltip: "Download marks reports" },
+  { href: "/dos/reports/download-marks", label: "Data Analysis", icon: BarChart3, tooltip: "Analyze assessment data" },
 ];
 
 export function DosSidebar() {
@@ -131,7 +132,7 @@ export function DosSidebar() {
                           <Link href={subItem.href}>
                             <SidebarMenuButton isActive={isItemActive(subItem.href)} tooltip={subItem.tooltip || subItem.label} className="justify-start">
                               <subItem.icon className="h-5 w-5" />
-                              <span className="group-data-[state=collapsed]:hidden">{subItem.label}</span>
+                              <span className="sr-only">{subItem.label}</span>
                             </SidebarMenuButton>
                           </Link>
                         </SidebarMenuItem>
@@ -147,7 +148,7 @@ export function DosSidebar() {
                   <Link href={item.href}>
                     <SidebarMenuButton isActive={isItemActive(item.href)} tooltip={item.tooltip || item.label} className="justify-start">
                       <item.icon className="h-5 w-5" />
-                      <span className="group-data-[state=collapsed]:hidden">{item.label}</span>
+                       <span className="group-data-[state=collapsed]:hidden">{item.label}</span>
                     </SidebarMenuButton>
                   </Link>
                 </SidebarMenuItem>

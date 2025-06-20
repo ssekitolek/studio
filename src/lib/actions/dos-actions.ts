@@ -1,7 +1,7 @@
 
 "use server";
 
-import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry } from "@/lib/types";
+import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference, runTransaction, writeBatch, Timestamp, orderBy, setDoc } from "firebase/firestore";
@@ -868,20 +868,7 @@ export async function updateGeneralSettings(settings: Partial<GeneralSettings>):
   }
 }
 
-
-interface ReportRow {
-  'Student ID': string;
-  'Student Name': string;
-  'Class': string;
-  'Subject': string;
-  'Exam': string;
-  'Score': number | string;
-  'Grade': string;
-  'Date Submitted': string;
-  'Submitted By': string;
-  'D.O.S. Status': string;
-  'D.O.S. Reject Reason'?: string;
-}
+// --- Report Generation & Data Analysis ---
 
 function calculateGrade(
   score: number | null,
@@ -896,89 +883,6 @@ function calculateGrade(
     }
   }
   return 'Ungraded'; // For scores outside all defined ranges
-}
-
-async function getAllSubmittedMarksData(): Promise<ReportRow[]> {
-  if (!db) {
-    console.error("Firestore is not initialized for report generation.");
-    return [];
-  }
-  try {
-    const markSubmissionsRef = collection(db, "markSubmissions");
-    const submissionsSnapshot = await getDocs(query(markSubmissionsRef, orderBy("dateSubmitted", "desc")));
-
-    if (submissionsSnapshot.empty) {
-      return [];
-    }
-
-    const [allStudents, allTeachers, allExams, allPolicies, generalSettings] = await Promise.all([
-      getStudents(),
-      getTeachers(),
-      getExams(),
-      getGradingPolicies(),
-      getGeneralSettings()
-    ]);
-
-    const studentsMap = new Map(allStudents.map(s => [s.studentIdNumber, `${s.firstName} ${s.lastName}`]));
-    const teachersMap = new Map(allTeachers.map(t => [t.id, t.name]));
-    const examsMap = new Map(allExams.map(e => [e.id, e]));
-    const policiesMap = new Map(allPolicies.map(p => [p.id, p]));
-    const defaultGradingScale = generalSettings.defaultGradingScale || [];
-
-
-    const reportRows: ReportRow[] = [];
-
-    for (const submissionDoc of submissionsSnapshot.docs) {
-      const submission = submissionDoc.data() as MarkSubmissionFirestoreRecord;
-      const dateSubmitted = submission.dateSubmitted.toDate().toLocaleDateString();
-      const assessmentName = submission.assessmentName || 'N/A - N/A - N/A';
-      let className = 'N/A', subjectName = 'N/A', examName = 'N/A';
-        if (assessmentName && assessmentName !== 'N/A - N/A - N/A') {
-            const parts = assessmentName.split(' - ');
-            if (parts.length >= 3) {
-                className = parts[0].trim();
-                subjectName = parts[1].trim();
-                examName = parts.slice(2).join(' - ').trim();
-            } else {
-                if(parts.length > 0) className = parts[0].trim();
-                if(parts.length > 1) subjectName = parts[1].trim();
-            }
-        }
-
-      const examId = submission.assessmentId.split('_')[0];
-      const exam = examsMap.get(examId);
-      const maxMarks = exam?.maxMarks || 100;
-      
-      let gradingScale: GradingScaleItem[] = defaultGradingScale;
-      if (exam?.gradingPolicyId) {
-          const policy = policiesMap.get(exam.gradingPolicyId);
-          if (policy && Array.isArray(policy.scale)) {
-              gradingScale = policy.scale;
-          }
-      }
-
-      submission.submittedMarks.forEach(mark => {
-        const grade = calculateGrade(mark.score, maxMarks, gradingScale);
-        reportRows.push({
-          'Student ID': mark.studentId,
-          'Student Name': studentsMap.get(mark.studentId) || 'Unknown Student',
-          'Class': className,
-          'Subject': subjectName,
-          'Exam': examName,
-          'Score': mark.score,
-          'Grade': grade,
-          'Date Submitted': dateSubmitted,
-          'Submitted By': teachersMap.get(submission.teacherId) || submission.teacherId,
-          'D.O.S. Status': submission.dosStatus || 'N/A',
-          'D.O.S. Reject Reason': submission.dosRejectReason || '',
-        });
-      });
-    }
-    return reportRows;
-  } catch (error) {
-    console.error("Error fetching all submitted marks data for report:", error);
-    return [];
-  }
 }
 
 async function generatePdfDocument(
@@ -1043,96 +947,6 @@ async function generatePdfDocument(
   return doc.output('arraybuffer') as Uint8Array;
 }
 
-
-export async function downloadAllMarks(format: 'csv' | 'xlsx' | 'pdf' = 'csv'): Promise<{ success: boolean; message: string; data?: string | Uint8Array }> {
-  if (!db) {
-    return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
-  }
-  try {
-    const reportData = await getAllSubmittedMarksData();
-
-    if (reportData.length === 0) {
-      return { success: false, message: "No marks data found to generate a report." };
-    }
-    
-    const reportTitle = "GradeCentral - All Marks Report";
-    const generationDate = new Date().toLocaleDateString();
-    const reportFooter = "Report Generated By: GradeCentral";
-    const headers = Object.keys(reportData[0]) as Array<keyof ReportRow>;
-
-
-    if (format === 'csv') {
-      const headerRow = headers.join(',');
-      const dataRows = reportData.map(row =>
-        headers.map(header => {
-          const value = row[header];
-          const stringValue = String(value === undefined || value === null ? '' : value);
-          if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
-            return `"${stringValue.replace(/"/g, '""')}"`;
-          }
-          return stringValue;
-        }).join(',')
-      );
-      const csvData = `${headerRow}\n${dataRows.join('\n')}`;
-      return { success: true, message: "CSV data prepared.", data: csvData };
-    } else if (format === 'xlsx') {
-        const wsData: (string | number | Date | {v: string | number | Date, s?: XLSX.CellStyle, t?: string})[][] = [
-            [{v: reportTitle, s: {font: {bold: true, sz: 16, color: {rgb: "FF2C3E50"}}, alignment: { horizontal: "center"}}}],
-            [{v: `Generated on: ${generationDate}`, s: {font: {italic: true, sz: 10, color: {rgb: "FF7F8C8D"}}, alignment: { horizontal: "center"}}}],
-            [], 
-        ];
-        
-        wsData.push(headers.map(h => ({ v: h, s: { font: { bold: true, color: {rgb: "FFFFFFFF"}}, fill: { fgColor: { rgb: "FF34495E" } }, alignment: {horizontal: "center"} } })));
-
-        reportData.forEach(row => {
-            wsData.push(headers.map(header => {
-                const val = row[header];
-                if (header === 'Score' && typeof val === 'number') {
-                    return { v: val, t: 'n' };
-                }
-                 if (header === 'Date Submitted' && typeof val === 'string' && !isNaN(Date.parse(val))) {
-                    return { v: new Date(val), t: 'd', s: { numFmt: 'yyyy-mm-dd'} };
-                }
-                return String(val === undefined || val === null ? '' : val);
-            }));
-        });
-        wsData.push([]);
-        wsData.push([{v: reportFooter, s: {font: {italic: true, sz: 9, color: {rgb: "FF7F8C8D"}}} }]);
-
-        const worksheet = XLSX.utils.aoa_to_sheet(wsData, { cellDates: true });
-        
-        worksheet["!merges"] = [
-            { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length -1 } },
-            { s: { r: 1, c: 0 }, e: { r: 1, c: headers.length -1 } },
-        ];
-        
-        const colWidths = headers.map(header => ({wch: Math.max(String(header).length, 12)}));
-        reportData.forEach(row => {
-            headers.forEach((header, i) => {
-                const val = row[header];
-                const len = String(val).length;
-                if (colWidths[i].wch < len) colWidths[i].wch = len;
-            });
-        });
-        worksheet['!cols'] = colWidths.map(w => ({wch: Math.min(w.wch + 2, 50)}));
-
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "All Marks Report");
-        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-        return { success: true, message: "XLSX data prepared.", data: new Uint8Array(excelBuffer) };
-    } else if (format === 'pdf') {
-        const pdfDataRows = reportData.map(row => headers.map(header => String(row[header] ?? '')));
-        const pdfMetadata = [{ label: "Generated on", value: generationDate }];
-        const pdfBytes = await generatePdfDocument(reportTitle, pdfMetadata, headers, pdfDataRows, reportFooter);
-        return { success: true, message: "PDF document prepared.", data: pdfBytes };
-    }
-    return { success: false, message: "Invalid format selected." };
-  } catch (error) {
-    console.error("Error in downloadAllMarks:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
-    return { success: false, message: `Failed to prepare marks data: ${errorMessage}` };
-  }
-}
 
 export async function getMarksForReview(classId: string, subjectId: string, examId: string): Promise<MarksForReviewPayload> {
   const defaultPayload: MarksForReviewPayload = { submissionId: null, assessmentName: null, marks: [], dosStatus: undefined, dosRejectReason: undefined };
@@ -1442,6 +1256,193 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
   }
 }
 
+export async function getAssessmentAnalysisData(classId: string, subjectId: string, examId: string): Promise<{ success: boolean; message: string; data?: AssessmentAnalysisData }> {
+  const marksPayload = await getMarksForReview(classId, subjectId, examId);
+
+  if (!marksPayload.submissionId || marksPayload.marks.length === 0) {
+    return { success: false, message: "No submitted marks found for the selected assessment to analyze." };
+  }
+
+  const scores = marksPayload.marks.map(m => m.grade);
+  
+  if (scores.length === 0) {
+      return { success: false, message: "No valid scores available for analysis."};
+  }
+
+  // Get grading scale
+  const exam = await getExamById(examId);
+  const maxMarks = exam?.maxMarks || 100;
+  let gradingScale: GradingScaleItem[] = [];
+  if (exam?.gradingPolicyId) {
+      const policy = await getGradingPolicyById(exam.gradingPolicyId);
+      if (policy?.scale) gradingScale = policy.scale;
+  }
+  if (gradingScale.length === 0) {
+      const settings = await getGeneralSettings();
+      gradingScale = settings.defaultGradingScale || [];
+  }
+
+  const marksWithGrades = marksPayload.marks.map(m => ({
+    studentId: m.studentId,
+    studentName: m.studentName,
+    score: m.grade,
+    grade: calculateGrade(m.grade, maxMarks, gradingScale),
+  }));
+
+  // Summary statistics
+  const count = scores.length;
+  const sum = scores.reduce((a, b) => a + b, 0);
+  const mean = sum / count;
+  const sortedScores = [...scores].sort((a, b) => a - b);
+  const mid = Math.floor(count / 2);
+  const median = count % 2 !== 0 ? sortedScores[mid] : (sortedScores[mid - 1] + sortedScores[mid]) / 2;
+  const highest = Math.max(...scores);
+  const lowest = Math.min(...scores);
+  const range = highest - lowest;
+  const variance = scores.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / count;
+  const stdDev = Math.sqrt(variance);
+  
+  const modeMap = new Map<number, number>();
+  scores.forEach(score => modeMap.set(score, (modeMap.get(score) || 0) + 1));
+  let maxFreq = 0;
+  let modes: number[] = [];
+  modeMap.forEach((freq, score) => {
+    if (freq > maxFreq) {
+      maxFreq = freq;
+      modes = [score];
+    } else if (freq === maxFreq) {
+      modes.push(score);
+    }
+  });
+
+  // Grade Distribution
+  const gradeDistMap = new Map<string, number>();
+  marksWithGrades.forEach(m => gradeDistMap.set(m.grade, (gradeDistMap.get(m.grade) || 0) + 1));
+  const gradeDistribution = Array.from(gradeDistMap.entries()).map(([grade, count]) => ({ grade, count })).sort((a,b) => a.grade.localeCompare(b.grade));
+  
+  // Score Frequency
+  const scoreFreqMap = new Map<string, number>();
+  const binSize = 10;
+  scores.forEach(score => {
+    const binStart = Math.floor(score / binSize) * binSize;
+    const binEnd = binStart + binSize -1;
+    const rangeKey = `${binStart === 0 ? 0 : binStart+1}-${binEnd > maxMarks ? maxMarks : binEnd}`;
+    scoreFreqMap.set(rangeKey, (scoreFreqMap.get(rangeKey) || 0) + 1);
+  });
+  const scoreFrequency = Array.from(scoreFreqMap.entries()).map(([range, count]) => ({ range, count })).sort((a,b) => parseInt(a.range.split('-')[0]) - parseInt(b.range.split('-')[0]));
+  
+  const analysisData: AssessmentAnalysisData = {
+    submissionId: marksPayload.submissionId,
+    assessmentName: marksPayload.assessmentName || 'Unnamed Assessment',
+    summary: { count, mean, median, mode: modes, stdDev, highest, lowest, range },
+    gradeDistribution,
+    scoreFrequency,
+    marks: marksWithGrades,
+  };
+
+  return { success: true, message: "Analysis complete.", data: analysisData };
+}
+
+export async function downloadAnalysisReport(classId: string, subjectId: string, examId: string): Promise<{ success: boolean; message: string; data?: Uint8Array }> {
+    const analysisResult = await getAssessmentAnalysisData(classId, subjectId, examId);
+    if (!analysisResult.success || !analysisResult.data) {
+        return { success: false, message: analysisResult.message };
+    }
+    const data = analysisResult.data;
+    const doc = new jsPDF();
+    
+    // Title
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text("Assessment Analysis Report", doc.internal.pageSize.getWidth() / 2, 20, { align: "center" });
+
+    // Assessment Name
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "normal");
+    doc.text(data.assessmentName, doc.internal.pageSize.getWidth() / 2, 30, { align: "center" });
+
+    let currentY = 45;
+
+    // Summary Statistics
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("Summary Statistics", 14, currentY);
+    currentY += 8;
+    
+    autoTable(doc, {
+        startY: currentY,
+        body: [
+            ['Students Assessed', data.summary.count],
+            ['Mean Score', data.summary.mean.toFixed(2)],
+            ['Median Score', data.summary.median.toFixed(2)],
+            ['Mode(s)', data.summary.mode.join(', ')],
+            ['Standard Deviation', data.summary.stdDev.toFixed(2)],
+            ['Highest Score', data.summary.highest],
+            ['Lowest Score', data.summary.lowest],
+            ['Score Range', data.summary.range],
+        ],
+        theme: 'plain',
+        styles: { fontSize: 10 },
+        columnStyles: { 0: { fontStyle: 'bold' } }
+    });
+    currentY = (doc as any).lastAutoTable.finalY + 10;
+    
+    // Distributions
+    autoTable(doc, {
+        startY: currentY,
+        head: [['Grade Distribution', 'Score Frequency']],
+        body: [[
+          { content: '', styles: { cellWidth: 'auto' } },
+          { content: '', styles: { cellWidth: 'auto' } }
+        ]],
+        didDrawCell: (hookData) => {
+            if (hookData.section === 'body') {
+                if(hookData.column.index === 0) {
+                    autoTable(doc, {
+                        head: [['Grade', 'Count']],
+                        body: data.gradeDistribution.map(g => [g.grade, g.count]),
+                        startY: hookData.cell.y + 2,
+                        margin: { left: hookData.cell.x + 2 },
+                        tableWidth: hookData.cell.width - 4,
+                        styles: { fontSize: 9, cellPadding: 1 },
+                        headStyles: { fillColor: [76, 175, 80] },
+                    })
+                } else {
+                     autoTable(doc, {
+                        head: [['Range', 'Count']],
+                        body: data.scoreFrequency.map(s => [s.range, s.count]),
+                        startY: hookData.cell.y + 2,
+                        margin: { left: hookData.cell.x + 2 },
+                        tableWidth: hookData.cell.width - 4,
+                        styles: { fontSize: 9, cellPadding: 1 },
+                        headStyles: { fillColor: [255, 152, 0] },
+                    })
+                }
+            }
+        },
+        headStyles: { halign: 'center' }
+    });
+    currentY = (doc as any).lastAutoTable.finalY + 10;
+
+    // Full Marks List
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("Full Marks List", 14, currentY);
+    currentY += 8;
+
+    autoTable(doc, {
+        startY: currentY,
+        head: [['Student ID', 'Student Name', 'Score', 'Grade']],
+        body: data.marks.map(m => [m.studentId, m.studentName, m.score, m.grade]),
+        theme: 'grid',
+        headStyles: { fillColor: [52, 73, 94] },
+    });
+
+    const pdfBytes = doc.output('arraybuffer') as Uint8Array;
+    return { success: true, message: "Analysis report PDF prepared.", data: pdfBytes };
+}
+
+
 // Data fetch functions used across the D.O.S. portal
 export async function getTeachers(): Promise<Teacher[]> {
   if (!db) {
@@ -1677,5 +1678,3 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
         };
     }
 }
-    
-

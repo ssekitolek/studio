@@ -186,3 +186,41 @@ export interface MarksForReviewPayload {
     dosStatus?: MarkSubmissionFirestoreRecord['dosStatus'];
     dosRejectReason?: string;
 }
+
+
+// --- Data Analysis ---
+
+export interface SummaryStatistics {
+  mean: number;
+  median: number;
+  mode: number[];
+  stdDev: number;
+  highest: number;
+  lowest: number;
+  range: number;
+  count: number;
+}
+
+export interface GradeDistributionItem {
+  grade: string;
+  count: number;
+}
+
+export interface ScoreFrequencyItem {
+  range: string; // e.g., "81-90"
+  count: number;
+}
+
+export interface AssessmentAnalysisData {
+  submissionId: string | null;
+  assessmentName: string;
+  summary: SummaryStatistics;
+  gradeDistribution: GradeDistributionItem[];
+  scoreFrequency: ScoreFrequencyItem[];
+  marks: Array<{
+    studentId: string;
+    studentName: string;
+    score: number;
+    grade: string;
+  }>;
+}
