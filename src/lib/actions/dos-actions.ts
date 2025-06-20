@@ -922,6 +922,7 @@ async function generatePdfDocument(
       columnStyles: {
         'Score': { halign: 'right' },
         'Grade': { halign: 'center' },
+        'Rank': { halign: 'center' },
       },
       margin: { top: currentY },
       didDrawPage: (data) => { 
@@ -1287,7 +1288,22 @@ export async function getAssessmentAnalysisData(classId: string, subjectId: stri
     studentName: m.studentName,
     score: m.grade,
     grade: calculateGrade(m.grade, maxMarks, gradingScale),
+    rank: 0, // Temporary rank
   }));
+
+  // Sort by score descending to calculate rank
+  marksWithGrades.sort((a, b) => b.score - a.score);
+
+  // Assign ranks, handling ties correctly
+  let currentRank = 0;
+  let lastScore = -1;
+  marksWithGrades.forEach((student, index) => {
+    if (student.score !== lastScore) {
+      currentRank = index + 1;
+      lastScore = student.score;
+    }
+    student.rank = currentRank;
+  });
 
   // Summary statistics
   const count = scores.length;
@@ -1427,13 +1443,13 @@ export async function downloadAnalysisReport(classId: string, subjectId: string,
     // Full Marks List
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text("Full Marks List", 14, currentY);
+    doc.text("Full Marks List (Ranked)", 14, currentY);
     currentY += 8;
 
     autoTable(doc, {
         startY: currentY,
-        head: [['Student ID', 'Student Name', 'Score', 'Grade']],
-        body: data.marks.map(m => [m.studentId, m.studentName, m.score, m.grade]),
+        head: [['Rank', 'Student ID', 'Student Name', 'Score', 'Grade']],
+        body: data.marks.map(m => [m.rank, m.studentId, m.studentName, m.score, m.grade]),
         theme: 'grid',
         headStyles: { fillColor: [52, 73, 94] },
     });

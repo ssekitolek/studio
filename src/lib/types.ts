@@ -218,6 +218,7 @@ export interface AssessmentAnalysisData {
   gradeDistribution: GradeDistributionItem[];
   scoreFrequency: ScoreFrequencyItem[];
   marks: Array<{
+    rank: number;
     studentId: string;
     studentName: string;
     score: number;

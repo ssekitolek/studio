@@ -219,11 +219,12 @@ export default function DataAnalysisPage() {
           </div>
           
            <Card className="shadow-md">
-            <CardHeader><CardTitle className="font-headline text-lg text-primary">Full Marks List</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="font-headline text-lg text-primary">Full Marks List (Ranked)</CardTitle></CardHeader>
             <CardContent>
                 <Table>
                 <TableHeader>
                     <TableRow>
+                    <TableHead className="text-center">Rank</TableHead>
                     <TableHead>Student ID</TableHead>
                     <TableHead>Student Name</TableHead>
                     <TableHead className="text-right">Score</TableHead>
@@ -233,6 +234,7 @@ export default function DataAnalysisPage() {
                 <TableBody>
                     {analysisData.marks.map((mark, index) => (
                     <TableRow key={`${mark.studentId}-${index}`}>
+                        <TableCell className="text-center font-bold">{mark.rank}</TableCell>
                         <TableCell>{mark.studentId}</TableCell>
                         <TableCell>{mark.studentName}</TableCell>
                         <TableCell className="text-right font-medium">{mark.score}</TableCell>
