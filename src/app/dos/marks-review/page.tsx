@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ShieldAlert, Loader2, CheckCircle, Search, FileWarning, Info, Download, ThumbsUp, ThumbsDown, Edit2 } from "lucide-react";
 import { getClasses, getSubjects, getExams, getMarksForReview, approveMarkSubmission, rejectMarkSubmission, downloadSingleMarkSubmission, updateSubmittedMarksByDOS } from "@/lib/actions/dos-actions";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
@@ -45,6 +46,8 @@ export default function MarksReviewPage() {
   // For inline editing
   const [isEditingMarks, setIsEditingMarks] = useState(false);
   const [editableMarks, setEditableMarks] = useState<MarksForReviewEntry[]>([]);
+  
+  const isAiConfigured = !!process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
 
 
   useEffect(() => {
@@ -320,13 +323,27 @@ export default function MarksReviewPage() {
               </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
-                <Button
-                  onClick={handleAnomalyCheck}
-                  disabled={isActionDisabled || isSubmissionFinalized || currentMarks.length === 0}
-                >
-                  {isProcessingAnomalyCheck ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
-                  AI Anomaly Check
-                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="inline-block"> {/* Wrapper div for tooltip on disabled button */}
+                        <Button
+                          onClick={handleAnomalyCheck}
+                          disabled={isActionDisabled || isSubmissionFinalized || currentMarks.length === 0 || !isAiConfigured}
+                          aria-disabled={!isAiConfigured}
+                        >
+                          {isProcessingAnomalyCheck ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
+                          AI Anomaly Check
+                        </Button>
+                      </div>
+                    </TooltipTrigger>
+                    {!isAiConfigured && (
+                      <TooltipContent>
+                        <p>AI features disabled. Set NEXT_PUBLIC_GOOGLE_API_KEY in .env</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
                 <Select onValueChange={(value: 'csv' | 'xlsx' | 'pdf') => handleDownload(value)} disabled={isDownloading || !marksPayload?.submissionId || currentMarks.length === 0}>
                     <SelectTrigger className="w-auto" disabled={isDownloading || !marksPayload?.submissionId || currentMarks.length === 0}>
                         <SelectValue placeholder={isDownloading ? "Downloading..." : "Download As"} />
