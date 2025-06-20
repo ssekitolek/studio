@@ -2,7 +2,7 @@
 
 "use server";
 
-import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData } from "@/lib/types";
+import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData, Outlier } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference, runTransaction, writeBatch, Timestamp, orderBy, setDoc } from "firebase/firestore";
@@ -1311,8 +1311,24 @@ export async function getAssessmentAnalysisData(classId: string, subjectId: stri
   const sum = scores.reduce((a, b) => a + b, 0);
   const mean = sum / count;
   const sortedScores = [...scores].sort((a, b) => a - b);
-  const mid = Math.floor(count / 2);
-  const median = count % 2 !== 0 ? sortedScores[mid] : (sortedScores[mid - 1] + sortedScores[mid]) / 2;
+  
+  // Percentile helper function
+  const getPercentile = (arr: number[], q: number): number => {
+    if (arr.length === 0) return 0;
+    const pos = (arr.length - 1) * q;
+    const base = Math.floor(pos);
+    const rest = pos - base;
+    if (arr[base + 1] !== undefined) {
+        return arr[base] + rest * (arr[base + 1] - arr[base]);
+    } else {
+        return arr[base];
+    }
+  };
+
+  const p25 = getPercentile(sortedScores, 0.25);
+  const median = getPercentile(sortedScores, 0.50);
+  const p75 = getPercentile(sortedScores, 0.75);
+
   const highest = Math.max(...scores);
   const lowest = Math.min(...scores);
   const range = highest - lowest;
@@ -1331,6 +1347,21 @@ export async function getAssessmentAnalysisData(classId: string, subjectId: stri
       modes.push(score);
     }
   });
+
+  // Outlier detection using IQR method
+  const iqr = p75 - p25;
+  const lowerBound = p25 - 1.5 * iqr;
+  const upperBound = p75 + 1.5 * iqr;
+
+  const outliers: Outlier[] = [];
+  marksWithGrades.forEach(mark => {
+      if (mark.score > upperBound) {
+          outliers.push({ studentId: mark.studentId, studentName: mark.studentName, score: mark.score, type: 'High' });
+      } else if (mark.score < lowerBound) {
+          outliers.push({ studentId: mark.studentId, studentName: mark.studentName, score: mark.score, type: 'Low' });
+      }
+  });
+
 
   // Grade Distribution
   const gradeDistMap = new Map<string, number>();
@@ -1351,10 +1382,11 @@ export async function getAssessmentAnalysisData(classId: string, subjectId: stri
   const analysisData: AssessmentAnalysisData = {
     submissionId: marksPayload.submissionId,
     assessmentName: marksPayload.assessmentName || 'Unnamed Assessment',
-    summary: { count, mean, median, mode: modes, stdDev, highest, lowest, range },
+    summary: { count, mean, median, mode: modes, stdDev, highest, lowest, range, p25, p75 },
     gradeDistribution,
     scoreFrequency,
     marks: marksWithGrades,
+    outliers,
   };
 
   return { success: true, message: "Analysis complete.", data: analysisData };
@@ -1367,6 +1399,8 @@ export async function downloadAnalysisReport(classId: string, subjectId: string,
     }
     const data = analysisResult.data;
     const doc = new jsPDF();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 14;
     
     // Title
     doc.setFontSize(20);
@@ -1383,41 +1417,70 @@ export async function downloadAnalysisReport(classId: string, subjectId: string,
     // Summary Statistics
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text("Summary Statistics", 14, currentY);
+    doc.text("Summary Statistics", margin, currentY);
     currentY += 8;
     
+    const summaryBody = [
+        ['Students Assessed', data.summary.count],
+        ['Mean Score', data.summary.mean.toFixed(2)],
+        ['Median (P50)', data.summary.median.toFixed(2)],
+        ['Mode(s)', data.summary.mode.join(', ')],
+        ['Standard Deviation', data.summary.stdDev.toFixed(2)],
+        ['25th Percentile (Q1)', data.summary.p25.toFixed(2)],
+        ['75th Percentile (Q3)', data.summary.p75.toFixed(2)],
+        ['Highest Score', data.summary.highest],
+        ['Lowest Score', data.summary.lowest],
+    ];
+
     autoTable(doc, {
         startY: currentY,
-        body: [
-            ['Students Assessed', data.summary.count],
-            ['Mean Score', data.summary.mean.toFixed(2)],
-            ['Median Score', data.summary.median.toFixed(2)],
-            ['Mode(s)', data.summary.mode.join(', ')],
-            ['Standard Deviation', data.summary.stdDev.toFixed(2)],
-            ['Highest Score', data.summary.highest],
-            ['Lowest Score', data.summary.lowest],
-            ['Score Range', data.summary.range],
-        ],
+        body: summaryBody,
         theme: 'plain',
         styles: { fontSize: 10 },
         columnStyles: { 0: { fontStyle: 'bold' } }
     });
     currentY = (doc as any).lastAutoTable.finalY + 10;
     
-    // --- Distributions Section (Refactored) ---
+    // Add Outliers section if any exist
+    if (data.outliers && data.outliers.length > 0) {
+        if (pageHeight - currentY < 40) { // Check if there's enough space for the section
+            doc.addPage();
+            currentY = margin;
+        }
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text("Identified Outliers", margin, currentY);
+        currentY += 8;
+
+        autoTable(doc, {
+            head: [['Student Name', 'Score', 'Type']],
+            body: data.outliers.map(o => [o.studentName, o.score, o.type]),
+            startY: currentY,
+            theme: 'striped',
+            styles: { fontSize: 9 },
+            headStyles: { fillColor: [220, 53, 69] } // Destructive-like color
+        });
+        currentY = (doc as any).lastAutoTable.finalY + 15;
+    }
+
+    // --- Distributions Section ---
+    if (pageHeight - currentY < 40) {
+        doc.addPage();
+        currentY = margin;
+    }
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text("Distributions", 14, currentY);
+    doc.text("Distributions", margin, currentY);
     currentY += 8;
 
-    const distTableWidth = (doc.internal.pageSize.getWidth() - 28 - 10) / 2; // Page width - left/right margins - gap
+    const distTableWidth = (doc.internal.pageSize.getWidth() - (margin * 2) - 10) / 2; // Page width - left/right margins - gap
 
     // Grade Distribution Table
     autoTable(doc, {
         head: [['Grade', 'Count']],
         body: data.gradeDistribution.map(g => [g.grade, g.count]),
         startY: currentY,
-        margin: { left: 14 },
+        margin: { left: margin },
         tableWidth: distTableWidth,
         styles: { fontSize: 9, cellPadding: 1, halign: 'center' },
         headStyles: { fillColor: [76, 175, 80] },
@@ -1429,7 +1492,7 @@ export async function downloadAnalysisReport(classId: string, subjectId: string,
         head: [['Range', 'Count']],
         body: data.scoreFrequency.map(s => [s.range, s.count]),
         startY: currentY,
-        margin: { left: 14 + distTableWidth + 10 }, // Start after first table + gap
+        margin: { left: margin + distTableWidth + 10 }, // Start after first table + gap
         tableWidth: distTableWidth,
         styles: { fontSize: 9, cellPadding: 1, halign: 'center' },
         headStyles: { fillColor: [255, 152, 0] },
@@ -1440,17 +1503,16 @@ export async function downloadAnalysisReport(classId: string, subjectId: string,
     currentY = Math.max(gradeDistFinalY, scoreFreqFinalY) + 15;
 
     // --- Full Marks List Section ---
-    const pageHeight = doc.internal.pageSize.getHeight();
     const marksTableHeightEstimate = 15 + (4 * 6); // Title height + 4 rows
     
     if (pageHeight - currentY < marksTableHeightEstimate) {
         doc.addPage();
-        currentY = 20; 
+        currentY = margin; 
     }
 
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text("Full Marks List (Ranked)", 14, currentY);
+    doc.text("Full Marks List (Ranked)", margin, currentY);
     currentY += 8;
 
     autoTable(doc, {
