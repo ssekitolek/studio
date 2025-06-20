@@ -65,7 +65,7 @@ function Calendar({
         ),
       }}
       captionLayout="dropdown-buttons"
-      fromYear={currentYear - 10}
+      fromYear={currentYear - 100}
       toYear={currentYear + 10}
       {...props}
     />
