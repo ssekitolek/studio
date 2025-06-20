@@ -45,10 +45,10 @@ const dosNavItems = [
     icon: Users,
     isSection: true,
     subItems: [
-      { href: "/dos/teachers", label: "Teachers", icon: BookUser },
-      { href: "/dos/teachers/assignments", label: "Teacher Assignments", icon: UserCheck },
-      { href: "/dos/students", label: "Students", icon: Users },
-      { href: "/dos/classes", label: "Classes & Subjects", icon: ClipboardList },
+      { href: "/dos/teachers", label: "Teachers", icon: BookUser, tooltip: "Manage Teachers" },
+      { href: "/dos/teachers/assignments", label: "Teacher Assignments", icon: UserCheck, tooltip: "Manage Teacher Assignments" },
+      { href: "/dos/students", label: "Students", icon: Users, tooltip: "Manage Students" },
+      { href: "/dos/classes", label: "Classes & Subjects", icon: ClipboardList, tooltip: "Manage Classes & Subjects" },
     ],
   },
   {
@@ -56,9 +56,9 @@ const dosNavItems = [
     icon: Settings2,
     isSection: true,
     subItems: [
-      { href: "/dos/settings/terms", label: "Terms", icon: CalendarDays },
-      { href: "/dos/settings/exams", label: "Exams & Grading", icon: FileText },
-      { href: "/dos/settings/general", label: "General Settings", icon: Settings2 },
+      { href: "/dos/settings/terms", label: "Terms", icon: CalendarDays, tooltip: "Manage Academic Terms" },
+      { href: "/dos/settings/exams", label: "Exams & Grading", icon: FileText, tooltip: "Manage Exams & Grading" },
+      { href: "/dos/settings/general", label: "General Settings", icon: Settings2, tooltip: "Manage General Settings" },
     ],
   },
   { href: "/dos/marks-review", label: "Marks Review", icon: ShieldAlert, tooltip: "Review submitted marks and check for anomalies"},
@@ -74,64 +74,6 @@ export function DosSidebar() {
       return pathname === href;
     }
     return pathname.startsWith(href);
-  };
-
-  const renderNavItem = (item: any, index: number) => {
-    if (item.isSection) {
-      const firstSubItemHref = item.subItems?.[0]?.href || "#";
-      const isSectionActive = item.subItems.some((sub: any) => isItemActive(sub.href));
-
-      return (
-        <React.Fragment key={index}>
-          {/* ---- RENDER FOR COLLAPSED STATE ---- */}
-          <SidebarMenuItem className="group-data-[state=expanded]:hidden mt-2">
-            <Link href={firstSubItemHref}>
-              <SidebarMenuButton 
-                isActive={isSectionActive} 
-                tooltip={item.label} 
-                className="justify-center"
-              >
-                <item.icon className="h-5 w-5" />
-              </SidebarMenuButton>
-            </Link>
-          </SidebarMenuItem>
-
-          {/* ---- RENDER FOR EXPANDED STATE ---- */}
-          <SidebarMenuItem className="group-data-[state=collapsed]:hidden mt-2">
-            {/* Non-clickable header */}
-            <div className="h-auto p-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 pointer-events-none flex items-center gap-2">
-              <item.icon className="h-5 w-5 shrink-0" />
-              <span>{item.label}</span>
-            </div>
-            {/* Clickable sub-items */}
-            <SidebarMenuSub>
-              {item.subItems && item.subItems.map((subItem: any, subIndex: number) => (
-                <SidebarMenuSubItem key={`${index}-${subIndex}`}>
-                  <Link href={subItem.href}>
-                    <SidebarMenuSubButton isActive={isItemActive(subItem.href)} className="justify-start">
-                      <subItem.icon className="h-4 w-4 mr-2" />
-                      <span>{subItem.label}</span>
-                    </SidebarMenuSubButton>
-                  </Link>
-                </SidebarMenuSubItem>
-              ))}
-            </SidebarMenuSub>
-          </SidebarMenuItem>
-        </React.Fragment>
-      );
-    }
-
-    // For non-section, top-level items
-    return (
-      <SidebarMenuItem key={index}>
-        <Link href={item.href}>
-          <SidebarMenuButton isActive={isItemActive(item.href)} tooltip={item.tooltip} className="justify-start">
-            <item.icon className="h-5 w-5" />
-            <span className="group-data-[state=collapsed]:hidden">{item.label}</span>
-          </SidebarMenuButton>
-        </Link>
-      </SidebarMenuItem>
-    );
   };
 
   return (
@@ -156,7 +98,61 @@ export function DosSidebar() {
       <SidebarContent asChild>
         <ScrollArea className="flex-1">
           <SidebarMenu className="px-2 py-2 space-y-1">
-            {dosNavItems.map(renderNavItem)}
+            {dosNavItems.map((item, index) => {
+              if (item.isSection && item.subItems) {
+                return (
+                  <React.Fragment key={index}>
+                    {/* Expanded View: Section Header and indented Sub-Items */}
+                    <div className="group-data-[state=collapsed]:hidden">
+                      <SidebarMenuItem className="mt-2">
+                        <div className="h-auto p-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 pointer-events-none flex items-center gap-2">
+                          <item.icon className="h-5 w-5 shrink-0" />
+                          <span>{item.label}</span>
+                        </div>
+                        <SidebarMenuSub>
+                          {item.subItems.map((subItem, subIndex) => (
+                            <SidebarMenuSubItem key={`${index}-${subIndex}`}>
+                              <Link href={subItem.href}>
+                                <SidebarMenuSubButton isActive={isItemActive(subItem.href)} className="justify-start">
+                                  <subItem.icon className="h-4 w-4 mr-2" />
+                                  <span>{subItem.label}</span>
+                                </SidebarMenuSubButton>
+                              </Link>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      </SidebarMenuItem>
+                    </div>
+
+                    {/* Collapsed View: Each Sub-Item as a top-level icon */}
+                    <div className="group-data-[state=expanded]:hidden">
+                      {item.subItems.map((subItem, subIndex) => (
+                        <SidebarMenuItem key={`${index}-collapsed-${subIndex}`}>
+                          <Link href={subItem.href}>
+                            <SidebarMenuButton isActive={isItemActive(subItem.href)} tooltip={subItem.tooltip || subItem.label} className="justify-start">
+                              <subItem.icon className="h-5 w-5" />
+                              <span className="group-data-[state=collapsed]:hidden">{subItem.label}</span>
+                            </SidebarMenuButton>
+                          </Link>
+                        </SidebarMenuItem>
+                      ))}
+                    </div>
+                  </React.Fragment>
+                );
+              }
+
+              // Render top-level items (like Dashboard, Marks Review, etc.)
+              return (
+                <SidebarMenuItem key={index}>
+                  <Link href={item.href}>
+                    <SidebarMenuButton isActive={isItemActive(item.href)} tooltip={item.tooltip || item.label} className="justify-start">
+                      <item.icon className="h-5 w-5" />
+                      <span className="group-data-[state=collapsed]:hidden">{item.label}</span>
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+              );
+            })}
           </SidebarMenu>
         </ScrollArea>
       </SidebarContent>
