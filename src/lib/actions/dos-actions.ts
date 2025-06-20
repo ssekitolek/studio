@@ -876,10 +876,26 @@ interface ReportRow {
   'Subject': string;
   'Exam': string;
   'Score': number | string;
+  'Grade': string;
   'Date Submitted': string;
   'Submitted By': string;
   'D.O.S. Status': string;
   'D.O.S. Reject Reason'?: string;
+}
+
+function calculateGrade(
+  score: number | null,
+  maxMarks: number,
+  scale: GradingScaleItem[]
+): string {
+  if (score === null || !maxMarks || scale.length === 0) return 'N/A';
+  const percentage = (score / maxMarks) * 100;
+  for (const tier of scale) {
+    if (percentage >= tier.minScore && percentage <= tier.maxScore) {
+      return tier.grade;
+    }
+  }
+  return 'Ungraded'; // For scores outside all defined ranges
 }
 
 async function getAllSubmittedMarksData(): Promise<ReportRow[]> {
@@ -895,11 +911,20 @@ async function getAllSubmittedMarksData(): Promise<ReportRow[]> {
       return [];
     }
 
-    const allStudents = await getStudents();
-    const studentsMap = new Map(allStudents.map(s => [s.studentIdNumber, `${s.firstName} ${s.lastName}`]));
+    const [allStudents, allTeachers, allExams, allPolicies, generalSettings] = await Promise.all([
+      getStudents(),
+      getTeachers(),
+      getExams(),
+      getGradingPolicies(),
+      getGeneralSettings()
+    ]);
 
-    const allTeachers = await getTeachers();
+    const studentsMap = new Map(allStudents.map(s => [s.studentIdNumber, `${s.firstName} ${s.lastName}`]));
     const teachersMap = new Map(allTeachers.map(t => [t.id, t.name]));
+    const examsMap = new Map(allExams.map(e => [e.id, e]));
+    const policiesMap = new Map(allPolicies.map(p => [p.id, p]));
+    const defaultGradingScale = generalSettings.defaultGradingScale || [];
+
 
     const reportRows: ReportRow[] = [];
 
@@ -920,7 +945,20 @@ async function getAllSubmittedMarksData(): Promise<ReportRow[]> {
             }
         }
 
+      const examId = submission.assessmentId.split('_')[0];
+      const exam = examsMap.get(examId);
+      const maxMarks = exam?.maxMarks || 100;
+      
+      let gradingScale: GradingScaleItem[] = defaultGradingScale;
+      if (exam?.gradingPolicyId) {
+          const policy = policiesMap.get(exam.gradingPolicyId);
+          if (policy && Array.isArray(policy.scale)) {
+              gradingScale = policy.scale;
+          }
+      }
+
       submission.submittedMarks.forEach(mark => {
+        const grade = calculateGrade(mark.score, maxMarks, gradingScale);
         reportRows.push({
           'Student ID': mark.studentId,
           'Student Name': studentsMap.get(mark.studentId) || 'Unknown Student',
@@ -928,6 +966,7 @@ async function getAllSubmittedMarksData(): Promise<ReportRow[]> {
           'Subject': subjectName,
           'Exam': examName,
           'Score': mark.score,
+          'Grade': grade,
           'Date Submitted': dateSubmitted,
           'Submitted By': teachersMap.get(submission.teacherId) || submission.teacherId,
           'D.O.S. Status': submission.dosStatus || 'N/A',
@@ -978,6 +1017,7 @@ async function generatePdfDocument(
       styles: { fontSize: 9, cellPadding: 2 },
       columnStyles: {
         'Score': { halign: 'right' },
+        'Grade': { halign: 'center' },
       },
       margin: { top: currentY },
       didDrawPage: (data) => { 
@@ -1281,6 +1321,25 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
         const teacher = await getTeacherById(submissionData.teacherId);
         if(teacher) teacherNameForReport = teacher.name;
     }
+    
+    // --- Grade Calculation Logic ---
+    const examId = submissionData.assessmentId.split('_')[0];
+    const exam = await getExamById(examId);
+    const maxMarks = exam?.maxMarks || 100;
+    let gradingScale: GradingScaleItem[] = [];
+
+    if (exam?.gradingPolicyId) {
+        const policy = await getGradingPolicyById(exam.gradingPolicyId);
+        if (policy?.scale) {
+            gradingScale = policy.scale;
+        }
+    } 
+    
+    if (gradingScale.length === 0) {
+        const settings = await getGeneralSettings();
+        gradingScale = settings.defaultGradingScale || [];
+    }
+    // --- End Grade Calculation Logic ---
 
     const assessmentName = submissionData.assessmentName || 'N/A - N/A - N/A';
     const dateSubmitted = submissionData.dateSubmitted.toDate().toLocaleDateString();
@@ -1293,6 +1352,7 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
       'Student ID': mark.studentId,
       'Student Name': studentsMap.get(mark.studentId) || 'Unknown Student',
       'Score': mark.score,
+      'Grade': calculateGrade(mark.score, maxMarks, gradingScale),
     }));
     const tableHeaders = Object.keys(studentMarksData[0]) as Array<keyof typeof studentMarksData[0]>;
 
@@ -1618,3 +1678,4 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
     }
 }
     
+
