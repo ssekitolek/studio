@@ -10,7 +10,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const GradeEntrySchema = z.object({
   studentId: z.string().describe('Unique identifier for the student.'),
@@ -96,4 +96,3 @@ const gradeAnomalyDetectionFlow = ai.defineFlow(
     return output;
   }
 );
-
