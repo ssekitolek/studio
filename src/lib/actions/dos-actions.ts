@@ -1188,38 +1188,40 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
         const assessmentNameSlug = (submissionData.assessmentName || "submission").replace(/[^a-zA-Z0-9_]/g, '_');
         const sheetName = assessmentNameSlug.substring(0, 30) || "Submission";
 
-        const dataForSheet = [
-            [], // Row for title
-            [], // Row for subtitle
-            tableHeaders, // Header row
-            ...studentMarksData.map(row => tableHeaders.map(header => row[header])) // Data rows
-        ];
-        
-        const worksheet = XLSX.utils.aoa_to_sheet(dataForSheet);
+        // Create worksheet from JSON data first
+        const worksheet = XLSX.utils.json_to_sheet(studentMarksData);
 
-        worksheet['A1'] = { v: `Marks for ${submissionData.assessmentName}`, t: 's', s: { font: { bold: true, sz: 14 }, alignment: { horizontal: 'center' } } };
-        worksheet['A2'] = { v: `Generated on: ${new Date().toLocaleDateString()}`, t: 's', s: { font: { italic: true, sz: 10 }, alignment: { horizontal: 'center' } } };
-        
-        const merges = [
+        // Prepend title and subtitle rows using sheet_add_aoa (safer method)
+        const title = `Marks for ${submissionData.assessmentName}`;
+        const subtitle = `Generated on: ${new Date().toLocaleDateString()}`;
+        XLSX.utils.sheet_add_aoa(worksheet, [[title]], { origin: "A1" });
+        XLSX.utils.sheet_add_aoa(worksheet, [[subtitle]], { origin: "A2" });
+
+        // Apply merges for the new title rows
+        if (!worksheet['!merges']) worksheet['!merges'] = [];
+        worksheet['!merges'].push(
             { s: { r: 0, c: 0 }, e: { r: 0, c: tableHeaders.length - 1 } },
-            { s: { r: 1, c: 0 }, e: { r: 1, c: tableHeaders.length - 1 } },
-        ];
-        worksheet['!merges'] = merges;
+            { s: { r: 1, c: 0 }, e: { r: 1, c: tableHeaders.length - 1 } }
+        );
         
+        // Style the title and header rows
+        if(worksheet['A1']) worksheet['A1'].s = { font: { bold: true, sz: 14 }, alignment: { horizontal: 'center' } };
+        if(worksheet['A2']) worksheet['A2'].s = { font: { italic: true, sz: 10 }, alignment: { horizontal: 'center' } };
+
         const headerStyle = { font: { bold: true, color: { rgb: "FFFFFFFF" } }, fill: { fgColor: { rgb: "FF34495E" } }, alignment: { horizontal: "center" } };
         tableHeaders.forEach((_header, colIndex) => {
+            // Headers are now on row 3 (index 2)
             const cellAddress = XLSX.utils.encode_cell({ r: 2, c: colIndex });
             if (worksheet[cellAddress]) {
                 worksheet[cellAddress].s = headerStyle;
             }
         });
-        
-        const colWidths = tableHeaders.map((header, colIndex) => {
-            const dataCol = studentMarksData.map(row => row[header as keyof typeof row]);
-            const maxLength = Math.max(
-                header.length,
-                ...dataCol.map(val => String(val ?? "").length)
-            );
+
+        // Calculate and set column widths
+        const colWidths = tableHeaders.map(header => {
+            const headerLength = header.length;
+            const dataCol = studentMarksData.map(row => String(row[header as keyof typeof row] ?? "").length);
+            const maxLength = Math.max(headerLength, ...dataCol);
             return { wch: maxLength + 2 };
         });
         worksheet['!cols'] = colWidths;
@@ -1575,5 +1577,3 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
         };
     }
 }
-
-    
