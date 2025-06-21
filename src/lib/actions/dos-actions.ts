@@ -1119,7 +1119,7 @@ export async function updateSubmittedMarksByDOS(
   }
 }
 
-export async function downloadSingleMarkSubmission(submissionId: string, format: 'csv' | 'xlsx' | 'pdf'): Promise<{ success: boolean; message: string; data?: string | Uint8Array }> {
+export async function downloadSingleMarkSubmission(submissionId: string, format: 'csv' | 'xlsx'): Promise<{ success: boolean; message: string; data?: string | Uint8Array }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized." };
   }
@@ -1579,3 +1579,5 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
         };
     }
 }
+
+    
