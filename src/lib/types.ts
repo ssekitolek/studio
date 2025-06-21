@@ -227,7 +227,31 @@ export interface AssessmentAnalysisData {
   }>;
 }
 
-// For Teacher Class Management Page
+// --- Teacher Class Management Types ---
+export interface StudentClassMark {
+  studentId: string; // The student's document ID
+  studentIdNumber: string;
+  studentName: string;
+  score: number | null;
+  grade: string;
+}
+
+export interface ClassAssessment {
+    examId: string;
+    examName: string;
+    subjectId: string;
+    subjectName: string;
+    maxMarks: number;
+    marks: StudentClassMark[];
+    summary: { // Simplified analysis
+        average: number;
+        highest: number;
+        lowest: number;
+        submissionCount: number;
+    };
+    gradeDistribution: Array<{ grade: string, count: number }>;
+}
+
 export interface ClassManagementStudent {
   id: string; // student document id
   studentIdNumber: string;
@@ -238,4 +262,10 @@ export interface ClassManagementStudent {
 export interface ClassTeacherData {
   classInfo: ClassInfo;
   students: ClassManagementStudent[];
+  assessments: ClassAssessment[];
+  // Placeholder for attendance feature
+  attendance?: {
+      overallPercentage: number;
+      absentStudentsToday: number;
+  };
 }

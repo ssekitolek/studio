@@ -1,9 +1,10 @@
+
 "use server";
 
-import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation, Exam as ExamTypeFirebase, TeacherStats, MarkSubmissionFirestoreRecord, SubmissionHistoryDisplayItem, ClassInfo, Subject as SubjectType, ClassTeacherData, ClassManagementStudent } from "@/lib/types";
+import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation, Exam as ExamTypeFirebase, TeacherStats, MarkSubmissionFirestoreRecord, SubmissionHistoryDisplayItem, ClassInfo, Subject as SubjectType, ClassTeacherData, ClassManagementStudent, GradingScaleItem, ClassAssessment, StudentClassMark } from "@/lib/types";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
 import { revalidatePath } from "next/cache";
-import { getClasses, getSubjects, getExams as getAllExamsFromDOS, getGeneralSettings, getTeacherById as getTeacherByIdFromDOS, getTerms, getStudents as getAllStudents } from '@/lib/actions/dos-actions';
+import { getClasses, getSubjects, getExams as getAllExamsFromDOS, getGeneralSettings, getTeacherById as getTeacherByIdFromDOS, getTerms, getStudents as getAllStudents, getGradingPolicies } from '@/lib/actions/dos-actions';
 import type { GeneralSettings, Term } from '@/lib/types';
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, limit, addDoc, orderBy, Timestamp, doc, getDoc, getCountFromServer, FieldPath, updateDoc } from "firebase/firestore";
@@ -14,6 +15,22 @@ interface MarksSubmissionData {
   assessmentId: string; // Composite ID: examDocId_classDocId_subjectDocId
   marks: Array<{ studentId: string; score: number }>; // studentId is studentIdNumber
 }
+
+function calculateGrade(
+  score: number | null,
+  maxMarks: number,
+  scale: GradingScaleItem[]
+): string {
+  if (score === null || !maxMarks || scale.length === 0) return 'N/A';
+  const percentage = (score / maxMarks) * 100;
+  for (const tier of scale) {
+    if (percentage >= tier.minScore && percentage <= tier.maxScore) {
+      return tier.grade;
+    }
+  }
+  return 'Ungraded'; 
+}
+
 
 export async function loginTeacherByEmailPassword(email: string, passwordToVerify: string): Promise<{ success: boolean; message: string; teacher?: { id: string; name: string; email: string; } }> {
   console.log(`[loginTeacherByEmailPassword] Attempting login for email: ${email}`);
@@ -918,50 +935,144 @@ export async function changeTeacherPassword(
 }
 
 export async function getClassTeacherManagementData(teacherId: string): Promise<ClassTeacherData[]> {
-  if (!db) {
-    console.error("[getClassTeacherManagementData] Firestore is not initialized.");
-    return [];
-  }
-  if (!teacherId) {
-    console.warn("[getClassTeacherManagementData] Teacher ID is missing.");
-    return [];
-  }
-
-  try {
-    const allClasses = await getClasses(); // Use existing optimized getClasses
-    const teacherClasses = allClasses.filter(c => c.classTeacherId === teacherId);
-
-    if (teacherClasses.length === 0) {
-      return [];
+    if (!db) {
+        console.error("[getClassTeacherManagementData] Firestore is not initialized.");
+        return [];
+    }
+    if (!teacherId) {
+        console.warn("[getClassTeacherManagementData] Teacher ID is missing.");
+        return [];
     }
 
-    const teacherClassIds = teacherClasses.map(c => c.id);
+    try {
+        const [
+            allClasses,
+            allStudents,
+            allSubjects,
+            allExams,
+            generalSettings,
+            allGradingPolicies
+        ] = await Promise.all([
+            getClasses(),
+            getAllStudents(),
+            getSubjects(),
+            getAllExamsFromDOS(),
+            getGeneralSettings(),
+            getGradingPolicies()
+        ]);
 
-    const allStudents = await getAllStudents(); // Use existing optimized getStudents
-    const studentsByClassId = new Map<string, ClassManagementStudent[]>();
+        const teacherClasses = allClasses.filter(c => c.classTeacherId === teacherId);
 
-    allStudents.forEach(student => {
-      if (teacherClassIds.includes(student.classId)) {
-        if (!studentsByClassId.has(student.classId)) {
-          studentsByClassId.set(student.classId, []);
+        if (teacherClasses.length === 0) {
+            return [];
         }
-        studentsByClassId.get(student.classId)!.push({
-          id: student.id,
-          studentIdNumber: student.studentIdNumber,
-          firstName: student.firstName,
-          lastName: student.lastName,
+
+        const currentTermId = generalSettings.currentTermId;
+        if (!currentTermId) {
+            // Return basic info if no term is set
+            return teacherClasses.map(classInfo => ({
+                classInfo,
+                students: allStudents
+                    .filter(s => s.classId === classInfo.id)
+                    .map(s => ({ id: s.id, studentIdNumber: s.studentIdNumber, firstName: s.firstName, lastName: s.lastName })),
+                assessments: [],
+                 attendance: { overallPercentage: 95, absentStudentsToday: 2 }, // Placeholder
+            }));
+        }
+
+        const examsForCurrentTerm = allExams.filter(e => e.termId === currentTermId);
+        
+        const assessmentIdsToFetch: string[] = [];
+        teacherClasses.forEach(classInfo => {
+            classInfo.subjects.forEach(subject => {
+                examsForCurrentTerm.forEach(exam => {
+                    assessmentIdsToFetch.push(`${exam.id}_${classInfo.id}_${subject.id}`);
+                });
+            });
         });
-      }
-    });
+        
+        const submissionsByAssessmentId = new Map<string, MarkSubmissionFirestoreRecord>();
+        if (assessmentIdsToFetch.length > 0) {
+            // Firestore 'in' queries are limited to 30 elements per query.
+            const chunkSize = 30;
+            for (let i = 0; i < assessmentIdsToFetch.length; i += chunkSize) {
+                const chunk = assessmentIdsToFetch.slice(i, i + chunkSize);
+                const q = query(
+                    collection(db, "markSubmissions"),
+                    where("assessmentId", "in", chunk),
+                    where("dosStatus", "==", "Approved")
+                );
+                const querySnapshot = await getDocs(q);
+                querySnapshot.forEach(doc => {
+                    submissionsByAssessmentId.set(doc.data().assessmentId, doc.data() as MarkSubmissionFirestoreRecord);
+                });
+            }
+        }
 
-    const result: ClassTeacherData[] = teacherClasses.map(classInfo => ({
-      classInfo: classInfo,
-      students: (studentsByClassId.get(classInfo.id) || []).sort((a, b) => a.lastName.localeCompare(b.lastName)),
-    }));
+        const result: ClassTeacherData[] = teacherClasses.map(classInfo => {
+            const classAssessments: ClassAssessment[] = [];
 
-    return result;
-  } catch (error) {
-    console.error(`Error fetching class management data for teacher ${teacherId}:`, error);
-    return [];
-  }
+            classInfo.subjects.forEach(subject => {
+                examsForCurrentTerm.forEach(exam => {
+                    const assessmentId = `${exam.id}_${classInfo.id}_${subject.id}`;
+                    const submission = submissionsByAssessmentId.get(assessmentId);
+
+                    if (submission && submission.submittedMarks) {
+                         const gradingPolicy = allGradingPolicies.find(p => p.id === exam.gradingPolicyId) || allGradingPolicies.find(p => p.isDefault);
+                         const gradingScale = gradingPolicy?.scale || generalSettings.defaultGradingScale || [];
+                         
+                         const marks: StudentClassMark[] = submission.submittedMarks.map(mark => {
+                            const studentInfo = allStudents.find(s => s.studentIdNumber === mark.studentId);
+                            return {
+                                studentId: studentInfo?.id || 'unknown',
+                                studentIdNumber: mark.studentId,
+                                studentName: studentInfo ? `${studentInfo.firstName} ${studentInfo.lastName}` : "Unknown Student",
+                                score: mark.score,
+                                grade: calculateGrade(mark.score, exam.maxMarks, gradingScale),
+                            };
+                        });
+                        
+                        const scores = marks.map(m => m.score).filter((s): s is number => s !== null);
+                        const summary = scores.length > 0 ? {
+                            average: scores.reduce((a, b) => a + b, 0) / scores.length,
+                            highest: Math.max(...scores),
+                            lowest: Math.min(...scores),
+                            submissionCount: scores.length
+                        } : { average: 0, highest: 0, lowest: 0, submissionCount: 0 };
+                        
+                        const gradeDistributionMap = new Map<string, number>();
+                        marks.forEach(m => gradeDistributionMap.set(m.grade, (gradeDistributionMap.get(m.grade) || 0) + 1));
+                        const gradeDistribution = Array.from(gradeDistributionMap.entries()).map(([grade, count]) => ({ grade, count }));
+
+
+                        classAssessments.push({
+                            examId: exam.id,
+                            examName: exam.name,
+                            subjectId: subject.id,
+                            subjectName: subject.name,
+                            maxMarks: exam.maxMarks,
+                            marks: marks,
+                            summary,
+                            gradeDistribution,
+                        });
+                    }
+                });
+            });
+
+            return {
+                classInfo,
+                students: allStudents
+                    .filter(s => s.classId === classInfo.id)
+                    .map(s => ({ id: s.id, studentIdNumber: s.studentIdNumber, firstName: s.firstName, lastName: s.lastName })),
+                assessments: classAssessments.sort((a,b) => a.examName.localeCompare(b.examName) || a.subjectName.localeCompare(b.subjectName)),
+                attendance: { overallPercentage: 95, absentStudentsToday: 2 }, // Placeholder
+            };
+        });
+
+        return result;
+
+    } catch (error) {
+        console.error(`Error fetching class management data for teacher ${teacherId}:`, error);
+        return [];
+    }
 }
