@@ -1188,48 +1188,33 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
         const assessmentNameSlug = (submissionData.assessmentName || "submission").replace(/[^a-zA-Z0-9_]/g, '_');
         const sheetName = assessmentNameSlug.substring(0, 30) || "Submission";
 
-        // Manually construct the entire sheet as a 2D array
-        const sheetData: (string|number)[][] = [];
-        
-        const title = `Marks for ${submissionData.assessmentName}`;
-        const subtitle = `Generated on: ${new Date().toLocaleDateString()}`;
-        sheetData.push([title]);
-        sheetData.push([subtitle]);
-        sheetData.push([]); // Spacer row
+        // Use json_to_sheet for robust creation of the main data table
+        const worksheet = XLSX.utils.json_to_sheet(studentMarksData);
 
-        sheetData.push(tableHeaders);
+        // Prepend title and subtitle rows using sheet_add_aoa which is safer
+        XLSX.utils.sheet_add_aoa(worksheet, [
+            [`Marks for ${submissionData.assessmentName || 'N/A'}`],
+            [`Generated on: ${new Date().toLocaleDateString()}`],
+            [], // Spacer row
+        ], { origin: "A1" });
 
-        studentMarksData.forEach(row => {
-            const rowData = tableHeaders.map(header => row[header as keyof typeof row]);
-            sheetData.push(rowData);
+        // Auto-fit columns
+        const colWidths = tableHeaders.map((header) => {
+             const maxLength = Math.max(
+                header.length,
+                ...studentMarksData.map(row => String(row[header as keyof typeof row] ?? "").length)
+             );
+             return { wch: maxLength + 2 };
         });
+        worksheet['!cols'] = colWidths;
 
-        const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
-
+        // Merge the title and subtitle cells
         if (!worksheet['!merges']) worksheet['!merges'] = [];
         worksheet['!merges'].push(
             { s: { r: 0, c: 0 }, e: { r: 0, c: tableHeaders.length - 1 } },
             { s: { r: 1, c: 0 }, e: { r: 1, c: tableHeaders.length - 1 } }
         );
 
-        if(worksheet['A1']) worksheet['A1'].s = { font: { bold: true, sz: 14 }, alignment: { horizontal: 'center' } };
-        if(worksheet['A2']) worksheet['A2'].s = { font: { italic: true, sz: 10 }, alignment: { horizontal: 'center' } };
-        
-        const headerStyle = { font: { bold: true, color: { rgb: "FFFFFFFF" } }, fill: { fgColor: { rgb: "FF34495E" } }, alignment: { horizontal: "center" } };
-        tableHeaders.forEach((_header, colIndex) => {
-            const cellAddress = XLSX.utils.encode_cell({ r: 3, c: colIndex }); // Headers are on row 4 (index 3)
-            if (worksheet[cellAddress]) {
-                worksheet[cellAddress].s = headerStyle;
-            }
-        });
-
-        const colWidths = tableHeaders.map((header, index) => {
-            const dataLengths = sheetData.map(row => String(row[index] ?? "").length);
-            const maxLength = Math.max(...dataLengths);
-            return { wch: maxLength + 2 };
-        });
-        worksheet['!cols'] = colWidths;
-        
         XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
         const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
         return { success: true, message: "XLSX data prepared.", data: new Uint8Array(excelBuffer) };
@@ -1581,3 +1566,5 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
         };
     }
 }
+
+    
