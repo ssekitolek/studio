@@ -767,14 +767,29 @@ export async function deleteExam(examId: string): Promise<{ success: boolean; me
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
-    // TODO: Implement dependency checks before deleting an exam.
-    // For example, check if there are markSubmissions associated with this exam.
-    // Also, remove this examId from Teacher's subjectsAssigned.examIds array.
-    console.warn(`[deleteExam] Deleting exam ${examId}. IMPORTANT: Dependency checks (markSubmissions, teacher assignments) are not yet implemented.`);
+    // Dependency check: Check for mark submissions
+    const submissionsRef = collection(db, "markSubmissions");
+    const q = query(
+      submissionsRef,
+      where("assessmentId", ">=", `${examId}_`),
+      where("assessmentId", "<", `${examId}_\uf8ff`),
+      limit(1)
+    );
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      return {
+        success: false,
+        message: "Cannot delete exam: Marks have already been submitted for this exam. Please handle or remove existing submissions first."
+      };
+    }
+    
+    // TODO: Also remove this examId from Teacher's subjectsAssigned.examIds array.
+    console.warn(`[deleteExam] Deleting exam ${examId}. IMPORTANT: Unlinking from teacher assignments is not yet implemented.`);
     
     await deleteDoc(doc(db, "exams", examId));
     revalidatePath("/dos/settings/exams");
-    return { success: true, message: "Exam deleted successfully. Note: Associated marks or teacher assignments were not automatically unlinked." };
+    return { success: true, message: "Exam deleted successfully." };
   } catch (error) {
     console.error(`Error in deleteExam for ${examId}:`, error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
@@ -870,6 +885,46 @@ export async function getGradingPolicyById(policyId: string): Promise<GradingPol
   } catch (error) {
     console.error(`Error fetching grading policy ${policyId}:`, error);
     return null;
+  }
+}
+
+export async function deleteGradingPolicy(policyId: string): Promise<{ success: boolean; message: string }> {
+  if (!db) {
+    return { success: false, message: "Firestore is not initialized." };
+  }
+
+  try {
+    const policyRef = doc(db, "gradingPolicies", policyId);
+    const policySnap = await getDoc(policyRef);
+
+    if (!policySnap.exists()) {
+      return { success: false, message: "Grading policy not found." };
+    }
+
+    if (policySnap.data().isDefault) {
+      return { success: false, message: "Cannot delete the default grading policy. Please set another policy as default first." };
+    }
+
+    const examsRef = collection(db, "exams");
+    const q = query(examsRef, where("gradingPolicyId", "==", policyId), limit(1));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      const examName = querySnapshot.docs[0].data().name;
+      return { 
+        success: false, 
+        message: `Cannot delete policy. It is currently assigned to at least one exam (e.g., "${examName}"). Please assign a different policy to all dependent exams first.`
+      };
+    }
+
+    await deleteDoc(policyRef);
+    revalidatePath("/dos/settings/exams");
+    return { success: true, message: "Grading policy deleted successfully." };
+
+  } catch (error) {
+    console.error(`Error deleting grading policy ${policyId}:`, error);
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+    return { success: false, message: `Failed to delete policy: ${errorMessage}` };
   }
 }
 
@@ -1192,16 +1247,19 @@ export async function downloadSingleMarkSubmission(
         const reportTitle = `${submissionData.assessmentName || "Marks Report"}`;
         const generatedOn = `Generated on: ${new Date().toLocaleString()}`;
 
-        // Build the sheet content as an array of arrays
-        const sheetData = [
-            [{ v: reportTitle, s: { font: { bold: true, sz: 16 }, alignment: { horizontal: "center" } } }, null, null, null],
-            [{ v: generatedOn, s: { font: { sz: 10, italic: true }, alignment: { horizontal: "center" } } }, null, null, null],
+        // Create the worksheet from JSON data first
+        const worksheet = XLSX.utils.json_to_sheet(studentMarksData, {
+            header: ["Student ID", "Student Name", "Score", "Grade"],
+            skipHeader: true, // We'll add a styled header manually
+        });
+
+        // Prepend styled header, title, and subtitle
+        XLSX.utils.sheet_add_aoa(worksheet, [
+            [{ v: reportTitle, s: { font: { bold: true, sz: 16 }, alignment: { horizontal: "center" } } }],
+            [{ v: generatedOn, s: { font: { sz: 10, italic: true }, alignment: { horizontal: "center" } } }],
             [], // Spacer row
-            Object.keys(studentMarksData[0]).map(header => ({ v: header, s: { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "4F81BD" } } } })),
-            ...studentMarksData.map(row => Object.values(row).map(val => ({ v: val })))
-        ];
-        
-        const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+            ["Student ID", "Student Name", "Score", "Grade"].map(h => ({ v: h, s: { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "4F81BD" } } } }))
+        ], { origin: "A1" });
 
         // Merge title and subtitle cells
         worksheet['!merges'] = [

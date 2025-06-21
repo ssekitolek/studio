@@ -1,19 +1,20 @@
 
 import { PageHeader } from "@/components/shared/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowLeft, Edit3, AlertTriangle, Scale } from "lucide-react";
-import { GradingPolicyForm } from "@/components/forms/GradingPolicyForm";
+import { ArrowLeft, Edit3, AlertTriangle } from "lucide-react";
 import { getGradingPolicyById } from "@/lib/actions/dos-actions";
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from "@/components/ui/alert";
+import { GradingPolicyEditView } from "./GradingPolicyEditView";
 
 interface EditGradingPolicyPageProps {
   params: { policyId: string };
+  searchParams?: { action?: string };
 }
 
-export default async function EditGradingPolicyPage({ params }: EditGradingPolicyPageProps) {
+export default async function EditGradingPolicyPage({ params, searchParams }: EditGradingPolicyPageProps) {
   const policyData = await getGradingPolicyById(params.policyId);
+  const showDeletePrompt = searchParams?.action === 'delete_prompt';
 
   if (!policyData) {
     return (
@@ -42,30 +43,5 @@ export default async function EditGradingPolicyPage({ params }: EditGradingPolic
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title={`Edit Grading Policy: ${policyData.name}`}
-        description="Modify this grading scale or policy."
-        icon={Edit3}
-        actionButton={
-          <Button variant="outline" asChild>
-            <Link href="/dos/settings/exams">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Exams & Grading
-            </Link>
-          </Button>
-        }
-      />
-      <Card className="shadow-md">
-        <CardHeader>
-          <CardTitle className="font-headline text-xl text-primary">Edit Grading Policy Form</CardTitle>
-          <CardDescription>Update grades and score ranges for policy "{policyData.name}" (ID: {params.policyId}).</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <GradingPolicyForm policyId={params.policyId} initialData={policyData} />
-        </CardContent>
-      </Card>
-    </div>
-  );
+  return <GradingPolicyEditView policy={policyData} showDeletePromptInitially={showDeletePrompt} />;
 }

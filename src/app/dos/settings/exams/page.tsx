@@ -7,6 +7,7 @@ import { FileText, PlusCircle, Scale, CalendarClock, UserCircle, BookOpen, Tag, 
 import { getExams, getGradingPolicies, getTeachers, getClasses, getSubjects } from "@/lib/actions/dos-actions";
 import type { Exam, GradingPolicy, Teacher, ClassInfo, Subject } from "@/lib/types";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 
 
 export default async function ManageExamsAndGradingPage() {
@@ -138,8 +139,32 @@ export default async function ManageExamsAndGradingPage() {
         <CardContent>
            {gradingPolicies.length > 0 ? gradingPolicies.map(policy => (
              <Card key={policy.id} className="mb-4 hover:shadow-lg transition-shadow">
-                <CardHeader>
-                    <CardTitle className="text-lg">{policy.name} {policy.isDefault && <span className="text-xs font-normal text-green-600 ml-2">(Default)</span>}</CardTitle>
+                <CardHeader className="flex-row items-center justify-between pb-4">
+                    <CardTitle className="text-lg">{policy.name} {policy.isDefault && <Badge variant="default" className="ml-2 bg-green-600">Default</Badge>}</CardTitle>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link href={`/dos/settings/grading/${policy.id}/edit`}>
+                              <Edit3 className="mr-2 h-4 w-4" /> Edit
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator/>
+                           <DropdownMenuItem 
+                            className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            asChild
+                           >
+                             <Link href={`/dos/settings/grading/${policy.id}/edit?action=delete_prompt`}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                             </Link>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </CardHeader>
                 <CardContent>
                     {Array.isArray(policy.scale) && policy.scale.length > 0 ? (
@@ -149,9 +174,6 @@ export default async function ManageExamsAndGradingPage() {
                     ) : (
                         <p className="text-sm text-muted-foreground italic">No grade tiers defined for this policy.</p>
                     )}
-                     <Button variant="link" size="sm" className="p-0 h-auto mt-2 self-start text-xs" asChild>
-                        <Link href={`/dos/settings/grading/${policy.id}/edit`}>Edit Policy</Link>
-                    </Button>
                 </CardContent>
              </Card>
            )) : (

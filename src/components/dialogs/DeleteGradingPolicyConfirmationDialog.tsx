@@ -14,42 +14,44 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { deleteExam } from "@/lib/actions/dos-actions";
+import { deleteGradingPolicy } from "@/lib/actions/dos-actions";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Trash2, AlertTriangle } from "lucide-react";
 
-interface DeleteExamConfirmationDialogProps {
-  examId: string;
-  examName: string;
+interface DeleteGradingPolicyConfirmationDialogProps {
+  policyId: string;
+  policyName: string;
+  isDefault: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function DeleteExamConfirmationDialog({
-  examId,
-  examName,
+export function DeleteGradingPolicyConfirmationDialog({
+  policyId,
+  policyName,
+  isDefault,
   open,
   onOpenChange,
-}: DeleteExamConfirmationDialogProps) {
+}: DeleteGradingPolicyConfirmationDialogProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
   const handleDelete = async () => {
     startTransition(async () => {
-      const result = await deleteExam(examId);
+      const result = await deleteGradingPolicy(policyId);
       if (result.success) {
         toast({
-          title: "Exam Deleted",
-          description: `Exam type "${examName}" has been successfully deleted.`,
+          title: "Grading Policy Deleted",
+          description: `Policy "${policyName}" has been successfully deleted.`,
         });
         onOpenChange(false); 
         router.push("/dos/settings/exams"); 
         router.refresh(); 
       } else {
         toast({
-          title: "Error Deleting Exam",
-          description: result.message || "Failed to delete exam type.",
+          title: "Error Deleting Policy",
+          description: result.message || "Failed to delete policy.",
           variant: "destructive",
         });
       }
@@ -62,20 +64,20 @@ export function DeleteExamConfirmationDialog({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center">
             <AlertTriangle className="mr-2 h-5 w-5 text-destructive" />
-            Are you sure?
+            Are you absolutely sure?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This action will permanently delete the exam type: <strong>{examName}</strong> (ID: {examId}). 
-            This action cannot be undone. 
+            This action will permanently delete the grading policy: <strong>{policyName}</strong> (ID: {policyId}). 
+            This action cannot be undone.
             <br />
-            <strong className="text-destructive mt-2 block">Important:</strong> If any marks have been submitted for this exam, the system will prevent deletion. You must handle or remove those submissions first.
+            <strong className="text-destructive mt-2 block">Important:</strong> If this policy is currently set as the default, or if it is assigned to any exams, the system will prevent deletion. You must change the default policy or reassign exams first.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
-            disabled={isPending}
+            disabled={isPending || isDefault}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             {isPending ? (
@@ -83,7 +85,7 @@ export function DeleteExamConfirmationDialog({
             ) : (
               <Trash2 className="mr-2 h-4 w-4" />
             )}
-            Delete Exam Type
+            Delete Policy
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
