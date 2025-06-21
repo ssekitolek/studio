@@ -7,8 +7,6 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference, runTransaction, writeBatch, Timestamp, orderBy, setDoc } from "firebase/firestore";
 import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 
 // --- Teacher Management ---
@@ -955,69 +953,6 @@ function calculateGrade(
   return 'Ungraded'; // For scores outside all defined ranges
 }
 
-async function generatePdfDocument(
-  title: string,
-  metadata: Array<{ label: string, value: string }>,
-  headers: string[],
-  dataRows: (string|number)[][],
-  footer: string
-): Promise<Uint8Array> {
-  const doc = new jsPDF();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 15;
-  let currentY = margin;
-
-  doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
-  doc.text(title, pageWidth / 2, currentY, { align: 'center' });
-  currentY += 10;
-
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  metadata.forEach(item => {
-    doc.text(`${item.label}: ${item.value}`, margin, currentY);
-    currentY += 6;
-  });
-  currentY += 4; 
-
-  if (headers.length > 0 && dataRows.length > 0) {
-    autoTable(doc, {
-      startY: currentY,
-      head: [headers],
-      body: dataRows,
-      theme: 'grid',
-      headStyles: { fillColor: [52, 73, 94], textColor: 255, fontStyle: 'bold' },
-      styles: { fontSize: 9, cellPadding: 2 },
-      columnStyles: {
-        'Score': { halign: 'right' },
-        'Grade': { halign: 'center' },
-        'Rank': { halign: 'center' },
-      },
-      margin: { top: currentY },
-      didDrawPage: (data) => { 
-        currentY = data.cursor?.y ?? margin; 
-      }
-    });
-    currentY = (doc as any).lastAutoTable.finalY + 10;
-  } else {
-    doc.text("No data available for the table.", margin, currentY);
-    currentY += 10;
-  }
-
-  doc.setFontSize(8);
-  doc.setTextColor(100);
-  const footerY = pageHeight - margin / 2;
-  const pageCount = (doc as any).internal.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.text(footer, margin, footerY, { align: 'left' });
-    doc.text(`Page ${i} of ${pageCount}`, pageWidth - margin, footerY, { align: 'right' });
-  }
-
-  return doc.output('arraybuffer') as Uint8Array;
-}
-
 
 export async function getMarksForReview(classId: string, subjectId: string, examId: string): Promise<MarksForReviewPayload> {
   const defaultPayload: MarksForReviewPayload = { submissionId: null, assessmentName: null, marks: [], dosStatus: undefined, dosRejectReason: undefined };
@@ -1188,7 +1123,10 @@ export async function updateSubmittedMarksByDOS(
   }
 }
 
-export async function downloadSingleMarkSubmission(submissionId: string, format: 'csv'): Promise<{ success: boolean; message: string; data?: string }> {
+export async function downloadSingleMarkSubmission(
+    submissionId: string,
+    format: 'csv' | 'xlsx'
+): Promise<{ success: boolean; message: string; data?: string; filename?: string }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized." };
   }
@@ -1205,6 +1143,7 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
     }
 
     const submissionData = submissionSnap.data() as MarkSubmissionFirestoreRecord;
+    const assessmentNameSlug = (submissionData.assessmentName || "submission").replace(/[^a-zA-Z0-9_]/g, '_');
 
     if (!submissionData.submittedMarks || submissionData.submittedMarks.length === 0) {
       return { success: false, message: "No marks found in this submission." };
@@ -1220,11 +1159,8 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
 
     if (exam?.gradingPolicyId) {
         const policy = await getGradingPolicyById(exam.gradingPolicyId);
-        if (policy?.scale) {
-            gradingScale = policy.scale;
-        }
+        if (policy?.scale) gradingScale = policy.scale;
     } 
-    
     if (gradingScale.length === 0) {
         const settings = await getGeneralSettings();
         gradingScale = settings.defaultGradingScale || [];
@@ -1236,13 +1172,11 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
       'Score': mark.score,
       'Grade': calculateGrade(mark.score, maxMarks, gradingScale),
     }));
-    const tableHeaders = Object.keys(studentMarksData[0]) as Array<keyof typeof studentMarksData[0]>;
 
     if (format === 'csv') {
-      const headerRow = tableHeaders.join(',');
+      const headerRow = Object.keys(studentMarksData[0]).join(',');
       const dataRows = studentMarksData.map(row =>
-        tableHeaders.map(header => {
-          const value = row[header];
+        Object.values(row).map(value => {
           const stringValue = String(value === undefined || value === null ? '' : value);
           if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
             return `"${stringValue.replace(/"/g, '""')}"`;
@@ -1251,13 +1185,53 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
         }).join(',')
       );
       const csvData = `${headerRow}\n${dataRows.join('\n')}`;
-      return { success: true, message: "CSV data prepared.", data: csvData };
+      return { success: true, message: "CSV data prepared.", data: csvData, filename: `${assessmentNameSlug}_report.csv` };
     }
+    
+    if (format === 'xlsx') {
+        const reportTitle = `${submissionData.assessmentName || "Marks Report"}`;
+        const generatedOn = `Generated on: ${new Date().toLocaleString()}`;
+
+        // Build the sheet content as an array of arrays
+        const sheetData = [
+            [{ v: reportTitle, s: { font: { bold: true, sz: 16 }, alignment: { horizontal: "center" } } }, null, null, null],
+            [{ v: generatedOn, s: { font: { sz: 10, italic: true }, alignment: { horizontal: "center" } } }, null, null, null],
+            [], // Spacer row
+            Object.keys(studentMarksData[0]).map(header => ({ v: header, s: { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "4F81BD" } } } })),
+            ...studentMarksData.map(row => Object.values(row).map(val => ({ v: val })))
+        ];
+        
+        const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+
+        // Merge title and subtitle cells
+        worksheet['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }, // Title
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } }  // Subtitle
+        ];
+
+        // Calculate column widths
+        const colWidths = [
+            { wch: 15 }, // Student ID
+            { wch: 25 }, // Student Name
+            { wch: 10 }, // Score
+            { wch: 10 }  // Grade
+        ];
+        worksheet['!cols'] = colWidths;
+        
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Marks Report');
+        
+        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
+        const base64Data = Buffer.from(excelBuffer).toString('base64');
+        
+        return { success: true, message: "Excel file prepared.", data: base64Data, filename: `${assessmentNameSlug}_report.xlsx` };
+    }
+
     return { success: false, message: "Invalid format selected." };
   } catch (error) {
     console.error(`Error in downloadSingleMarkSubmission for ID ${submissionId}:`, error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
-    return { success: false, message: `Failed to prepare specific submission data: ${errorMessage}` };
+    return { success: false, message: `Failed to prepare submission data: ${errorMessage}` };
   }
 }
 
@@ -1600,5 +1574,3 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
         };
     }
 }
-
-    
