@@ -1119,7 +1119,7 @@ export async function updateSubmittedMarksByDOS(
   }
 }
 
-export async function downloadSingleMarkSubmission(submissionId: string, format: 'csv' | 'xlsx'): Promise<{ success: boolean; message: string; data?: string | Uint8Array }> {
+export async function downloadSingleMarkSubmission(submissionId: string, format: 'csv'): Promise<{ success: boolean; message: string; data?: string }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized." };
   }
@@ -1183,41 +1183,6 @@ export async function downloadSingleMarkSubmission(submissionId: string, format:
       );
       const csvData = `${headerRow}\n${dataRows.join('\n')}`;
       return { success: true, message: "CSV data prepared.", data: csvData };
-    } else if (format === 'xlsx') {
-        const workbook = XLSX.utils.book_new();
-        const assessmentNameSlug = (submissionData.assessmentName || "submission").replace(/[^a-zA-Z0-9_]/g, '_');
-        const sheetName = assessmentNameSlug.substring(0, 30) || "Submission";
-
-        // Use json_to_sheet for robust creation of the main data table
-        const worksheet = XLSX.utils.json_to_sheet(studentMarksData);
-
-        // Prepend title and subtitle rows using sheet_add_aoa which is safer
-        XLSX.utils.sheet_add_aoa(worksheet, [
-            [`Marks for ${submissionData.assessmentName || 'N/A'}`],
-            [`Generated on: ${new Date().toLocaleDateString()}`],
-            [], // Spacer row
-        ], { origin: "A1" });
-
-        // Auto-fit columns
-        const colWidths = tableHeaders.map((header) => {
-             const maxLength = Math.max(
-                header.length,
-                ...studentMarksData.map(row => String(row[header as keyof typeof row] ?? "").length)
-             );
-             return { wch: maxLength + 2 };
-        });
-        worksheet['!cols'] = colWidths;
-
-        // Merge the title and subtitle cells
-        if (!worksheet['!merges']) worksheet['!merges'] = [];
-        worksheet['!merges'].push(
-            { s: { r: 0, c: 0 }, e: { r: 0, c: tableHeaders.length - 1 } },
-            { s: { r: 1, c: 0 }, e: { r: 1, c: tableHeaders.length - 1 } }
-        );
-
-        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-        return { success: true, message: "XLSX data prepared.", data: new Uint8Array(excelBuffer) };
     }
     return { success: false, message: "Invalid format selected." };
   } catch (error) {

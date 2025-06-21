@@ -20,6 +20,7 @@ import type { MarksForReviewPayload, MarksForReviewEntry } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 export default function MarksReviewPage() {
   const { toast } = useToast();
@@ -201,6 +202,18 @@ export default function MarksReviewPage() {
     }
 
     startDownloadTransition(async () => {
+        const currentExam = exams.find(e => e.id === selectedExam);
+        const maxMarks = currentExam?.maxMarks || 100;
+
+        let gradingScale: GradingScaleItem[] = [];
+        if (currentExam?.gradingPolicyId && gradingPolicies) {
+            const policy = gradingPolicies.find(p => p.id === currentExam.gradingPolicyId);
+            if (policy?.scale) gradingScale = policy.scale;
+        }
+        if (gradingScale.length === 0 && generalSettings) {
+            gradingScale = generalSettings.defaultGradingScale || [];
+        }
+
         if (format === 'pdf') {
             try {
                 const doc = new jsPDF();
@@ -216,18 +229,6 @@ export default function MarksReviewPage() {
                 doc.text(`Submitted By: ${marksPayload.teacherName || 'N/A'}`, 14, 40);
                 doc.text(`Submission ID: ${marksPayload.submissionId}`, 14, 46);
                 doc.text(`D.O.S. Status: ${marksPayload.dosStatus || 'Pending'}`, 14, 52);
-
-                const currentExam = exams.find(e => e.id === selectedExam);
-                const maxMarks = currentExam?.maxMarks || 100;
-
-                let gradingScale: GradingScaleItem[] = [];
-                if (currentExam?.gradingPolicyId && gradingPolicies) {
-                    const policy = gradingPolicies.find(p => p.id === currentExam.gradingPolicyId);
-                    if (policy?.scale) gradingScale = policy.scale;
-                }
-                if (gradingScale.length === 0 && generalSettings) {
-                    gradingScale = generalSettings.defaultGradingScale || [];
-                }
 
                 const tableColumn = ["Student ID", "Student Name", "Score", "Grade"];
                 const tableRows = marksPayload.marks.map(mark => [
@@ -250,25 +251,44 @@ export default function MarksReviewPage() {
                  toast({ title: "Error", description: `PDF generation failed: ${error instanceof Error ? error.message : String(error)}`, variant: "destructive" });
             }
 
-        } else { // Handle CSV and XLSX via server action
+        } else if (format === 'xlsx') {
+            try {
+                const dataForSheet = marksPayload.marks.map(mark => ({
+                  'Student ID': mark.studentId,
+                  'Student Name': mark.studentName,
+                  'Score': mark.grade,
+                  'Grade': calculateGrade(mark.grade, maxMarks, gradingScale),
+                }));
+                
+                const worksheet = XLSX.utils.json_to_sheet(dataForSheet);
+
+                const colWidths = Object.keys(dataForSheet[0] || {}).map((key) => {
+                    const maxLength = Math.max(
+                        key.length,
+                        ...dataForSheet.map(row => String(row[key as keyof typeof row] ?? "").length)
+                    );
+                    return { wch: maxLength + 2 };
+                });
+                worksheet['!cols'] = colWidths;
+                
+                const assessmentNameSlug = (marksPayload.assessmentName || "submission").replace(/[^a-zA-Z0-9_]/g, '_');
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'Marks Report');
+                
+                XLSX.writeFile(workbook, `${assessmentNameSlug}_report.xlsx`);
+                
+                toast({ title: "Download Started", description: "Your Excel report is being generated." });
+
+            } catch (error) {
+                toast({ title: "Error", description: `Client-side Excel generation failed: ${error instanceof Error ? error.message : String(error)}`, variant: "destructive" });
+            }
+        } else { // Handle CSV via server action
             try {
                 const result = await downloadSingleMarkSubmission(marksPayload.submissionId!, format);
                 if (result.success && result.data) {
-                    let blobType: string;
-                    let fileName: string;
+                    const blobType = "text/csv;charset=utf-8;";
                     const assessmentNameSlug = (marksPayload.assessmentName || "submission").replace(/[^a-zA-Z0-9_]/g, '_');
-
-                    switch (format) {
-                        case "xlsx":
-                            blobType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-                            fileName = `${assessmentNameSlug}_report.xlsx`;
-                            break;
-                        case "csv":
-                        default:
-                            blobType = "text/csv;charset=utf-8;";
-                            fileName = `${assessmentNameSlug}_report.csv`;
-                            break;
-                    }
+                    const fileName = `${assessmentNameSlug}_report.csv`;
                     
                     const dataToUse = typeof result.data === 'string' ? new TextEncoder().encode(result.data) : result.data;
                     const blob = new Blob([dataToUse], { type: blobType });
