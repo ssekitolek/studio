@@ -35,7 +35,8 @@ import {
   CalendarDays,
   ShieldAlert,
   UserCheck,
-  BarChart3
+  BarChart3,
+  FileUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +50,7 @@ const dosNavItems = [
       { href: "/dos/teachers", label: "Teachers", icon: BookUser, tooltip: "Manage Teachers" },
       { href: "/dos/teachers/assignments", label: "Teacher Assignments", icon: UserCheck, tooltip: "Manage Teacher Assignments" },
       { href: "/dos/students", label: "Students", icon: Users, tooltip: "Manage Students" },
+      { href: "/dos/students/bulk-import", label: "Bulk Import", icon: FileUp, tooltip: "Bulk Import Students" },
       { href: "/dos/classes", label: "Classes & Subjects", icon: ClipboardList, tooltip: "Manage Classes & Subjects" },
     ],
   },

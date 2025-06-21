@@ -242,6 +242,75 @@ export async function createStudent(studentData: Omit<Student, 'id'>): Promise<{
   }
 }
 
+export async function bulkImportStudents(
+  studentsData: Array<{ studentIdNumber: string; firstName: string; lastName: string }>,
+  classId: string
+): Promise<{ success: boolean; successCount: number; errorCount: number; errors: string[] }> {
+  if (!db) {
+    return { success: false, successCount: 0, errorCount: studentsData.length, errors: ["Firestore is not initialized."] };
+  }
+
+  let successCount = 0;
+  let errorCount = 0;
+  const errors: string[] = [];
+  const studentIdNumbersInFile = new Set<string>();
+
+  try {
+    const existingStudentsSnapshot = await getDocs(collection(db, "students"));
+    const existingStudentIdNumbers = new Set(existingStudentsSnapshot.docs.map(d => d.data().studentIdNumber));
+    const batch = writeBatch(db);
+
+    studentsData.forEach((student, index) => {
+      const studentIdNumber = String(student.studentIdNumber || "").trim();
+      const firstName = String(student.firstName || "").trim();
+      const lastName = String(student.lastName || "").trim();
+      const rowNum = index + 2; // Assuming row 1 is header
+
+      if (!studentIdNumber || !firstName || !lastName) {
+        errors.push(`Row ${rowNum}: Missing required data (studentIdNumber, firstName, or lastName).`);
+        errorCount++;
+        return;
+      }
+
+      if (existingStudentIdNumbers.has(studentIdNumber)) {
+        errors.push(`Row ${rowNum}: Student ID "${studentIdNumber}" already exists in the system.`);
+        errorCount++;
+        return;
+      }
+      
+      if (studentIdNumbersInFile.has(studentIdNumber)) {
+        errors.push(`Row ${rowNum}: Student ID "${studentIdNumber}" is duplicated in the file.`);
+        errorCount++;
+        return;
+      }
+
+      const studentRef = doc(collection(db, "students"));
+      batch.set(studentRef, {
+        studentIdNumber,
+        firstName,
+        lastName,
+        classId,
+      });
+      studentIdNumbersInFile.add(studentIdNumber);
+      successCount++;
+    });
+
+    if (successCount > 0) {
+      await batch.commit();
+    }
+
+    revalidatePath("/dos/students");
+    revalidatePath(`/dos/classes/${classId}/edit`);
+
+    return { success: true, successCount, errorCount, errors };
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred during bulk import.";
+    return { success: false, successCount: 0, errorCount: studentsData.length, errors: [errorMessage] };
+  }
+}
+
+
 export async function getStudentById(studentId: string): Promise<Student | null> {
   if (!db) {
     console.error("Firestore is not initialized. Check Firebase configuration.");
