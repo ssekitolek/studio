@@ -471,6 +471,63 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
   return responsibilitiesMap;
 }
 
+/**
+ * Calculates a teacher's general assignments (classes and subjects)
+ * independent of any term or exam schedule. Used for high-level stats.
+ */
+async function getTeacherCurrentAssignments(teacherId: string): Promise<{ assignedClasses: ClassInfo[]; assignedSubjects: SubjectType[] }> {
+    const assignedClassesMap = new Map<string, ClassInfo>();
+    const assignedSubjectsMap = new Map<string, SubjectType>();
+
+    if (!db || !teacherId) {
+        return { assignedClasses: [], assignedSubjects: [] };
+    }
+
+    const teacherDoc = await getTeacherByIdFromDOS(teacherId);
+    if (!teacherDoc) {
+        return { assignedClasses: [], assignedSubjects: [] };
+    }
+
+    const [allClasses, allSubjects] = await Promise.all([
+        getClasses(),
+        getSubjects(),
+    ]);
+
+    // 1. Check for Class Teacher role
+    allClasses.forEach(classObj => {
+        if (classObj.classTeacherId === teacherId) {
+            if (!assignedClassesMap.has(classObj.id)) {
+                assignedClassesMap.set(classObj.id, classObj);
+            }
+            classObj.subjects.forEach(subject => {
+                const fullSubject = allSubjects.find(s => s.id === subject.id);
+                if (fullSubject && !assignedSubjectsMap.has(fullSubject.id)) {
+                    assignedSubjectsMap.set(fullSubject.id, fullSubject);
+                }
+            });
+        }
+    });
+
+    // 2. Check for specific subject assignments
+    if (Array.isArray(teacherDoc.subjectsAssigned)) {
+        teacherDoc.subjectsAssigned.forEach(assignment => {
+            const classObj = allClasses.find(c => c.id === assignment.classId);
+            const subjectObj = allSubjects.find(s => s.id === assignment.subjectId);
+            if (classObj && !assignedClassesMap.has(classObj.id)) {
+                assignedClassesMap.set(classObj.id, classObj);
+            }
+            if (subjectObj && !assignedSubjectsMap.has(subjectObj.id)) {
+                assignedSubjectsMap.set(subjectObj.id, subjectObj);
+            }
+        });
+    }
+
+    return { 
+        assignedClasses: Array.from(assignedClassesMap.values()),
+        assignedSubjects: Array.from(assignedSubjectsMap.values())
+    };
+}
+
 
 export async function getTeacherAssessments(teacherId: string): Promise<Array<{id: string, name: string, maxMarks: number}>> {
     if (!db) {
@@ -643,14 +700,11 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
 
     console.log(`[LOG_TDD] Processed ${dashboardAssignments.length} dashboard assignments (assessments to submit).`);
     
+    // This map is still needed for notification logic below.
     const allResponsibilitiesMap = currentTermId ? await getTeacherAssessmentResponsibilities(teacherId) : new Map(); 
-    const uniqueClassIds = new Set<string>();
-    const uniqueSubjectNames = new Set<string>(); 
-    allResponsibilitiesMap.forEach(({ classObj, subjectObj }) => {
-        uniqueClassIds.add(classObj.id);
-        uniqueSubjectNames.add(subjectObj.name); 
-    });
-
+    
+    // NEW: Decoupled stats calculation using the new helper function
+    const { assignedClasses, assignedSubjects } = await getTeacherCurrentAssignments(teacherId);
 
     try {
       const sevenDaysAgo = subDays(new Date(), 7);
@@ -684,8 +738,8 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     }
 
     const stats: TeacherStats = {
-      assignedClassesCount: uniqueClassIds.size,
-      subjectsTaughtCount: uniqueSubjectNames.size,
+      assignedClassesCount: assignedClasses.length,
+      subjectsTaughtCount: assignedSubjects.length,
       recentSubmissionsCount: recentSubmissionsCount,
     };
     console.log(`[LOG_TDD] Calculated stats: ${JSON.stringify(stats)}`);
