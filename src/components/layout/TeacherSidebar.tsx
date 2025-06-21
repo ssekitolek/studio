@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -17,7 +16,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { LayoutDashboard, BookOpenCheck, History, LogOut, GanttChartSquare, UserCircle } from "lucide-react";
+import { LayoutDashboard, BookOpenCheck, History, LogOut, GanttChartSquare, UserCircle, ClipboardList } from "lucide-react";
 
 interface TeacherSidebarProps {
   teacherIdParam?: string; // Prop from layout, used as fallback or for SSR
@@ -60,6 +59,13 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
       label: "Dashboard",
       icon: LayoutDashboard,
       tooltip: validTeacherId ? "View your dashboard" : "Dashboard (Login Required)",
+      disabled: !validTeacherId,
+    },
+    {
+      href: validTeacherId ? `/teacher/class-management?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
+      label: "Class Management",
+      icon: ClipboardList,
+      tooltip: validTeacherId ? "Manage your assigned classes" : "Class Management (Login Required)",
       disabled: !validTeacherId,
     },
     {

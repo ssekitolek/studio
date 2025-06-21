@@ -1,8 +1,6 @@
-
-
 "use server";
 
-import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation, Exam as ExamTypeFirebase, TeacherStats, MarkSubmissionFirestoreRecord, SubmissionHistoryDisplayItem, ClassInfo, Subject as SubjectType } from "@/lib/types";
+import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation, Exam as ExamTypeFirebase, TeacherStats, MarkSubmissionFirestoreRecord, SubmissionHistoryDisplayItem, ClassInfo, Subject as SubjectType, ClassTeacherData, ClassManagementStudent } from "@/lib/types";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
 import { revalidatePath } from "next/cache";
 import { getClasses, getSubjects, getExams as getAllExamsFromDOS, getGeneralSettings, getTeacherById as getTeacherByIdFromDOS, getTerms, getStudents as getAllStudents } from '@/lib/actions/dos-actions';
@@ -916,5 +914,54 @@ export async function changeTeacherPassword(
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
     console.error(`Error changing password for teacher ${teacherId}:`, error);
     return { success: false, message: `Failed to change password: ${errorMessage}` };
+  }
+}
+
+export async function getClassTeacherManagementData(teacherId: string): Promise<ClassTeacherData[]> {
+  if (!db) {
+    console.error("[getClassTeacherManagementData] Firestore is not initialized.");
+    return [];
+  }
+  if (!teacherId) {
+    console.warn("[getClassTeacherManagementData] Teacher ID is missing.");
+    return [];
+  }
+
+  try {
+    const allClasses = await getClasses(); // Use existing optimized getClasses
+    const teacherClasses = allClasses.filter(c => c.classTeacherId === teacherId);
+
+    if (teacherClasses.length === 0) {
+      return [];
+    }
+
+    const teacherClassIds = teacherClasses.map(c => c.id);
+
+    const allStudents = await getAllStudents(); // Use existing optimized getStudents
+    const studentsByClassId = new Map<string, ClassManagementStudent[]>();
+
+    allStudents.forEach(student => {
+      if (teacherClassIds.includes(student.classId)) {
+        if (!studentsByClassId.has(student.classId)) {
+          studentsByClassId.set(student.classId, []);
+        }
+        studentsByClassId.get(student.classId)!.push({
+          id: student.id,
+          studentIdNumber: student.studentIdNumber,
+          firstName: student.firstName,
+          lastName: student.lastName,
+        });
+      }
+    });
+
+    const result: ClassTeacherData[] = teacherClasses.map(classInfo => ({
+      classInfo: classInfo,
+      students: (studentsByClassId.get(classInfo.id) || []).sort((a, b) => a.lastName.localeCompare(b.lastName)),
+    }));
+
+    return result;
+  } catch (error) {
+    console.error(`Error fetching class management data for teacher ${teacherId}:`, error);
+    return [];
   }
 }

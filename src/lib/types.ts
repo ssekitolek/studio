@@ -1,5 +1,3 @@
-
-
 import type { Timestamp } from "firebase/firestore";
 
 export interface Teacher {
@@ -227,4 +225,17 @@ export interface AssessmentAnalysisData {
     score: number;
     grade: string;
   }>;
+}
+
+// For Teacher Class Management Page
+export interface ClassManagementStudent {
+  id: string; // student document id
+  studentIdNumber: string;
+  firstName: string;
+  lastName: string;
+}
+
+export interface ClassTeacherData {
+  classInfo: ClassInfo;
+  students: ClassManagementStudent[];
 }
