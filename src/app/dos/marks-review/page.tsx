@@ -13,11 +13,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ShieldAlert, Loader2, CheckCircle, Search, FileWarning, Info, Download, ThumbsUp, ThumbsDown, Edit2 } from "lucide-react";
-import { getClasses, getSubjects, getExams, getMarksForReview, approveMarkSubmission, rejectMarkSubmission, downloadSingleMarkSubmission, updateSubmittedMarksByDOS } from "@/lib/actions/dos-actions";
+import { getClasses, getSubjects, getExams, getMarksForReview, approveMarkSubmission, rejectMarkSubmission, downloadSingleMarkSubmission, updateSubmittedMarksByDOS, getGradingPolicies, getGeneralSettings } from "@/lib/actions/dos-actions";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
-import type { ClassInfo, Subject as SubjectType, Exam, AnomalyExplanation, GradeEntry as GenkitGradeEntry } from "@/lib/types";
+import type { ClassInfo, Subject as SubjectType, Exam, AnomalyExplanation, GradeEntry as GenkitGradeEntry, GradingPolicy, GeneralSettings, GradingScaleItem } from "@/lib/types";
 import type { MarksForReviewPayload, MarksForReviewEntry } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function MarksReviewPage() {
   const { toast } = useToast();
@@ -32,6 +34,8 @@ export default function MarksReviewPage() {
   const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [subjects, setSubjects] = useState<SubjectType[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
+  const [gradingPolicies, setGradingPolicies] = useState<GradingPolicy[]>([]);
+  const [generalSettings, setGeneralSettings] = useState<GeneralSettings | null>(null);
 
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [selectedSubject, setSelectedSubject] = useState<string>("");
@@ -54,14 +58,18 @@ export default function MarksReviewPage() {
     async function fetchData() {
       setIsLoadingInitialData(true);
       try {
-        const [classesData, subjectsData, examsData] = await Promise.all([
+        const [classesData, subjectsData, examsData, policiesData, settingsData] = await Promise.all([
           getClasses(),
           getSubjects(),
           getExams(),
+          getGradingPolicies(),
+          getGeneralSettings(),
         ]);
         setClasses(classesData);
         setSubjects(subjectsData);
         setExams(examsData);
+        setGradingPolicies(policiesData);
+        setGeneralSettings(settingsData);
       } catch (error) {
         toast({ title: "Error", description: "Failed to load initial data.", variant: "destructive" });
       } finally {
@@ -170,52 +178,115 @@ export default function MarksReviewPage() {
       }
     });
   };
+  
+  const calculateGrade = (
+    score: number | null,
+    maxMarks: number,
+    scale: GradingScaleItem[]
+  ): string => {
+    if (score === null || !maxMarks || !scale || scale.length === 0) return 'N/A';
+    const percentage = (score / maxMarks) * 100;
+    for (const tier of scale) {
+      if (percentage >= tier.minScore && percentage <= tier.maxScore) {
+        return tier.grade;
+      }
+    }
+    return 'Ungraded';
+  };
 
   const handleDownload = async (format: 'csv' | 'xlsx' | 'pdf') => {
     if (!marksPayload?.submissionId) {
         toast({ title: "Error", description: "No submission loaded to download.", variant: "destructive" });
         return;
     }
+
     startDownloadTransition(async () => {
-      try {
-        const result = await downloadSingleMarkSubmission(marksPayload.submissionId!, format);
-        if (result.success && result.data) {
-          let blobType: string;
-          let fileName: string;
-          const assessmentNameSlug = (marksPayload.assessmentName || "submission").replace(/[^a-zA-Z0-9_]/g, '_');
+        if (format === 'pdf') {
+            try {
+                const doc = new jsPDF();
+                const assessmentName = marksPayload.assessmentName || 'Unnamed Assessment';
+                const assessmentNameSlug = assessmentName.replace(/[^a-zA-Z0-9_]/g, '_');
+                
+                doc.setFontSize(18);
+                doc.text(`Marks Submission Report`, 14, 22);
+                doc.setFontSize(12);
+                doc.text(assessmentName, 14, 30);
+                
+                doc.setFontSize(10);
+                doc.text(`Submitted By: ${marksPayload.teacherName || 'N/A'}`, 14, 40);
+                doc.text(`Submission ID: ${marksPayload.submissionId}`, 14, 46);
+                doc.text(`D.O.S. Status: ${marksPayload.dosStatus || 'Pending'}`, 14, 52);
 
-          switch (format) {
-            case "xlsx":
-              blobType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-              fileName = `${assessmentNameSlug}_report.xlsx`;
-              break;
-            case "pdf": 
-              blobType = "application/pdf"; 
-              fileName = `${assessmentNameSlug}_report.pdf`;
-              break;
-            case "csv":
-            default:
-              blobType = "text/csv;charset=utf-8;";
-              fileName = `${assessmentNameSlug}_report.csv`;
-              break;
-          }
-          
-          const dataToUse = typeof result.data === 'string' ? new TextEncoder().encode(result.data) : result.data;
-          const blob = new Blob([dataToUse], { type: blobType });
-          const link = document.createElement("a");
-          link.href = URL.createObjectURL(blob);
-          link.setAttribute("download", fileName);
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          toast({ title: "Download Started", description: result.message });
+                const currentExam = exams.find(e => e.id === selectedExam);
+                const maxMarks = currentExam?.maxMarks || 100;
 
-        } else {
-          toast({ title: "Download Failed", description: result.message, variant: "destructive" });
+                let gradingScale: GradingScaleItem[] = [];
+                if (currentExam?.gradingPolicyId && gradingPolicies) {
+                    const policy = gradingPolicies.find(p => p.id === currentExam.gradingPolicyId);
+                    if (policy?.scale) gradingScale = policy.scale;
+                }
+                if (gradingScale.length === 0 && generalSettings) {
+                    gradingScale = generalSettings.defaultGradingScale || [];
+                }
+
+                const tableColumn = ["Student ID", "Student Name", "Score", "Grade"];
+                const tableRows = marksPayload.marks.map(mark => [
+                    mark.studentId,
+                    mark.studentName,
+                    mark.grade,
+                    calculateGrade(mark.grade, maxMarks, gradingScale),
+                ]);
+
+                autoTable(doc, {
+                    startY: 60,
+                    head: [tableColumn],
+                    body: tableRows as any,
+                    theme: 'grid'
+                });
+                
+                doc.save(`${assessmentNameSlug}_report.pdf`);
+                toast({ title: "Download Started", description: "Your PDF report is being generated." });
+            } catch(error) {
+                 toast({ title: "Error", description: `PDF generation failed: ${error instanceof Error ? error.message : String(error)}`, variant: "destructive" });
+            }
+
+        } else { // Handle CSV and XLSX via server action
+            try {
+                const result = await downloadSingleMarkSubmission(marksPayload.submissionId!, format);
+                if (result.success && result.data) {
+                    let blobType: string;
+                    let fileName: string;
+                    const assessmentNameSlug = (marksPayload.assessmentName || "submission").replace(/[^a-zA-Z0-9_]/g, '_');
+
+                    switch (format) {
+                        case "xlsx":
+                            blobType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                            fileName = `${assessmentNameSlug}_report.xlsx`;
+                            break;
+                        case "csv":
+                        default:
+                            blobType = "text/csv;charset=utf-8;";
+                            fileName = `${assessmentNameSlug}_report.csv`;
+                            break;
+                    }
+                    
+                    const dataToUse = typeof result.data === 'string' ? new TextEncoder().encode(result.data) : result.data;
+                    const blob = new Blob([dataToUse], { type: blobType });
+                    const link = document.createElement("a");
+                    link.href = URL.createObjectURL(blob);
+                    link.setAttribute("download", fileName);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    toast({ title: "Download Started", description: result.message });
+
+                } else {
+                    toast({ title: "Download Failed", description: result.message, variant: "destructive" });
+                }
+            } catch (error) {
+                toast({ title: "Error", description: `Download failed: ${error instanceof Error ? error.message : String(error)}`, variant: "destructive" });
+            }
         }
-      } catch (error) {
-         toast({ title: "Error", description: `Download failed: ${error instanceof Error ? error.message : String(error)}`, variant: "destructive" });
-      }
     });
   };
 

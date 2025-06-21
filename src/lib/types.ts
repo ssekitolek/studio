@@ -1,4 +1,5 @@
 
+
 import type { Timestamp } from "firebase/firestore";
 
 export interface Teacher {
@@ -185,6 +186,8 @@ export interface MarksForReviewPayload {
     marks: MarksForReviewEntry[];
     dosStatus?: MarkSubmissionFirestoreRecord['dosStatus'];
     dosRejectReason?: string;
+    teacherId?: string;
+    teacherName?: string;
 }
 
 
