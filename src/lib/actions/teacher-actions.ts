@@ -1144,34 +1144,49 @@ export async function saveAttendance(data: StudentAttendanceInput): Promise<{ su
 }
 
 export async function getAttendanceHistory(classId: string, startDate: string, endDate: string): Promise<AttendanceHistoryData[]> {
-    if (!db) return [];
+    if (!db) {
+        console.error("[getAttendanceHistory] Firestore not initialized.");
+        throw new Error("Database not initialized.");
+    }
     
-    const q = query(
-        collection(db, "attendance"),
-        where("classId", "==", classId),
-        where("date", ">=", startDate),
-        where("date", "<=", endDate),
-        orderBy("date", "desc")
-    );
-    
-    const querySnapshot = await getDocs(q);
-    
-    const allStudents = await getAllStudents();
-    const studentMap = new Map(allStudents.map(s => [s.id, s]));
+    try {
+        const q = query(
+            collection(db, "attendance"),
+            where("classId", "==", classId),
+            where("date", ">=", startDate),
+            where("date", "<=", endDate),
+            orderBy("date", "desc")
+        );
+        
+        const querySnapshot = await getDocs(q);
+        
+        const allStudents = await getAllStudents();
+        const studentMap = new Map(allStudents.map(s => [s.id, s]));
 
-    const history: AttendanceHistoryData[] = [];
-    querySnapshot.forEach(docSnap => {
-        const data = docSnap.data() as DailyAttendanceRecord;
-        data.records.forEach(record => {
-            const student = studentMap.get(record.studentId);
-            history.push({
-                date: data.date,
-                studentId: record.studentId,
-                studentName: student ? `${student.firstName} ${student.lastName}` : "Unknown Student",
-                status: record.status
+        const history: AttendanceHistoryData[] = [];
+        querySnapshot.forEach(docSnap => {
+            const data = docSnap.data() as DailyAttendanceRecord;
+            data.records.forEach(record => {
+                const student = studentMap.get(record.studentId);
+                history.push({
+                    date: data.date,
+                    studentId: record.studentId,
+                    studentName: student ? `${student.firstName} ${student.lastName}` : "Unknown Student",
+                    status: record.status
+                });
             });
         });
-    });
 
-    return history;
+        return history;
+    } catch (error: any) {
+        console.error(`[getAttendanceHistory] Error fetching attendance for class ${classId}:`, error);
+        if (error.code === 'failed-precondition') {
+            const specificErrorMessage = "The query for attendance history requires a database index. Please create this index in your Firebase Firestore console. The full Firebase error (containing a direct link to create it) should be in your server logs. Index fields: 'classId' (Ascending), 'date' (Descending).";
+            console.error("*********************************************************************************");
+            console.error("FIRESTORE ERROR (getAttendanceHistory): " + specificErrorMessage);
+            console.error("*********************************************************************************");
+            throw new Error(specificErrorMessage);
+        }
+        throw new Error(`Failed to fetch attendance history: ${error.message || "An unknown error occurred."}`);
+    }
 }
