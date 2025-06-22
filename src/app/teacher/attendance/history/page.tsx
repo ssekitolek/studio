@@ -98,7 +98,13 @@ export default function AttendanceHistoryPage() {
           const records = await getAttendanceHistory(selectedClassId, format(dateRange.from!, 'yyyy-MM-dd'), format(dateRange.to!, 'yyyy-MM-dd'));
           setAttendanceRecords(records);
         } catch (error) {
-          toast({ title: "Error", description: "Failed to fetch attendance history.", variant: "destructive" });
+          const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+          toast({
+            title: "Error Fetching History",
+            description: errorMessage,
+            variant: "destructive",
+            duration: 15000, // Give more time to read potential index creation links
+          });
           setAttendanceRecords([]);
         } finally {
           setIsLoading(false);
@@ -200,25 +206,25 @@ export default function AttendanceHistoryPage() {
           <CardDescription>Select a class, student, and date range to view history.</CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Select value={selectedClassId} onValueChange={setSelectedClassId} disabled={classes.length === 0 || isLoading}>
+          <Select value={selectedClassId} onValueChange={setSelectedClassId} disabled={classes.length === 0 || isLoading || isTransitioning}>
             <SelectTrigger><SelectValue placeholder="Select a class" /></SelectTrigger>
             <SelectContent>{classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
           </Select>
-          <Select value={selectedStudentId} onValueChange={setSelectedStudentId} disabled={!selectedClassId || isLoading}>
+          <Select value={selectedStudentId} onValueChange={setSelectedStudentId} disabled={!selectedClassId || isLoading || isTransitioning}>
             <SelectTrigger><SelectValue placeholder="Select a student" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Students</SelectItem>
               {students.map(s => <SelectItem key={s.id} value={s.id}>{s.firstName} {s.lastName}</SelectItem>)}
             </SelectContent>
           </Select>
-          <DatePicker date={dateRange.from} setDate={(date) => setDateRange(prev => ({...prev, from: date}))} placeholder="Start date" disabled={isLoading}/>
-           <DatePicker date={dateRange.to} setDate={(date) => setDateRange(prev => ({...prev, to: date}))} placeholder="End date" disabled={isLoading}/>
+          <DatePicker date={dateRange.from} setDate={(date) => setDateRange(prev => ({...prev, from: date}))} placeholder="Start date" disabled={isLoading || isTransitioning}/>
+           <DatePicker date={dateRange.to} setDate={(date) => setDateRange(prev => ({...prev, to: date}))} placeholder="End date" disabled={isLoading || isTransitioning}/>
         </CardContent>
       </Card>
       
-      {isLoading && <div className="flex justify-center items-center p-8"><Loader2 className="animate-spin h-8 w-8 text-primary" /><p className="ml-2">Loading records...</p></div>}
+      {(isLoading || isTransitioning) && <div className="flex justify-center items-center p-8"><Loader2 className="animate-spin h-8 w-8 text-primary" /><p className="ml-2">Loading records...</p></div>}
 
-      {!isLoading && (
+      {!(isLoading || isTransitioning) && (
         <>
           {studentSummary && (
             <Card>
