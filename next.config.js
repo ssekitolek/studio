@@ -1,27 +1,2 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  /* config options here */
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
-      },
-    ],
-  },
-  devIndicators: {
-    allowedDevOrigins: [
-      'https://6000-firebase-studio-1749365267352.cluster-jbb3mjctu5cbgsi6hwq6u4btwe.cloudworkstations.dev',
-    ],
-  },
-};
-
-module.exports = nextConfig;
+// The Next.js configuration has been moved to next.config.ts.
+// This file can be safely removed if it causes issues, but is often kept for tool compatibility.
