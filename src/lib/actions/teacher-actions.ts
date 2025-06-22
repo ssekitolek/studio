@@ -1,4 +1,5 @@
 
+
 "use server";
 
 import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation, Exam as ExamTypeFirebase, TeacherStats, MarkSubmissionFirestoreRecord, SubmissionHistoryDisplayItem, ClassInfo, Subject as SubjectType, ClassTeacherData, ClassManagementStudent, GradingScaleItem, ClassAssessment, StudentClassMark, AttendanceData, StudentAttendanceInput, DailyAttendanceRecord, AttendanceHistoryData } from "@/lib/types";
@@ -1155,8 +1156,7 @@ export async function getAttendanceHistory(classId: string, startDate: string, e
             collection(db, "attendance"),
             where("classId", "==", classId),
             where("date", ">=", startDate),
-            where("date", "<=", endDate),
-            orderBy("date", "desc")
+            where("date", "<=", endDate)
         );
         
         const querySnapshot = await getDocs(q);
@@ -1180,18 +1180,15 @@ export async function getAttendanceHistory(classId: string, startDate: string, e
             }
         });
 
+        // Sort in code to avoid needing a composite index
+        history.sort((a, b) => b.date.localeCompare(a.date));
+
         return history;
     } catch (error: any) {
-        console.error(`[getAttendanceHistory] Error fetching attendance for class ${classId}:`, error);
-        if (error.code === 'failed-precondition') {
-            // The original error.message from Firestore contains the link to create the index.
-            const firestoreErrorMessage = error.message || "The query requires a database index. Please check server logs for details.";
-            console.error("*********************************************************************************");
-            console.error("FIRESTORE ERROR (getAttendanceHistory): Missing Index. Full error from SDK:", firestoreErrorMessage);
-            console.error("*********************************************************************************");
-            // Pass the original, more detailed message to the client. It contains the link.
-            throw new Error(firestoreErrorMessage);
-        }
-        throw new Error(`Failed to fetch attendance history: ${error.message || "An unknown error occurred."}`);
+        const firestoreErrorMessage = error.message || "An unknown error occurred while fetching attendance data.";
+        console.error("*********************************************************************************");
+        console.error("FIRESTORE ERROR (getAttendanceHistory):", firestoreErrorMessage);
+        console.error("*********************************************************************************");
+        throw new Error(`Failed to fetch attendance history: ${firestoreErrorMessage}`);
     }
 }
