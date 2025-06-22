@@ -25,7 +25,8 @@ import type { ClassInfo, Student, AttendanceHistoryData } from "@/lib/types";
 export default function AttendanceHistoryPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
-  const [isPending, startTransition] = useTransition();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isTransitioning, startTransition] = useTransition();
 
   // Data state
   const [classes, setClasses] = useState<ClassInfo[]>([]);
@@ -33,7 +34,6 @@ export default function AttendanceHistoryPage() {
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceHistoryData[]>([]);
   
   // UI State
-  const [isLoading, setIsLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
   const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
 
@@ -56,14 +56,19 @@ export default function AttendanceHistoryPage() {
     setCurrentTeacherId(teacherId);
 
     async function loadInitialData() {
+      setIsLoading(true);
       try {
         const teacherClasses = await getClassesForTeacher(teacherId!);
         setClasses(teacherClasses);
         if (teacherClasses.length > 0) {
-          setSelectedClassId(teacherClasses[0].id); // Select first class by default
+          setSelectedClassId(teacherClasses[0].id);
+        } else {
+          // If teacher has no classes, there's nothing to load
+          setIsLoading(false);
         }
       } catch (error) {
         setPageError("Failed to load your classes.");
+        setIsLoading(false);
       }
     }
     loadInitialData();
@@ -94,10 +99,15 @@ export default function AttendanceHistoryPage() {
           setAttendanceRecords(records);
         } catch (error) {
           toast({ title: "Error", description: "Failed to fetch attendance history.", variant: "destructive" });
+          setAttendanceRecords([]);
         } finally {
           setIsLoading(false);
         }
       });
+    } else if (!selectedClassId) {
+      // Handles case where teacher has no classes
+      setAttendanceRecords([]);
+      setIsLoading(false);
     }
   }, [selectedClassId, dateRange, toast]);
 
@@ -189,26 +199,26 @@ export default function AttendanceHistoryPage() {
           <CardTitle>Filter Records</CardTitle>
           <CardDescription>Select a class, student, and date range to view history.</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Select value={selectedClassId} onValueChange={setSelectedClassId} disabled={classes.length === 0}>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Select value={selectedClassId} onValueChange={setSelectedClassId} disabled={classes.length === 0 || isLoading}>
             <SelectTrigger><SelectValue placeholder="Select a class" /></SelectTrigger>
             <SelectContent>{classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
           </Select>
-          <Select value={selectedStudentId} onValueChange={setSelectedStudentId} disabled={!selectedClassId}>
+          <Select value={selectedStudentId} onValueChange={setSelectedStudentId} disabled={!selectedClassId || isLoading}>
             <SelectTrigger><SelectValue placeholder="Select a student" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Students</SelectItem>
               {students.map(s => <SelectItem key={s.id} value={s.id}>{s.firstName} {s.lastName}</SelectItem>)}
             </SelectContent>
           </Select>
-          <DatePicker date={dateRange.from} setDate={(date) => setDateRange(prev => ({...prev, from: date}))} placeholder="Start date"/>
-           <DatePicker date={dateRange.to} setDate={(date) => setDateRange(prev => ({...prev, to: date}))} placeholder="End date"/>
+          <DatePicker date={dateRange.from} setDate={(date) => setDateRange(prev => ({...prev, from: date}))} placeholder="Start date" disabled={isLoading}/>
+           <DatePicker date={dateRange.to} setDate={(date) => setDateRange(prev => ({...prev, to: date}))} placeholder="End date" disabled={isLoading}/>
         </CardContent>
       </Card>
       
-      {isPending && <div className="flex justify-center items-center p-8"><Loader2 className="animate-spin" /></div>}
+      {isLoading && <div className="flex justify-center items-center p-8"><Loader2 className="animate-spin h-8 w-8 text-primary" /><p className="ml-2">Loading records...</p></div>}
 
-      {!isPending && selectedClassId && (
+      {!isLoading && (
         <>
           {studentSummary && (
             <Card>
@@ -217,7 +227,7 @@ export default function AttendanceHistoryPage() {
                     <CardTitle className="flex items-center gap-2"><PieChart/> Summary for {students.find(s=>s.id === selectedStudentId)?.firstName}</CardTitle>
                     <CardDescription>Total days recorded in selected period: {studentSummary.present + studentSummary.absent + studentSummary.late}</CardDescription>
                 </div>
-                 <Button onClick={handleDownloadPDF} disabled={isPending || filteredData.length === 0}><Download className="mr-2"/> Download PDF</Button>
+                 <Button onClick={handleDownloadPDF} disabled={isTransitioning || filteredData.length === 0}><Download className="mr-2"/> Download PDF</Button>
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <StatCard title="Present" value={studentSummary.present} icon={Check} description="Days marked as present."/>
@@ -230,7 +240,7 @@ export default function AttendanceHistoryPage() {
           <Card>
             <CardHeader className="flex flex-row justify-between items-center">
               <CardTitle>Attendance Log</CardTitle>
-               {selectedStudentId === "all" && <Button onClick={handleDownloadPDF} disabled={isPending || filteredData.length === 0}><Download className="mr-2"/> Download PDF</Button>}
+               {selectedStudentId === "all" && <Button onClick={handleDownloadPDF} disabled={isTransitioning || filteredData.length === 0}><Download className="mr-2"/> Download PDF</Button>}
             </CardHeader>
             <CardContent>
               {filteredData.length > 0 ? (
@@ -245,7 +255,7 @@ export default function AttendanceHistoryPage() {
                   </TableHeader>
                   <TableBody>
                     {filteredData.map((record, index) => (
-                      <TableRow key={index}>
+                      <TableRow key={`${record.studentId}-${record.date}-${index}`}>
                         <TableCell>{record.date}</TableCell>
                         {selectedStudentId === "all" && <TableCell>{record.studentName}</TableCell>}
                         <TableCell>{record.status}</TableCell>

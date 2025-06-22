@@ -1133,6 +1133,7 @@ export async function saveAttendance(data: StudentAttendanceInput): Promise<{ su
     await setDoc(attendanceRef, recordToSave, { merge: true });
 
     revalidatePath(`/teacher/class-management`);
+    revalidatePath(`/teacher/attendance`);
     revalidatePath(`/teacher/attendance/history`);
     return { success: true, message: "Attendance saved." };
 
@@ -1166,15 +1167,17 @@ export async function getAttendanceHistory(classId: string, startDate: string, e
         const history: AttendanceHistoryData[] = [];
         querySnapshot.forEach(docSnap => {
             const data = docSnap.data() as DailyAttendanceRecord;
-            data.records.forEach(record => {
-                const student = studentMap.get(record.studentId);
-                history.push({
-                    date: data.date,
-                    studentId: record.studentId,
-                    studentName: student ? `${student.firstName} ${student.lastName}` : "Unknown Student",
-                    status: record.status
+            if(data && Array.isArray(data.records)) {
+                data.records.forEach(record => {
+                    const student = studentMap.get(record.studentId);
+                    history.push({
+                        date: data.date,
+                        studentId: record.studentId,
+                        studentName: student ? `${student.firstName} ${student.lastName}` : "Unknown Student",
+                        status: record.status
+                    });
                 });
-            });
+            }
         });
 
         return history;
