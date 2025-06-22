@@ -1,3 +1,4 @@
+
 import type { Timestamp } from "firebase/firestore";
 
 export interface Teacher {
@@ -259,13 +260,16 @@ export interface ClassManagementStudent {
   lastName: string;
 }
 
+export interface AttendanceData {
+  overallPercentage: number;
+  presentToday: Array<{ id: string; name: string }>;
+  absentToday: Array<{ id: string; name: string }>;
+}
+
+
 export interface ClassTeacherData {
   classInfo: ClassInfo;
   students: ClassManagementStudent[];
   assessments: ClassAssessment[];
-  // Placeholder for attendance feature
-  attendance?: {
-      overallPercentage: number;
-      absentStudentsToday: number;
-  };
+  attendance?: AttendanceData;
 }

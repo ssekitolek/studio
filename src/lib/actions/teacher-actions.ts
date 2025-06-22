@@ -1,7 +1,7 @@
 
 "use server";
 
-import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation, Exam as ExamTypeFirebase, TeacherStats, MarkSubmissionFirestoreRecord, SubmissionHistoryDisplayItem, ClassInfo, Subject as SubjectType, ClassTeacherData, ClassManagementStudent, GradingScaleItem, ClassAssessment, StudentClassMark } from "@/lib/types";
+import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation, Exam as ExamTypeFirebase, TeacherStats, MarkSubmissionFirestoreRecord, SubmissionHistoryDisplayItem, ClassInfo, Subject as SubjectType, ClassTeacherData, ClassManagementStudent, GradingScaleItem, ClassAssessment, StudentClassMark, AttendanceData } from "@/lib/types";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
 import { revalidatePath } from "next/cache";
 import { getClasses, getSubjects, getExams as getAllExamsFromDOS, getGeneralSettings, getTeacherById as getTeacherByIdFromDOS, getTerms, getStudents as getAllStudents, getGradingPolicies } from '@/lib/actions/dos-actions';
@@ -934,6 +934,30 @@ export async function changeTeacherPassword(
   }
 }
 
+function generateMockAttendance(students: ClassManagementStudent[]): AttendanceData {
+    if (students.length === 0) {
+        return { overallPercentage: 100, presentToday: [], absentToday: [] };
+    }
+    
+    // Simulate a random number of absent students (e.g., 0 to 15% of the class)
+    const absentCount = Math.floor(Math.random() * (students.length * 0.15));
+    
+    // Shuffle the students array to pick random students to be absent
+    const shuffledStudents = [...students].sort(() => 0.5 - Math.random());
+    
+    const absentToday = shuffledStudents.slice(0, absentCount);
+    const presentToday = shuffledStudents.slice(absentCount);
+
+    const overallPercentage = 90 + Math.random() * 8; // Simulate a high overall attendance rate between 90-98%
+
+    return {
+        overallPercentage,
+        presentToday: presentToday.map(s => ({ id: s.id, name: `${s.firstName} ${s.lastName}` })),
+        absentToday: absentToday.map(s => ({ id: s.id, name: `${s.firstName} ${s.lastName}` })),
+    };
+}
+
+
 export async function getClassTeacherManagementData(teacherId: string): Promise<ClassTeacherData[]> {
     if (!db) {
         console.error("[getClassTeacherManagementData] Firestore is not initialized.");
@@ -970,14 +994,17 @@ export async function getClassTeacherManagementData(teacherId: string): Promise<
         const currentTermId = generalSettings.currentTermId;
         if (!currentTermId) {
             // Return basic info if no term is set
-            return teacherClasses.map(classInfo => ({
-                classInfo,
-                students: allStudents
+            return teacherClasses.map(classInfo => {
+                 const studentsInClass = allStudents
                     .filter(s => s.classId === classInfo.id)
-                    .map(s => ({ id: s.id, studentIdNumber: s.studentIdNumber, firstName: s.firstName, lastName: s.lastName })),
-                assessments: [],
-                 attendance: { overallPercentage: 95, absentStudentsToday: 2 }, // Placeholder
-            }));
+                    .map(s => ({ id: s.id, studentIdNumber: s.studentIdNumber, firstName: s.firstName, lastName: s.lastName }));
+                return {
+                    classInfo,
+                    students: studentsInClass,
+                    assessments: [],
+                    attendance: generateMockAttendance(studentsInClass),
+                }
+            });
         }
 
         const examsForCurrentTerm = allExams.filter(e => e.termId === currentTermId);
@@ -1059,13 +1086,15 @@ export async function getClassTeacherManagementData(teacherId: string): Promise<
                 });
             });
 
+             const studentsInClass = allStudents
+                .filter(s => s.classId === classInfo.id)
+                .map(s => ({ id: s.id, studentIdNumber: s.studentIdNumber, firstName: s.firstName, lastName: s.lastName }));
+
             return {
                 classInfo,
-                students: allStudents
-                    .filter(s => s.classId === classInfo.id)
-                    .map(s => ({ id: s.id, studentIdNumber: s.studentIdNumber, firstName: s.firstName, lastName: s.lastName })),
+                students: studentsInClass,
                 assessments: classAssessments.sort((a,b) => a.examName.localeCompare(b.examName) || a.subjectName.localeCompare(b.subjectName)),
-                attendance: { overallPercentage: 95, absentStudentsToday: 2 }, // Placeholder
+                attendance: generateMockAttendance(studentsInClass),
             };
         });
 
