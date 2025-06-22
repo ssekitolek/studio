@@ -67,10 +67,8 @@ export function DeleteStudentConfirmationDialog({
             Are you absolutely sure?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This action will permanently delete the student: <strong>{studentName}</strong> (Student ID: {studentIdNumber}, Document ID: {studentId}). 
-            This action cannot be undone. 
-            <br />
-            <strong className="text-destructive">Important:</strong> Deleting this student record does not automatically remove their associated marks or other historical data. Ensure this is the intended action.
+            This will permanently delete the student: <strong>{studentName}</strong> (ID: {studentIdNumber}). This cannot be undone.
+            <span className="mt-2 block font-semibold text-destructive">This does not automatically remove their associated marks or other historical data.</span>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -92,4 +90,3 @@ export function DeleteStudentConfirmationDialog({
     </AlertDialog>
   );
 }
-

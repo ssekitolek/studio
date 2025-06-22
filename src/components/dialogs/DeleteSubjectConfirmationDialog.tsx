@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -51,7 +52,6 @@ export function DeleteSubjectConfirmationDialog({
           description: result.message || "Failed to delete subject.",
           variant: "destructive",
         });
-        // Keep dialog open on error to allow user to see message or retry
       }
     });
   };
@@ -65,10 +65,8 @@ export function DeleteSubjectConfirmationDialog({
             Are you absolutely sure?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This action will permanently delete the subject: <strong>{subjectName}</strong> (ID: {subjectId}). 
-            This action cannot be undone. 
-            <br />
-            <strong className="text-destructive">Important:</strong> If this subject is currently assigned to any classes, the system will prevent deletion. You must unassign it from all classes first. This action does not automatically handle historical data related to this subject.
+            This will permanently delete the subject: <strong>{subjectName}</strong>. This cannot be undone.
+            <span className="mt-2 block font-semibold text-destructive">If this subject is assigned to any classes, the system will prevent deletion.</span>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

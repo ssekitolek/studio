@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -42,17 +43,15 @@ export function DeleteTeacherConfirmationDialog({
           title: "Teacher Deleted",
           description: `Teacher "${teacherName}" has been successfully deleted.`,
         });
-        onOpenChange(false); // Request dialog close
-        router.push("/dos/teachers"); // Navigate to teachers list
-        router.refresh(); // Ensure the list is updated
+        onOpenChange(false);
+        router.push("/dos/teachers");
+        router.refresh();
       } else {
         toast({
           title: "Error Deleting Teacher",
           description: result.message || "Failed to delete teacher.",
           variant: "destructive",
         });
-        // Optionally close dialog on error too, or let user retry
-        // onOpenChange(false); 
       }
     });
   };
@@ -66,7 +65,7 @@ export function DeleteTeacherConfirmationDialog({
             Are you sure?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This action will permanently delete the teacher record for <strong>{teacherName}</strong> (ID: {teacherId}). This action cannot be undone.
+            This action will permanently delete the teacher record for <strong>{teacherName}</strong>. This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

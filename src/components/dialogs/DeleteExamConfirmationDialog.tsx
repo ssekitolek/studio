@@ -65,10 +65,8 @@ export function DeleteExamConfirmationDialog({
             Are you sure?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This action will permanently delete the exam type: <strong>{examName}</strong> (ID: {examId}). 
-            This action cannot be undone. 
-            <br />
-            <strong className="text-destructive mt-2 block">Important:</strong> If any marks have been submitted for this exam, the system will prevent deletion. You must handle or remove those submissions first.
+            This will permanently delete the exam type: <strong>{examName}</strong>. This action cannot be undone.
+             <span className="mt-2 block font-semibold text-destructive">If marks have been submitted for this exam, the system will prevent deletion.</span>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
