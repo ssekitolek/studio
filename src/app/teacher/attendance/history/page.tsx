@@ -26,6 +26,7 @@ export default function AttendanceHistoryPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
+  const [isFetchingData, setIsFetchingData] = useState(true);
   const [isTransitioning, startTransition] = useTransition();
 
   // Data state
@@ -35,7 +36,6 @@ export default function AttendanceHistoryPage() {
   
   // UI State
   const [pageError, setPageError] = useState<string | null>(null);
-  const [dataError, setDataError] = useState<string | null>(null);
   const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
 
   // Filter state
@@ -51,24 +51,27 @@ export default function AttendanceHistoryPage() {
     const teacherId = searchParams.get("teacherId");
     if (!teacherId) {
       setPageError("Teacher ID missing. Cannot load data.");
+      setIsFetchingData(false);
       setIsLoading(false);
       return;
     }
     setCurrentTeacherId(teacherId);
 
     async function loadInitialData() {
-      setIsLoading(true);
+      setIsFetchingData(true);
       try {
         const teacherClasses = await getClassesForTeacher(teacherId!);
         setClasses(teacherClasses);
         if (teacherClasses.length > 0) {
           setSelectedClassId(teacherClasses[0].id);
         } else {
-          setIsLoading(false);
+           setIsLoading(false);
         }
       } catch (error) {
         setPageError("Failed to load your classes.");
-        setIsLoading(false);
+         setIsLoading(false);
+      } finally {
+        setIsFetchingData(false);
       }
     }
     loadInitialData();
@@ -92,25 +95,27 @@ export default function AttendanceHistoryPage() {
   // Fetch attendance data when filters change
   useEffect(() => {
     if (selectedClassId && dateRange.from && dateRange.to) {
-      setDataError(null);
       startTransition(async () => {
         setIsLoading(true);
         try {
           const records = await getAttendanceHistory(selectedClassId, format(dateRange.from!, 'yyyy-MM-dd'), format(dateRange.to!, 'yyyy-MM-dd'));
           setAttendanceRecords(records);
+           if(records.length === 0) {
+            toast({ title: "No Records", description: "No attendance records were found for the selected criteria.", variant: "default" });
+           }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-          setDataError(errorMessage);
+          setPageError(errorMessage);
           setAttendanceRecords([]);
         } finally {
           setIsLoading(false);
         }
       });
-    } else if (!selectedClassId) {
+    } else if (!isFetchingData && !selectedClassId) {
       setAttendanceRecords([]);
       setIsLoading(false);
     }
-  }, [selectedClassId, dateRange]);
+  }, [selectedClassId, dateRange, isFetchingData, toast]);
 
   const filteredData = useMemo(() => {
     if (selectedStudentId === "all") {
@@ -176,7 +181,10 @@ export default function AttendanceHistoryPage() {
       body: filteredData.map(r => (
         selectedStudent ? [r.date, r.status] : [r.date, r.studentName, r.status]
       )),
-      theme: 'grid'
+      theme: 'grid',
+      columnStyles: {
+        1: { cellWidth: selectedStudent ? 'auto' : 80 }, // Apply width only to 'Student Name' column when it exists
+      },
     });
     
     const fileName = selectedStudent
@@ -187,7 +195,11 @@ export default function AttendanceHistoryPage() {
   };
 
 
-  if (pageError) {
+  if (isFetchingData) {
+    return <div className="flex justify-center items-center p-8"><Loader2 className="animate-spin h-8 w-8 text-primary" /><p className="ml-2">Loading initial data...</p></div>
+  }
+
+  if (pageError && !isLoading) {
     return <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{pageError}</AlertDescription></Alert>
   }
 
@@ -218,18 +230,8 @@ export default function AttendanceHistoryPage() {
       </Card>
       
       {(isLoading || isTransitioning) && <div className="flex justify-center items-center p-8"><Loader2 className="animate-spin h-8 w-8 text-primary" /><p className="ml-2">Loading records...</p></div>}
-
-      {dataError && !(isLoading || isTransitioning) && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Error Fetching History</AlertTitle>
-          <AlertDescription>
-            {dataError}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {!dataError && !(isLoading || isTransitioning) && (
+      
+      {!isLoading && !isTransitioning && (
         <>
           {studentSummary && (
             <Card>

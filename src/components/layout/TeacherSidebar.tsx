@@ -108,15 +108,16 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
 
   const isItemActive = (href: string) => {
     if (!validTeacherId && href.startsWith("/teacher/")) {
-        return false; // If teacherId is not valid, no teacher links should be active
+      return false;
     }
-    const baseHref = href.split('?')[0]; // Compare only the path part, ignore query params
+    const baseHref = href.split('?')[0];
 
-    // Exact match for dashboard
-    if (baseHref === "/teacher/dashboard") {
+    // Exact match for dashboard and take attendance to avoid overlap with history
+    if (baseHref === "/teacher/dashboard" || baseHref === "/teacher/attendance") {
       return pathname === baseHref;
     }
-    // For other pages, check if current path starts with the link's base href
+    
+    // For all other pages, a prefix match is fine.
     return pathname.startsWith(baseHref);
   };
 
