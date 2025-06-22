@@ -34,6 +34,7 @@ function calculateDaysRemaining(deadline?: string): string {
 }
 
 export default async function DosDashboardPage() {
+  console.log(">>>> SERVER LOGS WILL APPEAR HERE IN THE BOTTOM PANEL! <<<<");
   let teachers: Teacher[] = [];
   let students: Student[] = [];
   let classes: ClassInfo[] = [];
@@ -223,5 +224,3 @@ export default async function DosDashboardPage() {
     </div>
   );
 }
-
-    
