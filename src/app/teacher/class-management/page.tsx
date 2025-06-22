@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, ClipboardList, Info, AlertTriangle, Hash, User, BarChart3, Users, CalendarCheck, UserCheck, UserX } from "lucide-react";
+import { Loader2, ClipboardList, Info, AlertTriangle, Hash, User, BarChart3, Users, CalendarCheck, UserCheck, UserX, ClipboardCheck } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { StatCard } from "@/components/shared/StatCard";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 
 
 export default function ClassManagementPage() {
@@ -30,6 +31,7 @@ export default function ClassManagementPage() {
 
   useEffect(() => {
     const teacherIdFromUrl = searchParams?.get("teacherId");
+    const teacherNameFromUrl = searchParams?.get("teacherName");
 
     if (!teacherIdFromUrl) {
       const msg = "Teacher ID missing from URL. Please login again to view your classes.";
@@ -201,39 +203,42 @@ export default function ClassManagementPage() {
 
                   <TabsContent value="attendance" className="mt-4">
                      <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2"><CalendarCheck/> Today's Attendance Overview</CardTitle>
-                            <CardDescription>A summary of student attendance for today. (This is sample data; attendance recording feature is not yet implemented).</CardDescription>
+                        <CardHeader className="flex flex-row justify-between items-center">
+                          <div>
+                            <CardTitle className="flex items-center gap-2"><CalendarCheck/> Today's Attendance</CardTitle>
+                            <CardDescription>A summary of student attendance for today.</CardDescription>
+                          </div>
+                          <Button asChild>
+                            <Link href={`/teacher/attendance?teacherId=${searchParams.get('teacherId')}&teacherName=${searchParams.get('teacherName')}`}>
+                              <ClipboardCheck className="mr-2"/> Take or Update Attendance
+                            </Link>
+                          </Button>
                         </CardHeader>
                         {attendance ? (
                           <CardContent className="space-y-4">
                             <div className="grid gap-4 md:grid-cols-3">
-                                <StatCard title="Present Today" value={attendance.presentToday.length} icon={UserCheck} description="Students marked present." />
-                                <StatCard title="Absent Today" value={attendance.absentToday.length} icon={UserX} description="Students marked absent." />
-                                <StatCard title="Total Enrolled" value={students.length} icon={Users} description="Total students in class." />
-                            </div>
-                            <div>
-                                <h3 className="text-md font-medium">Overall Attendance Rate</h3>
-                                <Progress value={attendance.overallPercentage} className="w-full mt-2 h-4" />
-                                <p className="text-sm text-muted-foreground mt-1 text-right">{attendance.overallPercentage.toFixed(1)}% Present</p>
+                                <StatCard title="Present Today" value={attendance.present} icon={UserCheck} description="Students marked present." />
+                                <StatCard title="Absent Today" value={attendance.absent} icon={UserX} description="Students marked absent." />
+                                <StatCard title="Late Today" value={attendance.late} icon={UserCheck} description="Students marked late."/>
                             </div>
                             <div className="grid gap-4 md:grid-cols-2">
                                 <Card>
-                                    <CardHeader><CardTitle className="text-lg text-green-600">Present Students</CardTitle></CardHeader>
+                                    <CardHeader><CardTitle className="text-lg text-green-600">Present & Late Students</CardTitle></CardHeader>
                                     <CardContent className="max-h-60 overflow-y-auto">
-                                      {attendance.presentToday.length > 0 ? (
+                                      {attendance.presentDetails.length > 0 || attendance.lateDetails.length > 0 ? (
                                         <ul className="space-y-2">
-                                          {attendance.presentToday.map(student => <li key={student.id} className="text-sm">{student.name}</li>)}
+                                          {attendance.presentDetails.map(student => <li key={student.id} className="text-sm">{student.name}</li>)}
+                                          {attendance.lateDetails.map(student => <li key={student.id} className="text-sm">{student.name} <span className="text-xs text-orange-500">(Late)</span></li>)}
                                         </ul>
-                                      ) : <p className="text-sm text-muted-foreground">No students marked present.</p>}
+                                      ) : <p className="text-sm text-muted-foreground">No students marked present or late.</p>}
                                     </CardContent>
                                 </Card>
                                 <Card>
                                     <CardHeader><CardTitle className="text-lg text-red-600">Absent Students</CardTitle></CardHeader>
                                     <CardContent className="max-h-60 overflow-y-auto">
-                                      {attendance.absentToday.length > 0 ? (
+                                      {attendance.absentDetails.length > 0 ? (
                                         <ul className="space-y-2">
-                                          {attendance.absentToday.map(student => <li key={student.id} className="text-sm">{student.name}</li>)}
+                                          {attendance.absentDetails.map(student => <li key={student.id} className="text-sm">{student.name}</li>)}
                                         </ul>
                                       ) : <p className="text-sm text-muted-foreground">No students marked absent today. Great!</p>}
                                     </CardContent>
@@ -242,7 +247,7 @@ export default function ClassManagementPage() {
                           </CardContent>
                         ) : (
                            <CardContent className="text-center text-muted-foreground py-12">
-                             <p>Attendance data is not available for this class.</p>
+                             <p>Attendance has not been taken for this class today.</p>
                            </CardContent>
                         )}
                     </Card>

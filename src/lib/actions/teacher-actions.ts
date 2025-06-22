@@ -1,13 +1,13 @@
 
 "use server";
 
-import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation, Exam as ExamTypeFirebase, TeacherStats, MarkSubmissionFirestoreRecord, SubmissionHistoryDisplayItem, ClassInfo, Subject as SubjectType, ClassTeacherData, ClassManagementStudent, GradingScaleItem, ClassAssessment, StudentClassMark, AttendanceData } from "@/lib/types";
+import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation, Exam as ExamTypeFirebase, TeacherStats, MarkSubmissionFirestoreRecord, SubmissionHistoryDisplayItem, ClassInfo, Subject as SubjectType, ClassTeacherData, ClassManagementStudent, GradingScaleItem, ClassAssessment, StudentClassMark, AttendanceData, StudentAttendanceInput, DailyAttendanceRecord } from "@/lib/types";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
 import { revalidatePath } from "next/cache";
 import { getClasses, getSubjects, getExams as getAllExamsFromDOS, getGeneralSettings, getTeacherById as getTeacherByIdFromDOS, getTerms, getStudents as getAllStudents, getGradingPolicies } from '@/lib/actions/dos-actions';
 import type { GeneralSettings, Term } from '@/lib/types';
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, limit, addDoc, orderBy, Timestamp, doc, getDoc, getCountFromServer, FieldPath, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, limit, addDoc, orderBy, Timestamp, doc, getDoc, getCountFromServer, FieldPath, updateDoc, setDoc } from "firebase/firestore";
 import { subDays } from "date-fns";
 
 
@@ -934,27 +934,46 @@ export async function changeTeacherPassword(
   }
 }
 
-function generateMockAttendance(students: ClassManagementStudent[]): AttendanceData {
-    if (students.length === 0) {
-        return { overallPercentage: 100, presentToday: [], absentToday: [] };
+async function getTodaysAttendanceForClass(classId: string): Promise<AttendanceData | null> {
+    if (!db) return null;
+    const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const attendanceRef = doc(db, "attendance", `${classId}_${todayStr}`);
+    
+    const docSnap = await getDoc(attendanceRef);
+    if (!docSnap.exists()) {
+        return null; // No attendance taken today
     }
-    
-    // Simulate a random number of absent students (e.g., 0 to 15% of the class)
-    const absentCount = Math.floor(Math.random() * (students.length * 0.15));
-    
-    // Shuffle the students array to pick random students to be absent
-    const shuffledStudents = [...students].sort(() => 0.5 - Math.random());
-    
-    const absentToday = shuffledStudents.slice(0, absentCount);
-    const presentToday = shuffledStudents.slice(absentCount);
 
-    const overallPercentage = 90 + Math.random() * 8; // Simulate a high overall attendance rate between 90-98%
+    const record = docSnap.data() as DailyAttendanceRecord;
+    const allStudents = await getAllStudents(); // In a real app, cache this
+    const studentsInClass = allStudents.filter(s => s.classId === classId);
 
-    return {
-        overallPercentage,
-        presentToday: presentToday.map(s => ({ id: s.id, name: `${s.firstName} ${s.lastName}` })),
-        absentToday: absentToday.map(s => ({ id: s.id, name: `${s.firstName} ${s.lastName}` })),
+    const data: AttendanceData = {
+        present: 0,
+        absent: 0,
+        late: 0,
+        presentDetails: [],
+        absentDetails: [],
+        lateDetails: [],
     };
+
+    record.records.forEach(r => {
+        const student = studentsInClass.find(s => s.id === r.studentId);
+        const studentDetail = { id: r.studentId, name: student ? `${student.firstName} ${student.lastName}` : 'Unknown Student' };
+
+        if (r.status === 'present') {
+            data.present++;
+            data.presentDetails.push(studentDetail);
+        } else if (r.status === 'absent') {
+            data.absent++;
+            data.absentDetails.push(studentDetail);
+        } else if (r.status === 'late') {
+            data.late++;
+            data.lateDetails.push(studentDetail);
+        }
+    });
+
+    return data;
 }
 
 
@@ -992,116 +1011,133 @@ export async function getClassTeacherManagementData(teacherId: string): Promise<
         }
 
         const currentTermId = generalSettings.currentTermId;
-        if (!currentTermId) {
-            // Return basic info if no term is set
-            return teacherClasses.map(classInfo => {
-                 const studentsInClass = allStudents
-                    .filter(s => s.classId === classInfo.id)
-                    .map(s => ({ id: s.id, studentIdNumber: s.studentIdNumber, firstName: s.firstName, lastName: s.lastName }));
-                return {
-                    classInfo,
-                    students: studentsInClass,
-                    assessments: [],
-                    attendance: generateMockAttendance(studentsInClass),
-                }
-            });
-        }
-
-        const examsForCurrentTerm = allExams.filter(e => e.termId === currentTermId);
         
-        const assessmentIdsToFetch: string[] = [];
-        teacherClasses.forEach(classInfo => {
-            classInfo.subjects.forEach(subject => {
-                examsForCurrentTerm.forEach(exam => {
-                    assessmentIdsToFetch.push(`${exam.id}_${classInfo.id}_${subject.id}`);
-                });
-            });
-        });
-        
-        const submissionsByAssessmentId = new Map<string, MarkSubmissionFirestoreRecord>();
-        if (assessmentIdsToFetch.length > 0) {
-            // Firestore 'in' queries are limited to 30 elements per query.
-            const chunkSize = 30;
-            for (let i = 0; i < assessmentIdsToFetch.length; i += chunkSize) {
-                const chunk = assessmentIdsToFetch.slice(i, i + chunkSize);
-                const q = query(
-                    collection(db, "markSubmissions"),
-                    where("assessmentId", "in", chunk),
-                    where("dosStatus", "==", "Approved")
-                );
-                const querySnapshot = await getDocs(q);
-                querySnapshot.forEach(doc => {
-                    submissionsByAssessmentId.set(doc.data().assessmentId, doc.data() as MarkSubmissionFirestoreRecord);
-                });
-            }
-        }
-
-        const result: ClassTeacherData[] = teacherClasses.map(classInfo => {
+        const results = await Promise.all(teacherClasses.map(async (classInfo) => {
             const classAssessments: ClassAssessment[] = [];
-
-            classInfo.subjects.forEach(subject => {
-                examsForCurrentTerm.forEach(exam => {
-                    const assessmentId = `${exam.id}_${classInfo.id}_${subject.id}`;
-                    const submission = submissionsByAssessmentId.get(assessmentId);
-
-                    if (submission && submission.submittedMarks) {
-                         const gradingPolicy = allGradingPolicies.find(p => p.id === exam.gradingPolicyId) || allGradingPolicies.find(p => p.isDefault);
-                         const gradingScale = gradingPolicy?.scale || generalSettings.defaultGradingScale || [];
-                         
-                         const marks: StudentClassMark[] = submission.submittedMarks.map(mark => {
-                            const studentInfo = allStudents.find(s => s.studentIdNumber === mark.studentId);
-                            return {
-                                studentId: studentInfo?.id || 'unknown',
-                                studentIdNumber: mark.studentId,
-                                studentName: studentInfo ? `${studentInfo.firstName} ${studentInfo.lastName}` : "Unknown Student",
-                                score: mark.score,
-                                grade: calculateGrade(mark.score, exam.maxMarks, gradingScale),
-                            };
-                        });
-                        
-                        const scores = marks.map(m => m.score).filter((s): s is number => s !== null);
-                        const summary = scores.length > 0 ? {
-                            average: scores.reduce((a, b) => a + b, 0) / scores.length,
-                            highest: Math.max(...scores),
-                            lowest: Math.min(...scores),
-                            submissionCount: scores.length
-                        } : { average: 0, highest: 0, lowest: 0, submissionCount: 0 };
-                        
-                        const gradeDistributionMap = new Map<string, number>();
-                        marks.forEach(m => gradeDistributionMap.set(m.grade, (gradeDistributionMap.get(m.grade) || 0) + 1));
-                        const gradeDistribution = Array.from(gradeDistributionMap.entries()).map(([grade, count]) => ({ grade, count }));
-
-
-                        classAssessments.push({
-                            examId: exam.id,
-                            examName: exam.name,
-                            subjectId: subject.id,
-                            subjectName: subject.name,
-                            maxMarks: exam.maxMarks,
-                            marks: marks,
-                            summary,
-                            gradeDistribution,
-                        });
-                    }
-                });
-            });
-
-             const studentsInClass = allStudents
+            const studentsInClass = allStudents
                 .filter(s => s.classId === classInfo.id)
                 .map(s => ({ id: s.id, studentIdNumber: s.studentIdNumber, firstName: s.firstName, lastName: s.lastName }));
+
+            if(currentTermId){
+                const examsForCurrentTerm = allExams.filter(e => e.termId === currentTermId);
+                const assessmentIdsToFetch: string[] = [];
+                
+                classInfo.subjects.forEach(subject => {
+                    examsForCurrentTerm.forEach(exam => {
+                        assessmentIdsToFetch.push(`${exam.id}_${classInfo.id}_${subject.id}`);
+                    });
+                });
+                
+                const submissionsByAssessmentId = new Map<string, MarkSubmissionFirestoreRecord>();
+                 if (assessmentIdsToFetch.length > 0) {
+                    const chunkSize = 30;
+                    for (let i = 0; i < assessmentIdsToFetch.length; i += chunkSize) {
+                        const chunk = assessmentIdsToFetch.slice(i, i + chunkSize);
+                        const q = query(
+                            collection(db, "markSubmissions"),
+                            where("assessmentId", "in", chunk),
+                            where("dosStatus", "==", "Approved")
+                        );
+                        const querySnapshot = await getDocs(q);
+                        querySnapshot.forEach(doc => {
+                            submissionsByAssessmentId.set(doc.data().assessmentId, doc.data() as MarkSubmissionFirestoreRecord);
+                        });
+                    }
+                }
+                
+                classInfo.subjects.forEach(subject => {
+                    examsForCurrentTerm.forEach(exam => {
+                        const assessmentId = `${exam.id}_${classInfo.id}_${subject.id}`;
+                        const submission = submissionsByAssessmentId.get(assessmentId);
+                        if (submission && submission.submittedMarks) {
+                             const gradingPolicy = allGradingPolicies.find(p => p.id === exam.gradingPolicyId) || allGradingPolicies.find(p => p.isDefault);
+                             const gradingScale = gradingPolicy?.scale || generalSettings.defaultGradingScale || [];
+                             const marks: StudentClassMark[] = submission.submittedMarks.map(mark => {
+                                const studentInfo = allStudents.find(s => s.studentIdNumber === mark.studentId);
+                                return {
+                                    studentId: studentInfo?.id || 'unknown',
+                                    studentIdNumber: mark.studentId,
+                                    studentName: studentInfo ? `${studentInfo.firstName} ${studentInfo.lastName}` : "Unknown Student",
+                                    score: mark.score,
+                                    grade: calculateGrade(mark.score, exam.maxMarks, gradingScale),
+                                };
+                            });
+                            
+                            const scores = marks.map(m => m.score).filter((s): s is number => s !== null);
+                            const summary = scores.length > 0 ? {
+                                average: scores.reduce((a, b) => a + b, 0) / scores.length,
+                                highest: Math.max(...scores),
+                                lowest: Math.min(...scores),
+                                submissionCount: scores.length
+                            } : { average: 0, highest: 0, lowest: 0, submissionCount: 0 };
+                            
+                            const gradeDistributionMap = new Map<string, number>();
+                            marks.forEach(m => gradeDistributionMap.set(m.grade, (gradeDistributionMap.get(m.grade) || 0) + 1));
+                            const gradeDistribution = Array.from(gradeDistributionMap.entries()).map(([grade, count]) => ({ grade, count }));
+
+                            classAssessments.push({
+                                examId: exam.id, examName: exam.name, subjectId: subject.id, subjectName: subject.name,
+                                maxMarks: exam.maxMarks, marks, summary, gradeDistribution,
+                            });
+                        }
+                    });
+                });
+            }
+
+            const attendanceData = await getTodaysAttendanceForClass(classInfo.id);
 
             return {
                 classInfo,
                 students: studentsInClass,
                 assessments: classAssessments.sort((a,b) => a.examName.localeCompare(b.examName) || a.subjectName.localeCompare(b.subjectName)),
-                attendance: generateMockAttendance(studentsInClass),
+                attendance: attendanceData,
             };
-        });
-
-        return result;
+        }));
+        
+        return results;
 
     } catch (error) {
         console.error(`Error fetching class management data for teacher ${teacherId}:`, error);
         return [];
     }
+}
+
+export async function getClassesForTeacher(teacherId: string): Promise<ClassInfo[]> {
+    if (!db) return [];
+    const allClasses = await getClasses();
+    return allClasses.filter(c => c.classTeacherId === teacherId);
+}
+
+export async function getStudentsForClass(classId: string): Promise<Student[]> {
+  if (!db) return [];
+  const q = query(collection(db, "students"), where("classId", "==", classId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
+}
+
+export async function saveAttendance(data: StudentAttendanceInput): Promise<{ success: boolean; message: string }> {
+  if (!db) return { success: false, message: "Database not initialized." };
+
+  try {
+    const docId = `${data.classId}_${data.date}`;
+    const attendanceRef = doc(db, "attendance", docId);
+    
+    const recordToSave: DailyAttendanceRecord = {
+        classId: data.classId,
+        teacherId: data.teacherId,
+        date: data.date,
+        records: data.records,
+        lastUpdatedAt: Timestamp.now()
+    };
+    
+    await setDoc(attendanceRef, recordToSave, { merge: true });
+
+    revalidatePath(`/teacher/class-management`); // Revalidate to show updated summary
+    return { success: true, message: "Attendance saved." };
+
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Unknown error.";
+    console.error("Error saving attendance:", error);
+    return { success: false, message: `Failed to save attendance: ${msg}` };
+  }
 }

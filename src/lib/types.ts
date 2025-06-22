@@ -228,7 +228,7 @@ export interface AssessmentAnalysisData {
   }>;
 }
 
-// --- Teacher Class Management Types ---
+// --- Teacher Class Management & Attendance Types ---
 export interface StudentClassMark {
   studentId: string; // The student's document ID
   studentIdNumber: string;
@@ -260,10 +260,34 @@ export interface ClassManagementStudent {
   lastName: string;
 }
 
+export interface StudentAttendanceInput {
+    teacherId: string;
+    classId: string;
+    date: string; // YYYY-MM-DD
+    records: Array<{
+        studentId: string; // Student document ID
+        status: 'present' | 'absent' | 'late';
+    }>;
+}
+
+export interface DailyAttendanceRecord {
+    classId: string;
+    teacherId: string;
+    date: string; // YYYY-MM-DD
+    records: Array<{
+        studentId: string; // Student document ID
+        status: 'present' | 'absent' | 'late';
+    }>;
+    lastUpdatedAt: Timestamp;
+}
+
 export interface AttendanceData {
-  overallPercentage: number;
-  presentToday: Array<{ id: string; name: string }>;
-  absentToday: Array<{ id: string; name: string }>;
+  present: number;
+  absent: number;
+  late: number;
+  presentDetails: Array<{ id: string; name: string }>;
+  absentDetails: Array<{ id: string; name: string }>;
+  lateDetails: Array<{ id: string; name: string }>;
 }
 
 
@@ -271,5 +295,5 @@ export interface ClassTeacherData {
   classInfo: ClassInfo;
   students: ClassManagementStudent[];
   assessments: ClassAssessment[];
-  attendance?: AttendanceData;
+  attendance: AttendanceData | null;
 }
