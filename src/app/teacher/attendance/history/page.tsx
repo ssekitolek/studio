@@ -154,13 +154,13 @@ export default function AttendanceHistoryPage() {
     doc.setFontSize(12);
     doc.text(subtitle, 14, 30);
     
-    let finalY = 30;
+    let finalY = 45; // Start with space after the main headers
 
     if (studentSummary && selectedStudent) {
       doc.setFontSize(14);
-      doc.text("Attendance Summary", 14, 45);
+      doc.text("Attendance Summary", 14, finalY);
       autoTable(doc, {
-        startY: 50,
+        startY: finalY + 5,
         body: [
           ['Days Present', studentSummary.present],
           ['Days Absent', studentSummary.absent],
@@ -169,21 +169,21 @@ export default function AttendanceHistoryPage() {
         ],
         theme: 'plain'
       });
-      finalY = (doc as any).lastAutoTable.finalY + 10;
+      finalY = (doc as any).lastAutoTable.finalY + 15; // Increase space after summary
     }
 
     doc.setFontSize(14);
     doc.text("Detailed Log", 14, finalY);
 
     autoTable(doc, {
-      startY: finalY + 5,
+      startY: finalY + 8, // Increase space between title and table
       head: [selectedStudent ? ['Date', 'Status'] : ['Date', 'Student Name', 'Status']],
       body: filteredData.map(r => (
         selectedStudent ? [r.date, r.status] : [r.date, r.studentName, r.status]
       )),
       theme: 'grid',
       columnStyles: {
-        1: { cellWidth: selectedStudent ? 'auto' : 80 }, // Apply width only to 'Student Name' column when it exists
+        1: { cellWidth: selectedStudent ? 'auto' : 80 },
       },
     });
     
