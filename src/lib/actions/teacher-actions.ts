@@ -1132,7 +1132,8 @@ export async function saveAttendance(data: StudentAttendanceInput): Promise<{ su
     
     await setDoc(attendanceRef, recordToSave, { merge: true });
 
-    revalidatePath(`/teacher/class-management`); // Revalidate to show updated summary
+    revalidatePath(`/teacher/class-management`);
+    revalidatePath(`/teacher/attendance/history`);
     return { success: true, message: "Attendance saved." };
 
   } catch (error) {

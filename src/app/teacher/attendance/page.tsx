@@ -8,6 +8,7 @@ import * as z from "zod";
 import { useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
+import { format } from "date-fns";
 
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ClipboardCheck, Loader2, AlertTriangle, Check, UserCheck, History } from "lucide-react";
+import { ToastAction } from "@/components/ui/toast";
 
 import { getClassesForTeacher, getStudentsForClass, saveAttendance } from "@/lib/actions/teacher-actions";
 import type { ClassInfo, Student, StudentAttendanceInput } from "@/lib/types";
@@ -114,6 +116,10 @@ export default function TakeAttendancePage() {
     setValue("students", updatedStudents, { shouldDirty: true });
   }
 
+  const attendanceHistoryLink = currentTeacherId 
+    ? `/teacher/attendance/history?teacherId=${encodeURIComponent(currentTeacherId)}&teacherName=${encodeURIComponent(searchParams.get("teacherName") || "Teacher")}`
+    : "#";
+
   const onSubmit = (data: AttendanceFormValues) => {
     if (!currentTeacherId) {
       toast({ title: "Error", description: "Teacher ID not found.", variant: "destructive" });
@@ -129,16 +135,20 @@ export default function TakeAttendancePage() {
       });
 
       if (result.success) {
-        toast({ title: "Success", description: "Attendance saved successfully." });
+        toast({
+            title: "Attendance Recorded",
+            description: `Attendance for ${format(data.date, "PPP")} has been saved.`,
+            action: (
+              <ToastAction altText="View History" asChild>
+                <Link href={attendanceHistoryLink}>View History</Link>
+              </ToastAction>
+            ),
+        });
       } else {
         toast({ title: "Error", description: result.message, variant: "destructive" });
       }
     });
   };
-
-  const attendanceHistoryLink = currentTeacherId 
-    ? `/teacher/attendance/history?teacherId=${encodeURIComponent(currentTeacherId)}&teacherName=${encodeURIComponent(searchParams.get("teacherName") || "Teacher")}`
-    : "#";
 
   if (pageError) {
     return (
