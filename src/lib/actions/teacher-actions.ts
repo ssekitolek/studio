@@ -1184,11 +1184,13 @@ export async function getAttendanceHistory(classId: string, startDate: string, e
     } catch (error: any) {
         console.error(`[getAttendanceHistory] Error fetching attendance for class ${classId}:`, error);
         if (error.code === 'failed-precondition') {
-            const specificErrorMessage = "The query for attendance history requires a database index. Please create this index in your Firebase Firestore console. The full Firebase error (containing a direct link to create it) should be in your server logs. Index fields: 'classId' (Ascending), 'date' (Descending).";
+            // The original error.message from Firestore contains the link to create the index.
+            const firestoreErrorMessage = error.message || "The query requires a database index. Please check server logs for details.";
             console.error("*********************************************************************************");
-            console.error("FIRESTORE ERROR (getAttendanceHistory): " + specificErrorMessage);
+            console.error("FIRESTORE ERROR (getAttendanceHistory): Missing Index. Full error from SDK:", firestoreErrorMessage);
             console.error("*********************************************************************************");
-            throw new Error(specificErrorMessage);
+            // Pass the original, more detailed message to the client. It contains the link.
+            throw new Error(firestoreErrorMessage);
         }
         throw new Error(`Failed to fetch attendance history: ${error.message || "An unknown error occurred."}`);
     }
