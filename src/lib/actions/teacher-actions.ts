@@ -1156,7 +1156,8 @@ export async function getAttendanceHistory(classId: string, startDate: string, e
             collection(db, "attendance"),
             where("classId", "==", classId),
             where("date", ">=", startDate),
-            where("date", "<=", endDate)
+            where("date", "<=", endDate),
+            orderBy("date", "desc")
         );
         
         const querySnapshot = await getDocs(q);
@@ -1180,14 +1181,14 @@ export async function getAttendanceHistory(classId: string, startDate: string, e
             }
         });
 
-        // Sort in code to avoid needing a composite index
-        history.sort((a, b) => b.date.localeCompare(a.date));
-
         return history;
     } catch (error: any) {
         const firestoreErrorMessage = error.message || "An unknown error occurred while fetching attendance data.";
         console.error("*********************************************************************************");
         console.error("FIRESTORE ERROR (getAttendanceHistory):", firestoreErrorMessage);
+        if (error.code === 'failed-precondition') {
+            console.error("A composite index is required for this query. The error message below should contain a direct link to create it in the Firebase Console.");
+        }
         console.error("*********************************************************************************");
         throw new Error(`Failed to fetch attendance history: ${firestoreErrorMessage}`);
     }
