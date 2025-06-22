@@ -77,6 +77,13 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
       disabled: !validTeacherId,
     },
     {
+      href: validTeacherId ? `/teacher/attendance/history?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
+      label: "Attendance History",
+      icon: History,
+      tooltip: validTeacherId ? "View attendance history" : "Attendance History (Login Required)",
+      disabled: !validTeacherId,
+    },
+    {
       href: validTeacherId ? `/teacher/marks/submit?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
       label: "Submit Marks",
       icon: BookOpenCheck,

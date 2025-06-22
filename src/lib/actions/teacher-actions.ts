@@ -1,7 +1,7 @@
 
 "use server";
 
-import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation, Exam as ExamTypeFirebase, TeacherStats, MarkSubmissionFirestoreRecord, SubmissionHistoryDisplayItem, ClassInfo, Subject as SubjectType, ClassTeacherData, ClassManagementStudent, GradingScaleItem, ClassAssessment, StudentClassMark, AttendanceData, StudentAttendanceInput, DailyAttendanceRecord } from "@/lib/types";
+import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation, Exam as ExamTypeFirebase, TeacherStats, MarkSubmissionFirestoreRecord, SubmissionHistoryDisplayItem, ClassInfo, Subject as SubjectType, ClassTeacherData, ClassManagementStudent, GradingScaleItem, ClassAssessment, StudentClassMark, AttendanceData, StudentAttendanceInput, DailyAttendanceRecord, AttendanceHistoryData } from "@/lib/types";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
 import { revalidatePath } from "next/cache";
 import { getClasses, getSubjects, getExams as getAllExamsFromDOS, getGeneralSettings, getTeacherById as getTeacherByIdFromDOS, getTerms, getStudents as getAllStudents, getGradingPolicies } from '@/lib/actions/dos-actions';
@@ -1140,4 +1140,37 @@ export async function saveAttendance(data: StudentAttendanceInput): Promise<{ su
     console.error("Error saving attendance:", error);
     return { success: false, message: `Failed to save attendance: ${msg}` };
   }
+}
+
+export async function getAttendanceHistory(classId: string, startDate: string, endDate: string): Promise<AttendanceHistoryData[]> {
+    if (!db) return [];
+    
+    const q = query(
+        collection(db, "attendance"),
+        where("classId", "==", classId),
+        where("date", ">=", startDate),
+        where("date", "<=", endDate),
+        orderBy("date", "desc")
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    const allStudents = await getAllStudents();
+    const studentMap = new Map(allStudents.map(s => [s.id, s]));
+
+    const history: AttendanceHistoryData[] = [];
+    querySnapshot.forEach(docSnap => {
+        const data = docSnap.data() as DailyAttendanceRecord;
+        data.records.forEach(record => {
+            const student = studentMap.get(record.studentId);
+            history.push({
+                date: data.date,
+                studentId: record.studentId,
+                studentName: student ? `${student.firstName} ${student.lastName}` : "Unknown Student",
+                status: record.status
+            });
+        });
+    });
+
+    return history;
 }

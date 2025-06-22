@@ -1,4 +1,5 @@
 
+
 import type { Timestamp } from "firebase/firestore";
 
 export interface Teacher {
@@ -296,4 +297,11 @@ export interface ClassTeacherData {
   students: ClassManagementStudent[];
   assessments: ClassAssessment[];
   attendance: AttendanceData | null;
+}
+
+export interface AttendanceHistoryData {
+    date: string;
+    studentId: string;
+    studentName: string;
+    status: 'present' | 'absent' | 'late';
 }

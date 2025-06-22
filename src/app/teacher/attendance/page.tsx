@@ -18,7 +18,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ClipboardCheck, Loader2, AlertTriangle, Check, UserCheck } from "lucide-react";
+import { ClipboardCheck, Loader2, AlertTriangle, Check, UserCheck, History } from "lucide-react";
 
 import { getClassesForTeacher, getStudentsForClass, saveAttendance } from "@/lib/actions/teacher-actions";
 import type { ClassInfo, Student, StudentAttendanceInput } from "@/lib/types";
@@ -136,6 +136,10 @@ export default function TakeAttendancePage() {
     });
   };
 
+  const attendanceHistoryLink = currentTeacherId 
+    ? `/teacher/attendance/history?teacherId=${encodeURIComponent(currentTeacherId)}&teacherName=${encodeURIComponent(searchParams.get("teacherName") || "Teacher")}`
+    : "#";
+
   if (pageError) {
     return (
       <div className="space-y-6">
@@ -151,7 +155,18 @@ export default function TakeAttendancePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Take Attendance" description="Record daily student attendance for your classes." icon={ClipboardCheck} />
+      <PageHeader 
+        title="Take Attendance" 
+        description="Record daily student attendance for your classes." 
+        icon={ClipboardCheck} 
+        actionButton={
+            <Button variant="outline" asChild disabled={!currentTeacherId}>
+                <Link href={attendanceHistoryLink}>
+                    <History className="mr-2 h-4 w-4" /> View History
+                </Link>
+            </Button>
+        }
+      />
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Card>
