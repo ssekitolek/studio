@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -64,7 +63,7 @@ export function DeleteSubjectConfirmationDialog({
           <AlertDialogTitle className="flex items-center">
             <AlertTriangle className="h-5 w-5 mr-2 text-destructive" />
             Are you absolutely sure?
-            </AlertDialogTitle>
+          </AlertDialogTitle>
           <AlertDialogDescription>
             This action will permanently delete the subject: <strong>{subjectName}</strong> (ID: {subjectId}). 
             This action cannot be undone. 
@@ -91,4 +90,3 @@ export function DeleteSubjectConfirmationDialog({
     </AlertDialog>
   );
 }
-

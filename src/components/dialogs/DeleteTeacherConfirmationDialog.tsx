@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -16,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { deleteTeacher } from "@/lib/actions/dos-actions";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2, AlertTriangle } from "lucide-react";
 
 interface DeleteTeacherConfirmationDialogProps {
   teacherId: string;
@@ -62,7 +61,10 @@ export function DeleteTeacherConfirmationDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogTitle className="flex items-center">
+            <AlertTriangle className="h-5 w-5 mr-2 text-destructive" />
+            Are you sure?
+          </AlertDialogTitle>
           <AlertDialogDescription>
             This action will permanently delete the teacher record for <strong>{teacherName}</strong> (ID: {teacherId}). This action cannot be undone.
           </AlertDialogDescription>
