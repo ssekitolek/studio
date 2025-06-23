@@ -1,0 +1,66 @@
+
+'use server';
+
+import { db } from "@/lib/firebase";
+import type { WebsiteContent } from "@/lib/types";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { revalidatePath } from "next/cache";
+
+const defaultContent: WebsiteContent = {
+  hero: {
+    title: "Nurturing Minds, Building Futures",
+    subtitle: "At St. Mbaaga's College Naddangira, we are dedicated to providing a transformative education that inspires students to achieve their full potential.",
+  },
+  features: [
+    { title: "Excellence in Education", description: "Our rigorous academic curriculum is designed to challenge students and foster a love for lifelong learning." },
+    { title: "Holistic Development", description: "We focus on developing the whole person through a rich program of arts, sports, and community service." },
+    { title: "Vibrant Community", description: "A supportive and inclusive environment where every student feels valued, respected, and empowered to succeed." }
+  ],
+  academics: {
+    title: "A World-Class Academic Program",
+    description: "From science and technology to arts and humanities, our programs are designed to inspire curiosity and prepare students for the challenges of tomorrow.",
+    imageUrl: "https://placehold.co/600x400.png"
+  },
+  news: [
+    { title: "Annual Science Fair Winners Announced", date: "June 20, 2025", description: "Congratulations to our brilliant young scientists who showcased incredible projects this year.", imageUrl: "https://placehold.co/600x400.png" },
+    { title: "Sports Day Championship Highlights", date: "June 15, 2025", description: "A day of thrilling competition and great sportsmanship. See the results and photo gallery.", imageUrl: "https://placehold.co/600x400.png" },
+    { title: "Community Service Drive a Huge Success", date: "June 10, 2025", description: "Our students volunteered over 500 hours to support local charities and community projects.", imageUrl: "https://placehold.co/600x400.png" }
+  ]
+};
+
+export async function getWebsiteContent(): Promise<WebsiteContent> {
+  if (!db) {
+    console.error("Firestore not initialized. Returning default website content.");
+    return defaultContent;
+  }
+  try {
+    const contentRef = doc(db, "website_content", "homepage");
+    const contentSnap = await getDoc(contentRef);
+    if (contentSnap.exists()) {
+      return contentSnap.data() as WebsiteContent;
+    } else {
+      // If the document doesn't exist, create it with default content
+      await setDoc(contentRef, defaultContent);
+      return defaultContent;
+    }
+  } catch (error) {
+    console.error("Error fetching website content:", error);
+    return defaultContent; // Return default content on error
+  }
+}
+
+export async function updateWebsiteContent(content: WebsiteContent): Promise<{ success: boolean; message: string }> {
+  if (!db) {
+    return { success: false, message: "Firestore not initialized." };
+  }
+  try {
+    const contentRef = doc(db, "website_content", "homepage");
+    await setDoc(contentRef, content, { merge: true });
+    revalidatePath("/");
+    revalidatePath("/admin/dashboard");
+    return { success: true, message: "Website content updated successfully." };
+  } catch (error) {
+    console.error("Error updating website content:", error);
+    return { success: false, message: `Failed to update content: ${error instanceof Error ? error.message : "Unknown error"}` };
+  }
+}
