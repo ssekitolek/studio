@@ -2,6 +2,7 @@
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getFirestore, type Firestore } from "firebase/firestore";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 const firebaseConfigValues = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -39,12 +40,12 @@ if (firebaseConfigValues.projectId && placeholderProjectIds.includes(firebaseCon
   isConfigurationValid = false;
   const missingIdError = `CRITICAL_CONFIG_ERROR: Firebase projectId (NEXT_PUBLIC_FIREBASE_PROJECT_ID) is missing or invalid. Please ensure it is correctly set in your .env file.`;
   configErrorMessage = (configErrorMessage ? configErrorMessage + " " : "") + missingIdError;
-  console.error(`SERVER_CONFIG_ERROR_NO_PROJECT_ID: ${missingIdError}`);
 }
 
 
 let app: FirebaseApp | null = null;
 let db: Firestore | null = null;
+let storage: FirebaseStorage | null = null;
 
 if (!isConfigurationValid) {
   const fullErrorMessage = `Firebase Initialization Failed due to Configuration Issues: ${configErrorMessage} Firebase features will be unavailable. Ensure all NEXT_PUBLIC_FIREBASE_... variables are correctly set in your .env file. Without correct configuration, the application cannot connect to your database.`;
@@ -59,24 +60,26 @@ if (!isConfigurationValid) {
       console.log("Using existing Firebase app.");
     }
     db = getFirestore(app);
-    console.log(`Firestore (db) instance obtained. Project ID: ${app.options.projectId}`);
+    storage = getStorage(app);
+    console.log(`Firestore (db) and Storage (storage) instances obtained. Project ID: ${app.options.projectId}`);
   } catch (error) {
     const initErrorMsg = `Firebase SDK Initialization Error: ${error instanceof Error ? error.message : String(error)}. This occurred even with seemingly valid config. Firestore (db) will be NULL. Config used: ${JSON.stringify(firebaseConfigValues)}`;
     console.error(`SERVER_SDK_INIT_ERROR: ${initErrorMsg}`);
     app = null; 
     db = null;
+    storage = null;
   }
 }
 
-if (db === null) {
+if (db === null || storage === null) {
     if (isConfigurationValid) { // If config was thought to be valid, but db is still null
-        console.error("POST_INIT_CHECK_FAIL: Firestore 'db' instance is unexpectedly null after initialization attempt, despite configuration appearing valid. This indicates a deeper issue with Firebase SDK or setup, or an unhandled error during getFirestore().");
+        console.error("POST_INIT_CHECK_FAIL: Firestore 'db' or 'storage' instance is unexpectedly null after initialization attempt, despite configuration appearing valid. This indicates a deeper issue with Firebase SDK or setup, or an unhandled error during getFirestore()/getStorage().");
     } else { // If config was invalid, this is expected
-        console.warn("POST_INIT_CHECK_INFO: Firestore 'db' instance is null due to prior configuration errors. This is expected. Firebase operations will fail.");
+        console.warn("POST_INIT_CHECK_INFO: Firestore 'db' or 'storage' instance is null due to prior configuration errors. This is expected. Firebase operations will fail.");
     }
 } else {
     console.info(`Firebase and Firestore (db) initialized successfully for project: ${firebaseConfigValues.projectId}.`);
     console.info("APP_INFO: For full functionality, ensure your Firestore database contains the 'markSubmissions' collection and a 'settings' collection with a 'general' document, and other necessary collections like 'teachers', 'students', 'classes', 'subjects', 'terms', 'exams', 'gradingPolicies'.");
 }
 
-export { app, db };
+export { app, db, storage };

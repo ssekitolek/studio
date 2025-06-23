@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -22,6 +21,7 @@ import { updateWebsiteContent } from "@/lib/actions/website-actions";
 import type { WebsiteContent } from "@/lib/types";
 import { Loader2, Save } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { ImageUploadInput } from "@/components/shared/ImageUploadInput";
 
 const websiteContentSchema = z.object({
   hero: z.object({
@@ -156,13 +156,10 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                 <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
               )}
             />
-             <FormField
-              control={form.control}
-              name="academics.imageUrl"
-              render={({ field }) => (
-                <FormItem><FormLabel>Image URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-              )}
-            />
+             <ImageUploadInput
+                fieldName="academics.imageUrl"
+                label="Image"
+             />
           </CardContent>
         </Card>
 
@@ -196,13 +193,10 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                     <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
                   )}
                 />
-                 <FormField
-                  control={form.control}
-                  name={`news.${index}.imageUrl`}
-                  render={({ field }) => (
-                    <FormItem><FormLabel>Image URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                  )}
-                />
+                 <ImageUploadInput
+                    fieldName={`news.${index}.imageUrl`}
+                    label="Image"
+                 />
               </div>
             ))}
           </CardContent>
