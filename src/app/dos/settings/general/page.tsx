@@ -16,6 +16,7 @@ import { Settings2, Save, Loader2, Scale } from "lucide-react";
 import { getGeneralSettings, updateGeneralSettings, getTerms } from "@/lib/actions/dos-actions";
 import type { GeneralSettings, Term, GradingScaleItem } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
+import { ImageUploadInput } from "@/components/shared/ImageUploadInput";
 
 // Create a simple DatePicker if not already available
 const SimpleDatePicker = ({ value, onChange }: { value?: string, onChange: (date?: string) => void }) => {
@@ -39,6 +40,7 @@ const generalSettingsSchema = z.object({
   globalMarksSubmissionDeadline: z.string().optional(), 
   dosGlobalAnnouncementText: z.string().optional(),
   dosGlobalAnnouncementType: z.enum(["info", "warning", ""]).optional(),
+  dosGlobalAnnouncementImageUrl: z.string().url().optional(),
   teacherDashboardResourcesText: z.string().optional(),
 });
 
@@ -59,6 +61,7 @@ export default function GeneralSettingsPage() {
       globalMarksSubmissionDeadline: undefined,
       dosGlobalAnnouncementText: "",
       dosGlobalAnnouncementType: "",
+      dosGlobalAnnouncementImageUrl: "",
       teacherDashboardResourcesText: "",
     },
   });
@@ -74,6 +77,7 @@ export default function GeneralSettingsPage() {
           globalMarksSubmissionDeadline: settings.globalMarksSubmissionDeadline || undefined,
           dosGlobalAnnouncementText: settings.dosGlobalAnnouncementText || "",
           dosGlobalAnnouncementType: settings.dosGlobalAnnouncementType || "",
+          dosGlobalAnnouncementImageUrl: settings.dosGlobalAnnouncementImageUrl || "",
           teacherDashboardResourcesText: settings.teacherDashboardResourcesText || "",
         });
         setDefaultGradingScale(settings.defaultGradingScale || []);
@@ -94,6 +98,7 @@ export default function GeneralSettingsPage() {
           ...data,
           dosGlobalAnnouncementType: data.dosGlobalAnnouncementType === "" ? undefined : data.dosGlobalAnnouncementType,
           teacherDashboardResourcesText: data.teacherDashboardResourcesText || undefined,
+          dosGlobalAnnouncementImageUrl: data.dosGlobalAnnouncementImageUrl || undefined,
         };
         const result = await updateGeneralSettings(settingsToSave); 
         if (result.success) {
@@ -216,6 +221,10 @@ export default function GeneralSettingsPage() {
                     <FormMessage />
                   </FormItem>
                 )}
+              />
+               <ImageUploadInput
+                fieldName="dosGlobalAnnouncementImageUrl"
+                label="Announcement Image (Optional)"
               />
               <FormField
                 control={form.control}

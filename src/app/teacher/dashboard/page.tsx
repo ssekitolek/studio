@@ -276,7 +276,7 @@ export default function TeacherDashboardPage() {
                  {currentTeacherId && !fetchError && !isLoading ? (
                   <>
                     <p>No classes or subjects are currently assigned to you for assessment submission in the active term.</p>
-                    <p className="text-xs mt-1">This could be due to missing D.O.S. configurations (e.g., current term not set, or no exams for current term), or all your assigned marks have been submitted and are awaiting D.O.S. review or have been approved. Check "View Submissions" for details on past submissions.</p>
+                    <p className="text-xs mt-1">This could be due to missing D.O.S. configurations (e.g., current term not set, or no exams for current term), or all your assigned marks have been submitted and are pending/approved. Check "View Submissions" for details on past submissions.</p>
                   </>
                  ) : (
                     !isLoading && <p>Cannot load assignments as Teacher ID is not available or an error occurred.</p>
@@ -297,18 +297,32 @@ export default function TeacherDashboardPage() {
             {currentTeacherId && !fetchError && notifications && notifications.filter(n => n.id === 'dos_announcement').length > 0 ? (
               notifications.filter(n => n.id === 'dos_announcement').map((notification) => (
                 <div
-                  key={`${notification.id}-dos`} 
-                  className={`flex items-start p-3 rounded-lg ${
+                  key={`${notification.id}-dos`}
+                  className={`flex flex-col items-start p-3 rounded-lg ${
                     notification.type === 'warning' ? 'bg-destructive/10 text-destructive-foreground' : 
                     'bg-blue-500/10 text-blue-700 dark:text-blue-300'
                   }`}
                 >
-                  {notification.type === 'warning' ? (
-                      <AlertTriangle className={`h-5 w-5 mr-3 mt-0.5 shrink-0 text-destructive`} />
-                  ) : (
-                      <Info className="h-5 w-5 text-blue-500 mr-3 mt-0.5 shrink-0" />
+                  <div className="flex items-start w-full">
+                    {notification.type === 'warning' ? (
+                        <AlertTriangle className={`h-5 w-5 mr-3 mt-0.5 shrink-0 text-destructive`} />
+                    ) : (
+                        <Info className="h-5 w-5 text-blue-500 mr-3 mt-0.5 shrink-0" />
+                    )}
+                    <p className="text-sm flex-1">{notification.message || "No message content."}</p>
+                  </div>
+                  {notification.imageUrl && (
+                     <div className="pl-8 pt-2 w-full">
+                        <Image
+                          src={notification.imageUrl}
+                          alt="Announcement Image"
+                          width={400}
+                          height={250}
+                          className="mt-2 rounded-md object-cover w-full h-auto"
+                          data-ai-hint="announcement"
+                        />
+                     </div>
                   )}
-                  <p className="text-sm">{notification.message || "No message content."}</p>
                 </div>
               ))
             ) : (
@@ -346,4 +360,3 @@ export default function TeacherDashboardPage() {
     </div>
   );
 }
-

@@ -1,6 +1,5 @@
 
 
-
 import type { Timestamp } from "firebase/firestore";
 
 export interface Teacher {
@@ -101,6 +100,7 @@ export interface GeneralSettings {
     globalMarksSubmissionDeadline?: string; // ISO string date
     dosGlobalAnnouncementText?: string;
     dosGlobalAnnouncementType?: 'info' | 'warning';
+    dosGlobalAnnouncementImageUrl?: string;
     teacherDashboardResourcesText?: string;
 }
 
@@ -131,6 +131,7 @@ export interface TeacherNotification {
   message: string;
   type: 'deadline' | 'info' | 'warning';
   link?: string;
+  imageUrl?: string;
 }
 
 export interface TeacherStats {

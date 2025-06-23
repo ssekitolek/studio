@@ -963,7 +963,7 @@ export async function updateGeneralSettings(settings: Partial<GeneralSettings>):
             const value = settings[typedKey];
 
             // For fields that can be cleared, store null instead of empty string/undefined
-            if (['currentTermId', 'globalMarksSubmissionDeadline', 'dosGlobalAnnouncementText', 'dosGlobalAnnouncementType', 'teacherDashboardResourcesText'].includes(typedKey)) {
+            if (['currentTermId', 'globalMarksSubmissionDeadline', 'dosGlobalAnnouncementText', 'dosGlobalAnnouncementType', 'teacherDashboardResourcesText', 'dosGlobalAnnouncementImageUrl'].includes(typedKey)) {
                 settingsToSave[typedKey] = value || null;
             } else if (typedKey === 'defaultGradingScale') { // Handle grading scale separately
                 settingsToSave[typedKey] = Array.isArray(value) ? value : [];
@@ -1573,6 +1573,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
         globalMarksSubmissionDeadline: undefined,
         dosGlobalAnnouncementText: "Error: System settings could not be loaded. DB uninitialized.",
         dosGlobalAnnouncementType: "warning",
+        dosGlobalAnnouncementImageUrl: undefined,
         teacherDashboardResourcesText: "Error: Resources text could not be loaded. DB uninitialized.",
         isDefaultTemplate: true,
     };
@@ -1592,6 +1593,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
                 globalMarksSubmissionDeadline: data.globalMarksSubmissionDeadline === null ? undefined : data.globalMarksSubmissionDeadline,
                 dosGlobalAnnouncementText: data.dosGlobalAnnouncementText === null ? undefined : data.dosGlobalAnnouncementText,
                 dosGlobalAnnouncementType: data.dosGlobalAnnouncementType === null ? undefined : data.dosGlobalAnnouncementType,
+                dosGlobalAnnouncementImageUrl: data.dosGlobalAnnouncementImageUrl === null ? undefined : data.dosGlobalAnnouncementImageUrl,
                 teacherDashboardResourcesText: data.teacherDashboardResourcesText === null ? undefined : data.teacherDashboardResourcesText,
                 isDefaultTemplate: false,
             } as GeneralSettings & { isDefaultTemplate: boolean };
@@ -1604,6 +1606,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
             globalMarksSubmissionDeadline: undefined,
             dosGlobalAnnouncementText: "Welcome to GradeCentral! Please configure system settings via the D.O.S. portal.",
             dosGlobalAnnouncementType: "info",
+            dosGlobalAnnouncementImageUrl: undefined,
             teacherDashboardResourcesText: "Access your teaching schedule, submit student marks, and view historical submission data using the sidebar navigation. Stay updated with notifications from the D.O.S. and ensure timely submission of grades. If you encounter any issues, please contact the administration.",
             isDefaultTemplate: true,
         };
@@ -1614,6 +1617,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
             globalMarksSubmissionDeadline: defaultSettings.globalMarksSubmissionDeadline || null,
             dosGlobalAnnouncementText: defaultSettings.dosGlobalAnnouncementText || null,
             dosGlobalAnnouncementType: defaultSettings.dosGlobalAnnouncementType || null,
+            dosGlobalAnnouncementImageUrl: defaultSettings.dosGlobalAnnouncementImageUrl || null,
             teacherDashboardResourcesText: defaultSettings.teacherDashboardResourcesText || null,
         });
         revalidatePath("/dos/settings/general");
@@ -1627,6 +1631,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
             globalMarksSubmissionDeadline: undefined,
             dosGlobalAnnouncementText: "Error fetching announcements due to a server error.",
             dosGlobalAnnouncementType: "warning",
+            dosGlobalAnnouncementImageUrl: undefined,
             teacherDashboardResourcesText: "Could not load teacher resources text due to a server error. Please contact support.",
             isDefaultTemplate: true,
         };

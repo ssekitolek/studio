@@ -765,6 +765,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
         id: 'dos_announcement',
         message: actualGeneralSettings.dosGlobalAnnouncementText,
         type: actualGeneralSettings.dosGlobalAnnouncementType || 'info',
+        imageUrl: actualGeneralSettings.dosGlobalAnnouncementImageUrl,
       });
     }
 
@@ -1180,6 +1181,9 @@ export async function getAttendanceHistory(classId: string, startDate: string, e
                 });
             }
         });
+        
+        // Manual sort in code instead of relying on index
+        history.sort((a, b) => b.date.localeCompare(a.date));
 
         return history;
     } catch (error: any) {
@@ -1188,6 +1192,7 @@ export async function getAttendanceHistory(classId: string, startDate: string, e
         console.error("FIRESTORE ERROR (getAttendanceHistory):", firestoreErrorMessage);
         if (error.code === 'failed-precondition') {
             console.error("A composite index is required for this query. The error message below should contain a direct link to create it in the Firebase Console.");
+             throw new Error(firestoreErrorMessage);
         }
         console.error("*********************************************************************************");
         throw new Error(`Failed to fetch attendance history: ${firestoreErrorMessage}`);
