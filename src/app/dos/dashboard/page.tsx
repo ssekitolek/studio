@@ -1,4 +1,3 @@
-
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatCard } from "@/components/shared/StatCard";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -125,7 +124,7 @@ export default async function DosDashboardPage() {
     <div className="space-y-8">
       <PageHeader
         title="D.O.S. Dashboard"
-        description="Overview of GradeCentral activities and management tools."
+        description="Overview of school activities and management tools."
         icon={LayoutDashboard}
       />
       {fetchError && (
@@ -203,12 +202,12 @@ export default async function DosDashboardPage() {
       
       <Card className="shadow-md overflow-hidden">
         <CardHeader>
-            <CardTitle className="font-headline text-xl text-primary">Welcome to GradeCentral</CardTitle>
+            <CardTitle className="font-headline text-xl text-primary">Welcome</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col md:flex-row items-center gap-6">
             <div className="md:w-2/3">
                 <p className="text-foreground/90 mb-4">
-                    GradeCentral empowers you to efficiently manage student grades, teacher assignments, and academic configurations. 
+                    This system empowers you to efficiently manage student grades, teacher assignments, and academic configurations. 
                     Utilize the sidebar to navigate through different management sections.
                 </p>
                 <p className="text-foreground/90">

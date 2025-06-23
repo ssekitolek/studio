@@ -32,7 +32,7 @@ export default async function ManageStudentsPage() {
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle className="font-headline text-xl text-primary">Student List</CardTitle>
-          <CardDescription>All students currently enrolled in GradeCentral.</CardDescription>
+          <CardDescription>All students currently enrolled in the system.</CardDescription>
         </CardHeader>
         <CardContent>
           {students.length > 0 ? (

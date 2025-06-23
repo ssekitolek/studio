@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -85,7 +84,7 @@ export function DosSidebar() {
         {state === 'expanded' && (
            <Link href="/dos/dashboard" className="ml-2">
             <span className="text-lg font-headline font-semibold text-sidebar-foreground">
-              Grade<span className="text-sidebar-primary">Central</span> <span className="text-xs text-sidebar-foreground/70">D.O.S</span>
+              St. Mbaaga's <span className="text-xs text-sidebar-foreground/70">D.O.S</span>
             </span>
           </Link>
         )}

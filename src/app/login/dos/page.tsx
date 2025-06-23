@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -98,7 +97,7 @@ export default function DosLoginPage() {
         </CardContent>
       </Card>
        <footer className="mt-12 text-center text-foreground/60">
-        <p>&copy; {new Date().getFullYear()} GradeCentral. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} St. Mbaaga's College Naddangira. All rights reserved.</p>
       </footer>
     </main>
   );

@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'GradeCentral',
+  title: "St. Mbaaga's College Naddangira",
   description: 'Online student marks portal',
 };
 

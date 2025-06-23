@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
@@ -121,7 +120,7 @@ export default function GeneralSettingsPage() {
     <div className="space-y-6">
       <PageHeader
         title="General Settings"
-        description="Manage global configurations for GradeCentral."
+        description="Manage global configurations for the system."
         icon={Settings2}
       />
       <Form {...form}>

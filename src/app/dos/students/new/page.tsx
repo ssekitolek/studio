@@ -1,4 +1,3 @@
-
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +10,7 @@ export default function RegisterStudentPage() {
     <div className="space-y-6">
       <PageHeader
         title="Register New Student"
-        description="Add a new student to the GradeCentral system."
+        description="Add a new student to the system."
         icon={UserPlus}
         actionButton={
           <Button variant="outline" asChild>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -127,7 +126,7 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
         {state === 'expanded' && (
           <Link href={validTeacherId ? `/teacher/dashboard?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "/login/teacher"} className="ml-2">
             <span className="text-lg font-headline font-semibold text-sidebar-foreground">
-              Grade<span className="text-sidebar-primary">Central</span> <span className="text-xs text-sidebar-foreground/70">Teacher</span>
+              St. Mbaaga's <span className="text-xs text-sidebar-foreground/70">Teacher</span>
             </span>
           </Link>
         )}

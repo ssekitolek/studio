@@ -27,7 +27,7 @@ export default function SchoolHomePage() {
               <path d="m12 7 2 4 4-2-2 4 4 2-4-2-2 4-2-4-4 2 2-4-4-2 4 2z" />
             </svg>
             <span className="text-xl font-headline font-bold text-primary">
-              Grade<span className="text-accent">Central</span> Academy
+              St. Mbaaga's College<span className="text-accent"> Naddangira</span>
             </span>
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
@@ -65,7 +65,7 @@ export default function SchoolHomePage() {
               Nurturing Minds, Building Futures
             </h1>
             <p className="mx-auto mt-4 max-w-[700px] text-lg text-foreground/80">
-              At GradeCentral Academy, we are dedicated to providing a transformative education that inspires students to achieve their full potential.
+              At St. Mbaaga's College Naddangira, we are dedicated to providing a transformative education that inspires students to achieve their full potential.
             </p>
             <div className="mt-8 flex justify-center gap-4">
               <Button size="lg" asChild>
@@ -156,7 +156,7 @@ export default function SchoolHomePage() {
         <section id="news" className="py-16 md:py-24">
           <div className="container mx-auto px-4 md:px-6">
             <h2 className="text-3xl font-headline font-bold text-center text-primary">Latest News & Events</h2>
-            <p className="text-center text-muted-foreground mt-2 mb-12">Stay up-to-date with what's happening at GradeCentral Academy.</p>
+            <p className="text-center text-muted-foreground mt-2 mb-12">Stay up-to-date with what's happening at St. Mbaaga's College Naddangira.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               <Card className="overflow-hidden group">
                 <Image
@@ -223,7 +223,7 @@ export default function SchoolHomePage() {
       {/* Footer */}
       <footer className="bg-muted text-muted-foreground py-8">
         <div className="container mx-auto px-4 md:px-6 flex flex-col md:flex-row items-center justify-between">
-          <p className="text-sm">&copy; {new Date().getFullYear()} GradeCentral Academy. All rights reserved.</p>
+          <p className="text-sm">&copy; {new Date().getFullYear()} St. Mbaaga's College Naddangira. All rights reserved.</p>
           <nav className="flex gap-4 mt-4 md:mt-0">
             <Link href="#" className="text-sm hover:text-primary">Privacy Policy</Link>
             <Link href="#" className="text-sm hover:text-primary">Terms of Service</Link>

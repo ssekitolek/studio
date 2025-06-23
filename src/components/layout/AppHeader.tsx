@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -69,7 +68,7 @@ export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teache
       <div className="flex-1">
         <Link href={dashboardLink} className="flex items-center gap-2">
            <span className="text-xl font-headline font-semibold text-primary">
-            Grade<span className="text-accent">Central</span>
+            St. Mbaaga's<span className="text-accent"> College</span>
            </span>
         </Link>
       </div>
