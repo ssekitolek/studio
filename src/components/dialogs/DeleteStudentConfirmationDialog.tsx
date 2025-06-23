@@ -67,8 +67,7 @@ export function DeleteStudentConfirmationDialog({
             Are you absolutely sure?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete the student: <strong>{studentName}</strong> (ID: {studentIdNumber}). This cannot be undone.
-            <span className="mt-2 block font-semibold text-destructive">This does not automatically remove their associated marks or other historical data.</span>
+             This action cannot be undone. This will permanently delete the student: <strong>{studentName}</strong> (ID: {studentIdNumber}). Associated historical data will not be removed.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

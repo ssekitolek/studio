@@ -67,8 +67,7 @@ export function DeleteGradingPolicyConfirmationDialog({
             Are you absolutely sure?
           </AlertDialogTitle>
           <AlertDialogDescription>
-             This will permanently delete the grading policy: <strong>{policyName}</strong>. This action cannot be undone.
-             <span className="mt-2 block font-semibold text-destructive">If this policy is the default or assigned to any exams, the system will prevent deletion.</span>
+            This action cannot be undone. This will permanently delete the <strong>{policyName}</strong> policy. If this policy is the default or assigned to any exams, the system will prevent deletion.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

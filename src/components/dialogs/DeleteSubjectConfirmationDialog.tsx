@@ -65,8 +65,7 @@ export function DeleteSubjectConfirmationDialog({
             Are you absolutely sure?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete the subject: <strong>{subjectName}</strong>. This cannot be undone.
-            <span className="mt-2 block font-semibold text-destructive">If this subject is assigned to any classes, the system will prevent deletion.</span>
+            This action cannot be undone. This will permanently delete the subject: <strong>{subjectName}</strong>. If this subject is assigned to any classes, the system will prevent deletion.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

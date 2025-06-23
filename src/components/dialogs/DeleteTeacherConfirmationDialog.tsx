@@ -65,7 +65,7 @@ export function DeleteTeacherConfirmationDialog({
             Are you sure?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This action will permanently delete the teacher record for <strong>{teacherName}</strong>. This action cannot be undone.
+            This action cannot be undone. This will permanently delete the teacher record for <strong>{teacherName}</strong>.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
