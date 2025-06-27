@@ -25,10 +25,11 @@ export default function PublicLayout({
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="h-6 w-6 text-primary"
+              className="h-8 w-8 text-primary"
             >
-              <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
-              <path d="m12 7 2 4 4-2-2 4 4 2-4-2-2 4-2-4-4 2 2-4-4-2 4 2z" />
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              <path d="M9 14s1.5-2 3-2 3 2 3 2" />
+              <path d="M9 8h6v6H9z" />
             </svg>
             <span className="text-xl font-headline font-bold text-primary">
               St. Mbaaga's College<span className="text-accent"> Naddangira</span>
