@@ -21,10 +21,9 @@ import { updateWebsiteContent } from "@/lib/actions/website-actions";
 import type { WebsiteContent } from "@/lib/types";
 import { Loader2, Save } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ImageUploadInput } from "@/components/shared/ImageUploadInput";
 
 const websiteContentSchema = z.object({
-  logoUrl: z.string().url("Must be a valid URL."),
+  logoUrl: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
   hero: z.object({
     title: z.string().min(1, "Hero title is required."),
     subtitle: z.string().min(1, "Hero subtitle is required."),
@@ -81,12 +80,19 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
         <Card>
           <CardHeader>
             <CardTitle>School Logo</CardTitle>
-            <CardDescription>Upload the school's official logo. This will appear in the header.</CardDescription>
+            <CardDescription>Paste the URL for the school's official logo. This will appear in the header.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ImageUploadInput
-              fieldName="logoUrl"
-              label="Logo Image"
+            <FormField
+              control={form.control}
+              name="logoUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Logo Image URL</FormLabel>
+                  <FormControl><Input placeholder="https://example.com/logo.png" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
           </CardContent>
         </Card>
@@ -170,10 +176,13 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                 <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
               )}
             />
-             <ImageUploadInput
-                fieldName="academics.imageUrl"
-                label="Image"
-             />
+             <FormField
+                control={form.control}
+                name="academics.imageUrl"
+                render={({ field }) => (
+                  <FormItem><FormLabel>Image URL</FormLabel><FormControl><Input placeholder="https://example.com/image.png" {...field} /></FormControl><FormMessage /></FormItem>
+                )}
+              />
           </CardContent>
         </Card>
 
@@ -207,10 +216,13 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                     <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
                   )}
                 />
-                 <ImageUploadInput
-                    fieldName={`news.${index}.imageUrl`}
-                    label="Image"
-                 />
+                 <FormField
+                    control={form.control}
+                    name={`news.${index}.imageUrl`}
+                    render={({ field }) => (
+                      <FormItem><FormLabel>Image URL</FormLabel><FormControl><Input placeholder="https://example.com/image.png" {...field} /></FormControl><FormMessage /></FormItem>
+                    )}
+                  />
               </div>
             ))}
           </CardContent>

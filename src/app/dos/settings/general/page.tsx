@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
@@ -16,7 +17,6 @@ import { Settings2, Save, Loader2, Scale } from "lucide-react";
 import { getGeneralSettings, updateGeneralSettings, getTerms } from "@/lib/actions/dos-actions";
 import type { GeneralSettings, Term, GradingScaleItem } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { ImageUploadInput } from "@/components/shared/ImageUploadInput";
 
 // Create a simple DatePicker if not already available
 const SimpleDatePicker = ({ value, onChange }: { value?: string, onChange: (date?: string) => void }) => {
@@ -40,7 +40,7 @@ const generalSettingsSchema = z.object({
   globalMarksSubmissionDeadline: z.string().optional(), 
   dosGlobalAnnouncementText: z.string().optional(),
   dosGlobalAnnouncementType: z.enum(["info", "warning", ""]).optional(),
-  dosGlobalAnnouncementImageUrl: z.string().url().optional(),
+  dosGlobalAnnouncementImageUrl: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
   teacherDashboardResourcesText: z.string().optional(),
 });
 
@@ -222,9 +222,22 @@ export default function GeneralSettingsPage() {
                   </FormItem>
                 )}
               />
-               <ImageUploadInput
-                fieldName="dosGlobalAnnouncementImageUrl"
-                label="Announcement Image (Optional)"
+               <FormField
+                control={form.control}
+                name="dosGlobalAnnouncementImageUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Announcement Image URL (Optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="https://example.com/image.png"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>Paste a URL to an image to display with the announcement.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
               <FormField
                 control={form.control}

@@ -1,10 +1,9 @@
 
 'use server';
 
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import type { WebsiteContent } from "@/lib/types";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { revalidatePath } from "next/cache";
 
 const defaultContent: WebsiteContent = {
@@ -66,73 +65,5 @@ export async function updateWebsiteContent(content: WebsiteContent): Promise<{ s
   } catch (error) {
     console.error("Error updating website content:", error);
     return { success: false, message: `Failed to update content: ${error instanceof Error ? error.message : "Unknown error"}` };
-  }
-}
-
-export async function uploadWebsiteMedia(
-  formData: FormData
-): Promise<{ success: boolean; message: string; url?: string }> {
-  if (!storage) {
-    return { success: false, message: "Firebase Storage is not initialized." };
-  }
-
-  const file = formData.get("file") as File | null;
-  if (!file) {
-    return { success: false, message: "No file provided." };
-  }
-
-  const oldFileUrl = formData.get("oldFileUrl") as string | null;
-
-  // Generate a unique file name
-  const fileName = `website-media/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
-  const storageRef = ref(storage, fileName);
-
-  try {
-    // Upload the new file
-    await uploadBytes(storageRef, file);
-    const downloadURL = await getDownloadURL(storageRef);
-
-    // If there was an old file, try to delete it
-    if (oldFileUrl && oldFileUrl.includes("firebasestorage.googleapis.com")) {
-      try {
-        const oldFileRef = ref(storage, oldFileUrl);
-        await deleteObject(oldFileRef);
-      } catch (deleteError: any) {
-        // If the old file doesn't exist, it's not a critical error.
-        if (deleteError.code !== 'storage/object-not-found') {
-          console.warn("Could not delete old file:", deleteError);
-          // Don't fail the whole upload, just warn.
-        }
-      }
-    }
-
-    return { success: true, message: "File uploaded successfully.", url: downloadURL };
-  } catch (error) {
-    console.error("Error uploading file:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    return { success: false, message: `Upload failed: ${errorMessage}` };
-  }
-}
-
-
-export async function deleteWebsiteMedia(fileUrl: string): Promise<{ success: boolean; message: string }> {
-  if (!storage) {
-    return { success: false, message: "Firebase Storage is not initialized." };
-  }
-  if (!fileUrl || !fileUrl.includes("firebasestorage.googleapis.com")) {
-    return { success: true, message: "Placeholder image has no file to delete." };
-  }
-  
-  try {
-    const fileRef = ref(storage, fileUrl);
-    await deleteObject(fileRef);
-    return { success: true, message: "File deleted successfully." };
-  } catch (error: any) {
-     if (error.code !== 'storage/object-not-found') {
-        console.error("Could not delete file:", error);
-        return { success: false, message: `Failed to delete file: ${error.message}` };
-    }
-    // If file not found, it's a success from the user's perspective.
-    return { success: true, message: "File already removed from storage." };
   }
 }
