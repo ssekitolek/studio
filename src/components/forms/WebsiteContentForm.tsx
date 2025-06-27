@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { ImageUploadInput } from "@/components/shared/ImageUploadInput";
 
 const websiteContentSchema = z.object({
+  logoUrl: z.string().url("Must be a valid URL."),
   hero: z.object({
     title: z.string().min(1, "Hero title is required."),
     subtitle: z.string().min(1, "Hero subtitle is required."),
@@ -77,6 +78,19 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>School Logo</CardTitle>
+            <CardDescription>Upload the school's official logo. This will appear in the header.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ImageUploadInput
+              fieldName="logoUrl"
+              label="Logo Image"
+            />
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Hero Section</CardTitle>

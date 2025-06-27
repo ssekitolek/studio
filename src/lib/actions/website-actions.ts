@@ -8,6 +8,7 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage
 import { revalidatePath } from "next/cache";
 
 const defaultContent: WebsiteContent = {
+  logoUrl: "https://placehold.co/100x100.png",
   hero: {
     title: "Nurturing Minds, Building Futures",
     subtitle: "At St. Mbaaga's College Naddangira, we are dedicated to providing a transformative education that inspires students to achieve their full potential.",
@@ -38,7 +39,9 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
     const contentRef = doc(db, "website_content", "homepage");
     const contentSnap = await getDoc(contentRef);
     if (contentSnap.exists()) {
-      return contentSnap.data() as WebsiteContent;
+      const data = contentSnap.data() as Partial<WebsiteContent>;
+      // Merge with defaults to ensure all fields are present, especially new ones like logoUrl
+      return { ...defaultContent, ...data };
     } else {
       // If the document doesn't exist, create it with default content
       await setDoc(contentRef, defaultContent);

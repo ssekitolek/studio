@@ -309,6 +309,7 @@ export interface AttendanceHistoryData {
 }
 
 export interface WebsiteContent {
+  logoUrl: string;
   hero: {
     title: string;
     subtitle: string;
