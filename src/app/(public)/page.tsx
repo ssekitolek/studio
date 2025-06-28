@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { BookOpen, Users, Heart, ArrowRight } from 'lucide-react';
 import { getWebsiteContent } from '@/lib/actions/website-actions';
 
+export const dynamic = 'force-dynamic';
+
 export default async function SchoolHomePage() {
   const content = await getWebsiteContent();
 
