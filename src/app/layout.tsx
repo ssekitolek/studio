@@ -2,6 +2,8 @@ import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: "St. Mbaaga's College Naddangira",
   description: 'Online student marks portal',
