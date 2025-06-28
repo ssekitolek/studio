@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   description: "Welcome to St. Mbaaga's College Naddangira. Nurturing Minds, Building Futures.",
 };
 
+export const dynamic = 'force-dynamic';
+
 export default function Page() {
   // This page is at the root and takes precedence.
   // We manually wrap the homepage content component with the public layout
