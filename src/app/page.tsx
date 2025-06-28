@@ -1,6 +1,16 @@
-// This file is intentionally left empty to allow the routing group in (public) to handle the root page.
-// This resolves a build error during deployment.
 
-export default function Page() {
-  return null;
+import SchoolHomePage from './(public)/page';
+import PublicLayout from './(public)/layout';
+
+/**
+ * This page acts as a wrapper to resolve a routing conflict between
+ * `src/app/page.tsx` and `src/app/(public)/page.tsx`.
+ * It manually composes the intended homepage with its public layout.
+ */
+export default async function Page() {
+    return (
+        <PublicLayout>
+            <SchoolHomePage />
+        </PublicLayout>
+    )
 }
