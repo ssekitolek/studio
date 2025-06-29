@@ -1,8 +1,10 @@
 
+import SchoolHomePage from "@/app/(public)/page";
+
 /**
- * This page is intentionally left blank to allow src/app/(public)/page.tsx to be the root page.
- * This file is necessary to resolve a routing conflict in some Next.js configurations.
+ * This page now directly renders the correct public homepage component
+ * to resolve the routing conflict that was causing a blank screen.
  */
 export default function Page() {
-  return null;
+  return <SchoolHomePage />;
 }
