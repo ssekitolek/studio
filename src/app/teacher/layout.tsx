@@ -4,6 +4,8 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { TeacherSidebar } from "@/components/layout/TeacherSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 
+export const dynamic = 'force-dynamic';
+
 interface LayoutProps {
   children: React.ReactNode;
   params: Record<string, string | string[] | undefined>;
@@ -46,9 +48,7 @@ export default function TeacherLayout({ children, searchParams }: LayoutProps) {
             teacherNameParam={teacherName}
           />
           <main className="flex-1 p-4 md:p-6 lg:p-8 bg-background">
-            <Suspense fallback={<div>Loading...</div>}>
-              {children}
-            </Suspense>
+            {children}
           </main>
         </SidebarInset>
     </SidebarProvider>

@@ -6,6 +6,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { LogIn, User, UserCog, ShieldCheck } from 'lucide-react';
 import { getWebsiteContent } from '@/lib/actions/website-actions';
 
+export const dynamic = 'force-dynamic';
+
 export default async function PublicLayout({
   children,
 }: {

@@ -1,16 +1,7 @@
-
-import SchoolHomePage from './(public)/page';
-import PublicLayout from './(public)/layout';
-
 /**
- * This page acts as a wrapper to resolve a routing conflict between
- * `src/app/page.tsx` and `src/app/(public)/page.tsx`.
- * It manually composes the intended homepage with its public layout.
+ * This page is intentionally left blank to allow src/app/(public)/page.tsx to be the root page.
+ * This file is necessary to resolve a routing conflict in some Next.js configurations.
  */
-export default async function Page() {
-    return (
-        <PublicLayout>
-            <SchoolHomePage />
-        </PublicLayout>
-    )
+export default function Page() {
+  return null;
 }
