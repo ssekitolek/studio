@@ -3,8 +3,7 @@ import { Suspense } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { TeacherSidebar } from "@/components/layout/TeacherSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
-
-export const dynamic = 'force-dynamic';
+import { Loader2 } from "lucide-react";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -48,7 +47,9 @@ export default function TeacherLayout({ children, searchParams }: LayoutProps) {
             teacherNameParam={teacherName}
           />
           <main className="flex-1 p-4 md:p-6 lg:p-8 bg-background">
-            {children}
+            <Suspense fallback={<div className="flex h-full w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+              {children}
+            </Suspense>
           </main>
         </SidebarInset>
     </SidebarProvider>
