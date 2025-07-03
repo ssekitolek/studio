@@ -16,7 +16,7 @@
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 45 93% 47%;
+    --accent: 0 84% 60%;
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
@@ -24,7 +24,7 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 248 80% 58%;
     --chart-1: 248 80% 58%;
-    --chart-2: 45 93% 47%;
+    --chart-2: 0 84% 60%;
     --chart-3: 197 37% 34%;
     --chart-4: 230 50% 70%;
     --chart-5: 27 87% 67%;
@@ -33,12 +33,12 @@
     /* Sidebar specific theme variables */
     --sidebar-background: 248 70% 25%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 45 93% 47%;
+    --sidebar-primary: 0 84% 60%;
     --sidebar-primary-foreground: 222.2 47.4% 11.2%;
     --sidebar-accent: 248 70% 35%;
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 248 70% 30%;
-    --sidebar-ring: 45 93% 47%;
+    --sidebar-ring: 0 84% 60%;
   }
 
   .dark {
@@ -54,7 +54,7 @@
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 45 83% 57%;
+    --accent: 0 75% 65%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
@@ -62,7 +62,7 @@
     --input: 217.2 32.6% 17.5%;
     --ring: 248 75% 68%;
     --chart-1: 248 75% 68%;
-    --chart-2: 45 83% 57%;
+    --chart-2: 0 75% 65%;
     --chart-3: 197 37% 54%;
     --chart-4: 230 50% 50%;
     --chart-5: 27 87% 47%;
@@ -70,12 +70,12 @@
     /* Dark Sidebar specific theme variables */
     --sidebar-background: 222.2 84% 4.9%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 45 83% 57%;
+    --sidebar-primary: 0 75% 65%;
     --sidebar-primary-foreground: 222.2 47.4% 11.2%;
     --sidebar-accent: 217.2 32.6% 17.5%;
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 45 83% 57%;
+    --sidebar-ring: 0 75% 65%;
   }
 }
 

@@ -68,13 +68,13 @@ export default async function SchoolHomePage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {content.programHighlights.map((program, index) => (
-              <Card key={index} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow flex flex-col group">
-                <div className="relative h-56 w-full">
+              <Card key={index} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow flex flex-col group transition-transform duration-300 hover:scale-[1.03]">
+                <div className="relative h-56 w-full overflow-hidden">
                   <Image 
                     src={program.imageUrl} 
                     alt={program.title}
                     fill
-                    className="object-cover"
+                    className="object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out"
                     data-ai-hint={program.title.toLowerCase()}
                   />
                 </div>
@@ -85,7 +85,7 @@ export default async function SchoolHomePage() {
                   <p className="text-muted-foreground">{program.description}</p>
                 </CardContent>
                 <div className="p-6 pt-0">
-                  <Button variant="link" className="p-0 h-auto group-hover:text-accent">Learn More <ArrowRight className="ml-2 h-4 w-4" /></Button>
+                  <Button variant="link" className="p-0 h-auto group-hover:text-accent group-hover:gap-3 transition-all">Learn More <ArrowRight className="ml-2 h-4 w-4" /></Button>
                 </div>
               </Card>
             ))}
@@ -97,13 +97,13 @@ export default async function SchoolHomePage() {
       <section className="py-16 md:py-24 bg-secondary/50">
         <div className="container mx-auto px-4 md:px-6">
           <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div className="order-2 md:order-1">
+            <div className="order-2 md:order-1 overflow-hidden rounded-lg shadow-2xl">
               <Image 
                 src={content.community.imageUrl} 
                 alt={content.community.title}
                 width={600}
                 height={400}
-                className="rounded-lg shadow-2xl w-full"
+                className="w-full transition-transform duration-500 hover:scale-105"
                 data-ai-hint="students community"
               />
             </div>
@@ -133,15 +133,17 @@ export default async function SchoolHomePage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {content.news.map((item, index) => (
-              <Card key={index} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow flex flex-col">
-                <Image 
-                  src={item.imageUrl} 
-                  alt={item.title}
-                  width={600}
-                  height={400}
-                  className="w-full h-48 object-cover"
-                  data-ai-hint="school event"
-                />
+              <Card key={index} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow flex flex-col group transition-transform duration-300 hover:scale-[1.03]">
+                 <div className="overflow-hidden">
+                    <Image 
+                    src={item.imageUrl} 
+                    alt={item.title}
+                    width={600}
+                    height={400}
+                    className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out"
+                    data-ai-hint="school event"
+                    />
+                 </div>
                 <CardHeader>
                   <CardDescription>{item.date}</CardDescription>
                   <CardTitle className="text-lg">{item.title}</CardTitle>
