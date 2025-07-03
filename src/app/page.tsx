@@ -6,12 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { BookOpen, Users, Heart, ArrowRight } from 'lucide-react';
 import { getWebsiteContent } from '@/lib/actions/website-actions';
 
-export const dynamic = 'force-dynamic';
-
 export default async function SchoolHomePage() {
   const content = await getWebsiteContent();
-
-  const academicsImageUrl = content.academics.imageUrl;
 
   return (
     <>
@@ -71,7 +67,7 @@ export default async function SchoolHomePage() {
               </div>
               <div className="flex justify-center">
                   <Image
-                      src={academicsImageUrl}
+                      src="https://placehold.co/600x400.png"
                       alt="Students in a classroom"
                       width={500}
                       height={350}
