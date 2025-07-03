@@ -11,6 +11,10 @@ export const dynamic = 'force-dynamic';
 export default async function SchoolHomePage() {
   const content = await getWebsiteContent();
 
+  const academicsImageUrl = content.academics.imageUrl.includes('imgur.com')
+    ? 'https://placehold.co/500x350.png'
+    : content.academics.imageUrl;
+
   return (
     <>
       {/* Hero Section */}
@@ -69,7 +73,7 @@ export default async function SchoolHomePage() {
               </div>
               <div className="flex justify-center">
                   <Image
-                      src={content.academics.imageUrl}
+                      src={academicsImageUrl}
                       alt="Students in a classroom"
                       width={500}
                       height={350}
