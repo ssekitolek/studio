@@ -4,15 +4,12 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { LogIn, User, UserCog, ShieldCheck } from 'lucide-react';
-import { getWebsiteContent } from '@/lib/actions/website-actions';
 
-export default async function MarketingLayout({
+export default function MarketingLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const content = await getWebsiteContent();
-
   return (
       <div className="flex flex-col min-h-screen bg-background">
         {/* Header */}
