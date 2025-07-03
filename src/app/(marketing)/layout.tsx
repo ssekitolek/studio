@@ -36,9 +36,9 @@ export default function MarketingLayout({
             </Link>
             <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
               <Link href="/mission-vision" className="hover:text-primary transition-colors">Mission & Vision</Link>
-              <Link href="#" className="hover:text-primary transition-colors">Academics</Link>
-              <Link href="#" className="hover:text-primary transition-colors">Admissions</Link>
-              <Link href="#" className="hover:text-primary transition-colors">Contact</Link>
+              <Link href="/academics" className="hover:text-primary transition-colors">Academics</Link>
+              <Link href="/admissions" className="hover:text-primary transition-colors">Admissions</Link>
+              <Link href="/contact" className="hover:text-primary transition-colors">Contact</Link>
             </nav>
             <div className='flex items-center gap-2'>
               <DropdownMenu>
@@ -83,10 +83,10 @@ export default function MarketingLayout({
             <div>
               <h5 className="font-semibold uppercase tracking-wider text-sm">Quick Links</h5>
               <ul className="mt-4 space-y-2 text-sm">
-                <li><Link href="#" className="hover:text-primary">About Us</Link></li>
-                <li><Link href="#" className="hover:text-primary">Admissions</Link></li>
-                <li><Link href="#" className="hover:text-primary">News & Events</Link></li>
-                <li><Link href="#" className="hover:text-primary">Contact Us</Link></li>
+                <li><Link href="/mission-vision" className="hover:text-primary">Mission & Vision</Link></li>
+                <li><Link href="/academics" className="hover:text-primary">Academics</Link></li>
+                <li><Link href="/admissions" className="hover:text-primary">Admissions</Link></li>
+                <li><Link href="/contact" className="hover:text-primary">Contact Us</Link></li>
               </ul>
             </div>
              <div>

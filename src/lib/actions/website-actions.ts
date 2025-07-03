@@ -51,7 +51,34 @@ const defaultContent: WebsiteContent = {
     description: "We invite you to learn more about the admissions process and discover if St. Mbaaga's College is the right fit for your family.",
     buttonText: "Inquire Now",
     buttonLink: "#"
-  }
+  },
+  academicsPage: {
+    title: "Our Academic Programs",
+    description: "We offer a comprehensive curriculum designed to challenge and inspire students at every level.",
+    programs: [
+      { name: "Lower School", description: "Fostering curiosity and a love for learning in a nurturing environment.", imageUrl: "https://placehold.co/600x400.png" },
+      { name: "Middle School", description: "Developing critical thinking, collaboration, and independence.", imageUrl: "https://placehold.co/600x400.png" },
+      { name: "Upper School", description: "Preparing students for success in college and beyond with advanced coursework and leadership opportunities.", imageUrl: "https://placehold.co/600x400.png" },
+    ],
+  },
+  admissionsPage: {
+    title: "Admissions Process",
+    description: "We welcome you to learn more about joining the St. Mbaaga's College community. Our admissions process is designed to be thorough and thoughtful.",
+    process: [
+      { step: "01", title: "Inquire & Visit", description: "Submit an online inquiry form and schedule a campus tour to experience our community firsthand." },
+      { step: "02", title: "Apply Online", description: "Complete the online application and submit all required documents, including transcripts and recommendations." },
+      { step: "03", title: "Interview", description: "Applicant and parent interviews are a key part of our process to get to know you better." },
+      { step: "04", title: "Admission Decision", description: "Admission decisions are sent out in early March. We look forward to welcoming new families to our school." },
+    ],
+    formUrl: "#",
+  },
+  contactPage: {
+    title: "Get in Touch",
+    address: "St. Mbaaga's College, Naddangira, Uganda",
+    phone: "+256 123 456789",
+    email: "info@st-mbaaga.test",
+    mapImageUrl: "https://placehold.co/1200x400.png",
+  },
 };
 
 export async function getWebsiteContent(): Promise<WebsiteContent> {
@@ -65,7 +92,20 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
     if (contentSnap.exists()) {
       const data = contentSnap.data() as Partial<WebsiteContent>;
       // Merge with defaults to ensure all fields are present
-      return { ...defaultContent, ...data };
+      // Deep merge for nested objects
+      return {
+        ...defaultContent,
+        ...data,
+        hero: { ...defaultContent.hero, ...data.hero },
+        atAGlance: data.atAGlance || defaultContent.atAGlance,
+        programHighlights: data.programHighlights || defaultContent.programHighlights,
+        community: { ...defaultContent.community, ...data.community },
+        news: data.news || defaultContent.news,
+        callToAction: { ...defaultContent.callToAction, ...data.callToAction },
+        academicsPage: { ...defaultContent.academicsPage, ...data.academicsPage },
+        admissionsPage: { ...defaultContent.admissionsPage, ...data.admissionsPage },
+        contactPage: { ...defaultContent.contactPage, ...data.contactPage },
+      };
     } else {
       // If the document doesn't exist, create it with default content
       await setDoc(contentRef, defaultContent);
@@ -86,9 +126,37 @@ export async function updateWebsiteContent(content: WebsiteContent): Promise<{ s
     await setDoc(contentRef, content, { merge: true });
     revalidatePath("/");
     revalidatePath("/admin/dashboard");
+    revalidatePath("/academics");
+    revalidatePath("/admissions");
+    revalidatePath("/contact");
+    revalidatePath("/mission-vision");
     return { success: true, message: "Website content updated successfully." };
   } catch (error) {
     console.error("Error updating website content:", error);
     return { success: false, message: `Failed to update content: ${error instanceof Error ? error.message : "Unknown error"}` };
   }
+}
+
+// The below functions are placeholders for a real media management system.
+// In a production app, you would integrate with a service like Firebase Storage.
+
+export async function uploadWebsiteMedia(formData: FormData): Promise<{ success: boolean; message: string; url?: string }> {
+    // This is a mock function. In a real app, you would upload to a cloud storage provider.
+    const file = formData.get('file') as File;
+    if (!file) {
+        return { success: false, message: "No file provided." };
+    }
+    // Simulate upload and return a placeholder URL.
+    const placeholderUrl = `https://placehold.co/600x400.png?text=${encodeURIComponent(file.name)}`;
+    console.log(`Simulating upload for ${file.name}, returning URL: ${placeholderUrl}`);
+    return { success: true, message: "Media 'uploaded' successfully (mock).", url: placeholderUrl };
+}
+
+export async function deleteWebsiteMedia(fileUrl: string): Promise<{ success: boolean; message: string }> {
+    // This is a mock function. In a real app, you would delete from your cloud storage provider.
+    if (!fileUrl || fileUrl.includes("placehold.co")) {
+        return { success: true, message: "Placeholder image does not need to be deleted." };
+    }
+    console.log(`Simulating deletion for ${fileUrl}`);
+    return { success: true, message: "Media 'deleted' successfully (mock)." };
 }

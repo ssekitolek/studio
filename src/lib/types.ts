@@ -341,4 +341,30 @@ export interface WebsiteContent {
     buttonText: string;
     buttonLink: string;
   };
+  academicsPage: {
+    title: string;
+    description: string;
+    programs: Array<{
+      name: string;
+      description: string;
+      imageUrl: string;
+    }>;
+  };
+  admissionsPage: {
+    title: string;
+    description: string;
+    process: Array<{
+      step: string;
+      title: string;
+      description: string;
+    }>;
+    formUrl: string;
+  };
+  contactPage: {
+    title: string;
+    address: string;
+    phone: string;
+    email: string;
+    mapImageUrl: string;
+  };
 }
