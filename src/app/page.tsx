@@ -11,9 +11,7 @@ export const dynamic = 'force-dynamic';
 export default async function SchoolHomePage() {
   const content = await getWebsiteContent();
 
-  const academicsImageUrl = content.academics.imageUrl.includes('imgur.com')
-    ? 'https://placehold.co/500x350.png'
-    : content.academics.imageUrl;
+  const academicsImageUrl = content.academics.imageUrl;
 
   return (
     <>
