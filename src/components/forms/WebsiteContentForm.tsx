@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { updateWebsiteContent } from "@/lib/actions/website-actions";
 import type { WebsiteContent } from "@/lib/types";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, PlusCircle, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 const websiteContentSchema = z.object({
@@ -27,15 +27,21 @@ const websiteContentSchema = z.object({
   hero: z.object({
     title: z.string().min(1, "Hero title is required."),
     subtitle: z.string().min(1, "Hero subtitle is required."),
-  }),
-  features: z.array(z.object({
-    title: z.string().min(1, "Feature title is required."),
-    description: z.string().min(1, "Feature description is required."),
-  })).length(3, "There must be exactly 3 features."),
-  academics: z.object({
-    title: z.string().min(1, "Academics title is required."),
-    description: z.string().min(1, "Academics description is required."),
     imageUrl: z.string().url("Must be a valid URL."),
+  }),
+  atAGlance: z.array(z.object({
+    label: z.string().min(1, "Label is required."),
+    value: z.string().min(1, "Value is required."),
+  })),
+  programHighlights: z.array(z.object({
+    title: z.string().min(1, "Highlight title is required."),
+    description: z.string().min(1, "Highlight description is required."),
+    imageUrl: z.string().url("Must be a valid URL."),
+  })).length(3, "There must be exactly 3 program highlights."),
+  community: z.object({
+      title: z.string().min(1, "Community title is required."),
+      description: z.string().min(1, "Community description is required."),
+      imageUrl: z.string().url("Must be a valid URL."),
   }),
   news: z.array(z.object({
     title: z.string().min(1, "News title is required."),
@@ -43,6 +49,12 @@ const websiteContentSchema = z.object({
     description: z.string().min(1, "News description is required."),
     imageUrl: z.string().url("Must be a valid URL."),
   })).length(3, "There must be exactly 3 news items."),
+  callToAction: z.object({
+    title: z.string().min(1, "CTA title is required."),
+    description: z.string().min(1, "CTA description is required."),
+    buttonText: z.string().min(1, "Button text is required."),
+    buttonLink: z.string().min(1, "Button link is required."),
+  }),
 });
 
 type WebsiteContentFormValues = z.infer<typeof websiteContentSchema>;
@@ -60,7 +72,8 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
     defaultValues: initialData,
   });
 
-  const { fields: featureFields } = useFieldArray({ control: form.control, name: "features" });
+  const { fields: atAGlanceFields, append: appendStat, remove: removeStat } = useFieldArray({ control: form.control, name: "atAGlance" });
+  const { fields: programHighlightFields } = useFieldArray({ control: form.control, name: "programHighlights" });
   const { fields: newsFields } = useFieldArray({ control: form.control, name: "news" });
 
   const onSubmit = (data: WebsiteContentFormValues) => {
@@ -77,154 +90,90 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        {/* Logo and Hero Section */}
         <Card>
-          <CardHeader>
-            <CardTitle>School Logo</CardTitle>
-            <CardDescription>Paste the URL for the school's official logo. This will appear in the header.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FormField
-              control={form.control}
-              name="logoUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Logo Image URL</FormLabel>
-                  <FormControl><Input placeholder="https://example.com/logo.png" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <CardHeader><CardTitle>Header & Hero Section</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <FormField control={form.control} name="logoUrl" render={({ field }) => ( <FormItem> <FormLabel>Logo Image URL</FormLabel> <FormControl><Input placeholder="https://..." {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+            <FormField control={form.control} name="hero.title" render={({ field }) => ( <FormItem> <FormLabel>Hero Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+            <FormField control={form.control} name="hero.subtitle" render={({ field }) => ( <FormItem> <FormLabel>Hero Subtitle</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+            <FormField control={form.control} name="hero.imageUrl" render={({ field }) => ( <FormItem> <FormLabel>Hero Background Image URL</FormLabel> <FormControl><Input placeholder="https://..." {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
           </CardContent>
         </Card>
 
+        {/* At a Glance Section */}
         <Card>
           <CardHeader>
-            <CardTitle>Hero Section</CardTitle>
-            <CardDescription>The main section at the top of the homepage.</CardDescription>
+            <CardTitle>At a Glance Section</CardTitle>
+            <CardDescription>Key statistics shown below the hero section.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="hero.title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Title</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="hero.subtitle"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Subtitle</FormLabel>
-                  <FormControl><Textarea {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {atAGlanceFields.map((field, index) => (
+              <div key={field.id} className="flex items-end gap-4 p-4 border rounded-lg">
+                <FormField control={form.control} name={`atAGlance.${index}.label`} render={({ field }) => ( <FormItem className="flex-grow"> <FormLabel>Label</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                <FormField control={form.control} name={`atAGlance.${index}.value`} render={({ field }) => ( <FormItem className="flex-grow"> <FormLabel>Value</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                <Button type="button" variant="destructive" size="icon" onClick={() => removeStat(index)}> <Trash2 className="h-4 w-4" /> </Button>
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={() => appendStat({ label: "", value: "" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Stat </Button>
           </CardContent>
         </Card>
 
+        {/* Program Highlights Section */}
         <Card>
           <CardHeader>
-            <CardTitle>Features Section</CardTitle>
-            <CardDescription>The three "Why Choose Us?" cards.</CardDescription>
+            <CardTitle>Program Highlights Section</CardTitle>
+            <CardDescription>The three main program cards (e.g., Academics, Arts, Athletics).</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {featureFields.map((field, index) => (
+            {programHighlightFields.map((field, index) => (
               <div key={field.id} className="p-4 border rounded-lg space-y-4">
-                <h4 className="font-semibold">Feature {index + 1}</h4>
-                <FormField
-                  control={form.control}
-                  name={`features.${index}.title`}
-                  render={({ field }) => (
-                    <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`features.${index}.description`}
-                  render={({ field }) => (
-                    <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
-                  )}
-                />
+                <h4 className="font-semibold">Highlight {index + 1}</h4>
+                <FormField control={form.control} name={`programHighlights.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                <FormField control={form.control} name={`programHighlights.${index}.description`} render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                <FormField control={form.control} name={`programHighlights.${index}.imageUrl`} render={({ field }) => ( <FormItem> <FormLabel>Image URL</FormLabel> <FormControl><Input placeholder="https://..." {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
               </div>
             ))}
           </CardContent>
         </Card>
-        
+
+        {/* Community Section */}
         <Card>
-          <CardHeader>
-            <CardTitle>Academics Section</CardTitle>
-            <CardDescription>The section with the "World-Class Academic Program" title.</CardDescription>
-          </CardHeader>
+          <CardHeader><CardTitle>Community Section</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="academics.title"
-              render={({ field }) => (
-                <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="academics.description"
-              render={({ field }) => (
-                <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
-              )}
-            />
-             <FormField
-                control={form.control}
-                name="academics.imageUrl"
-                render={({ field }) => (
-                  <FormItem><FormLabel>Image URL</FormLabel><FormControl><Input placeholder="https://example.com/image.png" {...field} /></FormControl><FormMessage /></FormItem>
-                )}
-              />
+            <FormField control={form.control} name="community.title" render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+            <FormField control={form.control} name="community.description" render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+            <FormField control={form.control} name="community.imageUrl" render={({ field }) => ( <FormItem> <FormLabel>Image URL</FormLabel> <FormControl><Input placeholder="https://..." {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
           </CardContent>
         </Card>
-
+        
+        {/* News Section */}
         <Card>
           <CardHeader>
             <CardTitle>News & Events Section</CardTitle>
-            <CardDescription>The three news cards at the bottom of the page.</CardDescription>
+            <CardDescription>The three news cards.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {newsFields.map((field, index) => (
               <div key={field.id} className="p-4 border rounded-lg space-y-4">
                 <h4 className="font-semibold">News Item {index + 1}</h4>
-                <FormField
-                  control={form.control}
-                  name={`news.${index}.title`}
-                  render={({ field }) => (
-                    <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name={`news.${index}.date`}
-                  render={({ field }) => (
-                    <FormItem><FormLabel>Date</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`news.${index}.description`}
-                  render={({ field }) => (
-                    <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
-                  )}
-                />
-                 <FormField
-                    control={form.control}
-                    name={`news.${index}.imageUrl`}
-                    render={({ field }) => (
-                      <FormItem><FormLabel>Image URL</FormLabel><FormControl><Input placeholder="https://example.com/image.png" {...field} /></FormControl><FormMessage /></FormItem>
-                    )}
-                  />
+                <FormField control={form.control} name={`news.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                <FormField control={form.control} name={`news.${index}.date`} render={({ field }) => ( <FormItem> <FormLabel>Date</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                <FormField control={form.control} name={`news.${index}.description`} render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                <FormField control={form.control} name={`news.${index}.imageUrl`} render={({ field }) => ( <FormItem> <FormLabel>Image URL</FormLabel> <FormControl><Input placeholder="https://..." {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
               </div>
             ))}
+          </CardContent>
+        </Card>
+
+        {/* Call to Action Section */}
+        <Card>
+          <CardHeader><CardTitle>Call to Action Section</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <FormField control={form.control} name="callToAction.title" render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+            <FormField control={form.control} name="callToAction.description" render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+            <FormField control={form.control} name="callToAction.buttonText" render={({ field }) => ( <FormItem> <FormLabel>Button Text</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+            <FormField control={form.control} name="callToAction.buttonLink" render={({ field }) => ( <FormItem> <FormLabel>Button Link</FormLabel> <FormControl><Input placeholder="#" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
           </CardContent>
         </Card>
 

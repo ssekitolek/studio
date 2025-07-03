@@ -9,24 +9,49 @@ import { revalidatePath } from "next/cache";
 const defaultContent: WebsiteContent = {
   logoUrl: "https://placehold.co/100x100.png",
   hero: {
-    title: "Nurturing Minds, Building Futures",
-    subtitle: "At St. Mbaaga's College Naddangira, we are dedicated to providing a transformative education that inspires students to achieve their full potential.",
+    title: "Discover Your Voice. Shape Your Future.",
+    subtitle: "At St. Mbaaga's College, we provide an inspiring and challenging education that empowers students to achieve their full potential and make a difference in the world.",
+    imageUrl: "https://placehold.co/1920x1080.png",
   },
-  features: [
-    { title: "Excellence in Education", description: "Our rigorous academic curriculum is designed to challenge students and foster a love for lifelong learning." },
-    { title: "Holistic Development", description: "We focus on developing the whole person through a rich program of arts, sports, and community service." },
-    { title: "Vibrant Community", description: "A supportive and inclusive environment where every student feels valued, respected, and empowered to succeed." }
+  atAGlance: [
+    { label: "Founded", value: "1965" },
+    { label: "Student-Faculty Ratio", value: "12:1" },
+    { label: "Enrollment", value: "850" },
+    { label: "Clubs & Activities", value: "30+" },
   ],
-  academics: {
-    title: "A World-Class Academic Program",
-    description: "From science and technology to arts and humanities, our programs are designed to inspire curiosity and prepare students for the challenges of tomorrow.",
+  programHighlights: [
+    { 
+      title: "Academics", 
+      description: "A rigorous, inquiry-based curriculum that fosters critical thinking and a passion for lifelong learning.",
+      imageUrl: "https://placehold.co/600x400.png"
+    },
+    { 
+      title: "Arts", 
+      description: "A vibrant arts program that encourages creativity, self-expression, and collaboration across various disciplines.",
+      imageUrl: "https://placehold.co/600x400.png"
+    },
+    { 
+      title: "Athletics", 
+      description: "Competitive sports programs that build character, teamwork, and a commitment to personal excellence.",
+      imageUrl: "https://placehold.co/600x400.png"
+    }
+  ],
+  community: {
+    title: "A Community of Belonging",
+    description: "We are a diverse and inclusive community where every student is known, valued, and supported. Our students build lifelong friendships and a strong sense of social responsibility.",
     imageUrl: "https://placehold.co/600x400.png"
   },
   news: [
     { title: "Annual Science Fair Winners Announced", date: "June 20, 2025", description: "Congratulations to our brilliant young scientists who showcased incredible projects this year.", imageUrl: "https://placehold.co/600x400.png" },
     { title: "Sports Day Championship Highlights", date: "June 15, 2025", description: "A day of thrilling competition and great sportsmanship. See the results and photo gallery.", imageUrl: "https://placehold.co/600x400.png" },
     { title: "Community Service Drive a Huge Success", date: "June 10, 2025", description: "Our students volunteered over 500 hours to support local charities and community projects.", imageUrl: "https://placehold.co/600x400.png" }
-  ]
+  ],
+  callToAction: {
+    title: "Ready to Join Our Community?",
+    description: "We invite you to learn more about the admissions process and discover if St. Mbaaga's College is the right fit for your family.",
+    buttonText: "Inquire Now",
+    buttonLink: "#"
+  }
 };
 
 export async function getWebsiteContent(): Promise<WebsiteContent> {
@@ -39,7 +64,7 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
     const contentSnap = await getDoc(contentRef);
     if (contentSnap.exists()) {
       const data = contentSnap.data() as Partial<WebsiteContent>;
-      // Merge with defaults to ensure all fields are present, especially new ones like logoUrl
+      // Merge with defaults to ensure all fields are present
       return { ...defaultContent, ...data };
     } else {
       // If the document doesn't exist, create it with default content

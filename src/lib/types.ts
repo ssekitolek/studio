@@ -313,12 +313,18 @@ export interface WebsiteContent {
   hero: {
     title: string;
     subtitle: string;
+    imageUrl: string;
   };
-  features: Array<{
+  atAGlance: Array<{
+    label: string;
+    value: string;
+  }>;
+  programHighlights: Array<{
     title: string;
     description: string;
+    imageUrl: string;
   }>;
-  academics: {
+  community: {
     title: string;
     description: string;
     imageUrl: string;
@@ -329,4 +335,10 @@ export interface WebsiteContent {
     description: string;
     imageUrl: string;
   }>;
+  callToAction: {
+    title: string;
+    description: string;
+    buttonText: string;
+    buttonLink: string;
+  };
 }
