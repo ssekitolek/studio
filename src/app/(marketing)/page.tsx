@@ -23,13 +23,13 @@ export default async function SchoolHomePage() {
         />
         <div className="absolute inset-0 bg-black/50 -z-10" />
         <div className="container mx-auto px-4 md:px-6">
-          <h1 className="text-4xl md:text-6xl font-headline font-bold tracking-tighter">
+          <h1 className="text-4xl md:text-6xl font-headline font-bold tracking-tighter animate-fade-in-up">
             {content.hero.title}
           </h1>
-          <p className="mx-auto mt-4 max-w-[700px] text-lg text-white/90">
+          <p className="mx-auto mt-4 max-w-[700px] text-lg text-white/90 animate-fade-in-up [animation-delay:200ms]">
             {content.hero.subtitle}
           </p>
-          <div className="mt-8 flex justify-center gap-4">
+          <div className="mt-8 flex justify-center gap-4 animate-fade-in-up [animation-delay:400ms]">
             <Button size="lg" asChild>
               <Link href={content.callToAction.buttonLink}>
                 {content.callToAction.buttonText} <ArrowRight className="ml-2 h-5 w-5" />
