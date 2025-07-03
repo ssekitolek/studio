@@ -56,6 +56,7 @@ export default function MarketingLayout({
             <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
               <Link href="/mission-vision" className="hover:text-primary transition-colors">Mission & Vision</Link>
               <Link href="/academics" className="hover:text-primary transition-colors">Academics</Link>
+              <Link href="/student-life" className="hover:text-primary transition-colors">Student Life</Link>
               <Link href="/admissions" className="hover:text-primary transition-colors">Admissions</Link>
               <Link href="/contact" className="hover:text-primary transition-colors">Contact</Link>
             </nav>
@@ -104,6 +105,7 @@ export default function MarketingLayout({
               <ul className="mt-4 space-y-2 text-sm">
                 <li><Link href="/mission-vision" className="hover:text-primary">Mission & Vision</Link></li>
                 <li><Link href="/academics" className="hover:text-primary">Academics</Link></li>
+                <li><Link href="/student-life" className="hover:text-primary">Student Life</Link></li>
                 <li><Link href="/admissions" className="hover:text-primary">Admissions</Link></li>
                 <li><Link href="/contact" className="hover:text-primary">Contact Us</Link></li>
               </ul>

@@ -79,6 +79,32 @@ const defaultContent: WebsiteContent = {
     email: "info@st-mbaaga.test",
     mapImageUrl: "https://placehold.co/1200x400.png",
   },
+  studentLifePage: {
+    title: "Vibrant Student Life",
+    description: "Our community is built on a foundation of diverse interests, shared passions, and a commitment to making a positive impact. Discover the activities that make life at St. Mbaaga's so enriching.",
+    features: [
+      {
+        title: "Athletics",
+        description: "From the pitch to the court, our athletics program fosters teamwork, resilience, and sportsmanship.",
+        imageUrl: "https://placehold.co/600x400.png"
+      },
+      {
+        title: "Arts & Music",
+        description: "Explore your creativity in our state-of-the-art studios and performance spaces. Join the band, choir, or drama club.",
+        imageUrl: "https://placehold.co/600x400.png"
+      },
+      {
+        title: "Clubs & Organizations",
+        description: "With over 30 student-led clubs, there's something for everyone. Develop new skills and pursue your passions.",
+        imageUrl: "https://placehold.co/600x400.png"
+      },
+      {
+        title: "Community Service",
+        description: "We believe in giving back. Our students actively engage in service projects that make a real difference in our community.",
+        imageUrl: "https://placehold.co/600x400.png"
+      },
+    ]
+  },
 };
 
 export async function getWebsiteContent(): Promise<WebsiteContent> {
@@ -105,6 +131,7 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
         academicsPage: { ...defaultContent.academicsPage, ...data.academicsPage },
         admissionsPage: { ...defaultContent.admissionsPage, ...data.admissionsPage },
         contactPage: { ...defaultContent.contactPage, ...data.contactPage },
+        studentLifePage: { ...defaultContent.studentLifePage, ...data.studentLifePage },
       };
     } else {
       // If the document doesn't exist, create it with default content
@@ -130,6 +157,7 @@ export async function updateWebsiteContent(content: WebsiteContent): Promise<{ s
     revalidatePath("/admissions");
     revalidatePath("/contact");
     revalidatePath("/mission-vision");
+    revalidatePath("/student-life");
     return { success: true, message: "Website content updated successfully." };
   } catch (error) {
     console.error("Error updating website content:", error);

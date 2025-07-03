@@ -367,4 +367,13 @@ export interface WebsiteContent {
     email: string;
     mapImageUrl: string;
   };
+  studentLifePage: {
+    title: string;
+    description: string;
+    features: Array<{
+      title: string;
+      description: string;
+      imageUrl: string;
+    }>;
+  };
 }

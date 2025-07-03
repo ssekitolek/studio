@@ -56,7 +56,6 @@ const websiteContentSchema = z.object({
     buttonText: z.string().min(1, "Button text is required."),
     buttonLink: z.string().min(1, "Button link is required."),
   }),
-  // New Pages
   academicsPage: z.object({
     title: z.string().min(1, "Title is required."),
     description: z.string().min(1, "Description is required."),
@@ -83,6 +82,15 @@ const websiteContentSchema = z.object({
     email: z.string().email("Must be a valid email."),
     mapImageUrl: z.string().url("Must be a valid URL."),
   }),
+  studentLifePage: z.object({
+    title: z.string().min(1, "Title is required."),
+    description: z.string().min(1, "Description is required."),
+    features: z.array(z.object({
+      title: z.string().min(1, "Feature title is required."),
+      description: z.string().min(1, "Feature description is required."),
+      imageUrl: z.string().url("Must be a valid URL."),
+    })),
+  }),
 });
 
 type WebsiteContentFormValues = z.infer<typeof websiteContentSchema>;
@@ -105,6 +113,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
   const { fields: newsFields } = useFieldArray({ control: form.control, name: "news" });
   const { fields: academicProgramsFields, append: appendProgram, remove: removeProgram } = useFieldArray({ control: form.control, name: "academicsPage.programs" });
   const { fields: admissionProcessFields, append: appendProcess, remove: removeProcess } = useFieldArray({ control: form.control, name: "admissionsPage.process" });
+  const { fields: studentLifeFeatures, append: appendFeature, remove: removeFeature } = useFieldArray({ control: form.control, name: "studentLifePage.features" });
 
   const onSubmit = (data: WebsiteContentFormValues) => {
     startTransition(async () => {
@@ -265,6 +274,30 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
             </AccordionContent>
           </AccordionItem>
           
+          <AccordionItem value="item-5" className="border rounded-lg bg-card">
+            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Student Life Page</CardTitle></AccordionTrigger>
+            <AccordionContent className="p-4 pt-0 space-y-4">
+              <FormField control={form.control} name="studentLifePage.title" render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+              <FormField control={form.control} name="studentLifePage.description" render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+              <Card>
+                <CardHeader><CardTitle className="text-lg">Features</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  {studentLifeFeatures.map((field, index) => (
+                    <div key={field.id} className="flex items-end gap-4 p-4 border rounded-lg">
+                      <div className="flex-grow space-y-4">
+                        <FormField control={form.control} name={`studentLifePage.features.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Feature Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                        <FormField control={form.control} name={`studentLifePage.features.${index}.description`} render={({ field }) => ( <FormItem> <FormLabel>Feature Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                        <FormField control={form.control} name={`studentLifePage.features.${index}.imageUrl`} render={({ field }) => ( <FormItem> <FormLabel>Image URL</FormLabel> <FormControl><Input placeholder="https://..." {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                      </div>
+                      <Button type="button" variant="destructive" size="icon" onClick={() => removeFeature(index)}> <Trash2 className="h-4 w-4" /> </Button>
+                    </div>
+                  ))}
+                  <Button type="button" variant="outline" size="sm" onClick={() => appendFeature({ title: "", description: "", imageUrl: "" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Feature </Button>
+                </CardContent>
+              </Card>
+            </AccordionContent>
+          </AccordionItem>
+
         </Accordion>
 
         <div className="flex justify-end">
