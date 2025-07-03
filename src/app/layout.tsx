@@ -1,4 +1,6 @@
 
+import '@/app/globals.css';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -7,7 +9,7 @@ import { LogIn, User, UserCog, ShieldCheck } from 'lucide-react';
 import { getWebsiteContent } from '@/lib/actions/website-actions';
 import { Toaster } from "@/components/ui/toaster";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "St. Mbaaga's College Naddangira",
   description: 'Online student marks portal',
 };
