@@ -46,11 +46,26 @@ const defaultContent: WebsiteContent = {
     { title: "Sports Day Championship Highlights", date: "June 15, 2025", description: "A day of thrilling competition and great sportsmanship. See the results and photo gallery.", imageUrl: "https://placehold.co/600x400.png" },
     { title: "Community Service Drive a Huge Success", date: "June 10, 2025", description: "Our students volunteered over 500 hours to support local charities and community projects.", imageUrl: "https://placehold.co/600x400.png" }
   ],
-  callToAction: {
-    title: "Ready to Join Our Community?",
-    description: "We invite you to learn more about the admissions process and discover if St. Mbaaga's College is the right fit for your family.",
+  inquireSection: {
     buttonText: "Inquire Now",
-    buttonLink: "#"
+    buttonLink: "/admissions",
+    slides: [
+      {
+        title: "Ready to Join Our Community?",
+        subtitle: "We invite you to learn more about the admissions process and discover if St. Mbaaga's College is the right fit for your family.",
+        imageUrl: "https://placehold.co/1920x1080.png",
+      },
+      {
+        title: "Explore Our Campus",
+        subtitle: "Schedule a visit to see our vibrant community and state-of-the-art facilities in person.",
+        imageUrl: "https://placehold.co/1920x1080.png",
+      },
+      {
+        title: "A Tradition of Excellence",
+        subtitle: "For over 50 years, we have been dedicated to nurturing the next generation of leaders and innovators.",
+        imageUrl: "https://placehold.co/1920x1080.png",
+      },
+    ]
   },
   academicsPage: {
     title: "Our Academic Programs",
@@ -127,7 +142,11 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
         programHighlights: data.programHighlights || defaultContent.programHighlights,
         community: { ...defaultContent.community, ...data.community },
         news: data.news || defaultContent.news,
-        callToAction: { ...defaultContent.callToAction, ...data.callToAction },
+        inquireSection: { 
+          ...defaultContent.inquireSection, 
+          ...(data.inquireSection || {}),
+          slides: data.inquireSection?.slides || defaultContent.inquireSection.slides,
+        },
         academicsPage: { ...defaultContent.academicsPage, ...data.academicsPage },
         admissionsPage: { ...defaultContent.admissionsPage, ...data.admissionsPage },
         contactPage: { ...defaultContent.contactPage, ...data.contactPage },

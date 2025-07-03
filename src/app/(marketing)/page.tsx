@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ArrowRight, BookOpen, GraduationCap, Newspaper, Users, Globe, BarChart2 } from 'lucide-react';
 import { getWebsiteContent } from '@/lib/actions/website-actions';
+import { InquireSlideshow } from '@/components/marketing/InquireSlideshow';
 
 export default async function SchoolHomePage() {
   const content = await getWebsiteContent();
@@ -31,8 +32,8 @@ export default async function SchoolHomePage() {
           </p>
           <div className="mt-8 flex justify-center gap-4 animate-fade-in-up [animation-delay:400ms]">
             <Button size="lg" asChild>
-              <Link href={content.callToAction.buttonLink}>
-                {content.callToAction.buttonText} <ArrowRight className="ml-2 h-5 w-5" />
+              <Link href={content.inquireSection.buttonLink}>
+                {content.inquireSection.buttonText} <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>
             <Button size="lg" variant="outline" className="bg-transparent text-white border-white hover:bg-white hover:text-black">
@@ -157,24 +158,8 @@ export default async function SchoolHomePage() {
         </div>
       </section>
 
-      {/* Call to Action Section */}
-      <section className="py-20 md:py-32 bg-primary text-primary-foreground">
-        <div className="container mx-auto px-4 md:px-6 text-center">
-          <h2 className="text-3xl font-headline font-bold">
-            {content.callToAction.title}
-          </h2>
-          <p className="mx-auto mt-4 max-w-[600px] text-lg text-primary-foreground/80">
-            {content.callToAction.description}
-          </p>
-          <div className="mt-8">
-            <Button size="lg" variant="secondary" asChild className="bg-accent hover:bg-accent/90 text-accent-foreground">
-              <Link href={content.callToAction.buttonLink}>
-                {content.callToAction.buttonText} <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </section>
+      {/* Inquire Slideshow Section */}
+      <InquireSlideshow content={content.inquireSection} />
     </>
   );
 }

@@ -50,11 +50,14 @@ const websiteContentSchema = z.object({
     description: z.string().min(1, "News description is required."),
     imageUrl: z.string().url("Must be a valid URL."),
   })).length(3, "There must be exactly 3 news items."),
-  callToAction: z.object({
-    title: z.string().min(1, "CTA title is required."),
-    description: z.string().min(1, "CTA description is required."),
+  inquireSection: z.object({
     buttonText: z.string().min(1, "Button text is required."),
     buttonLink: z.string().min(1, "Button link is required."),
+    slides: z.array(z.object({
+      title: z.string().min(1, "Slide title is required."),
+      subtitle: z.string().min(1, "Slide subtitle is required."),
+      imageUrl: z.string().url("Must be a valid URL."),
+    })),
   }),
   academicsPage: z.object({
     title: z.string().min(1, "Title is required."),
@@ -114,6 +117,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
   const { fields: academicProgramsFields, append: appendProgram, remove: removeProgram } = useFieldArray({ control: form.control, name: "academicsPage.programs" });
   const { fields: admissionProcessFields, append: appendProcess, remove: removeProcess } = useFieldArray({ control: form.control, name: "admissionsPage.process" });
   const { fields: studentLifeFeatures, append: appendFeature, remove: removeFeature } = useFieldArray({ control: form.control, name: "studentLifePage.features" });
+  const { fields: inquireSlides, append: appendSlide, remove: removeSlide } = useFieldArray({ control: form.control, name: "inquireSection.slides" });
 
   const onSubmit = (data: WebsiteContentFormValues) => {
     startTransition(async () => {
@@ -201,16 +205,31 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                 </CardContent>
               </Card>
 
-              {/* Call to Action Section */}
+              {/* Inquire Section */}
               <Card>
-                <CardHeader><CardTitle className="text-lg">Call to Action Section</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-lg">Inquire Section (Slideshow)</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
-                  <FormField control={form.control} name="callToAction.title" render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                  <FormField control={form.control} name="callToAction.description" render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                  <FormField control={form.control} name="callToAction.buttonText" render={({ field }) => ( <FormItem> <FormLabel>Button Text</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                  <FormField control={form.control} name="callToAction.buttonLink" render={({ field }) => ( <FormItem> <FormLabel>Button Link</FormLabel> <FormControl><Input placeholder="#" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                  <FormField control={form.control} name="inquireSection.buttonText" render={({ field }) => ( <FormItem> <FormLabel>Button Text</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                  <FormField control={form.control} name="inquireSection.buttonLink" render={({ field }) => ( <FormItem> <FormLabel>Button Link</FormLabel> <FormControl><Input placeholder="#" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+
+                  <h4 className="font-semibold pt-4">Slides</h4>
+                  <div className="space-y-4">
+                    {inquireSlides.map((field, index) => (
+                      <div key={field.id} className="flex items-start gap-4 p-4 border rounded-lg">
+                        <div className="flex-grow space-y-4">
+                          <FormField control={form.control} name={`inquireSection.slides.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Slide Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                          <FormField control={form.control} name={`inquireSection.slides.${index}.subtitle`} render={({ field }) => ( <FormItem> <FormLabel>Slide Subtitle</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                          <FormField control={form.control} name={`inquireSection.slides.${index}.imageUrl`} render={({ field }) => ( <FormItem> <FormLabel>Background Image URL</FormLabel> <FormControl><Input placeholder="https://..." {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                        </div>
+                        <Button type="button" variant="destructive" size="icon" onClick={() => removeSlide(index)}> <Trash2 className="h-4 w-4" /> </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => appendSlide({ title: "", subtitle: "", imageUrl: "" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Slide </Button>
+
                 </CardContent>
               </Card>
+
             </AccordionContent>
           </AccordionItem>
 

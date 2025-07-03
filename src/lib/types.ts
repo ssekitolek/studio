@@ -335,11 +335,14 @@ export interface WebsiteContent {
     description: string;
     imageUrl: string;
   }>;
-  callToAction: {
-    title: string;
-    description: string;
+  inquireSection: {
     buttonText: string;
     buttonLink: string;
+    slides: Array<{
+      title: string;
+      subtitle: string;
+      imageUrl: string;
+    }>;
   };
   academicsPage: {
     title: string;
