@@ -16,7 +16,7 @@ export default async function SchoolHomePage() {
       <InquireSlideshow content={content.inquireSection} />
 
       {/* Inquire Now Button Bar */}
-      <section className="bg-primary text-primary-foreground py-4">
+      <section className="py-4">
         <div className="container mx-auto flex items-center justify-center">
           <Button size="lg" variant="secondary" asChild className="bg-accent hover:bg-accent/90 text-accent-foreground animate-pulse">
             <Link href={content.inquireSection.buttonLink}>
