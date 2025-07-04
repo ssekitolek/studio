@@ -71,9 +71,9 @@ export function MarketingHeader({ content }: MarketingHeaderProps) {
       "sticky top-0 z-40 w-full transition-all duration-300",
       isScrolled ? "border-b bg-background/95 backdrop-blur-sm shadow-sm" : "border-b border-transparent"
     )}>
-      <div className="container mx-auto flex h-20 items-center justify-between px-4 md:px-6">
+      <div className="container mx-auto flex h-24 items-center justify-between px-4 md:px-6">
         <Link href="/" className="flex items-center gap-2 group">
-           <div className="relative h-20 w-48">
+           <div className="relative h-24 w-56">
             <Image
                 src={content.logoUrl}
                 alt="School Logo"
