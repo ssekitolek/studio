@@ -21,33 +21,33 @@ const navConfig = [
         title: "About",
         items: [
             { title: "Mission & Vision", href: "/mission-vision" },
-            { title: "History", href: "#" },
-            { title: "Our Campus", href: "#" },
-            { title: "Employment", href: "#" },
+            { title: "History", href: "/history" },
+            { title: "Our Campus", href: "/campus" },
+            { title: "Employment", href: "/employment" },
         ]
     },
     { 
         title: "Academics",
         items: [
             { title: "Academics Overview", href: "/academics" },
-            { title: "Faculty", href: "#" },
-            { title: "College Counseling", href: "#" },
+            { title: "Faculty", href: "/faculty" },
+            { title: "College Counseling", href: "/college-counseling" },
         ]
     },
     { 
         title: "Community",
         items: [
             { title: "Student Life", href: "/student-life" },
-            { title: "Clubs & Organizations", href: "#" },
-            { title: "Parent Association", href: "#" },
+            { title: "Clubs & Organizations", href: "/clubs" },
+            { title: "Parent Association", href: "/parents" },
         ]
     },
     { 
         title: "Admissions",
         items: [
             { title: "Admissions Process", href: "/admissions" },
-            { title: "Tuition & Fees", href: "#" },
-            { title: "Visit Us", href: "#" },
+            { title: "Tuition & Fees", href: "/tuition" },
+            { title: "Visit Us", href: "/visit" },
         ]
     }
 ];
