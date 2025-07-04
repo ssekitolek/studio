@@ -12,36 +12,8 @@ export default async function SchoolHomePage() {
 
   return (
     <>
-      {/* Hero Section */}
-      <section className="relative h-[60vh] md:h-[80vh] w-full flex items-center justify-center text-center text-white">
-        <Image 
-          src={content.hero.imageUrl}
-          alt="School Campus"
-          fill
-          className="object-cover -z-10"
-          priority
-          data-ai-hint="school campus"
-        />
-        <div className="absolute inset-0 bg-black/50 -z-10" />
-        <div className="container mx-auto px-4 md:px-6">
-          <h1 className="text-4xl md:text-6xl font-headline font-bold tracking-tighter animate-fade-in-up">
-            {content.hero.title}
-          </h1>
-          <p className="mx-auto mt-4 max-w-[700px] text-lg text-white/90 animate-fade-in-up [animation-delay:200ms]">
-            {content.hero.subtitle}
-          </p>
-          <div className="mt-8 flex justify-center gap-4 animate-fade-in-up [animation-delay:400ms]">
-            <Button size="lg" asChild>
-              <Link href={content.inquireSection.buttonLink}>
-                {content.inquireSection.buttonText} <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-            </Button>
-            <Button size="lg" variant="outline" className="bg-transparent text-white border-white hover:bg-white hover:text-black">
-              Learn More
-            </Button>
-          </div>
-        </div>
-      </section>
+      {/* Hero Slideshow Section */}
+      <InquireSlideshow content={content.inquireSection} />
       
        {/* At a Glance Section */}
       <section className="py-16 md:py-24 bg-secondary/50">
@@ -157,9 +129,6 @@ export default async function SchoolHomePage() {
           </div>
         </div>
       </section>
-
-      {/* Inquire Slideshow Section */}
-      <InquireSlideshow content={content.inquireSection} />
     </>
   );
 }

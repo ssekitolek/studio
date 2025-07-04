@@ -8,11 +8,6 @@ import { revalidatePath } from "next/cache";
 
 const defaultContent: WebsiteContent = {
   logoUrl: "https://placehold.co/100x100.png",
-  hero: {
-    title: "Discover Your Voice. Shape Your Future.",
-    subtitle: "At St. Mbaaga's College, we provide an inspiring and challenging education that empowers students to achieve their full potential and make a difference in the world.",
-    imageUrl: "https://placehold.co/1920x1080.png",
-  },
   atAGlance: [
     { label: "Founded", value: "1965" },
     { label: "Student-Faculty Ratio", value: "12:1" },
@@ -51,8 +46,8 @@ const defaultContent: WebsiteContent = {
     buttonLink: "/admissions",
     slides: [
       {
-        title: "Ready to Join Our Community?",
-        subtitle: "We invite you to learn more about the admissions process and discover if St. Mbaaga's College is the right fit for your family.",
+        title: "Discover Your Voice. Shape Your Future.",
+        subtitle: "At St. Mbaaga's College, we provide an inspiring and challenging education that empowers students to achieve their full potential and make a difference in the world.",
         imageUrl: "https://placehold.co/1920x1080.png",
       },
       {
@@ -137,7 +132,6 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
       return {
         ...defaultContent,
         ...data,
-        hero: { ...defaultContent.hero, ...data.hero },
         atAGlance: data.atAGlance || defaultContent.atAGlance,
         programHighlights: data.programHighlights || defaultContent.programHighlights,
         community: { ...defaultContent.community, ...data.community },

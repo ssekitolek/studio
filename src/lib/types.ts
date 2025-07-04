@@ -310,11 +310,6 @@ export interface AttendanceHistoryData {
 
 export interface WebsiteContent {
   logoUrl: string;
-  hero: {
-    title: string;
-    subtitle: string;
-    imageUrl: string;
-  };
   atAGlance: Array<{
     label: string;
     value: string;

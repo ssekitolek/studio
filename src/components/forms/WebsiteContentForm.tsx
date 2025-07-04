@@ -25,11 +25,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 
 const websiteContentSchema = z.object({
   logoUrl: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
-  hero: z.object({
-    title: z.string().min(1, "Hero title is required."),
-    subtitle: z.string().min(1, "Hero subtitle is required."),
-    imageUrl: z.string().url("Must be a valid URL."),
-  }),
   atAGlance: z.array(z.object({
     label: z.string().min(1, "Label is required."),
     value: z.string().min(1, "Value is required."),
@@ -138,14 +133,29 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
           <AccordionItem value="item-1" className="border rounded-lg bg-card">
             <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage Content</CardTitle></AccordionTrigger>
             <AccordionContent className="p-4 pt-0 space-y-4">
-               {/* Logo and Hero Section */}
+              
+              {/* Hero Slideshow Section */}
               <Card>
-                <CardHeader><CardTitle className="text-lg">Header & Hero Section</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-lg">Hero Slideshow Section</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                   <FormField control={form.control} name="logoUrl" render={({ field }) => ( <FormItem> <FormLabel>Logo Image URL</FormLabel> <FormControl><Input placeholder="https://..." {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                  <FormField control={form.control} name="hero.title" render={({ field }) => ( <FormItem> <FormLabel>Hero Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                  <FormField control={form.control} name="hero.subtitle" render={({ field }) => ( <FormItem> <FormLabel>Hero Subtitle</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                  <FormField control={form.control} name="hero.imageUrl" render={({ field }) => ( <FormItem> <FormLabel>Hero Background Image URL</FormLabel> <FormControl><Input placeholder="https://..." {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                  <FormField control={form.control} name="inquireSection.buttonText" render={({ field }) => ( <FormItem> <FormLabel>Button Text</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                  <FormField control={form.control} name="inquireSection.buttonLink" render={({ field }) => ( <FormItem> <FormLabel>Button Link</FormLabel> <FormControl><Input placeholder="#" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+
+                  <h4 className="font-semibold pt-4">Slides</h4>
+                  <div className="space-y-4">
+                    {inquireSlides.map((field, index) => (
+                      <div key={field.id} className="flex items-start gap-4 p-4 border rounded-lg">
+                        <div className="flex-grow space-y-4">
+                          <FormField control={form.control} name={`inquireSection.slides.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Slide Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                          <FormField control={form.control} name={`inquireSection.slides.${index}.subtitle`} render={({ field }) => ( <FormItem> <FormLabel>Slide Subtitle</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                          <FormField control={form.control} name={`inquireSection.slides.${index}.imageUrl`} render={({ field }) => ( <FormItem> <FormLabel>Background Image URL</FormLabel> <FormControl><Input placeholder="https://..." {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                        </div>
+                        <Button type="button" variant="destructive" size="icon" onClick={() => removeSlide(index)}> <Trash2 className="h-4 w-4" /> </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => appendSlide({ title: "", subtitle: "", imageUrl: "" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Slide </Button>
                 </CardContent>
               </Card>
 
@@ -202,31 +212,6 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                       <FormField control={form.control} name={`news.${index}.imageUrl`} render={({ field }) => ( <FormItem> <FormLabel>Image URL</FormLabel> <FormControl><Input placeholder="https://..." {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                     </div>
                   ))}
-                </CardContent>
-              </Card>
-
-              {/* Inquire Section */}
-              <Card>
-                <CardHeader><CardTitle className="text-lg">Inquire Section (Slideshow)</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <FormField control={form.control} name="inquireSection.buttonText" render={({ field }) => ( <FormItem> <FormLabel>Button Text</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                  <FormField control={form.control} name="inquireSection.buttonLink" render={({ field }) => ( <FormItem> <FormLabel>Button Link</FormLabel> <FormControl><Input placeholder="#" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-
-                  <h4 className="font-semibold pt-4">Slides</h4>
-                  <div className="space-y-4">
-                    {inquireSlides.map((field, index) => (
-                      <div key={field.id} className="flex items-start gap-4 p-4 border rounded-lg">
-                        <div className="flex-grow space-y-4">
-                          <FormField control={form.control} name={`inquireSection.slides.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Slide Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                          <FormField control={form.control} name={`inquireSection.slides.${index}.subtitle`} render={({ field }) => ( <FormItem> <FormLabel>Slide Subtitle</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                          <FormField control={form.control} name={`inquireSection.slides.${index}.imageUrl`} render={({ field }) => ( <FormItem> <FormLabel>Background Image URL</FormLabel> <FormControl><Input placeholder="https://..." {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                        </div>
-                        <Button type="button" variant="destructive" size="icon" onClick={() => removeSlide(index)}> <Trash2 className="h-4 w-4" /> </Button>
-                      </div>
-                    ))}
-                  </div>
-                  <Button type="button" variant="outline" size="sm" onClick={() => appendSlide({ title: "", subtitle: "", imageUrl: "" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Slide </Button>
-
                 </CardContent>
               </Card>
 
