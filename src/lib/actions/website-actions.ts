@@ -3,9 +3,10 @@
 'use server';
 
 import { db } from "@/lib/firebase";
-import type { WebsiteContent, SimplePageContent, MissionVisionPageContent } from "@/lib/types";
+import type { WebsiteContent, SimplePageContent } from "@/lib/types";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { revalidatePath } from "next/cache";
+import { isValidUrl } from '@/lib/utils';
 
 const simplePageDefault = (title: string, contentTitle: string, hint: string): SimplePageContent => ({
   title: title,
@@ -97,8 +98,8 @@ const defaultContent: WebsiteContent = {
   },
   contactPage: {
     title: "Get in Touch",
-    address: "St. Mbaaga's College, Naddangira, Uganda",
-    phone: "+256 758013161 / +256 782923384",
+    address: "P.O. BOX 8 Naddangira",
+    phone: "0758013161 / 0782923384",
     email: "ssegawarichard7@gmail.com",
     mapImageUrl: "https://placehold.co/1200x400.png",
   },
@@ -141,12 +142,12 @@ const defaultContent: WebsiteContent = {
     coreValuesTitle: "Our Core Values",
     coreValuesDescription: "The principles that guide our actions and define our community.",
     coreValues: [
-        { title: "Love and Fear of God", description: "Guiding our actions with faith and reverence." },
-        { title: "Discipline and Integrity", description: "Upholding strong moral principles and personal responsibility." },
-        { title: "Think and Dreaming Big", description: "Encouraging ambitious goals and innovative thinking." },
-        { title: "Team Work and Networking", description: "Fostering collaboration and building strong connections." },
-        { title: "Respect for Authority", description: "Valuing guidance and maintaining a structured, respectful environment." },
-        { title: "Openness to Diversity", description: "Embracing different perspectives and backgrounds to enrich our community." },
+      { title: "Love and Fear of God", description: "Guiding our actions with faith and reverence." },
+      { title: "Discipline and Integrity", description: "Upholding strong moral principles and personal responsibility." },
+      { title: "Think and Dreaming Big", description: "Encouraging ambitious goals and innovative thinking." },
+      { title: "Team Work and Networking", description: "Fostering collaboration and building strong connections." },
+      { title: "Respect for Authority", description: "Valuing guidance and maintaining a structured, respectful environment." },
+      { title: "Openness to Diversity", description: "Embracing different perspectives and backgrounds to enrich our community." },
     ]
   },
   campusPage: simplePageDefault("Our Campus", "Explore Our Facilities", "school campus"),
@@ -165,21 +166,67 @@ function deepMerge(target: any, source: any) {
 
   if (target && typeof target === 'object' && source && typeof source === 'object') {
     Object.keys(source).forEach(key => {
-      // If the source value is an array, it should overwrite the target value completely.
-      // This is crucial for lists like 'points', 'programs', etc. to avoid data corruption.
       if (Array.isArray(source[key])) {
         output[key] = source[key];
-      // If it's a nested object (and not an array), recurse.
       } else if (source[key] && typeof source[key] === 'object' && key in target && target[key] && typeof target[key] === 'object') {
         output[key] = deepMerge(target[key], source[key]);
       } else {
-        // For primitives, or if the key doesn't exist in target, or other cases, just assign.
         output[key] = source[key];
       }
     });
   }
 
   return output;
+}
+
+function sanitizeContentUrls(content: WebsiteContent): WebsiteContent {
+    const sanitized = JSON.parse(JSON.stringify(content)); 
+
+    const sanitizeUrl = (url: any, fallback: string = 'https://placehold.co/600x400.png') => 
+        isValidUrl(url) ? url : fallback;
+
+    sanitized.logoUrl = sanitizeUrl(sanitized.logoUrl, 'https://i.imgur.com/lZDibio.png');
+    sanitized.contactPage.mapImageUrl = sanitizeUrl(sanitized.contactPage.mapImageUrl, 'https://placehold.co/1200x400.png');
+
+    const sanitizeArrayWithImages = (arr: any[], fallback: string = 'https://placehold.co/600x400.png') => {
+        if (Array.isArray(arr)) {
+            arr.forEach(item => {
+                if (item && item.hasOwnProperty('imageUrls') && Array.isArray(item.imageUrls)) {
+                    item.imageUrls = item.imageUrls.map((url: any) => sanitizeUrl(url, fallback));
+                }
+            });
+        }
+    };
+    
+    const sanitizeSimplePage = (page: SimplePageContent) => {
+        if (page && page.hasOwnProperty('heroImageUrl')) {
+            page.heroImageUrl = sanitizeUrl(page.heroImageUrl, 'https://placehold.co/1920x1080.png');
+        }
+    }
+
+    sanitizeArrayWithImages(sanitized.heroSlideshowSection.slides, 'https://placehold.co/1920x1080.png');
+    sanitizeArrayWithImages(sanitized.signatureProgramsSection.programs);
+    sanitizeArrayWithImages(sanitized.newsSection.posts);
+    sanitizeArrayWithImages(sanitized.academicsPage.programs);
+    sanitizeArrayWithImages(sanitized.studentLifePage.features);
+    
+    if (sanitized.missionVisionPage) {
+        sanitized.missionVisionPage.heroImageUrl = sanitizeUrl(sanitized.missionVisionPage.heroImageUrl, 'https://placehold.co/1920x1080.png');
+        sanitized.missionVisionPage.missionImageUrl = sanitizeUrl(sanitized.missionVisionPage.missionImageUrl);
+        sanitized.missionVisionPage.visionImageUrl = sanitizeUrl(sanitized.missionVisionPage.visionImageUrl);
+    }
+
+    sanitizeSimplePage(sanitized.campusPage);
+    sanitizeSimplePage(sanitized.clubsPage);
+    sanitizeSimplePage(sanitized.collegeCounselingPage);
+    sanitizeSimplePage(sanitized.employmentPage);
+    sanitizeSimplePage(sanitized.facultyPage);
+    sanitizeSimplePage(sanitized.historyPage);
+    sanitizeSimplePage(sanitized.parentsPage);
+    sanitizeSimplePage(sanitized.tuitionPage);
+    sanitizeSimplePage(sanitized.visitPage);
+
+    return sanitized;
 }
 
 
@@ -193,10 +240,9 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
     const contentSnap = await getDoc(contentRef);
     if (contentSnap.exists()) {
       const data = contentSnap.data() as Partial<WebsiteContent>;
-      
       const mergedContent = deepMerge(defaultContent, data);
-      return mergedContent as WebsiteContent;
-
+      const sanitizedContent = sanitizeContentUrls(mergedContent);
+      return sanitizedContent;
     } else {
       await setDoc(contentRef, defaultContent);
       return defaultContent;
@@ -215,8 +261,6 @@ export async function updateWebsiteContent(content: WebsiteContent): Promise<{ s
     const contentRef = doc(db, "website_content", "homepage");
     await setDoc(contentRef, content, { merge: true });
     
-    // Revalidate all pages that use this content to ensure changes appear immediately.
-    // revalidatePath('/', 'layout') is a powerful way to revalidate all nested pages.
     revalidatePath("/", "layout");
     
     return { success: true, message: "Website content updated successfully." };
