@@ -1,7 +1,8 @@
 
 import { PageHeader } from "@/components/shared/PageHeader";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Gem, Target, Eye, Heart } from 'lucide-react';
+import Image from 'next/image';
 
 export default function MissionVisionPage() {
   const coreValues = [
@@ -14,57 +15,73 @@ export default function MissionVisionPage() {
   ];
 
   return (
-    <div className="container mx-auto px-4 md:px-6 py-12 md:py-16">
-      <PageHeader 
-        title="Our Guiding Principles"
-        description="The foundation of St. Mbaaga's College Naddangira's identity and educational philosophy."
-        icon={Gem}
-      />
-      <div className="space-y-12">
-        <Card className="shadow-lg">
-          <CardHeader className="flex flex-row items-center gap-4">
-            <Target className="w-12 h-12 text-primary" />
+    <div className="animate-fade-in-up space-y-16 pb-16">
+      <div className="relative h-[50vh] w-full">
+        <Image 
+          src="https://placehold.co/1920x1080.png" 
+          alt="School values" 
+          fill 
+          className="object-cover" 
+          priority 
+          data-ai-hint="philosophy wisdom"
+        />
+        <div className="absolute inset-0 bg-primary/60" />
+        <div className="relative z-10 flex h-full flex-col items-center justify-center text-center text-primary-foreground p-4">
+          <h1 className="text-4xl md:text-6xl font-headline font-bold">Our Guiding Principles</h1>
+          <p className="mt-4 max-w-3xl text-lg text-primary-foreground/90">
+            The foundation of St. Mbaaga's College Naddangira's identity and educational philosophy.
+          </p>
+        </div>
+      </div>
+      
+      <div className="container mx-auto px-4 md:px-6 space-y-12">
+        <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
-              <CardTitle className="text-3xl font-headline text-primary">Our Mission</CardTitle>
-              <CardDescription className="text-lg">To empower students with knowledge, skills, and values to excel in a dynamic world.</CardDescription>
+                <h2 className="text-3xl font-headline text-primary mb-4 flex items-center gap-3"><Target className="w-8 h-8"/> Our Mission</h2>
+                <div className="space-y-4 text-foreground/80">
+                    <p>
+                    To empower students with knowledge, skills, and values to excel in a dynamic world.
+                    </p>
+                    <p>
+                    Our mission is to provide a comprehensive and challenging education that develops students' intellectual, social, and emotional capacities. We are committed to creating a stimulating learning environment where students are encouraged to think critically, communicate effectively, and engage with the world as responsible and compassionate global citizens. Through a blend of rigorous academics, diverse extracurricular activities, and strong community engagement, we aim to prepare each student for success in higher education and their future careers.
+                    </p>
+                </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-foreground/80">
-              Our mission is to provide a comprehensive and challenging education that develops students' intellectual, social, and emotional capacities. We are committed to creating a stimulating learning environment where students are encouraged to think critically, communicate effectively, and engage with the world as responsible and compassionate global citizens. Through a blend of rigorous academics, diverse extracurricular activities, and strong community engagement, we aim to prepare each student for success in higher education and their future careers.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-lg">
-          <CardHeader className="flex flex-row items-center gap-4">
-            <Eye className="w-12 h-12 text-primary" />
-            <div>
-              <CardTitle className="text-3xl font-headline text-primary">Our Vision</CardTitle>
-              <CardDescription className="text-lg">To be a leading center of educational excellence, innovation, and leadership.</CardDescription>
+            <div className="relative h-80 rounded-lg overflow-hidden shadow-xl">
+                 <Image src="https://placehold.co/600x400.png" alt="Students collaborating" fill className="object-cover" data-ai-hint="students collaborating"/>
             </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-foreground/80">
-              We envision a future where St. Mbaaga's College Naddangira is recognized nationally and internationally as a beacon of academic excellence and holistic development. Our graduates will be leaders and innovators who contribute positively to their communities and the world, equipped with a strong moral compass and a passion for lifelong learning. We strive to be a dynamic institution that continuously adapts to the evolving needs of society while holding firm to our timeless values.
-            </p>
-          </CardContent>
-        </Card>
+        </div>
 
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="font-headline text-3xl text-primary flex items-center gap-4"><Heart className="w-8 h-8"/>Our Core Values</CardTitle>
-            <CardDescription className="text-lg">The principles that guide our actions and define our community.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {coreValues.map((value) => (
-              <div key={value.title} className="p-4 bg-muted/50 rounded-lg">
-                <h4 className="font-bold text-primary">{value.title}</h4>
-                <p className="text-sm text-muted-foreground mt-1">{value.description}</p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="relative h-80 rounded-lg overflow-hidden shadow-xl md:order-2">
+                 <Image src="https://placehold.co/600x400.png" alt="Student looking towards future" fill className="object-cover" data-ai-hint="student future"/>
+            </div>
+            <div className="md:order-1">
+                <h2 className="text-3xl font-headline text-primary mb-4 flex items-center gap-3"><Eye className="w-8 h-8"/> Our Vision</h2>
+                <div className="space-y-4 text-foreground/80">
+                    <p>
+                    To be a leading center of educational excellence, innovation, and leadership.
+                    </p>
+                    <p>
+                    We envision a future where St. Mbaaga's College Naddangira is recognized nationally and internationally as a beacon of academic excellence and holistic development. Our graduates will be leaders and innovators who contribute positively to their communities and the world, equipped with a strong moral compass and a passion for lifelong learning. We strive to be a dynamic institution that continuously adapts to the evolving needs of society while holding firm to our timeless values.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div className="text-center">
+            <h2 className="text-3xl font-headline text-primary mb-4 flex items-center justify-center gap-3"><Heart className="w-8 h-8"/> Our Core Values</h2>
+            <p className="max-w-2xl mx-auto text-muted-foreground">The principles that guide our actions and define our community.</p>
+            <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
+                {coreValues.map((value) => (
+                <div key={value.title} className="p-6 bg-background rounded-lg border shadow-sm hover:shadow-lg transition-shadow">
+                    <h4 className="font-bold text-lg text-primary">{value.title}</h4>
+                    <p className="text-sm text-muted-foreground mt-2">{value.description}</p>
+                </div>
+                ))}
+            </div>
+        </div>
+
       </div>
     </div>
   );
