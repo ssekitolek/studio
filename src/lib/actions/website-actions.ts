@@ -131,19 +131,51 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
     const contentSnap = await getDoc(contentRef);
     if (contentSnap.exists()) {
       const data = contentSnap.data() as Partial<WebsiteContent>;
-      // Deep merge to ensure all nested properties from defaultContent are present
-      return {
-        ...defaultContent,
-        ...data,
-        heroSlideshowSection: { ...defaultContent.heroSlideshowSection, ...data.heroSlideshowSection },
-        whyUsSection: { ...defaultContent.whyUsSection, ...data.whyUsSection },
-        signatureProgramsSection: { ...defaultContent.signatureProgramsSection, ...data.signatureProgramsSection },
-        newsSection: { ...defaultContent.newsSection, ...data.newsSection },
-        academicsPage: { ...defaultContent.academicsPage, ...data.academicsPage },
-        admissionsPage: { ...defaultContent.admissionsPage, ...data.admissionsPage },
-        contactPage: { ...defaultContent.contactPage, ...data.contactPage },
-        studentLifePage: { ...defaultContent.studentLifePage, ...data.studentLifePage },
+      
+      // Perform a more robust merge to prevent saved empty arrays from being overwritten by defaults.
+      const mergedContent: WebsiteContent = {
+        logoUrl: data.logoUrl ?? defaultContent.logoUrl,
+        heroSlideshowSection: {
+          buttonText: data.heroSlideshowSection?.buttonText ?? defaultContent.heroSlideshowSection.buttonText,
+          buttonLink: data.heroSlideshowSection?.buttonLink ?? defaultContent.heroSlideshowSection.buttonLink,
+          slides: data.heroSlideshowSection?.slides ?? defaultContent.heroSlideshowSection.slides,
+        },
+        whyUsSection: {
+          heading: data.whyUsSection?.heading ?? defaultContent.whyUsSection.heading,
+          description: data.whyUsSection?.description ?? defaultContent.whyUsSection.description,
+          points: data.whyUsSection?.points ?? defaultContent.whyUsSection.points,
+        },
+        signatureProgramsSection: {
+          heading: data.signatureProgramsSection?.heading ?? defaultContent.signatureProgramsSection.heading,
+          programs: data.signatureProgramsSection?.programs ?? defaultContent.signatureProgramsSection.programs,
+        },
+        newsSection: {
+          heading: data.newsSection?.heading ?? defaultContent.newsSection.heading,
+          posts: data.newsSection?.posts ?? defaultContent.newsSection.posts,
+        },
+        academicsPage: {
+          title: data.academicsPage?.title ?? defaultContent.academicsPage.title,
+          description: data.academicsPage?.description ?? defaultContent.academicsPage.description,
+          programs: data.academicsPage?.programs ?? defaultContent.academicsPage.programs,
+        },
+        admissionsPage: {
+          title: data.admissionsPage?.title ?? defaultContent.admissionsPage.title,
+          description: data.admissionsPage?.description ?? defaultContent.admissionsPage.description,
+          process: data.admissionsPage?.process ?? defaultContent.admissionsPage.process,
+          formUrl: data.admissionsPage?.formUrl ?? defaultContent.admissionsPage.formUrl,
+        },
+        contactPage: {
+          ...defaultContent.contactPage,
+          ...(data.contactPage || {}),
+        },
+        studentLifePage: {
+          title: data.studentLifePage?.title ?? defaultContent.studentLifePage.title,
+          description: data.studentLifePage?.description ?? defaultContent.studentLifePage.description,
+          features: data.studentLifePage?.features ?? defaultContent.studentLifePage.features,
+        },
       };
+      
+      return mergedContent;
     } else {
       await setDoc(contentRef, defaultContent);
       return defaultContent;
