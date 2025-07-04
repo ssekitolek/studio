@@ -165,9 +165,15 @@ function deepMerge(target: any, source: any) {
 
   if (target && typeof target === 'object' && source && typeof source === 'object') {
     Object.keys(source).forEach(key => {
-      if (source[key] && typeof source[key] === 'object' && key in target && target[key] && typeof target[key] === 'object') {
+      // If the source value is an array, it should overwrite the target value completely.
+      // This is crucial for lists like 'points', 'programs', etc. to avoid data corruption.
+      if (Array.isArray(source[key])) {
+        output[key] = source[key];
+      // If it's a nested object (and not an array), recurse.
+      } else if (source[key] && typeof source[key] === 'object' && key in target && target[key] && typeof target[key] === 'object') {
         output[key] = deepMerge(target[key], source[key]);
       } else {
+        // For primitives, or if the key doesn't exist in target, or other cases, just assign.
         output[key] = source[key];
       }
     });
