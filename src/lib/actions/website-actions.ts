@@ -127,33 +127,41 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
     const contentSnap = await getDoc(contentRef);
     if (contentSnap.exists()) {
       const data = contentSnap.data() as Partial<WebsiteContent>;
-      // Merge with defaults to ensure all fields are present
-      // Deep merge for nested objects
+      
+      const migrateItemImages = (item: any) => {
+        const newItem = { ...item };
+        if (typeof newItem.imageUrl === 'string' && !Array.isArray(newItem.imageUrls)) {
+          newItem.imageUrls = [newItem.imageUrl];
+        }
+        delete newItem.imageUrl;
+        return newItem;
+      };
+
+      const migratedData = { ...data };
+      if (migratedData.programHighlights) migratedData.programHighlights = migratedData.programHighlights.map(migrateItemImages);
+      if (migratedData.community) migratedData.community = migrateItemImages(migratedData.community);
+      if (migratedData.news) migratedData.news = migratedData.news.map(migrateItemImages);
+      if (migratedData.inquireSection?.slides) migratedData.inquireSection.slides = migratedData.inquireSection.slides.map(migrateItemImages);
+      if (migratedData.academicsPage?.programs) migratedData.academicsPage.programs = migratedData.academicsPage.programs.map(migrateItemImages);
+      if (migratedData.studentLifePage?.features) migratedData.studentLifePage.features = migratedData.studentLifePage.features.map(migrateItemImages);
+
       return {
         ...defaultContent,
-        ...data,
-        atAGlance: data.atAGlance || defaultContent.atAGlance,
-        programHighlights: data.programHighlights || defaultContent.programHighlights,
-        community: { ...defaultContent.community, ...data.community },
-        news: data.news || defaultContent.news,
-        inquireSection: { 
-          ...defaultContent.inquireSection, 
-          ...(data.inquireSection || {}),
-          slides: data.inquireSection?.slides || defaultContent.inquireSection.slides,
-        },
-        academicsPage: { ...defaultContent.academicsPage, ...data.academicsPage },
-        admissionsPage: { ...defaultContent.admissionsPage, ...data.admissionsPage },
-        contactPage: { ...defaultContent.contactPage, ...data.contactPage },
-        studentLifePage: { ...defaultContent.studentLifePage, ...data.studentLifePage },
+        ...migratedData,
+        community: { ...defaultContent.community, ...migratedData.community },
+        inquireSection: { ...defaultContent.inquireSection, ...(migratedData.inquireSection || {}) },
+        academicsPage: { ...defaultContent.academicsPage, ...(migratedData.academicsPage || {}) },
+        admissionsPage: { ...defaultContent.admissionsPage, ...(migratedData.admissionsPage || {}) },
+        contactPage: { ...defaultContent.contactPage, ...(migratedData.contactPage || {}) },
+        studentLifePage: { ...defaultContent.studentLifePage, ...(migratedData.studentLifePage || {}) },
       };
     } else {
-      // If the document doesn't exist, create it with default content
       await setDoc(contentRef, defaultContent);
       return defaultContent;
     }
   } catch (error) {
     console.error("Error fetching website content:", error);
-    return defaultContent; // Return default content on error
+    return defaultContent;
   }
 }
 
