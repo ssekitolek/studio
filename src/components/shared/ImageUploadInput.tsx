@@ -6,8 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form";
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
-import { CheckCircle } from 'lucide-react';
+import { isValidUrl } from "@/lib/utils";
 
 interface ImageUploadInputProps {
   fieldName: string;
@@ -22,76 +21,46 @@ export function ImageUploadInput({ fieldName, label }: ImageUploadInputProps) {
       control={control}
       name={fieldName}
       render={({ field }) => {
-        // Use local state to control the input for a responsive typing experience
-        const [localValue, setLocalValue] = useState(field.value || '');
-        const [showConfirmation, setShowConfirmation] = useState(false);
+        // Directly use the field's value from react-hook-form.
+        // This is the most reliable way and prevents state-sync bugs.
+        const imageUrl = isValidUrl(field.value) ? field.value : null;
 
-        // Effect to sync local state if the form value changes externally (e.g., on initial load)
-        useEffect(() => {
-          if (field.value !== localValue) {
-            setLocalValue(field.value || '');
-          }
-          // Intentionally not depending on localValue to avoid loops
-          // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [field.value]);
-
-        const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-          field.onBlur(); // Propagate the original onBlur event for form validation state
-          // Only update the main form state if the value has actually changed
-          if (field.value !== e.target.value) {
-            field.onChange(e.target.value); // This updates the React Hook Form state
-            if (e.target.value) {
-              setShowConfirmation(true);
-              const timer = setTimeout(() => setShowConfirmation(false), 2500);
-              // No cleanup needed as it's a one-shot timer on blur
-            }
-          }
-        };
-        
         return (
           <div className="space-y-2">
-            <Label>{label}</Label>
+            <Label htmlFor={field.name}>{label}</Label>
             <div className="flex items-center gap-4">
-              {field.value ? ( // The preview image is based on the stable form value
+              {imageUrl ? (
                 <Image
-                  key={field.value} // Force re-render if the stable form value changes
-                  src={field.value}
+                  key={imageUrl} // Use the URL as a key to force re-render on change
+                  src={imageUrl}
                   alt={label}
                   width={100}
                   height={60}
-                  className="rounded-md object-cover aspect-video bg-muted"
-                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  className="rounded-md object-cover aspect-video bg-muted border"
+                  // next/image's loader will handle errors gracefully
                 />
               ) : (
-                <div className="w-[100px] h-[60px] bg-muted rounded-md flex items-center justify-center text-muted-foreground text-xs">
-                  No Image
+                <div className="w-[100px] h-[60px] bg-muted rounded-md flex items-center justify-center text-muted-foreground text-xs text-center border">
+                  No/Invalid Image URL
                 </div>
               )}
               <div className="flex-grow">
                 <FormItem>
                   <FormControl>
+                    {/*
+                      This input is now fully controlled by react-hook-form.
+                      Every keystroke updates the central form state, eliminating
+                      the bug where input would disappear on re-renders.
+                    */}
                     <Input
+                      id={field.name}
                       placeholder="https://i.imgur.com/your-image.png"
-                      value={localValue}
-                      onChange={(e) => setLocalValue(e.target.value)} // Update local state on every key press
-                      onBlur={handleBlur} // Update global form state on blur
-                      ref={field.ref}
+                      {...field}
+                      value={field.value || ''} // Ensure input is always a controlled component
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
-                <div className="text-xs text-muted-foreground mt-1 h-4">
-                  {showConfirmation ? (
-                    <span className="flex items-center text-green-600 transition-opacity duration-300 ease-in-out opacity-100">
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Link updated. Save all changes below.
-                    </span>
-                  ) : (
-                    <span className="transition-opacity duration-300 ease-in-out opacity-100">
-                       Paste URL & click away to update preview.
-                    </span>
-                  )}
-                </div>
               </div>
             </div>
           </div>
