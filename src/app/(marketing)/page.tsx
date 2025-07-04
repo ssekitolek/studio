@@ -14,6 +14,17 @@ export default async function SchoolHomePage() {
     <>
       {/* Hero Slideshow Section */}
       <InquireSlideshow content={content.inquireSection} />
+
+      {/* Inquire Now Button Bar */}
+      <section className="bg-primary text-primary-foreground py-4">
+        <div className="container mx-auto flex items-center justify-center">
+          <Button size="lg" variant="secondary" asChild className="bg-accent hover:bg-accent/90 text-accent-foreground animate-pulse">
+            <Link href={content.inquireSection.buttonLink}>
+              {content.inquireSection.buttonText} <ArrowRight className="ml-2 h-5 w-5" />
+            </Link>
+          </Button>
+        </div>
+      </section>
       
        {/* At a Glance Section */}
       <section className="py-16 md:py-24 bg-secondary/50">
