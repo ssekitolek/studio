@@ -3,7 +3,6 @@ import { getWebsiteContent } from "@/lib/actions/website-actions";
 import { Card } from "@/components/ui/card";
 import { Eye, Heart, Target } from 'lucide-react';
 import Image from 'next/image';
-import { isValidUrl } from "@/lib/utils";
 
 export default async function MissionVisionPage() {
   const content = await getWebsiteContent();
@@ -14,7 +13,7 @@ export default async function MissionVisionPage() {
     <div className="animate-fade-in-up space-y-16 pb-16">
       <div className="relative h-[30vh] w-full">
         <Image 
-          src={isValidUrl(missionVisionPage.heroImageUrl) ? missionVisionPage.heroImageUrl : "https://placehold.co/1920x1080.png"} 
+          src={missionVisionPage.heroImageUrl} 
           alt={missionVisionPage.heroTitle} 
           fill 
           className="object-cover" 
@@ -41,13 +40,13 @@ export default async function MissionVisionPage() {
                 </div>
             </div>
             <div className="relative h-80 rounded-lg overflow-hidden shadow-xl">
-                 <Image src={isValidUrl(missionVisionPage.missionImageUrl) ? missionVisionPage.missionImageUrl : "https://placehold.co/600x400.png"} alt="Students collaborating" fill className="object-cover" data-ai-hint="students collaborating"/>
+                 <Image src={missionVisionPage.missionImageUrl} alt="Students collaborating" fill className="object-cover" data-ai-hint="students collaborating"/>
             </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-12 items-center">
             <div className="relative h-80 rounded-lg overflow-hidden shadow-xl md:order-2">
-                 <Image src={isValidUrl(missionVisionPage.visionImageUrl) ? missionVisionPage.visionImageUrl : "https://placehold.co/600x400.png"} alt="Student looking towards future" fill className="object-cover" data-ai-hint="student future"/>
+                 <Image src={missionVisionPage.visionImageUrl} alt="Student looking towards future" fill className="object-cover" data-ai-hint="student future"/>
             </div>
             <div className="md:order-1">
                 <h2 className="text-3xl font-headline text-primary mb-4 flex items-center gap-3"><Eye className="w-8 h-8"/> {missionVisionPage.visionTitle}</h2>

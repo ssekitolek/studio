@@ -1,7 +1,6 @@
 
 import { getWebsiteContent } from "@/lib/actions/website-actions";
 import Image from "next/image";
-import { isValidUrl } from '@/lib/utils';
 
 export default async function CollegeCounselingPage() {
   const content = await getWebsiteContent();
@@ -11,7 +10,7 @@ export default async function CollegeCounselingPage() {
     <div className="animate-fade-in-up">
       <div className="relative h-[30vh] w-full">
         <Image 
-          src={isValidUrl(collegeCounselingPage.heroImageUrl) ? collegeCounselingPage.heroImageUrl : "https://placehold.co/1920x1080.png"} 
+          src={collegeCounselingPage.heroImageUrl} 
           alt={collegeCounselingPage.title}
           fill 
           className="object-cover" 

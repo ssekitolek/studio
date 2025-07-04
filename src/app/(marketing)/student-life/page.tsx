@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Image from "next/image";
 import { HeartHandshake, Shield, Palette, BrainCircuit } from "lucide-react";
 import type { ReactElement } from "react";
-import { isValidUrl } from "@/lib/utils";
 
 const iconMap: { [key: string]: ReactElement } = {
   Athletics: <Shield className="h-10 w-10 text-primary mb-4" />,
@@ -41,7 +40,7 @@ export default async function StudentLifePage() {
             <Card key={index} className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col group hover:scale-[1.03] border-2 border-transparent hover:border-primary">
                <div className="relative h-72 w-full overflow-hidden">
                   <Image
-                      src={(feature.imageUrls && feature.imageUrls.length > 0 && isValidUrl(feature.imageUrls[0])) ? feature.imageUrls[0] : "https://placehold.co/600x400.png"}
+                      src={(feature.imageUrls && feature.imageUrls.length > 0) ? feature.imageUrls[0] : "https://placehold.co/600x400.png"}
                       alt={feature.title}
                       fill
                       className="object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out"

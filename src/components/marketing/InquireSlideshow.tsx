@@ -8,7 +8,6 @@ import type { WebsiteContent } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-import { isValidUrl } from '@/lib/utils';
 
 interface InquireSlideshowProps {
   content: WebsiteContent['heroSlideshowSection'];
@@ -41,7 +40,7 @@ export function InquireSlideshow({ content }: InquireSlideshowProps) {
       {content.slides.map((slide, index) => (
         <Image
           key={index}
-          src={(slide.imageUrls && slide.imageUrls.length > 0 && isValidUrl(slide.imageUrls[0])) ? slide.imageUrls[0] : "https://placehold.co/1920x1080.png"}
+          src={(slide.imageUrls && slide.imageUrls.length > 0) ? slide.imageUrls[0] : "https://placehold.co/1920x1080.png"}
           alt={slide.title}
           fill
           className={cn(
