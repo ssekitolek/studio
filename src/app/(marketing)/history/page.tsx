@@ -1,6 +1,7 @@
 
 import { getWebsiteContent } from "@/lib/actions/website-actions";
 import Image from "next/image";
+import { isValidUrl } from '@/lib/utils';
 
 export default async function HistoryPage() {
   const content = await getWebsiteContent();
@@ -10,7 +11,7 @@ export default async function HistoryPage() {
     <div className="animate-fade-in-up">
       <div className="relative h-[30vh] w-full">
         <Image 
-          src={historyPage.heroImageUrl} 
+          src={isValidUrl(historyPage.heroImageUrl) ? historyPage.heroImageUrl : "https://placehold.co/1920x1080.png"} 
           alt={historyPage.title} 
           fill 
           className="object-cover" 

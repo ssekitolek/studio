@@ -4,3 +4,9 @@ import { twMerge } from "tailwind-merge"
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
+
+export function isValidUrl(url: string | undefined | null): url is string {
+  if (!url) return false;
+  // A simple check for http, https, or relative / paths.
+  return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/');
+}

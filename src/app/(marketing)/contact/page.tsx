@@ -2,6 +2,7 @@
 import { getWebsiteContent } from "@/lib/actions/website-actions";
 import Image from "next/image";
 import { Mail, Phone, MapPin } from "lucide-react";
+import { isValidUrl } from "@/lib/utils";
 
 export default async function ContactPage() {
   const content = await getWebsiteContent();
@@ -11,7 +12,7 @@ export default async function ContactPage() {
     <div className="animate-fade-in-up">
       <div className="relative h-[30vh] w-full">
         <Image
-            src={contactPage.mapImageUrl}
+            src={isValidUrl(contactPage.mapImageUrl) ? contactPage.mapImageUrl : "https://placehold.co/1200x400.png"}
             alt="Map of school location"
             fill
             className="object-cover"

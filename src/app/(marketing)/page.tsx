@@ -7,6 +7,7 @@ import { getWebsiteContent } from '@/lib/actions/website-actions';
 import { BookOpen, Trophy, Users, ArrowRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { InquireSlideshow } from '@/components/marketing/InquireSlideshow';
+import { isValidUrl } from '@/lib/utils';
 
 const iconMap: { [key: string]: LucideIcon } = {
   BookOpen,
@@ -57,7 +58,7 @@ export default async function SchoolHomePage() {
             {signatureProgramsSection.programs.map((program, index) => (
               <Card key={index} className="overflow-hidden group shadow-lg hover:shadow-2xl transition-shadow duration-300">
                 <div className="relative h-64 w-full">
-                    <Image src={(program.imageUrls && program.imageUrls.length > 0) ? program.imageUrls[0] : "https://placehold.co/600x400.png"} alt={program.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" data-ai-hint={program.title.toLowerCase()} />
+                    <Image src={(program.imageUrls && program.imageUrls.length > 0 && isValidUrl(program.imageUrls[0])) ? program.imageUrls[0] : "https://placehold.co/600x400.png"} alt={program.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" data-ai-hint={program.title.toLowerCase()} />
                 </div>
                 <CardContent className="p-6">
                   <h3 className="text-xl font-semibold">{program.title}</h3>
@@ -82,7 +83,7 @@ export default async function SchoolHomePage() {
             {newsSection.posts.map((post, index) => (
               <Card key={index} className="overflow-hidden group shadow-lg hover:shadow-2xl transition-shadow duration-300">
                 <div className="relative h-56 w-full">
-                    <Image src={(post.imageUrls && post.imageUrls.length > 0) ? post.imageUrls[0] : "https://placehold.co/600x400.png"} alt={post.title} fill className="object-cover" data-ai-hint="school news" />
+                    <Image src={(post.imageUrls && post.imageUrls.length > 0 && isValidUrl(post.imageUrls[0])) ? post.imageUrls[0] : "https://placehold.co/600x400.png"} alt={post.title} fill className="object-cover" data-ai-hint="school news" />
                 </div>
                 <CardContent className="p-6">
                   <p className="text-sm text-muted-foreground">{post.date}</p>
