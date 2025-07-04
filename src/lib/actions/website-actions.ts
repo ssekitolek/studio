@@ -43,7 +43,7 @@ const defaultContent: WebsiteContent = {
   ],
   inquireSection: {
     buttonText: "Inquire Now",
-    buttonLink: "/admissions",
+    buttonLink: "/contact",
     slides: [
       {
         title: "Discover Your Voice. Shape Your Future.",
