@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -66,6 +65,10 @@ export function MarketingHeader({ content }: MarketingHeaderProps) {
     };
   }, []);
 
+  const logoSrc = content.logoUrl && (content.logoUrl.startsWith('http') || content.logoUrl.startsWith('/')) 
+    ? content.logoUrl 
+    : "https://placehold.co/200x80.png";
+
   return (
     <header className={cn(
       "sticky top-0 z-40 w-full transition-all duration-300",
@@ -75,7 +78,7 @@ export function MarketingHeader({ content }: MarketingHeaderProps) {
         <Link href="/" className="flex items-center gap-2 group">
            <div className="relative h-24 w-56">
             <Image
-                src={content.logoUrl}
+                src={logoSrc}
                 alt="School Logo"
                 fill
                 className="object-contain transition-opacity group-hover:opacity-80"
