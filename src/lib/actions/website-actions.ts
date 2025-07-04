@@ -172,13 +172,18 @@ export async function updateWebsiteContent(content: WebsiteContent): Promise<{ s
   try {
     const contentRef = doc(db, "website_content", "homepage");
     await setDoc(contentRef, content, { merge: true });
-    revalidatePath("/");
-    revalidatePath("/admin/dashboard");
+    
+    // Revalidate all pages that use getWebsiteContent to ensure changes are reflected.
+    revalidatePath("/", "layout"); // Revalidates the entire site layout (header, footer)
+    revalidatePath("/admin/dashboard"); // Revalidates the admin dashboard itself
+    
+    // Revalidate all individual marketing pages
     revalidatePath("/academics");
     revalidatePath("/admissions");
     revalidatePath("/contact");
     revalidatePath("/mission-vision");
     revalidatePath("/student-life");
+
     return { success: true, message: "Website content updated successfully." };
   } catch (error) {
     console.error("Error updating website content:", error);
