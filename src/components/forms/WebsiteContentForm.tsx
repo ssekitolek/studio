@@ -60,6 +60,41 @@ const websiteContentSchema = z.object({
           imageUrls: z.array(z.string().url("Must be a valid URL.")).min(1, "At least one image URL is required."),
       })),
   }),
+  academicsPage: z.object({
+      title: z.string().min(1, "Title is required."),
+      description: z.string().min(1, "Description is required."),
+      programs: z.array(z.object({
+          name: z.string().min(1, "Program name is required."),
+          description: z.string().min(1, "Program description is required."),
+          imageUrls: z.array(z.string().url("Must be a valid URL.")).min(1, "At least one image URL is required."),
+      })),
+  }),
+  admissionsPage: z.object({
+      title: z.string().min(1, "Title is required."),
+      description: z.string().min(1, "Description is required."),
+      process: z.array(z.object({
+          step: z.string().min(1, "Step number is required."),
+          title: z.string().min(1, "Step title is required."),
+          description: z.string().min(1, "Step description is required."),
+      })),
+      formUrl: z.string().min(1, "Form URL is required."),
+  }),
+  contactPage: z.object({
+      title: z.string().min(1, "Title is required."),
+      address: z.string().min(1, "Address is required."),
+      phone: z.string().min(1, "Phone number is required."),
+      email: z.string().email("Must be a valid email."),
+      mapImageUrl: z.string().url("Must be a valid URL for the map image."),
+  }),
+  studentLifePage: z.object({
+      title: z.string().min(1, "Title is required."),
+      description: z.string().min(1, "Description is required."),
+      features: z.array(z.object({
+          title: z.string().min(1, "Feature title is required."),
+          description: z.string().min(1, "Feature description is required."),
+          imageUrls: z.array(z.string().url("Must be a valid URL.")).min(1, "At least one image URL is required."),
+      })),
+  }),
 });
 
 type WebsiteContentFormValues = z.infer<typeof websiteContentSchema>;
@@ -74,13 +109,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
 
   const form = useForm<WebsiteContentFormValues>({
     resolver: zodResolver(websiteContentSchema),
-    defaultValues: {
-      logoUrl: initialData.logoUrl,
-      heroSlideshowSection: initialData.heroSlideshowSection,
-      whyUsSection: initialData.whyUsSection,
-      signatureProgramsSection: initialData.signatureProgramsSection,
-      newsSection: initialData.newsSection,
-    },
+    defaultValues: initialData,
   });
 
   const { control } = form;
@@ -89,18 +118,13 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
   const { fields: whyUsPoints, append: appendWhyUsPoint, remove: removeWhyUsPoint } = useFieldArray({ control, name: "whyUsSection.points" });
   const { fields: signaturePrograms, append: appendProgram, remove: removeProgram } = useFieldArray({ control, name: "signatureProgramsSection.programs" });
   const { fields: newsPosts, append: appendNews, remove: removeNews } = useFieldArray({ control, name: "newsSection.posts" });
+  const { fields: academicPrograms, append: appendAcademicProgram, remove: removeAcademicProgram } = useFieldArray({ control, name: "academicsPage.programs" });
+  const { fields: admissionProcess, append: appendAdmissionStep, remove: removeAdmissionStep } = useFieldArray({ control, name: "admissionsPage.process" });
+  const { fields: studentLifeFeatures, append: appendFeature, remove: removeFeature } = useFieldArray({ control, name: "studentLifePage.features" });
   
   const onSubmit = (data: WebsiteContentFormValues) => {
     startTransition(async () => {
-      const fullContentToSave: WebsiteContent = {
-        ...initialData,
-        logoUrl: data.logoUrl,
-        heroSlideshowSection: data.heroSlideshowSection,
-        whyUsSection: data.whyUsSection,
-        signatureProgramsSection: data.signatureProgramsSection,
-        newsSection: data.newsSection,
-      };
-      const result = await updateWebsiteContent(fullContentToSave);
+      const result = await updateWebsiteContent(data);
       if (result.success) {
         toast({ title: "Success", description: "Website content updated successfully." });
       } else {
@@ -112,7 +136,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <Accordion type="multiple" defaultValue={["item-general", "item-heroSlideshow"]} className="w-full space-y-4">
+        <Accordion type="multiple" defaultValue={["item-general"]} className="w-full space-y-4">
           
           <AccordionItem value="item-general" className="border rounded-lg bg-card">
             <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>General</CardTitle></AccordionTrigger>
@@ -149,7 +173,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                                       <Button type="button" variant="ghost" size="icon" onClick={() => removeImageUrl(imgIndex)}><Trash2 className="h-4 w-4"/></Button>
                                     </div>
                                   ))}
-                                  <Button type="button" variant="outline" size="sm" onClick={() => appendImageUrl("")}>Add Image URL</Button>
+                                  <Button type="button" variant="outline" size="sm" onClick={() => appendImageUrl("https://placehold.co/1920x1080.png")}>Add Image URL</Button>
                                 </div>
                             </div>
                             <Button type="button" variant="destructive" size="icon" onClick={() => removeHeroSlide(index)}> <Trash2 className="h-4 w-4" /> </Button>
@@ -208,7 +232,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                                           <Button type="button" variant="ghost" size="icon" onClick={() => removeImageUrl(imgIndex)}><Trash2 className="h-4 w-4"/></Button>
                                         </div>
                                       ))}
-                                      <Button type="button" variant="outline" size="sm" onClick={() => appendImageUrl("")}>Add Image URL</Button>
+                                      <Button type="button" variant="outline" size="sm" onClick={() => appendImageUrl("https://placehold.co/600x400.png")}>Add Image URL</Button>
                                     </div>
                                 </div>
                                 <Button type="button" variant="destructive" size="icon" onClick={() => removeProgram(index)}> <Trash2 className="h-4 w-4" /> </Button>
@@ -243,7 +267,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                                           <Button type="button" variant="ghost" size="icon" onClick={() => removeImageUrl(imgIndex)}><Trash2 className="h-4 w-4"/></Button>
                                         </div>
                                       ))}
-                                      <Button type="button" variant="outline" size="sm" onClick={() => appendImageUrl("")}>Add Image URL</Button>
+                                      <Button type="button" variant="outline" size="sm" onClick={() => appendImageUrl("https://placehold.co/600x400.png")}>Add Image URL</Button>
                                     </div>
                                 </div>
                                 <Button type="button" variant="destructive" size="icon" onClick={() => removeNews(index)}> <Trash2 className="h-4 w-4" /> </Button>
@@ -255,6 +279,114 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                 </Card>
             </AccordionContent>
           </AccordionItem>
+          
+           <AccordionItem value="item-academics" className="border rounded-lg bg-card">
+            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Academics Page</CardTitle></AccordionTrigger>
+            <AccordionContent className="p-4 pt-0 space-y-4">
+                <FormField control={control} name="academicsPage.title" render={({ field }) => ( <FormItem><FormLabel>Page Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={control} name="academicsPage.description" render={({ field }) => ( <FormItem><FormLabel>Page Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <Card>
+                    <CardHeader><CardTitle className="text-base">Programs</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        {academicPrograms.map((field, index) => {
+                          const { fields: imageUrls, append: appendImageUrl, remove: removeImageUrl } = useFieldArray({ control, name: `academicsPage.programs.${index}.imageUrls` });
+                          return (
+                            <div key={field.id} className="flex items-start gap-4 p-4 border rounded-lg">
+                                <div className="flex-grow space-y-4">
+                                    <FormField control={control} name={`academicsPage.programs.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Program Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                    <FormField control={control} name={`academicsPage.programs.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                    <div className="space-y-2">
+                                      <FormLabel>Image URLs</FormLabel>
+                                      {imageUrls.map((imgField, imgIndex) => (
+                                        <div key={imgField.id} className="flex items-center gap-2">
+                                          <ImageUploadInput fieldName={`academicsPage.programs.${index}.imageUrls.${imgIndex}`} label={`Image ${imgIndex + 1}`}/>
+                                          <Button type="button" variant="ghost" size="icon" onClick={() => removeImageUrl(imgIndex)}><Trash2 className="h-4 w-4"/></Button>
+                                        </div>
+                                      ))}
+                                      <Button type="button" variant="outline" size="sm" onClick={() => appendImageUrl("https://placehold.co/600x400.png")}>Add Image URL</Button>
+                                    </div>
+                                </div>
+                                <Button type="button" variant="destructive" size="icon" onClick={() => removeAcademicProgram(index)}> <Trash2 className="h-4 w-4" /> </Button>
+                            </div>
+                          );
+                        })}
+                        <Button type="button" variant="outline" size="sm" onClick={() => appendAcademicProgram({ name: "", description: "", imageUrls: ["https://placehold.co/600x400.png"] })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Program </Button>
+                    </CardContent>
+                </Card>
+            </AccordionContent>
+           </AccordionItem>
+
+           <AccordionItem value="item-admissions" className="border rounded-lg bg-card">
+            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Admissions Page</CardTitle></AccordionTrigger>
+            <AccordionContent className="p-4 pt-0 space-y-4">
+                <FormField control={control} name="admissionsPage.title" render={({ field }) => ( <FormItem><FormLabel>Page Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={control} name="admissionsPage.description" render={({ field }) => ( <FormItem><FormLabel>Page Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={control} name="admissionsPage.formUrl" render={({ field }) => ( <FormItem><FormLabel>Apply Now Form URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <Card>
+                    <CardHeader><CardTitle className="text-base">Admission Process Steps</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        {admissionProcess.map((field, index) => (
+                            <div key={field.id} className="flex items-start gap-4 p-4 border rounded-lg">
+                                <div className="flex-grow space-y-4">
+                                    <FormField control={control} name={`admissionsPage.process.${index}.step`} render={({ field }) => ( <FormItem><FormLabel>Step Number</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                    <FormField control={control} name={`admissionsPage.process.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Step Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                    <FormField control={control} name={`admissionsPage.process.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Step Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                </div>
+                                <Button type="button" variant="destructive" size="icon" onClick={() => removeAdmissionStep(index)}> <Trash2 className="h-4 w-4" /> </Button>
+                            </div>
+                        ))}
+                        <Button type="button" variant="outline" size="sm" onClick={() => appendAdmissionStep({ step: "05", title: "", description: "" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Step </Button>
+                    </CardContent>
+                </Card>
+            </AccordionContent>
+           </AccordionItem>
+           
+           <AccordionItem value="item-contact" className="border rounded-lg bg-card">
+            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Contact Page</CardTitle></AccordionTrigger>
+            <AccordionContent className="p-4 pt-0 space-y-4">
+                <FormField control={control} name="contactPage.title" render={({ field }) => ( <FormItem><FormLabel>Page Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={control} name="contactPage.address" render={({ field }) => ( <FormItem><FormLabel>Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={control} name="contactPage.phone" render={({ field }) => ( <FormItem><FormLabel>Phone</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={control} name="contactPage.email" render={({ field }) => ( <FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <ImageUploadInput fieldName="contactPage.mapImageUrl" label="Map Image URL" />
+            </AccordionContent>
+           </AccordionItem>
+
+           <AccordionItem value="item-student-life" className="border rounded-lg bg-card">
+            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Student Life Page</CardTitle></AccordionTrigger>
+            <AccordionContent className="p-4 pt-0 space-y-4">
+                <FormField control={control} name="studentLifePage.title" render={({ field }) => ( <FormItem><FormLabel>Page Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={control} name="studentLifePage.description" render={({ field }) => ( <FormItem><FormLabel>Page Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                 <Card>
+                    <CardHeader><CardTitle className="text-base">Features</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        {studentLifeFeatures.map((field, index) => {
+                           const { fields: imageUrls, append: appendImageUrl, remove: removeImageUrl } = useFieldArray({ control, name: `studentLifePage.features.${index}.imageUrls` });
+                           return (
+                            <div key={field.id} className="flex items-start gap-4 p-4 border rounded-lg">
+                                <div className="flex-grow space-y-4">
+                                    <FormField control={control} name={`studentLifePage.features.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                    <FormField control={control} name={`studentLifePage.features.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                    <div className="space-y-2">
+                                      <FormLabel>Image URLs</FormLabel>
+                                      {imageUrls.map((imgField, imgIndex) => (
+                                        <div key={imgField.id} className="flex items-center gap-2">
+                                          <ImageUploadInput fieldName={`studentLifePage.features.${index}.imageUrls.${imgIndex}`} label={`Image ${imgIndex + 1}`}/>
+                                          <Button type="button" variant="ghost" size="icon" onClick={() => removeImageUrl(imgIndex)}><Trash2 className="h-4 w-4"/></Button>
+                                        </div>
+                                      ))}
+                                      <Button type="button" variant="outline" size="sm" onClick={() => appendImageUrl("https://placehold.co/600x400.png")}>Add Image URL</Button>
+                                    </div>
+                                </div>
+                                <Button type="button" variant="destructive" size="icon" onClick={() => removeFeature(index)}> <Trash2 className="h-4 w-4" /> </Button>
+                            </div>
+                           );
+                        })}
+                        <Button type="button" variant="outline" size="sm" onClick={() => appendFeature({ title: "", description: "", imageUrls: ["https://placehold.co/600x400.png"] })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Feature </Button>
+                    </CardContent>
+                </Card>
+            </AccordionContent>
+           </AccordionItem>
 
         </Accordion>
 
@@ -268,5 +400,3 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
     </Form>
   );
 }
-
-    
