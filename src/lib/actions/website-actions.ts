@@ -16,7 +16,7 @@ const simplePageDefault = (title: string, contentTitle: string, hint: string): S
 });
 
 const defaultContent: WebsiteContent = {
-  logoUrl: "https://placehold.co/200x80.png",
+  logoUrl: "https://i.imgur.com/lZDibio.png",
   heroSlideshowSection: {
     buttonText: "Inquire Now",
     buttonLink: "/contact",
@@ -97,8 +97,8 @@ const defaultContent: WebsiteContent = {
   },
   contactPage: {
     title: "Get in Touch",
-    address: "P.O BOX 8 Naddangira",
-    phone: "0758013161 / 0782923384",
+    address: "St. Mbaaga's College, Naddangira, Uganda",
+    phone: "+256 758013161 / +256 782923384",
     email: "ssegawarichard7@gmail.com",
     mapImageUrl: "https://placehold.co/1200x400.png",
   },
