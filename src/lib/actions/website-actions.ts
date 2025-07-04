@@ -97,9 +97,9 @@ const defaultContent: WebsiteContent = {
   },
   contactPage: {
     title: "Get in Touch",
-    address: "St. Mbaaga's College, Naddangira, Uganda",
-    phone: "+256 123 456789",
-    email: "info@st-mbaaga.test",
+    address: "P.O BOX 8 Naddangira",
+    phone: "0758013161 / 0782923384",
+    email: "ssegawarichard7@gmail.com",
     mapImageUrl: "https://placehold.co/1200x400.png",
   },
   studentLifePage: {
@@ -130,7 +130,7 @@ const defaultContent: WebsiteContent = {
   },
   missionVisionPage: {
     heroTitle: "Our Guiding Principles",
-    heroDescription: "The foundation of St. Mbaaga's College Naddangira's identity and educational philosophy.",
+    heroDescription: "Our Motto: Education for Life. The foundation of St. Mbaaga's College Naddangira's identity and educational philosophy.",
     heroImageUrl: "https://placehold.co/1920x1080.png",
     missionTitle: "Our Mission",
     missionText: "To produce citizens of moral and spiritual skills with scientific orientation to tame the changing world.",
