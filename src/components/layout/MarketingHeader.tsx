@@ -73,7 +73,7 @@ export function MarketingHeader({ content }: MarketingHeaderProps) {
     )}>
       <div className="container mx-auto flex h-20 items-center justify-between px-4 md:px-6">
         <Link href="/" className="flex items-center gap-2 group">
-           <div className="relative h-12 w-32">
+           <div className="relative h-20 w-48">
             <Image
                 src={content.logoUrl}
                 alt="School Logo"
