@@ -18,28 +18,28 @@ const defaultContent: WebsiteContent = {
     { 
       title: "Academics", 
       description: "A rigorous, inquiry-based curriculum that fosters critical thinking and a passion for lifelong learning.",
-      imageUrl: "https://placehold.co/600x400.png"
+      imageUrls: ["https://placehold.co/600x400.png"]
     },
     { 
       title: "Arts", 
       description: "A vibrant arts program that encourages creativity, self-expression, and collaboration across various disciplines.",
-      imageUrl: "https://placehold.co/600x400.png"
+      imageUrls: ["https://placehold.co/600x400.png"]
     },
     { 
       title: "Athletics", 
       description: "Competitive sports programs that build character, teamwork, and a commitment to personal excellence.",
-      imageUrl: "https://placehold.co/600x400.png"
+      imageUrls: ["https://placehold.co/600x400.png"]
     }
   ],
   community: {
     title: "A Community of Belonging",
     description: "We are a diverse and inclusive community where every student is known, valued, and supported. Our students build lifelong friendships and a strong sense of social responsibility.",
-    imageUrl: "https://placehold.co/600x400.png"
+    imageUrls: ["https://placehold.co/600x400.png"]
   },
   news: [
-    { title: "Annual Science Fair Winners Announced", date: "June 20, 2025", description: "Congratulations to our brilliant young scientists who showcased incredible projects this year.", imageUrl: "https://placehold.co/600x400.png" },
-    { title: "Sports Day Championship Highlights", date: "June 15, 2025", description: "A day of thrilling competition and great sportsmanship. See the results and photo gallery.", imageUrl: "https://placehold.co/600x400.png" },
-    { title: "Community Service Drive a Huge Success", date: "June 10, 2025", description: "Our students volunteered over 500 hours to support local charities and community projects.", imageUrl: "https://placehold.co/600x400.png" }
+    { title: "Annual Science Fair Winners Announced", date: "June 20, 2025", description: "Congratulations to our brilliant young scientists who showcased incredible projects this year.", imageUrls: ["https://placehold.co/600x400.png"] },
+    { title: "Sports Day Championship Highlights", date: "June 15, 2025", description: "A day of thrilling competition and great sportsmanship. See the results and photo gallery.", imageUrls: ["https://placehold.co/600x400.png"] },
+    { title: "Community Service Drive a Huge Success", date: "June 10, 2025", description: "Our students volunteered over 500 hours to support local charities and community projects.", imageUrls: ["https://placehold.co/600x400.png"] }
   ],
   inquireSection: {
     buttonText: "Inquire Now",
@@ -48,17 +48,17 @@ const defaultContent: WebsiteContent = {
       {
         title: "Discover Your Voice. Shape Your Future.",
         subtitle: "At St. Mbaaga's College, we provide an inspiring and challenging education that empowers students to achieve their full potential and make a difference in the world.",
-        imageUrl: "https://placehold.co/1920x1080.png",
+        imageUrls: ["https://placehold.co/1920x1080.png"],
       },
       {
         title: "Explore Our Campus",
         subtitle: "Schedule a visit to see our vibrant community and state-of-the-art facilities in person.",
-        imageUrl: "https://placehold.co/1920x1080.png",
+        imageUrls: ["https://placehold.co/1920x1080.png"],
       },
       {
         title: "A Tradition of Excellence",
         subtitle: "For over 50 years, we have been dedicated to nurturing the next generation of leaders and innovators.",
-        imageUrl: "https://placehold.co/1920x1080.png",
+        imageUrls: ["https://placehold.co/1920x1080.png"],
       },
     ]
   },
@@ -66,9 +66,9 @@ const defaultContent: WebsiteContent = {
     title: "Our Academic Programs",
     description: "We offer a comprehensive curriculum designed to challenge and inspire students at every level.",
     programs: [
-      { name: "Lower School", description: "Fostering curiosity and a love for learning in a nurturing environment.", imageUrl: "https://placehold.co/600x400.png" },
-      { name: "Middle School", description: "Developing critical thinking, collaboration, and independence.", imageUrl: "https://placehold.co/600x400.png" },
-      { name: "Upper School", description: "Preparing students for success in college and beyond with advanced coursework and leadership opportunities.", imageUrl: "https://placehold.co/600x400.png" },
+      { name: "Lower School", description: "Fostering curiosity and a love for learning in a nurturing environment.", imageUrls: ["https://placehold.co/600x400.png"] },
+      { name: "Middle School", description: "Developing critical thinking, collaboration, and independence.", imageUrls: ["https://placehold.co/600x400.png"] },
+      { name: "Upper School", description: "Preparing students for success in college and beyond with advanced coursework and leadership opportunities.", imageUrls: ["https://placehold.co/600x400.png"] },
     ],
   },
   admissionsPage: {
@@ -96,22 +96,22 @@ const defaultContent: WebsiteContent = {
       {
         title: "Athletics",
         description: "From the pitch to the court, our athletics program fosters teamwork, resilience, and sportsmanship.",
-        imageUrl: "https://placehold.co/600x400.png"
+        imageUrls: ["https://placehold.co/600x400.png"]
       },
       {
         title: "Arts & Music",
         description: "Explore your creativity in our state-of-the-art studios and performance spaces. Join the band, choir, or drama club.",
-        imageUrl: "https://placehold.co/600x400.png"
+        imageUrls: ["https://placehold.co/600x400.png"]
       },
       {
         title: "Clubs & Organizations",
         description: "With over 30 student-led clubs, there's something for everyone. Develop new skills and pursue your passions.",
-        imageUrl: "https://placehold.co/600x400.png"
+        imageUrls: ["https://placehold.co/600x400.png"]
       },
       {
         title: "Community Service",
         description: "We believe in giving back. Our students actively engage in service projects that make a real difference in our community.",
-        imageUrl: "https://placehold.co/600x400.png"
+        imageUrls: ["https://placehold.co/600x400.png"]
       },
     ]
   },

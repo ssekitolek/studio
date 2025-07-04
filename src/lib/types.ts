@@ -317,18 +317,18 @@ export interface WebsiteContent {
   programHighlights: Array<{
     title: string;
     description: string;
-    imageUrl: string;
+    imageUrls: string[];
   }>;
   community: {
     title: string;
     description: string;
-    imageUrl: string;
+    imageUrls: string[];
   };
   news: Array<{
     title: string;
     date: string;
     description: string;
-    imageUrl: string;
+    imageUrls: string[];
   }>;
   inquireSection: {
     buttonText: string;
@@ -336,7 +336,7 @@ export interface WebsiteContent {
     slides: Array<{
       title: string;
       subtitle: string;
-      imageUrl: string;
+      imageUrls: string[];
     }>;
   };
   academicsPage: {
@@ -345,7 +345,7 @@ export interface WebsiteContent {
     programs: Array<{
       name: string;
       description: string;
-      imageUrl: string;
+      imageUrls: string[];
     }>;
   };
   admissionsPage: {
@@ -371,7 +371,7 @@ export interface WebsiteContent {
     features: Array<{
       title: string;
       description: string;
-      imageUrl: string;
+      imageUrls: string[];
     }>;
   };
 }

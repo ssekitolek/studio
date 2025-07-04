@@ -32,7 +32,7 @@ export function InquireSlideshow({ content }: InquireSlideshowProps) {
       {content.slides.map((slide, index) => (
         <Image
           key={index}
-          src={slide.imageUrl}
+          src={(slide.imageUrls && slide.imageUrls.length > 0) ? slide.imageUrls[0] : "https://placehold.co/1920x1080.png"}
           alt={slide.title}
           fill
           className={cn(

@@ -21,7 +21,7 @@ export default async function AcademicsPage() {
           <Card key={index} className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col group hover:scale-[1.03]">
             <div className="relative h-64 w-full overflow-hidden">
               <Image
-                src={program.imageUrl}
+                src={(program.imageUrls && program.imageUrls.length > 0) ? program.imageUrls[0] : "https://placehold.co/600x400.png"}
                 alt={program.name}
                 fill
                 className="object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out"

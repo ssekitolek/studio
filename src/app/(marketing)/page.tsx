@@ -55,7 +55,7 @@ export default async function SchoolHomePage() {
               <Card key={index} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow flex flex-col group transition-transform duration-300 hover:scale-[1.03]">
                 <div className="relative h-56 w-full overflow-hidden">
                   <Image 
-                    src={program.imageUrl} 
+                    src={(program.imageUrls && program.imageUrls.length > 0) ? program.imageUrls[0] : "https://placehold.co/600x400.png"} 
                     alt={program.title}
                     fill
                     className="object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out"
@@ -83,7 +83,7 @@ export default async function SchoolHomePage() {
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div className="order-2 md:order-1 overflow-hidden rounded-lg shadow-2xl">
               <Image 
-                src={content.community.imageUrl} 
+                src={(content.community.imageUrls && content.community.imageUrls.length > 0) ? content.community.imageUrls[0] : "https://placehold.co/600x400.png"} 
                 alt={content.community.title}
                 width={600}
                 height={400}
@@ -120,7 +120,7 @@ export default async function SchoolHomePage() {
               <Card key={index} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow flex flex-col group transition-transform duration-300 hover:scale-[1.03]">
                  <div className="overflow-hidden">
                     <Image 
-                    src={item.imageUrl} 
+                    src={(item.imageUrls && item.imageUrls.length > 0) ? item.imageUrls[0] : "https://placehold.co/600x400.png"} 
                     alt={item.title}
                     width={600}
                     height={400}
