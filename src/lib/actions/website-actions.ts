@@ -1,10 +1,11 @@
 
 'use server';
 
-import { db } from "@/lib/firebase";
+import { db, storage } from "@/lib/firebase";
 import type { WebsiteContent } from "@/lib/types";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { revalidatePath } from "next/cache";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
 const defaultContent: WebsiteContent = {
   logoUrl: "https://placehold.co/100x100.png",
@@ -178,26 +179,65 @@ export async function updateWebsiteContent(content: WebsiteContent): Promise<{ s
   }
 }
 
-// The below functions are placeholders for a real media management system.
-// In a production app, you would integrate with a service like Firebase Storage.
-
 export async function uploadWebsiteMedia(formData: FormData): Promise<{ success: boolean; message: string; url?: string }> {
-    // This is a mock function. In a real app, you would upload to a cloud storage provider.
-    const file = formData.get('file') as File;
-    if (!file) {
-        return { success: false, message: "No file provided." };
-    }
-    // Simulate upload and return a placeholder URL.
-    const placeholderUrl = `https://placehold.co/600x400.png?text=${encodeURIComponent(file.name)}`;
-    console.log(`Simulating upload for ${file.name}, returning URL: ${placeholderUrl}`);
-    return { success: true, message: "Media 'uploaded' successfully (mock).", url: placeholderUrl };
+  if (!storage) {
+    return { success: false, message: "Firebase Storage is not configured." };
+  }
+
+  const file = formData.get('file') as File;
+  const oldFileUrl = formData.get('oldFileUrl') as string | null;
+
+  if (!file) {
+    return { success: false, message: "No file provided." };
+  }
+
+  // Delete the old file if one was provided
+  if (oldFileUrl && oldFileUrl.includes("firebasestorage.googleapis.com")) {
+      try {
+        const oldFileRef = ref(storage, oldFileUrl);
+        await deleteObject(oldFileRef);
+      } catch (error: any) {
+          if (error.code !== 'storage/object-not-found') {
+              console.error("Failed to delete old image:", error);
+              // Non-fatal error, we can continue with the upload
+          }
+      }
+  }
+
+  const fileBuffer = Buffer.from(await file.arrayBuffer());
+  const filename = `website-media/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+  const storageRef = ref(storage, filename);
+
+  try {
+    await uploadBytes(storageRef, fileBuffer, {
+      contentType: file.type,
+    });
+    const downloadURL = await getDownloadURL(storageRef);
+    return { success: true, message: "Media uploaded successfully.", url: downloadURL };
+  } catch (error) {
+    console.error("Error uploading to Firebase Storage:", error);
+    return { success: false, message: `Upload failed: ${error instanceof Error ? error.message : "Unknown error"}` };
+  }
 }
 
 export async function deleteWebsiteMedia(fileUrl: string): Promise<{ success: boolean; message: string }> {
-    // This is a mock function. In a real app, you would delete from your cloud storage provider.
-    if (!fileUrl || fileUrl.includes("placehold.co")) {
-        return { success: true, message: "Placeholder image does not need to be deleted." };
-    }
-    console.log(`Simulating deletion for ${fileUrl}`);
-    return { success: true, message: "Media 'deleted' successfully (mock)." };
+   if (!storage) {
+    return { success: false, message: "Firebase Storage is not configured." };
+  }
+  if (!fileUrl || !fileUrl.includes("firebasestorage.googleapis.com")) {
+    return { success: true, message: "File is not a Firebase Storage URL, no deletion needed." };
+  }
+
+  try {
+    const fileRef = ref(storage, fileUrl);
+    await deleteObject(fileRef);
+    return { success: true, message: "Media deleted successfully." };
+  } catch (error: any) {
+     if (error.code === 'storage/object-not-found') {
+        console.warn(`Attempted to delete a file that doesn't exist: ${fileUrl}`);
+        return { success: true, message: "File was already deleted or did not exist." };
+     }
+    console.error("Error deleting from Firebase Storage:", error);
+    return { success: false, message: `Deletion failed: ${error instanceof Error ? error.message : "Unknown error"}` };
+  }
 }
