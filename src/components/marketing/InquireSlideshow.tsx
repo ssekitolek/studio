@@ -36,7 +36,7 @@ export function InquireSlideshow({ content }: InquireSlideshowProps) {
   }
 
   return (
-    <section className="relative h-[70vh] w-full overflow-hidden text-primary-foreground">
+    <section className="relative h-[60vh] w-full overflow-hidden text-primary-foreground">
       {content.slides.map((slide, index) => (
         <Image
           key={index}

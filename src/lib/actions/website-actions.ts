@@ -7,10 +7,10 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { revalidatePath } from "next/cache";
 
 const defaultContent: WebsiteContent = {
-  logoUrl: "https://placehold.co/120x40.png",
+  logoUrl: "https://placehold.co/200x80.png",
   heroSlideshowSection: {
-    buttonText: "Explore Our World",
-    buttonLink: "/admissions",
+    buttonText: "Inquire Now",
+    buttonLink: "/contact",
     slides: [
       {
         title: "Pioneering Futures",
@@ -162,15 +162,10 @@ export async function updateWebsiteContent(content: WebsiteContent): Promise<{ s
     const contentRef = doc(db, "website_content", "homepage");
     await setDoc(contentRef, content, { merge: true });
     
+    // Revalidate all pages that use this content to ensure changes appear immediately.
+    // revalidatePath('/', 'layout') is a powerful way to revalidate all nested pages.
     revalidatePath("/", "layout");
-    revalidatePath("/admin/dashboard");
     
-    revalidatePath("/academics");
-    revalidatePath("/admissions");
-    revalidatePath("/contact");
-    revalidatePath("/mission-vision");
-    revalidatePath("/student-life");
-
     return { success: true, message: "Website content updated successfully." };
   } catch (error) {
     console.error("Error updating website content:", error);
