@@ -181,7 +181,7 @@ export async function updateWebsiteContent(content: WebsiteContent): Promise<{ s
 
 export async function uploadWebsiteMedia(formData: FormData): Promise<{ success: boolean; message: string; url?: string }> {
   if (!storage) {
-    return { success: false, message: "Firebase Storage is not configured." };
+    return { success: false, message: "Firebase Storage is not configured in the application code." };
   }
 
   const file = formData.get('file') as File;
@@ -198,8 +198,7 @@ export async function uploadWebsiteMedia(formData: FormData): Promise<{ success:
         await deleteObject(oldFileRef);
       } catch (error: any) {
           if (error.code !== 'storage/object-not-found') {
-              console.error("Failed to delete old image:", error);
-              // Non-fatal error, we can continue with the upload
+              console.warn("Could not delete old image, continuing with upload:", error);
           }
       }
   }
@@ -214,9 +213,20 @@ export async function uploadWebsiteMedia(formData: FormData): Promise<{ success:
     });
     const downloadURL = await getDownloadURL(storageRef);
     return { success: true, message: "Media uploaded successfully.", url: downloadURL };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error uploading to Firebase Storage:", error);
-    return { success: false, message: `Upload failed: ${error instanceof Error ? error.message : "Unknown error"}` };
+    
+    // Provide more specific error messages
+    let userMessage = `Upload failed: ${error.message || "An unknown error occurred"}`;
+    if (error.code === 'storage/unauthorized') {
+        userMessage = "Upload failed: Permission denied. Please check your Firebase Storage security rules in the Firebase Console. You may need to allow writes.";
+    } else if (error.code === 'storage/project-not-found') {
+        userMessage = "Upload failed: Firebase project not found. Please verify your NEXT_PUBLIC_FIREBASE_PROJECT_ID in the .env file.";
+    } else if (error.code === 'storage/bucket-not-found') {
+        userMessage = "Upload failed: Firebase Storage bucket not found. Please verify your NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET in the .env file and ensure Storage is enabled.";
+    }
+
+    return { success: false, message: userMessage };
   }
 }
 
@@ -233,11 +243,14 @@ export async function deleteWebsiteMedia(fileUrl: string): Promise<{ success: bo
     await deleteObject(fileRef);
     return { success: true, message: "Media deleted successfully." };
   } catch (error: any) {
+     let userMessage = `Deletion failed: ${error.message || "An unknown error occurred"}`;
      if (error.code === 'storage/object-not-found') {
         console.warn(`Attempted to delete a file that doesn't exist: ${fileUrl}`);
         return { success: true, message: "File was already deleted or did not exist." };
+     } else if (error.code === 'storage/unauthorized') {
+        userMessage = "Deletion failed: Permission denied. Please check your Firebase Storage security rules in the Firebase Console.";
      }
     console.error("Error deleting from Firebase Storage:", error);
-    return { success: false, message: `Deletion failed: ${error instanceof Error ? error.message : "Unknown error"}` };
+    return { success: false, message: userMessage };
   }
 }
