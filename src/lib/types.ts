@@ -308,6 +308,36 @@ export interface AttendanceHistoryData {
     status: 'present' | 'absent' | 'late';
 }
 
+
+// --- Website Content Management ---
+
+export interface SimplePageContent {
+  title: string;
+  description: string;
+  heroImageUrl: string;
+  contentTitle: string;
+  contentBody: string;
+}
+
+export interface MissionVisionPageContent {
+  heroTitle: string;
+  heroDescription: string;
+  heroImageUrl: string;
+  missionTitle: string;
+  missionText: string;
+  missionImageUrl: string;
+  visionTitle: string;
+  visionText: string;
+  visionImageUrl: string;
+  coreValuesTitle: string;
+  coreValuesDescription: string;
+  coreValues: Array<{
+    title: string;
+    description: string;
+  }>;
+}
+
+
 export interface WebsiteContent {
   logoUrl: string;
   heroSlideshowSection: {
@@ -379,4 +409,14 @@ export interface WebsiteContent {
       imageUrls: string[];
     }>;
   };
+  missionVisionPage: MissionVisionPageContent;
+  campusPage: SimplePageContent;
+  clubsPage: SimplePageContent;
+  collegeCounselingPage: SimplePageContent;
+  employmentPage: SimplePageContent;
+  facultyPage: SimplePageContent;
+  historyPage: SimplePageContent;
+  parentsPage: SimplePageContent;
+  tuitionPage: SimplePageContent;
+  visitPage: SimplePageContent;
 }

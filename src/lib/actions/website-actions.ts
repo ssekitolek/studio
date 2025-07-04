@@ -1,10 +1,19 @@
 
+
 'use server';
 
 import { db } from "@/lib/firebase";
-import type { WebsiteContent } from "@/lib/types";
+import type { WebsiteContent, SimplePageContent, MissionVisionPageContent } from "@/lib/types";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { revalidatePath } from "next/cache";
+
+const simplePageDefault = (title: string, contentTitle: string, hint: string): SimplePageContent => ({
+  title: title,
+  description: `A brief and engaging description for the ${title.toLowerCase()} page goes here.`,
+  heroImageUrl: "https://placehold.co/1920x1080.png",
+  contentTitle: contentTitle,
+  contentBody: `Detailed content for the ${title.toLowerCase()} page will be displayed here. This can be edited in the admin dashboard.`
+});
 
 const defaultContent: WebsiteContent = {
   logoUrl: "https://placehold.co/200x80.png",
@@ -119,7 +128,54 @@ const defaultContent: WebsiteContent = {
       },
     ]
   },
+  missionVisionPage: {
+    heroTitle: "Our Guiding Principles",
+    heroDescription: "The foundation of St. Mbaaga's College Naddangira's identity and educational philosophy.",
+    heroImageUrl: "https://placehold.co/1920x1080.png",
+    missionTitle: "Our Mission",
+    missionText: "To empower students with knowledge, skills, and values to excel in a dynamic world. Our mission is to provide a comprehensive and challenging education that develops students' intellectual, social, and emotional capacities. We are committed to creating a stimulating learning environment where students are encouraged to think critically, communicate effectively, and engage with the world as responsible and compassionate global citizens. Through a blend of rigorous academics, diverse extracurricular activities, and strong community engagement, we aim to prepare each student for success in higher education and their future careers.",
+    missionImageUrl: "https://placehold.co/600x400.png",
+    visionTitle: "Our Vision",
+    visionText: "To be a leading center of educational excellence, innovation, and leadership. We envision a future where St. Mbaaga's College Naddangira is recognized nationally and internationally as a beacon of academic excellence and holistic development. Our graduates will be leaders and innovators who contribute positively to their communities and the world, equipped with a strong moral compass and a passion for lifelong learning. We strive to be a dynamic institution that continuously adapts to the evolving needs of society while holding firm to our timeless values.",
+    visionImageUrl: "https://placehold.co/600x400.png",
+    coreValuesTitle: "Our Core Values",
+    coreValuesDescription: "The principles that guide our actions and define our community.",
+    coreValues: [
+        { title: "Integrity", description: "Upholding the highest ethical standards in all actions." },
+        { title: "Excellence", description: "Striving for the best in academic and personal achievements." },
+        { title: "Respect", description: "Treating all members of our community with dignity and kindness." },
+        { title: "Community", description: "Fostering a sense of belonging, collaboration, and mutual support." },
+        { title: "Resilience", description: "Developing the strength to overcome challenges and learn from setbacks." },
+        { title: "Innovation", description: "Encouraging creative thinking and adaptability for a changing world." },
+    ]
+  },
+  campusPage: simplePageDefault("Our Campus", "Explore Our Facilities", "school campus"),
+  clubsPage: simplePageDefault("Clubs & Organizations", "Find Your Passion", "student club"),
+  collegeCounselingPage: simplePageDefault("College Counseling", "Guidance for Your Future", "university building"),
+  employmentPage: simplePageDefault("Employment", "Join Our Team", "job interview"),
+  facultyPage: simplePageDefault("Our Faculty", "Meet Our Educators", "teacher portrait"),
+  historyPage: simplePageDefault("Our History", "A Tradition of Excellence", "historical document"),
+  parentsPage: simplePageDefault("Parent Association", "Partnering with Families", "parents meeting"),
+  tuitionPage: simplePageDefault("Tuition & Fees", "Investing in Your Future", "financial document"),
+  visitPage: simplePageDefault("Visit Us", "Experience Our Community", "campus welcome")
 };
+
+function deepMerge(target: any, source: any) {
+  const output = { ...target };
+
+  if (target && typeof target === 'object' && source && typeof source === 'object') {
+    Object.keys(source).forEach(key => {
+      if (source[key] && typeof source[key] === 'object' && key in target && target[key] && typeof target[key] === 'object') {
+        output[key] = deepMerge(target[key], source[key]);
+      } else {
+        output[key] = source[key];
+      }
+    });
+  }
+
+  return output;
+}
+
 
 export async function getWebsiteContent(): Promise<WebsiteContent> {
   if (!db) {
@@ -132,50 +188,9 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
     if (contentSnap.exists()) {
       const data = contentSnap.data() as Partial<WebsiteContent>;
       
-      // Perform a more robust merge to prevent saved empty arrays from being overwritten by defaults.
-      const mergedContent: WebsiteContent = {
-        logoUrl: data.logoUrl ?? defaultContent.logoUrl,
-        heroSlideshowSection: {
-          buttonText: data.heroSlideshowSection?.buttonText ?? defaultContent.heroSlideshowSection.buttonText,
-          buttonLink: data.heroSlideshowSection?.buttonLink ?? defaultContent.heroSlideshowSection.buttonLink,
-          slides: data.heroSlideshowSection?.slides ?? defaultContent.heroSlideshowSection.slides,
-        },
-        whyUsSection: {
-          heading: data.whyUsSection?.heading ?? defaultContent.whyUsSection.heading,
-          description: data.whyUsSection?.description ?? defaultContent.whyUsSection.description,
-          points: data.whyUsSection?.points ?? defaultContent.whyUsSection.points,
-        },
-        signatureProgramsSection: {
-          heading: data.signatureProgramsSection?.heading ?? defaultContent.signatureProgramsSection.heading,
-          programs: data.signatureProgramsSection?.programs ?? defaultContent.signatureProgramsSection.programs,
-        },
-        newsSection: {
-          heading: data.newsSection?.heading ?? defaultContent.newsSection.heading,
-          posts: data.newsSection?.posts ?? defaultContent.newsSection.posts,
-        },
-        academicsPage: {
-          title: data.academicsPage?.title ?? defaultContent.academicsPage.title,
-          description: data.academicsPage?.description ?? defaultContent.academicsPage.description,
-          programs: data.academicsPage?.programs ?? defaultContent.academicsPage.programs,
-        },
-        admissionsPage: {
-          title: data.admissionsPage?.title ?? defaultContent.admissionsPage.title,
-          description: data.admissionsPage?.description ?? defaultContent.admissionsPage.description,
-          process: data.admissionsPage?.process ?? defaultContent.admissionsPage.process,
-          formUrl: data.admissionsPage?.formUrl ?? defaultContent.admissionsPage.formUrl,
-        },
-        contactPage: {
-          ...defaultContent.contactPage,
-          ...(data.contactPage || {}),
-        },
-        studentLifePage: {
-          title: data.studentLifePage?.title ?? defaultContent.studentLifePage.title,
-          description: data.studentLifePage?.description ?? defaultContent.studentLifePage.description,
-          features: data.studentLifePage?.features ?? defaultContent.studentLifePage.features,
-        },
-      };
-      
-      return mergedContent;
+      const mergedContent = deepMerge(defaultContent, data);
+      return mergedContent as WebsiteContent;
+
     } else {
       await setDoc(contentRef, defaultContent);
       return defaultContent;

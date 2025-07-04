@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -18,11 +19,19 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { updateWebsiteContent } from "@/lib/actions/website-actions";
-import type { WebsiteContent } from "@/lib/types";
+import type { WebsiteContent, SimplePageContent } from "@/lib/types";
 import { Loader2, Save, PlusCircle, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ImageUploadInput } from "@/components/shared/ImageUploadInput";
+
+const simplePageContentSchema = z.object({
+    title: z.string().min(1, "Title is required."),
+    description: z.string().min(1, "Description is required."),
+    heroImageUrl: z.string().url("Must be a valid URL for the hero image.").or(z.literal('')),
+    contentTitle: z.string().min(1, "Content title is required."),
+    contentBody: z.string().min(1, "Content body is required."),
+});
 
 const websiteContentSchema = z.object({
   logoUrl: z.string().url("Must be a valid URL.").or(z.literal('')),
@@ -95,6 +104,32 @@ const websiteContentSchema = z.object({
           imageUrls: z.array(z.string().url("Must be a valid URL.")).min(1, "At least one image URL is required."),
       })),
   }),
+  missionVisionPage: z.object({
+    heroTitle: z.string().min(1, "Title is required."),
+    heroDescription: z.string().min(1, "Description is required."),
+    heroImageUrl: z.string().url("Must be a valid URL.").or(z.literal('')),
+    missionTitle: z.string().min(1, "Mission title is required."),
+    missionText: z.string().min(1, "Mission text is required."),
+    missionImageUrl: z.string().url("Must be a valid URL.").or(z.literal('')),
+    visionTitle: z.string().min(1, "Vision title is required."),
+    visionText: z.string().min(1, "Vision text is required."),
+    visionImageUrl: z.string().url("Must be a valid URL.").or(z.literal('')),
+    coreValuesTitle: z.string().min(1, "Core values title is required."),
+    coreValuesDescription: z.string().min(1, "Core values description is required."),
+    coreValues: z.array(z.object({
+        title: z.string().min(1, "Value title is required."),
+        description: z.string().min(1, "Value description is required."),
+    })),
+  }),
+  campusPage: simplePageContentSchema,
+  clubsPage: simplePageContentSchema,
+  collegeCounselingPage: simplePageContentSchema,
+  employmentPage: simplePageContentSchema,
+  facultyPage: simplePageContentSchema,
+  historyPage: simplePageContentSchema,
+  parentsPage: simplePageContentSchema,
+  tuitionPage: simplePageContentSchema,
+  visitPage: simplePageContentSchema,
 });
 
 type WebsiteContentFormValues = z.infer<typeof websiteContentSchema>;
@@ -102,6 +137,24 @@ type WebsiteContentFormValues = z.infer<typeof websiteContentSchema>;
 interface WebsiteContentFormProps {
   initialData: WebsiteContent;
 }
+
+const SimplePageFormSection = ({ pageName, title }: { pageName: keyof WebsiteContent, title: string }) => {
+    const { control } = useFormContext<WebsiteContentFormValues>();
+    
+    return (
+        <AccordionItem value={`item-${pageName}`} className="border rounded-lg bg-card">
+            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>{title}</CardTitle></AccordionTrigger>
+            <AccordionContent className="p-4 pt-0 space-y-4">
+                 <FormField control={control} name={`${pageName}.title`} render={({ field }) => ( <FormItem><FormLabel>Hero Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                 <FormField control={control} name={`${pageName}.description`} render={({ field }) => ( <FormItem><FormLabel>Hero Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                 <ImageUploadInput fieldName={`${pageName}.heroImageUrl`} label="Hero Image URL" />
+                 <hr/>
+                 <FormField control={control} name={`${pageName}.contentTitle`} render={({ field }) => ( <FormItem><FormLabel>Main Content Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                 <FormField control={control} name={`${pageName}.contentBody`} render={({ field }) => ( <FormItem><FormLabel>Main Content Body</FormLabel><FormControl><Textarea {...field} className="min-h-[200px]"/></FormControl><FormMessage /></FormItem> )}/>
+            </AccordionContent>
+        </AccordionItem>
+    );
+};
 
 export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
   const { toast } = useToast();
@@ -121,6 +174,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
   const { fields: academicPrograms, append: appendAcademicProgram, remove: removeAcademicProgram } = useFieldArray({ control, name: "academicsPage.programs" });
   const { fields: admissionProcess, append: appendAdmissionStep, remove: removeAdmissionStep } = useFieldArray({ control, name: "admissionsPage.process" });
   const { fields: studentLifeFeatures, append: appendFeature, remove: removeFeature } = useFieldArray({ control, name: "studentLifePage.features" });
+  const { fields: coreValues, append: appendCoreValue, remove: removeCoreValue } = useFieldArray({ control, name: "missionVisionPage.coreValues" });
   
   const onSubmit = (data: WebsiteContentFormValues) => {
     startTransition(async () => {
@@ -146,7 +200,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
           </AccordionItem>
           
           <AccordionItem value="item-heroSlideshow" className="border rounded-lg bg-card">
-            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Hero Slideshow Section</CardTitle></AccordionTrigger>
+            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage: Hero Slideshow Section</CardTitle></AccordionTrigger>
             <AccordionContent className="p-4 pt-0 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <FormField control={control} name="heroSlideshowSection.buttonText" render={({ field }) => ( <FormItem><FormLabel>Button Text</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
@@ -187,7 +241,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
           </AccordionItem>
 
           <AccordionItem value="item-whyUs" className="border rounded-lg bg-card">
-            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Why Us Section</CardTitle></AccordionTrigger>
+            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage: Why Us Section</CardTitle></AccordionTrigger>
             <AccordionContent className="p-4 pt-0 space-y-4">
                 <FormField control={control} name="whyUsSection.heading" render={({ field }) => ( <FormItem><FormLabel>Heading</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={control} name="whyUsSection.description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
@@ -211,7 +265,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
           </AccordionItem>
           
            <AccordionItem value="item-programs" className="border rounded-lg bg-card">
-            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Signature Programs Section</CardTitle></AccordionTrigger>
+            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage: Signature Programs Section</CardTitle></AccordionTrigger>
             <AccordionContent className="p-4 pt-0 space-y-4">
                 <FormField control={control} name="signatureProgramsSection.heading" render={({ field }) => ( <FormItem><FormLabel>Heading</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                  <Card>
@@ -246,7 +300,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
           </AccordionItem>
 
            <AccordionItem value="item-news" className="border rounded-lg bg-card">
-            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>News Section</CardTitle></AccordionTrigger>
+            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage: News Section</CardTitle></AccordionTrigger>
             <AccordionContent className="p-4 pt-0 space-y-4">
                 <FormField control={control} name="newsSection.heading" render={({ field }) => ( <FormItem><FormLabel>Heading</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                  <Card>
@@ -387,6 +441,51 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                 </Card>
             </AccordionContent>
            </AccordionItem>
+          
+           <AccordionItem value="item-mission-vision" className="border rounded-lg bg-card">
+                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Mission & Vision Page</CardTitle></AccordionTrigger>
+                <AccordionContent className="p-4 pt-0 space-y-4">
+                    <FormField control={control} name="missionVisionPage.heroTitle" render={({ field }) => ( <FormItem><FormLabel>Hero Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField control={control} name="missionVisionPage.heroDescription" render={({ field }) => ( <FormItem><FormLabel>Hero Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <ImageUploadInput fieldName="missionVisionPage.heroImageUrl" label="Hero Image URL" />
+                    <hr/>
+                    <FormField control={control} name="missionVisionPage.missionTitle" render={({ field }) => ( <FormItem><FormLabel>Mission Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField control={control} name="missionVisionPage.missionText" render={({ field }) => ( <FormItem><FormLabel>Mission Text</FormLabel><FormControl><Textarea {...field} className="min-h-[150px]"/></FormControl><FormMessage /></FormItem> )}/>
+                    <ImageUploadInput fieldName="missionVisionPage.missionImageUrl" label="Mission Image URL" />
+                    <hr/>
+                    <FormField control={control} name="missionVisionPage.visionTitle" render={({ field }) => ( <FormItem><FormLabel>Vision Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField control={control} name="missionVisionPage.visionText" render={({ field }) => ( <FormItem><FormLabel>Vision Text</FormLabel><FormControl><Textarea {...field} className="min-h-[150px]"/></FormControl><FormMessage /></FormItem> )}/>
+                    <ImageUploadInput fieldName="missionVisionPage.visionImageUrl" label="Vision Image URL" />
+                    <hr/>
+                    <FormField control={control} name="missionVisionPage.coreValuesTitle" render={({ field }) => ( <FormItem><FormLabel>Core Values Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField control={control} name="missionVisionPage.coreValuesDescription" render={({ field }) => ( <FormItem><FormLabel>Core Values Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <Card>
+                        <CardHeader><CardTitle className="text-base">Core Values</CardTitle></CardHeader>
+                        <CardContent className="space-y-4">
+                            {coreValues.map((field, index) => (
+                                <div key={field.id} className="flex items-start gap-4 p-4 border rounded-lg">
+                                    <div className="flex-grow space-y-4">
+                                        <FormField control={control} name={`missionVisionPage.coreValues.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Value Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                        <FormField control={control} name={`missionVisionPage.coreValues.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Value Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                    </div>
+                                    <Button type="button" variant="destructive" size="icon" onClick={() => removeCoreValue(index)}> <Trash2 className="h-4 w-4" /> </Button>
+                                </div>
+                            ))}
+                            <Button type="button" variant="outline" size="sm" onClick={() => appendCoreValue({ title: "", description: "" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Core Value </Button>
+                        </CardContent>
+                    </Card>
+                </AccordionContent>
+            </AccordionItem>
+
+            <SimplePageFormSection pageName="campusPage" title="Campus Page"/>
+            <SimplePageFormSection pageName="clubsPage" title="Clubs & Organizations Page"/>
+            <SimplePageFormSection pageName="collegeCounselingPage" title="College Counseling Page"/>
+            <SimplePageFormSection pageName="employmentPage" title="Employment Page"/>
+            <SimplePageFormSection pageName="facultyPage" title="Faculty Page"/>
+            <SimplePageFormSection pageName="historyPage" title="History Page"/>
+            <SimplePageFormSection pageName="parentsPage" title="Parent Association Page"/>
+            <SimplePageFormSection pageName="tuitionPage" title="Tuition & Fees Page"/>
+            <SimplePageFormSection pageName="visitPage" title="Visit Us Page"/>
 
         </Accordion>
 
