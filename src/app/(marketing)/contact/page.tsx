@@ -9,7 +9,7 @@ export default async function ContactPage() {
 
   return (
     <div className="animate-fade-in-up">
-      <div className="relative h-[50vh] w-full">
+      <div className="relative h-[40vh] w-full">
         <Image
             src={contactPage.mapImageUrl}
             alt="Map of school location"

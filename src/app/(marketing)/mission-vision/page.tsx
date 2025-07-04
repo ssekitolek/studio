@@ -15,7 +15,7 @@ export default function MissionVisionPage() {
 
   return (
     <div className="animate-fade-in-up space-y-16 pb-16">
-      <div className="relative h-[50vh] w-full">
+      <div className="relative h-[40vh] w-full">
         <Image 
           src="https://placehold.co/1920x1080.png" 
           alt="School values" 

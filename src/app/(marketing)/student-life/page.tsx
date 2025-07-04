@@ -18,7 +18,7 @@ export default async function StudentLifePage() {
 
   return (
     <div className="animate-fade-in-up">
-       <div className="relative h-[50vh] w-full">
+       <div className="relative h-[40vh] w-full">
         <Image 
           src="https://placehold.co/1920x1080.png" 
           alt="Student Life at St. Mbaaga's" 
