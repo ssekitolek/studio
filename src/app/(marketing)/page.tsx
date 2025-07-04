@@ -2,144 +2,131 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowRight, BookOpen, GraduationCap, Newspaper, Users, Globe, BarChart2 } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { getWebsiteContent } from '@/lib/actions/website-actions';
-import { InquireSlideshow } from '@/components/marketing/InquireSlideshow';
+import { BookOpen, Trophy, Users, ArrowRight } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+
+const iconMap: { [key: string]: LucideIcon } = {
+  BookOpen,
+  Trophy,
+  Users,
+};
 
 export default async function SchoolHomePage() {
   const content = await getWebsiteContent();
+  const { heroSection, whyUsSection, inquireApplySection, signatureProgramsSection, newsSection } = content;
 
   return (
-    <>
-      {/* Hero Slideshow Section */}
-      <InquireSlideshow content={content.inquireSection} />
-
-      {/* Inquire Now Button Bar */}
-      <section className="py-4">
-        <div className="container mx-auto flex items-center justify-center">
-          <Button size="lg" variant="secondary" asChild className="bg-accent hover:bg-accent/90 text-accent-foreground animate-pulse">
-            <Link href={content.inquireSection.buttonLink}>
-              {content.inquireSection.buttonText} <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
-          </Button>
-        </div>
-      </section>
-      
-       {/* At a Glance Section */}
-      <section className="py-16 md:py-24 bg-secondary/50">
-        <div className="container mx-auto px-4 md:px-6">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-headline font-bold text-primary">At a Glance</h2>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-              {content.atAGlance.map((stat, index) => (
-                <div key={index}>
-                  <p className="text-4xl font-bold text-accent">{stat.value}</p>
-                  <p className="text-sm font-semibold text-muted-foreground mt-1">{stat.label}</p>
-                </div>
-              ))}
-            </div>
-        </div>
-      </section>
-
-      {/* Program Highlights Section */}
-      <section className="py-16 md:py-24 bg-background">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-headline font-bold text-primary">A Complete Education</h2>
-            <p className="text-muted-foreground mt-2">Discover our core programs that shape well-rounded individuals.</p>
+    <div className="bg-background text-foreground">
+      {/* Hero Section */}
+      <section className="relative h-[80vh] w-full flex items-center justify-center text-white">
+        <Image
+          src={heroSection.imageUrl}
+          alt="School campus"
+          fill
+          className="object-cover"
+          priority
+          data-ai-hint="school campus"
+        />
+        <div className="absolute inset-0 bg-primary/70" />
+        <div className="relative z-10 text-center px-4">
+          <h1 className="text-4xl md:text-6xl font-headline font-bold drop-shadow-lg">{heroSection.heading}</h1>
+          <p className="mt-4 max-w-2xl mx-auto text-lg text-primary-foreground/90 drop-shadow-md">{heroSection.subheading}</p>
+          <div className="mt-8 flex justify-center gap-4">
+            <Button size="lg" asChild>
+              <Link href={heroSection.primaryCtaLink}>{heroSection.primaryCtaText}</Link>
+            </Button>
+            <Button size="lg" variant="secondary" asChild>
+              <Link href={heroSection.secondaryCtaLink}>{heroSection.secondaryCtaText}</Link>
+            </Button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {content.programHighlights.map((program, index) => (
-              <Card key={index} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow flex flex-col group transition-transform duration-300 hover:scale-[1.03]">
-                <div className="relative h-56 w-full overflow-hidden">
-                  <Image 
-                    src={(program.imageUrls && program.imageUrls.length > 0) ? program.imageUrls[0] : "https://placehold.co/600x400.png"} 
-                    alt={program.title}
-                    fill
-                    className="object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out"
-                    data-ai-hint={program.title.toLowerCase()}
-                  />
+        </div>
+      </section>
+
+      {/* Why Us Section */}
+      <section className="py-16 md:py-24">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="text-center max-w-3xl mx-auto">
+            <h2 className="text-3xl md:text-4xl font-headline font-bold text-primary">{whyUsSection.heading}</h2>
+            <p className="mt-4 text-lg text-muted-foreground">{whyUsSection.description}</p>
+          </div>
+          <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+            {whyUsSection.points.map((point, index) => {
+              const Icon = iconMap[point.icon] || BookOpen;
+              return (
+                <div key={index} className="text-center">
+                  <div className="flex justify-center items-center h-16 w-16 rounded-full bg-primary/10 mx-auto">
+                    <Icon className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="mt-6 text-xl font-semibold">{point.title}</h3>
+                  <p className="mt-2 text-muted-foreground">{point.description}</p>
                 </div>
-                <CardHeader>
-                  <CardTitle>{program.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <p className="text-muted-foreground">{program.description}</p>
-                </CardContent>
-                <div className="p-6 pt-0">
-                  <Button variant="link" className="p-0 h-auto group-hover:text-accent group-hover:gap-3 transition-all">Learn More <ArrowRight className="ml-2 h-4 w-4" /></Button>
-                </div>
-              </Card>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
       
-      {/* Community Section */}
-      <section className="py-16 md:py-24 bg-secondary/50">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div className="order-2 md:order-1 overflow-hidden rounded-lg shadow-2xl">
-              <Image 
-                src={(content.community.imageUrls && content.community.imageUrls.length > 0) ? content.community.imageUrls[0] : "https://placehold.co/600x400.png"} 
-                alt={content.community.title}
-                width={600}
-                height={400}
-                className="w-full transition-transform duration-500 hover:scale-105"
-                data-ai-hint="students community"
-              />
+      {/* Inquire/Apply Section */}
+      <section className="bg-secondary">
+        <div className="container mx-auto px-4 md:px-6 py-12">
+            <div className="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8 text-center md:text-left">
+                <h3 className="text-2xl font-headline font-semibold">{inquireApplySection.heading}</h3>
+                <div className="flex gap-4">
+                    <Button variant="outline" size="lg" asChild><Link href={inquireApplySection.inquireLink}>{inquireApplySection.inquireText}</Link></Button>
+                    <Button variant="default" size="lg" asChild><Link href={inquireApplySection.applyLink}>{inquireApplySection.applyText}</Link></Button>
+                </div>
             </div>
-            <div className="space-y-4 order-1 md:order-2">
-              <h2 className="text-3xl font-headline font-bold text-primary flex items-center gap-3">
-                <Users className="h-8 w-8" />
-                {content.community.title}
-              </h2>
-              <p className="text-foreground/80">{content.community.description}</p>
-              <Button asChild>
-                <Link href="/mission-vision">Our Values</Link>
-              </Button>
-            </div>
-          </div>
         </div>
       </section>
 
-      {/* News & Events Section */}
-      <section className="py-16 md:py-24 bg-background">
+      {/* Signature Programs Section */}
+      <section className="py-16 md:py-24">
         <div className="container mx-auto px-4 md:px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-headline font-bold text-primary flex items-center justify-center gap-3">
-              <Newspaper className="h-8 w-8" />
-              Latest News
-            </h2>
-            <p className="text-muted-foreground mt-2">Stay updated with the latest happenings at our school.</p>
+          <div className="text-center max-w-3xl mx-auto">
+            <h2 className="text-3xl md:text-4xl font-headline font-bold text-primary">{signatureProgramsSection.heading}</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {content.news.map((item, index) => (
-              <Card key={index} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow flex flex-col group transition-transform duration-300 hover:scale-[1.03]">
-                 <div className="overflow-hidden">
-                    <Image 
-                    src={(item.imageUrls && item.imageUrls.length > 0) ? item.imageUrls[0] : "https://placehold.co/600x400.png"} 
-                    alt={item.title}
-                    width={600}
-                    height={400}
-                    className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out"
-                    data-ai-hint="school event"
-                    />
-                 </div>
-                <CardHeader>
-                  <CardDescription>{item.date}</CardDescription>
-                  <CardTitle className="text-lg">{item.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <p className="text-muted-foreground text-sm">{item.description}</p>
+          <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+            {signatureProgramsSection.programs.map((program, index) => (
+              <Card key={index} className="overflow-hidden group shadow-lg hover:shadow-2xl transition-shadow duration-300">
+                <div className="relative h-64 w-full">
+                    <Image src={program.imageUrl} alt={program.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" data-ai-hint={program.title.toLowerCase()} />
+                </div>
+                <CardContent className="p-6">
+                  <h3 className="text-xl font-semibold">{program.title}</h3>
+                  <p className="mt-2 text-muted-foreground">{program.description}</p>
                 </CardContent>
               </Card>
             ))}
           </div>
         </div>
       </section>
-    </>
+
+      {/* News Section */}
+      <section className="py-16 md:py-24 bg-secondary">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="flex justify-between items-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-headline font-bold text-primary">{newsSection.heading}</h2>
+            <Button variant="link" asChild>
+                <Link href="#">All News <ArrowRight className="ml-2" /></Link>
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {newsSection.posts.map((post, index) => (
+              <Card key={index} className="overflow-hidden group shadow-lg hover:shadow-2xl transition-shadow duration-300">
+                <div className="relative h-56 w-full">
+                    <Image src={post.imageUrl} alt={post.title} fill className="object-cover" data-ai-hint="school news" />
+                </div>
+                <CardContent className="p-6">
+                  <p className="text-sm text-muted-foreground">{post.date}</p>
+                  <h3 className="mt-2 text-lg font-semibold text-primary group-hover:underline">{post.title}</h3>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }

@@ -7,61 +7,61 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { revalidatePath } from "next/cache";
 
 const defaultContent: WebsiteContent = {
-  logoUrl: "https://placehold.co/100x100.png",
-  atAGlance: [
-    { label: "Founded", value: "1965" },
-    { label: "Student-Faculty Ratio", value: "12:1" },
-    { label: "Enrollment", value: "850" },
-    { label: "Clubs & Activities", value: "30+" },
-  ],
-  programHighlights: [
-    { 
-      title: "Academics", 
-      description: "A rigorous, inquiry-based curriculum that fosters critical thinking and a passion for lifelong learning.",
-      imageUrls: ["https://placehold.co/600x400.png"]
-    },
-    { 
-      title: "Arts", 
-      description: "A vibrant arts program that encourages creativity, self-expression, and collaboration across various disciplines.",
-      imageUrls: ["https://placehold.co/600x400.png"]
-    },
-    { 
-      title: "Athletics", 
-      description: "Competitive sports programs that build character, teamwork, and a commitment to personal excellence.",
-      imageUrls: ["https://placehold.co/600x400.png"]
-    }
-  ],
-  community: {
-    title: "A Community of Belonging",
-    description: "We are a diverse and inclusive community where every student is known, valued, and supported. Our students build lifelong friendships and a strong sense of social responsibility.",
-    imageUrls: ["https://placehold.co/600x400.png"]
+  logoUrl: "https://placehold.co/120x40.png",
+  heroSection: {
+    heading: "A New Era of Learning Has Begun",
+    subheading: "At St. Mbaaga's, we foster a vibrant community where intellectual curiosity and personal growth are at the heart of everything we do.",
+    imageUrl: "https://placehold.co/1920x1080.png",
+    primaryCtaText: "Inquire Now",
+    primaryCtaLink: "/admissions",
+    secondaryCtaText: "Explore Academics",
+    secondaryCtaLink: "/academics"
   },
-  news: [
-    { title: "Annual Science Fair Winners Announced", date: "June 20, 2025", description: "Congratulations to our brilliant young scientists who showcased incredible projects this year.", imageUrls: ["https://placehold.co/600x400.png"] },
-    { title: "Sports Day Championship Highlights", date: "June 15, 2025", description: "A day of thrilling competition and great sportsmanship. See the results and photo gallery.", imageUrls: ["https://placehold.co/600x400.png"] },
-    { title: "Community Service Drive a Huge Success", date: "June 10, 2025", description: "Our students volunteered over 500 hours to support local charities and community projects.", imageUrls: ["https://placehold.co/600x400.png"] }
-  ],
-  inquireSection: {
-    buttonText: "Inquire Now",
-    buttonLink: "/contact",
-    slides: [
+  whyUsSection: {
+    heading: "Why St. Mbaaga's College?",
+    description: "We are more than just a school; we are a community dedicated to empowering students to lead lives of purpose and impact.",
+    points: [
       {
-        title: "Discover Your Voice. Shape Your Future.",
-        subtitle: "At St. Mbaaga's College, we provide an inspiring and challenging education that empowers students to achieve their full potential and make a difference in the world.",
-        imageUrls: ["https://placehold.co/1920x1080.png"],
+        icon: "BookOpen",
+        title: "Rigorous Academics",
+        description: "Our curriculum challenges students to think critically, collaborate effectively, and solve complex problems."
       },
       {
-        title: "Explore Our Campus",
-        subtitle: "Schedule a visit to see our vibrant community and state-of-the-art facilities in person.",
-        imageUrls: ["https://placehold.co/1920x1080.png"],
+        icon: "Users",
+        title: "Inclusive Community",
+        description: "We celebrate diversity and foster a sense of belonging where every student feels known, valued, and supported."
       },
       {
-        title: "A Tradition of Excellence",
-        subtitle: "For over 50 years, we have been dedicated to nurturing the next generation of leaders and innovators.",
-        imageUrls: ["https://placehold.co/1920x1080.png"],
-      },
+        icon: "Trophy",
+        title: "Signature Programs",
+        description: "From STEM to the arts, our specialized programs provide students with opportunities to explore their passions."
+      }
     ]
   },
+  inquireApplySection: {
+    heading: "Your Journey Starts Here",
+    inquireText: "Inquire",
+    inquireLink: "/contact",
+    applyText: "Apply",
+    applyLink: "/admissions"
+  },
+  signatureProgramsSection: {
+    heading: "Signature Programs",
+    programs: [
+      { title: "STEM & Innovation", description: "Engage in hands-on learning and research in our state-of-the-art labs.", imageUrl: "https://placehold.co/600x400.png" },
+      { title: "Global Studies", description: "Develop a global perspective through immersive cultural experiences and language studies.", imageUrl: "https://placehold.co/600x400.png" },
+      { title: "Arts & Humanities", description: "Cultivate your creativity and find your voice in our comprehensive arts and humanities programs.", imageUrl: "https://placehold.co/600x400.png" }
+    ]
+  },
+  newsSection: {
+    heading: "What's Happening",
+    posts: [
+      { title: "Annual Science Fair Winners Announced", date: "June 20, 2025", imageUrl: "https://placehold.co/600x400.png" },
+      { title: "Sports Day Championship Highlights", date: "June 15, 2025", imageUrl: "https://placehold.co/600x400.png" },
+      { title: "Community Service Drive a Huge Success", date: "June 10, 2025", imageUrl: "https://placehold.co/600x400.png" }
+    ]
+  },
+  // Default values for other pages are retained but might need updates based on new design
   academicsPage: {
     title: "Our Academic Programs",
     description: "We offer a comprehensive curriculum designed to challenge and inspire students at every level.",
@@ -127,33 +127,14 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
     const contentSnap = await getDoc(contentRef);
     if (contentSnap.exists()) {
       const data = contentSnap.data() as Partial<WebsiteContent>;
-      
-      const migrateItemImages = (item: any) => {
-        const newItem = { ...item };
-        if (typeof newItem.imageUrl === 'string' && !Array.isArray(newItem.imageUrls)) {
-          newItem.imageUrls = [newItem.imageUrl];
-        }
-        delete newItem.imageUrl;
-        return newItem;
-      };
-
-      const migratedData = { ...data };
-      if (migratedData.programHighlights) migratedData.programHighlights = migratedData.programHighlights.map(migrateItemImages);
-      if (migratedData.community) migratedData.community = migrateItemImages(migratedData.community);
-      if (migratedData.news) migratedData.news = migratedData.news.map(migrateItemImages);
-      if (migratedData.inquireSection?.slides) migratedData.inquireSection.slides = migratedData.inquireSection.slides.map(migrateItemImages);
-      if (migratedData.academicsPage?.programs) migratedData.academicsPage.programs = migratedData.academicsPage.programs.map(migrateItemImages);
-      if (migratedData.studentLifePage?.features) migratedData.studentLifePage.features = migratedData.studentLifePage.features.map(migrateItemImages);
-
       return {
         ...defaultContent,
-        ...migratedData,
-        community: { ...defaultContent.community, ...migratedData.community },
-        inquireSection: { ...defaultContent.inquireSection, ...(migratedData.inquireSection || {}) },
-        academicsPage: { ...defaultContent.academicsPage, ...(migratedData.academicsPage || {}) },
-        admissionsPage: { ...defaultContent.admissionsPage, ...(migratedData.admissionsPage || {}) },
-        contactPage: { ...defaultContent.contactPage, ...(migratedData.contactPage || {}) },
-        studentLifePage: { ...defaultContent.studentLifePage, ...(migratedData.studentLifePage || {}) },
+        ...data,
+        heroSection: { ...defaultContent.heroSection, ...data.heroSection },
+        whyUsSection: { ...defaultContent.whyUsSection, ...data.whyUsSection },
+        inquireApplySection: { ...defaultContent.inquireApplySection, ...data.inquireApplySection },
+        signatureProgramsSection: { ...defaultContent.signatureProgramsSection, ...data.signatureProgramsSection },
+        newsSection: { ...defaultContent.newsSection, ...data.newsSection },
       };
     } else {
       await setDoc(contentRef, defaultContent);

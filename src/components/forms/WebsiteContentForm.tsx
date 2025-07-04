@@ -20,75 +20,52 @@ import { useToast } from "@/hooks/use-toast";
 import { updateWebsiteContent } from "@/lib/actions/website-actions";
 import type { WebsiteContent } from "@/lib/types";
 import { Loader2, Save, PlusCircle, Trash2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ImageUploadInput } from "@/components/shared/ImageUploadInput";
 
 const websiteContentSchema = z.object({
-  logoUrl: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
-  atAGlance: z.array(z.object({
-    label: z.string().min(1, "Label is required."),
-    value: z.string().min(1, "Value is required."),
-  })),
-  programHighlights: z.array(z.object({
-    title: z.string().min(1, "Highlight title is required."),
-    description: z.string().min(1, "Highlight description is required."),
-    imageUrls: z.array(z.string().url("Must be a valid URL.")).min(1, "At least one image URL is required."),
-  })),
-  community: z.object({
-      title: z.string().min(1, "Community title is required."),
-      description: z.string().min(1, "Community description is required."),
-      imageUrls: z.array(z.string().url("Must be a valid URL.")).min(1, "At least one image URL is required."),
+  logoUrl: z.string().url("Must be a valid URL.").or(z.literal('')),
+  heroSection: z.object({
+    heading: z.string().min(1, "Heading is required."),
+    subheading: z.string().min(1, "Subheading is required."),
+    imageUrl: z.string().url("Must be a valid URL."),
+    primaryCtaText: z.string().min(1, "Button text is required."),
+    primaryCtaLink: z.string().min(1, "Button link is required."),
+    secondaryCtaText: z.string().min(1, "Button text is required."),
+    secondaryCtaLink: z.string().min(1, "Button link is required."),
   }),
-  news: z.array(z.object({
-    title: z.string().min(1, "News title is required."),
-    date: z.string().min(1, "News date is required."),
-    description: z.string().min(1, "News description is required."),
-    imageUrls: z.array(z.string().url("Must be a valid URL.")).min(1, "At least one image URL is required."),
-  })),
-  inquireSection: z.object({
-    buttonText: z.string().min(1, "Button text is required."),
-    buttonLink: z.string().min(1, "Button link is required."),
-    slides: z.array(z.object({
-      title: z.string().min(1, "Slide title is required."),
-      subtitle: z.string().min(1, "Slide subtitle is required."),
-      imageUrls: z.array(z.string().url("Must be a valid URL.")).min(1, "At least one image URL is required."),
-    })),
-  }),
-  academicsPage: z.object({
-    title: z.string().min(1, "Title is required."),
+  whyUsSection: z.object({
+    heading: z.string().min(1, "Heading is required."),
     description: z.string().min(1, "Description is required."),
-    programs: z.array(z.object({
-      name: z.string().min(1, "Program name is required."),
-      description: z.string().min(1, "Program description is required."),
-      imageUrls: z.array(z.string().url("Must be a valid URL.")).min(1, "At least one image URL is required."),
+    points: z.array(z.object({
+      icon: z.string().min(1, "Icon name is required."),
+      title: z.string().min(1, "Point title is required."),
+      description: z.string().min(1, "Point description is required."),
     })),
   }),
-  admissionsPage: z.object({
-    title: z.string().min(1, "Title is required."),
-    description: z.string().min(1, "Description is required."),
-    process: z.array(z.object({
-      step: z.string().min(1, "Step number is required."),
-      title: z.string().min(1, "Step title is required."),
-      description: z.string().min(1, "Step description is required."),
-    })),
-    formUrl: z.string().min(1, "Form URL is required."),
+  inquireApplySection: z.object({
+    heading: z.string().min(1, "Heading is required."),
+    inquireText: z.string().min(1, "Inquire button text is required."),
+    inquireLink: z.string().min(1, "Inquire link is required."),
+    applyText: z.string().min(1, "Apply button text is required."),
+    applyLink: z.string().min(1, "Apply link is required."),
   }),
-  contactPage: z.object({
-    title: z.string().min(1, "Title is required."),
-    address: z.string().min(1, "Address is required."),
-    phone: z.string().min(1, "Phone is required."),
-    email: z.string().email("Must be a valid email."),
-    mapImageUrl: z.string().url("Must be a valid URL."),
+  signatureProgramsSection: z.object({
+      heading: z.string().min(1, "Heading is required."),
+      programs: z.array(z.object({
+          title: z.string().min(1, "Program title is required."),
+          description: z.string().min(1, "Program description is required."),
+          imageUrl: z.string().url("Must be a valid URL."),
+      })),
   }),
-  studentLifePage: z.object({
-    title: z.string().min(1, "Title is required."),
-    description: z.string().min(1, "Description is required."),
-    features: z.array(z.object({
-      title: z.string().min(1, "Feature title is required."),
-      description: z.string().min(1, "Feature description is required."),
-      imageUrls: z.array(z.string().url("Must be a valid URL.")).min(1, "At least one image URL is required."),
-    })),
+  newsSection: z.object({
+      heading: z.string().min(1, "Heading is required."),
+      posts: z.array(z.object({
+          title: z.string().min(1, "Post title is required."),
+          date: z.string().min(1, "Date is required."),
+          imageUrl: z.string().url("Must be a valid URL."),
+      })),
   }),
 });
 
@@ -98,64 +75,37 @@ interface WebsiteContentFormProps {
   initialData: WebsiteContent;
 }
 
-function ImageUrlArrayInput({ nestIndex, control, name, label }: { nestIndex: number; control: any; name: any; label: string; }) {
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: name,
-  });
-
-  return (
-    <div className="space-y-3 p-3 border rounded-md">
-      <FormLabel>{label}</FormLabel>
-      {fields.map((item, k) => (
-        <div key={item.id} className="flex items-end gap-2">
-          <FormField
-            control={control}
-            name={`${name}.${k}`}
-            render={({ field }) => (
-              <FormItem className="flex-grow">
-                <FormControl>
-                  <Input {...field} placeholder="https://..."/>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <Button type="button" variant="destructive" size="icon" onClick={() => remove(k)} disabled={fields.length <= 1}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ))}
-      <Button type="button" size="sm" variant="outline" onClick={() => append("")}>
-        <PlusCircle className="mr-2 h-4 w-4" /> Add Image URL
-      </Button>
-    </div>
-  );
-}
-
-
 export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = React.useTransition();
 
   const form = useForm<WebsiteContentFormValues>({
     resolver: zodResolver(websiteContentSchema),
-    defaultValues: initialData,
+    // We only manage a subset of the full WebsiteContent type here.
+    defaultValues: {
+      logoUrl: initialData.logoUrl,
+      heroSection: initialData.heroSection,
+      whyUsSection: initialData.whyUsSection,
+      inquireApplySection: initialData.inquireApplySection,
+      signatureProgramsSection: initialData.signatureProgramsSection,
+      newsSection: initialData.newsSection,
+    },
   });
 
   const { control } = form;
 
-  const { fields: atAGlanceFields, append: appendStat, remove: removeStat } = useFieldArray({ control, name: "atAGlance" });
-  const { fields: programHighlightFields, append: appendHighlight, remove: removeHighlight } = useFieldArray({ control, name: "programHighlights" });
-  const { fields: newsFields, append: appendNews, remove: removeNews } = useFieldArray({ control, name: "news" });
-  const { fields: academicProgramsFields, append: appendProgram, remove: removeProgram } = useFieldArray({ control, name: "academicsPage.programs" });
-  const { fields: admissionProcessFields, append: appendProcess, remove: removeProcess } = useFieldArray({ control, name: "admissionsPage.process" });
-  const { fields: studentLifeFeatures, append: appendFeature, remove: removeFeature } = useFieldArray({ control, name: "studentLifePage.features" });
-  const { fields: inquireSlides, append: appendSlide, remove: removeSlide } = useFieldArray({ control, name: "inquireSection.slides" });
-
+  const { fields: whyUsPoints, append: appendWhyUsPoint, remove: removeWhyUsPoint } = useFieldArray({ control, name: "whyUsSection.points" });
+  const { fields: signaturePrograms, append: appendProgram, remove: removeProgram } = useFieldArray({ control, name: "signatureProgramsSection.programs" });
+  const { fields: newsPosts, append: appendNews, remove: removeNews } = useFieldArray({ control, name: "newsSection.posts" });
+  
   const onSubmit = (data: WebsiteContentFormValues) => {
     startTransition(async () => {
-      const result = await updateWebsiteContent(data);
+      // Merge the form data with the full initial data to avoid overwriting other pages' content
+      const fullContentToSave = {
+        ...initialData,
+        ...data
+      };
+      const result = await updateWebsiteContent(fullContentToSave);
       if (result.success) {
         toast({ title: "Success", description: "Website content updated successfully." });
       } else {
@@ -168,183 +118,113 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <Accordion type="multiple" defaultValue={["item-1"]} className="w-full space-y-4">
+          
+          <AccordionItem value="item-general" className="border rounded-lg bg-card">
+            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>General</CardTitle></AccordionTrigger>
+            <AccordionContent className="p-4 pt-0 space-y-4">
+               <ImageUploadInput fieldName="logoUrl" label="School Logo URL" />
+            </AccordionContent>
+          </AccordionItem>
 
           <AccordionItem value="item-1" className="border rounded-lg bg-card">
-            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage Content</CardTitle></AccordionTrigger>
+            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Hero Section</CardTitle></AccordionTrigger>
             <AccordionContent className="p-4 pt-0 space-y-4">
-              
-              <Card>
-                <CardHeader><CardTitle className="text-lg">Hero Slideshow Section</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <ImageUploadInput fieldName="logoUrl" label="Logo Image URL" />
-                  <FormField control={control} name="inquireSection.buttonText" render={({ field }) => ( <FormItem> <FormLabel>Button Text</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                  <FormField control={control} name="inquireSection.buttonLink" render={({ field }) => ( <FormItem> <FormLabel>Button Link</FormLabel> <FormControl><Input placeholder="#" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-
-                  <h4 className="font-semibold pt-4">Slides</h4>
-                  <div className="space-y-4">
-                    {inquireSlides.map((field, index) => (
-                      <div key={field.id} className="flex items-start gap-4 p-4 border rounded-lg">
-                        <div className="flex-grow space-y-4">
-                          <FormField control={control} name={`inquireSection.slides.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Slide Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                          <FormField control={control} name={`inquireSection.slides.${index}.subtitle`} render={({ field }) => ( <FormItem> <FormLabel>Slide Subtitle</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                          <ImageUrlArrayInput nestIndex={index} control={control} name={`inquireSection.slides.${index}.imageUrls`} label="Background Image URLs" />
-                        </div>
-                        <Button type="button" variant="destructive" size="icon" onClick={() => removeSlide(index)}> <Trash2 className="h-4 w-4" /> </Button>
-                      </div>
-                    ))}
-                  </div>
-                  <Button type="button" variant="outline" size="sm" onClick={() => appendSlide({ title: "", subtitle: "", imageUrls: ["https://placehold.co/1920x1080.png"] })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Slide </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader><CardTitle className="text-lg">At a Glance Section</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  {atAGlanceFields.map((field, index) => (
-                    <div key={field.id} className="flex items-end gap-4 p-4 border rounded-lg">
-                      <FormField control={control} name={`atAGlance.${index}.label`} render={({ field }) => ( <FormItem className="flex-grow"> <FormLabel>Label</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                      <FormField control={control} name={`atAGlance.${index}.value`} render={({ field }) => ( <FormItem className="flex-grow"> <FormLabel>Value</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                      <Button type="button" variant="destructive" size="icon" onClick={() => removeStat(index)}> <Trash2 className="h-4 w-4" /> </Button>
-                    </div>
-                  ))}
-                  <Button type="button" variant="outline" size="sm" onClick={() => appendStat({ label: "", value: "" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Stat </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader><CardTitle className="text-lg">Program Highlights Section</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-4">
-                    {programHighlightFields.map((field, index) => (
-                      <div key={field.id} className="flex items-start gap-4 p-4 border rounded-lg">
-                        <div className="flex-grow space-y-4">
-                          <h4 className="font-semibold">Highlight {index + 1}</h4>
-                          <FormField control={control} name={`programHighlights.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                          <FormField control={control} name={`programHighlights.${index}.description`} render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                           <ImageUrlArrayInput nestIndex={index} control={control} name={`programHighlights.${index}.imageUrls`} label="Image URLs" />
-                        </div>
-                        <Button type="button" variant="destructive" size="icon" onClick={() => removeHighlight(index)}> <Trash2 className="h-4 w-4" /> </Button>
-                      </div>
-                    ))}
-                  </div>
-                  <Button type="button" variant="outline" size="sm" onClick={() => appendHighlight({ title: "", description: "", imageUrls: ["https://placehold.co/600x400.png"] })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Highlight </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader><CardTitle className="text-lg">Community Section</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <FormField control={control} name="community.title" render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                  <FormField control={control} name="community.description" render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                  <ImageUrlArrayInput nestIndex={0} control={control} name="community.imageUrls" label="Image URLs" />
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader><CardTitle className="text-lg">News & Events Section</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-4">
-                    {newsFields.map((field, index) => (
-                      <div key={field.id} className="flex items-start gap-4 p-4 border rounded-lg">
-                        <div className="flex-grow space-y-4">
-                          <h4 className="font-semibold">News Item {index + 1}</h4>
-                          <FormField control={control} name={`news.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                          <FormField control={control} name={`news.${index}.date`} render={({ field }) => ( <FormItem> <FormLabel>Date</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                          <FormField control={control} name={`news.${index}.description`} render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                           <ImageUrlArrayInput nestIndex={index} control={control} name={`news.${index}.imageUrls`} label="Image URLs" />
-                        </div>
-                        <Button type="button" variant="destructive" size="icon" onClick={() => removeNews(index)}> <Trash2 className="h-4 w-4" /> </Button>
-                      </div>
-                    ))}
-                  </div>
-                  <Button type="button" variant="outline" size="sm" onClick={() => appendNews({ title: "", date: "", description: "", imageUrls: ["https://placehold.co/600x400.png"] })}> <PlusCircle className="mr-2 h-4 w-4" /> Add News Item </Button>
-                </CardContent>
-              </Card>
-
+                <FormField control={control} name="heroSection.heading" render={({ field }) => ( <FormItem><FormLabel>Heading</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={control} name="heroSection.subheading" render={({ field }) => ( <FormItem><FormLabel>Subheading</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <ImageUploadInput fieldName="heroSection.imageUrl" label="Background Image URL" />
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField control={control} name="heroSection.primaryCtaText" render={({ field }) => ( <FormItem><FormLabel>Primary Button Text</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField control={control} name="heroSection.primaryCtaLink" render={({ field }) => ( <FormItem><FormLabel>Primary Button Link</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                </div>
+                 <div className="grid grid-cols-2 gap-4">
+                    <FormField control={control} name="heroSection.secondaryCtaText" render={({ field }) => ( <FormItem><FormLabel>Secondary Button Text</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField control={control} name="heroSection.secondaryCtaLink" render={({ field }) => ( <FormItem><FormLabel>Secondary Button Link</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                </div>
             </AccordionContent>
           </AccordionItem>
 
           <AccordionItem value="item-2" className="border rounded-lg bg-card">
-            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Academics Page</CardTitle></AccordionTrigger>
+            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Why Us Section</CardTitle></AccordionTrigger>
             <AccordionContent className="p-4 pt-0 space-y-4">
-              <FormField control={control} name="academicsPage.title" render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-              <FormField control={control} name="academicsPage.description" render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-              <Card>
-                <CardHeader><CardTitle className="text-lg">Programs</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  {academicProgramsFields.map((field, index) => (
-                    <div key={field.id} className="flex items-end gap-4 p-4 border rounded-lg">
-                      <div className="flex-grow space-y-4">
-                        <FormField control={control} name={`academicsPage.programs.${index}.name`} render={({ field }) => ( <FormItem> <FormLabel>Program Name</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                        <FormField control={control} name={`academicsPage.programs.${index}.description`} render={({ field }) => ( <FormItem> <FormLabel>Program Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                        <ImageUrlArrayInput nestIndex={index} control={control} name={`academicsPage.programs.${index}.imageUrls`} label="Image URLs" />
-                      </div>
-                      <Button type="button" variant="destructive" size="icon" onClick={() => removeProgram(index)}> <Trash2 className="h-4 w-4" /> </Button>
-                    </div>
-                  ))}
-                  <Button type="button" variant="outline" size="sm" onClick={() => appendProgram({ name: "", description: "", imageUrls: ["https://placehold.co/600x400.png"] })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Program </Button>
-                </CardContent>
-              </Card>
+                <FormField control={control} name="whyUsSection.heading" render={({ field }) => ( <FormItem><FormLabel>Heading</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={control} name="whyUsSection.description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <Card>
+                    <CardHeader><CardTitle className="text-base">Points</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        {whyUsPoints.map((field, index) => (
+                            <div key={field.id} className="flex items-start gap-4 p-4 border rounded-lg">
+                                <div className="flex-grow space-y-4">
+                                    <FormField control={control} name={`whyUsSection.points.${index}.icon`} render={({ field }) => ( <FormItem><FormLabel>Icon Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                    <FormField control={control} name={`whyUsSection.points.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                    <FormField control={control} name={`whyUsSection.points.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                </div>
+                                <Button type="button" variant="destructive" size="icon" onClick={() => removeWhyUsPoint(index)}> <Trash2 className="h-4 w-4" /> </Button>
+                            </div>
+                        ))}
+                        <Button type="button" variant="outline" size="sm" onClick={() => appendWhyUsPoint({ icon: "Users", title: "", description: "" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Point </Button>
+                    </CardContent>
+                </Card>
             </AccordionContent>
           </AccordionItem>
 
           <AccordionItem value="item-3" className="border rounded-lg bg-card">
-            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Admissions Page</CardTitle></AccordionTrigger>
+            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Inquire/Apply Section</CardTitle></AccordionTrigger>
             <AccordionContent className="p-4 pt-0 space-y-4">
-              <FormField control={control} name="admissionsPage.title" render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-              <FormField control={control} name="admissionsPage.description" render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-              <FormField control={control} name="admissionsPage.formUrl" render={({ field }) => ( <FormItem> <FormLabel>Application Form URL</FormLabel> <FormControl><Input placeholder="#" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-              <Card>
-                <CardHeader><CardTitle className="text-lg">Admission Process Steps</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  {admissionProcessFields.map((field, index) => (
-                     <div key={field.id} className="flex items-end gap-4 p-4 border rounded-lg">
-                      <div className="flex-grow space-y-4">
-                        <FormField control={control} name={`admissionsPage.process.${index}.step`} render={({ field }) => ( <FormItem> <FormLabel>Step Number</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                        <FormField control={control} name={`admissionsPage.process.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                        <FormField control={control} name={`admissionsPage.process.${index}.description`} render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                      </div>
-                      <Button type="button" variant="destructive" size="icon" onClick={() => removeProcess(index)}> <Trash2 className="h-4 w-4" /> </Button>
-                    </div>
-                  ))}
-                   <Button type="button" variant="outline" size="sm" onClick={() => appendProcess({ step: "", title: "", description: "" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Step </Button>
-                </CardContent>
-              </Card>
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="item-4" className="border rounded-lg bg-card">
-            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Contact Page</CardTitle></AccordionTrigger>
-            <AccordionContent className="p-4 pt-0 space-y-4">
-              <FormField control={control} name="contactPage.title" render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-              <FormField control={control} name="contactPage.address" render={({ field }) => ( <FormItem> <FormLabel>Address</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-              <FormField control={control} name="contactPage.phone" render={({ field }) => ( <FormItem> <FormLabel>Phone Number</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-              <FormField control={control} name="contactPage.email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-              <ImageUploadInput fieldName="contactPage.mapImageUrl" label="Map Image URL" />
+                <FormField control={control} name="inquireApplySection.heading" render={({ field }) => ( <FormItem><FormLabel>Heading</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField control={control} name="inquireApplySection.inquireText" render={({ field }) => ( <FormItem><FormLabel>Inquire Button Text</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField control={control} name="inquireApplySection.inquireLink" render={({ field }) => ( <FormItem><FormLabel>Inquire Button Link</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                </div>
+                 <div className="grid grid-cols-2 gap-4">
+                    <FormField control={control} name="inquireApplySection.applyText" render={({ field }) => ( <FormItem><FormLabel>Apply Button Text</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField control={control} name="inquireApplySection.applyLink" render={({ field }) => ( <FormItem><FormLabel>Apply Button Link</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                </div>
             </AccordionContent>
           </AccordionItem>
           
-          <AccordionItem value="item-5" className="border rounded-lg bg-card">
-            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Student Life Page</CardTitle></AccordionTrigger>
+           <AccordionItem value="item-4" className="border rounded-lg bg-card">
+            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Signature Programs Section</CardTitle></AccordionTrigger>
             <AccordionContent className="p-4 pt-0 space-y-4">
-              <FormField control={control} name="studentLifePage.title" render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-              <FormField control={control} name="studentLifePage.description" render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-              <Card>
-                <CardHeader><CardTitle className="text-lg">Features</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  {studentLifeFeatures.map((field, index) => (
-                    <div key={field.id} className="flex items-end gap-4 p-4 border rounded-lg">
-                      <div className="flex-grow space-y-4">
-                        <FormField control={control} name={`studentLifePage.features.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Feature Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                        <FormField control={control} name={`studentLifePage.features.${index}.description`} render={({ field }) => ( <FormItem> <FormLabel>Feature Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                        <ImageUrlArrayInput nestIndex={index} control={control} name={`studentLifePage.features.${index}.imageUrls`} label="Image URLs" />
-                      </div>
-                      <Button type="button" variant="destructive" size="icon" onClick={() => removeFeature(index)}> <Trash2 className="h-4 w-4" /> </Button>
-                    </div>
-                  ))}
-                  <Button type="button" variant="outline" size="sm" onClick={() => appendFeature({ title: "", description: "", imageUrls: ["https://placehold.co/600x400.png"] })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Feature </Button>
-                </CardContent>
-              </Card>
+                <FormField control={control} name="signatureProgramsSection.heading" render={({ field }) => ( <FormItem><FormLabel>Heading</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                 <Card>
+                    <CardHeader><CardTitle className="text-base">Programs</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        {signaturePrograms.map((field, index) => (
+                            <div key={field.id} className="flex items-start gap-4 p-4 border rounded-lg">
+                                <div className="flex-grow space-y-4">
+                                    <FormField control={control} name={`signatureProgramsSection.programs.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                    <FormField control={control} name={`signatureProgramsSection.programs.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                    <ImageUploadInput fieldName={`signatureProgramsSection.programs.${index}.imageUrl`} label="Image URL" />
+                                </div>
+                                <Button type="button" variant="destructive" size="icon" onClick={() => removeProgram(index)}> <Trash2 className="h-4 w-4" /> </Button>
+                            </div>
+                        ))}
+                        <Button type="button" variant="outline" size="sm" onClick={() => appendProgram({ title: "", description: "", imageUrl: "https://placehold.co/600x400.png" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Program </Button>
+                    </CardContent>
+                </Card>
+            </AccordionContent>
+          </AccordionItem>
+
+           <AccordionItem value="item-5" className="border rounded-lg bg-card">
+            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>News Section</CardTitle></AccordionTrigger>
+            <AccordionContent className="p-4 pt-0 space-y-4">
+                <FormField control={control} name="newsSection.heading" render={({ field }) => ( <FormItem><FormLabel>Heading</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                 <Card>
+                    <CardHeader><CardTitle className="text-base">News Posts</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        {newsPosts.map((field, index) => (
+                            <div key={field.id} className="flex items-start gap-4 p-4 border rounded-lg">
+                                <div className="flex-grow space-y-4">
+                                    <FormField control={control} name={`newsSection.posts.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                    <FormField control={control} name={`newsSection.posts.${index}.date`} render={({ field }) => ( <FormItem><FormLabel>Date</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                    <ImageUploadInput fieldName={`newsSection.posts.${index}.imageUrl`} label="Image URL" />
+                                </div>
+                                <Button type="button" variant="destructive" size="icon" onClick={() => removeNews(index)}> <Trash2 className="h-4 w-4" /> </Button>
+                            </div>
+                        ))}
+                        <Button type="button" variant="outline" size="sm" onClick={() => appendNews({ title: "", date: "", imageUrl: "https://placehold.co/600x400.png" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add News Post </Button>
+                    </CardContent>
+                </Card>
             </AccordionContent>
           </AccordionItem>
 

@@ -310,35 +310,48 @@ export interface AttendanceHistoryData {
 
 export interface WebsiteContent {
   logoUrl: string;
-  atAGlance: Array<{
-    label: string;
-    value: string;
-  }>;
-  programHighlights: Array<{
-    title: string;
-    description: string;
-    imageUrls: string[];
-  }>;
-  community: {
-    title: string;
-    description: string;
-    imageUrls: string[];
+  heroSection: {
+    heading: string;
+    subheading: string;
+    imageUrl: string;
+    primaryCtaText: string;
+    primaryCtaLink: string;
+    secondaryCtaText: string;
+    secondaryCtaLink: string;
   };
-  news: Array<{
-    title: string;
-    date: string;
+  whyUsSection: {
+    heading: string;
     description: string;
-    imageUrls: string[];
-  }>;
-  inquireSection: {
-    buttonText: string;
-    buttonLink: string;
-    slides: Array<{
+    points: Array<{
+      icon: string;
       title: string;
-      subtitle: string;
-      imageUrls: string[];
+      description: string;
     }>;
   };
+  inquireApplySection: {
+    heading: string;
+    inquireText: string;
+    inquireLink: string;
+    applyText: string;
+    applyLink: string;
+  };
+  signatureProgramsSection: {
+    heading: string;
+    programs: Array<{
+        title: string;
+        description: string;
+        imageUrl: string;
+    }>;
+  };
+  newsSection: {
+    heading: string;
+    posts: Array<{
+        title: string;
+        date: string;
+        imageUrl: string;
+    }>;
+  };
+  // The following pages are kept but may need redesigning later
   academicsPage: {
     title: string;
     description: string;
