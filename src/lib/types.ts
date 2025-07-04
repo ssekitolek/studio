@@ -310,14 +310,14 @@ export interface AttendanceHistoryData {
 
 export interface WebsiteContent {
   logoUrl: string;
-  heroSection: {
-    heading: string;
-    subheading: string;
-    imageUrl: string;
-    primaryCtaText: string;
-    primaryCtaLink: string;
-    secondaryCtaText: string;
-    secondaryCtaLink: string;
+  heroSlideshowSection: {
+    buttonText: string;
+    buttonLink: string;
+    slides: Array<{
+      title: string;
+      subtitle: string;
+      imageUrls: string[];
+    }>;
   };
   whyUsSection: {
     heading: string;
@@ -328,19 +328,12 @@ export interface WebsiteContent {
       description: string;
     }>;
   };
-  connectWithUsSection: {
-    heading: string;
-    inquireText: string;
-    inquireLink: string;
-    applyText: string;
-    applyLink: string;
-  };
   signatureProgramsSection: {
     heading: string;
     programs: Array<{
         title: string;
         description: string;
-        imageUrl: string;
+        imageUrls: string[];
     }>;
   };
   newsSection: {
@@ -348,7 +341,7 @@ export interface WebsiteContent {
     posts: Array<{
         title: string;
         date: string;
-        imageUrl: string;
+        imageUrls: string[];
     }>;
   };
   academicsPage: {

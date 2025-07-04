@@ -97,12 +97,17 @@ export default {
             opacity: '1',
             transform: 'translateY(0)',
           },
-        }
+        },
+        'image-zoom': {
+          '0%': { transform: 'scale(1)' },
+          '100%': { transform: 'scale(1.15)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'fade-in-up': 'fade-in-up 0.8s ease-in-out forwards',
+        'image-zoom': 'image-zoom 8s ease-in-out infinite alternate',
       },
     },
   },

@@ -8,27 +8,39 @@ import { revalidatePath } from "next/cache";
 
 const defaultContent: WebsiteContent = {
   logoUrl: "https://placehold.co/120x40.png",
-  heroSection: {
-    heading: "A New Era of Learning Has Begun",
-    subheading: "At St. Mbaaga's, we foster a vibrant community where intellectual curiosity and personal growth are at the heart of everything we do.",
-    imageUrl: "https://placehold.co/1920x1080.png",
-    primaryCtaText: "Inquire Now",
-    primaryCtaLink: "/contact",
-    secondaryCtaText: "Explore Academics",
-    secondaryCtaLink: "/academics"
+  heroSlideshowSection: {
+    buttonText: "Explore Our World",
+    buttonLink: "/admissions",
+    slides: [
+      {
+        title: "Pioneering Futures",
+        subtitle: "Experience an education that transcends boundaries and unlocks potential.",
+        imageUrls: ["https://placehold.co/1920x1080.png"]
+      },
+      {
+        title: "A Canvas for Brilliance",
+        subtitle: "Where creativity, technology, and ambition converge to shape the leaders of tomorrow.",
+        imageUrls: ["https://placehold.co/1920x1080.png"]
+      },
+      {
+        title: "Legacy of Excellence",
+        subtitle: "Join a community dedicated to intellectual discovery and profound impact.",
+        imageUrls: ["https://placehold.co/1920x1080.png"]
+      }
+    ]
   },
   whyUsSection: {
-    heading: "Why St. Mbaaga's College?",
-    description: "We are more than just a school; we are a community dedicated to empowering students to lead lives of purpose and impact.",
+    heading: "The St. Mbaaga's Difference",
+    description: "We are more than just a school; we are a crucible for innovation, character, and lifelong achievement.",
     points: [
       {
         icon: "BookOpen",
-        title: "Rigorous Academics",
+        title: "Visionary Academics",
         description: "Our curriculum challenges students to think critically, collaborate effectively, and solve complex problems."
       },
       {
         icon: "Users",
-        title: "Inclusive Community",
+        title: "Dynamic Community",
         description: "We celebrate diversity and foster a sense of belonging where every student feels known, valued, and supported."
       },
       {
@@ -38,27 +50,20 @@ const defaultContent: WebsiteContent = {
       }
     ]
   },
-  connectWithUsSection: {
-    heading: "Connect With Us",
-    inquireText: "Inquire",
-    inquireLink: "/contact",
-    applyText: "Apply",
-    applyLink: "/admissions"
-  },
   signatureProgramsSection: {
     heading: "Signature Programs",
     programs: [
-      { title: "STEM & Innovation", description: "Engage in hands-on learning and research in our state-of-the-art labs.", imageUrl: "https://placehold.co/600x400.png" },
-      { title: "Global Studies", description: "Develop a global perspective through immersive cultural experiences and language studies.", imageUrl: "https://placehold.co/600x400.png" },
-      { title: "Arts & Humanities", description: "Cultivate your creativity and find your voice in our comprehensive arts and humanities programs.", imageUrl: "https://placehold.co/600x400.png" }
+      { title: "STEM & Innovation", description: "Engage in hands-on learning and research in our state-of-the-art labs.", imageUrls: ["https://placehold.co/600x400.png"] },
+      { title: "Global Studies", description: "Develop a global perspective through immersive cultural experiences and language studies.", imageUrls: ["https://placehold.co/600x400.png"] },
+      { title: "Arts & Humanities", description: "Cultivate your creativity and find your voice in our comprehensive arts and humanities programs.", imageUrls: ["https://placehold.co/600x400.png"] }
     ]
   },
   newsSection: {
     heading: "What's Happening",
     posts: [
-      { title: "Annual Science Fair Winners Announced", date: "June 20, 2025", imageUrl: "https://placehold.co/600x400.png" },
-      { title: "Sports Day Championship Highlights", date: "June 15, 2025", imageUrl: "https://placehold.co/600x400.png" },
-      { title: "Community Service Drive a Huge Success", date: "June 10, 2025", imageUrl: "https://placehold.co/600x400.png" }
+      { title: "Annual Science Fair Winners Announced", date: "June 20, 2025", imageUrls: ["https://placehold.co/600x400.png"] },
+      { title: "Sports Day Championship Highlights", date: "June 15, 2025", imageUrls: ["https://placehold.co/600x400.png"] },
+      { title: "Community Service Drive a Huge Success", date: "June 10, 2025", imageUrls: ["https://placehold.co/600x400.png"] }
     ]
   },
   academicsPage: {
@@ -79,7 +84,7 @@ const defaultContent: WebsiteContent = {
       { step: "03", title: "Interview", description: "Applicant and parent interviews are a key part of our process to get to know you better." },
       { step: "04", title: "Admission Decision", description: "Admission decisions are sent out in early March. We look forward to welcoming new families to our school." },
     ],
-    formUrl: "#",
+    formUrl: "/contact",
   },
   contactPage: {
     title: "Get in Touch",
@@ -126,14 +131,18 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
     const contentSnap = await getDoc(contentRef);
     if (contentSnap.exists()) {
       const data = contentSnap.data() as Partial<WebsiteContent>;
+      // Deep merge to ensure all nested properties from defaultContent are present
       return {
         ...defaultContent,
         ...data,
-        heroSection: { ...defaultContent.heroSection, ...data.heroSection },
+        heroSlideshowSection: { ...defaultContent.heroSlideshowSection, ...data.heroSlideshowSection },
         whyUsSection: { ...defaultContent.whyUsSection, ...data.whyUsSection },
-        connectWithUsSection: { ...defaultContent.connectWithUsSection, ...data.connectWithUsSection },
         signatureProgramsSection: { ...defaultContent.signatureProgramsSection, ...data.signatureProgramsSection },
         newsSection: { ...defaultContent.newsSection, ...data.newsSection },
+        academicsPage: { ...defaultContent.academicsPage, ...data.academicsPage },
+        admissionsPage: { ...defaultContent.admissionsPage, ...data.admissionsPage },
+        contactPage: { ...defaultContent.contactPage, ...data.contactPage },
+        studentLifePage: { ...defaultContent.studentLifePage, ...data.studentLifePage },
       };
     } else {
       await setDoc(contentRef, defaultContent);
@@ -153,11 +162,9 @@ export async function updateWebsiteContent(content: WebsiteContent): Promise<{ s
     const contentRef = doc(db, "website_content", "homepage");
     await setDoc(contentRef, content, { merge: true });
     
-    // Revalidate all pages that use getWebsiteContent to ensure changes are reflected.
-    revalidatePath("/", "layout"); // Revalidates the entire site layout (header, footer)
-    revalidatePath("/admin/dashboard"); // Revalidates the admin dashboard itself
+    revalidatePath("/", "layout");
+    revalidatePath("/admin/dashboard");
     
-    // Revalidate all individual marketing pages
     revalidatePath("/academics");
     revalidatePath("/admissions");
     revalidatePath("/contact");
