@@ -22,6 +22,7 @@ import type { WebsiteContent } from "@/lib/types";
 import { Loader2, Save, PlusCircle, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { ImageUploadInput } from "@/components/shared/ImageUploadInput";
 
 const websiteContentSchema = z.object({
   logoUrl: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
@@ -134,11 +135,10 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
             <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage Content</CardTitle></AccordionTrigger>
             <AccordionContent className="p-4 pt-0 space-y-4">
               
-              {/* Hero Slideshow Section */}
               <Card>
                 <CardHeader><CardTitle className="text-lg">Hero Slideshow Section</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
-                  <FormField control={form.control} name="logoUrl" render={({ field }) => ( <FormItem> <FormLabel>Logo Image URL</FormLabel> <FormControl><Input placeholder="https://..." {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                  <ImageUploadInput fieldName="logoUrl" label="Logo Image" />
                   <FormField control={form.control} name="inquireSection.buttonText" render={({ field }) => ( <FormItem> <FormLabel>Button Text</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                   <FormField control={form.control} name="inquireSection.buttonLink" render={({ field }) => ( <FormItem> <FormLabel>Button Link</FormLabel> <FormControl><Input placeholder="#" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
 
@@ -149,17 +149,16 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                         <div className="flex-grow space-y-4">
                           <FormField control={form.control} name={`inquireSection.slides.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Slide Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                           <FormField control={form.control} name={`inquireSection.slides.${index}.subtitle`} render={({ field }) => ( <FormItem> <FormLabel>Slide Subtitle</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                          <FormField control={form.control} name={`inquireSection.slides.${index}.imageUrl`} render={({ field }) => ( <FormItem> <FormLabel>Background Image URL</FormLabel> <FormControl><Input placeholder="https://..." {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                          <ImageUploadInput fieldName={`inquireSection.slides.${index}.imageUrl`} label="Background Image" />
                         </div>
                         <Button type="button" variant="destructive" size="icon" onClick={() => removeSlide(index)}> <Trash2 className="h-4 w-4" /> </Button>
                       </div>
                     ))}
                   </div>
-                  <Button type="button" variant="outline" size="sm" onClick={() => appendSlide({ title: "", subtitle: "", imageUrl: "" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Slide </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => appendSlide({ title: "", subtitle: "", imageUrl: "https://placehold.co/1920x1080.png" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Slide </Button>
                 </CardContent>
               </Card>
 
-              {/* At a Glance Section */}
               <Card>
                 <CardHeader><CardTitle className="text-lg">At a Glance Section</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
@@ -174,7 +173,6 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                 </CardContent>
               </Card>
 
-              {/* Program Highlights Section */}
               <Card>
                 <CardHeader><CardTitle className="text-lg">Program Highlights Section</CardTitle></CardHeader>
                 <CardContent className="space-y-6">
@@ -183,23 +181,21 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                       <h4 className="font-semibold">Highlight {index + 1}</h4>
                       <FormField control={form.control} name={`programHighlights.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                       <FormField control={form.control} name={`programHighlights.${index}.description`} render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                      <FormField control={form.control} name={`programHighlights.${index}.imageUrl`} render={({ field }) => ( <FormItem> <FormLabel>Image URL</FormLabel> <FormControl><Input placeholder="https://..." {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                      <ImageUploadInput fieldName={`programHighlights.${index}.imageUrl`} label="Image" />
                     </div>
                   ))}
                 </CardContent>
               </Card>
 
-              {/* Community Section */}
               <Card>
                 <CardHeader><CardTitle className="text-lg">Community Section</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                   <FormField control={form.control} name="community.title" render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                   <FormField control={form.control} name="community.description" render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                  <FormField control={form.control} name="community.imageUrl" render={({ field }) => ( <FormItem> <FormLabel>Image URL</FormLabel> <FormControl><Input placeholder="https://..." {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                  <ImageUploadInput fieldName="community.imageUrl" label="Image" />
                 </CardContent>
               </Card>
               
-              {/* News Section */}
               <Card>
                 <CardHeader><CardTitle className="text-lg">News & Events Section</CardTitle></CardHeader>
                 <CardContent className="space-y-6">
@@ -209,7 +205,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                       <FormField control={form.control} name={`news.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                       <FormField control={form.control} name={`news.${index}.date`} render={({ field }) => ( <FormItem> <FormLabel>Date</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                       <FormField control={form.control} name={`news.${index}.description`} render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                      <FormField control={form.control} name={`news.${index}.imageUrl`} render={({ field }) => ( <FormItem> <FormLabel>Image URL</FormLabel> <FormControl><Input placeholder="https://..." {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                      <ImageUploadInput fieldName={`news.${index}.imageUrl`} label="Image" />
                     </div>
                   ))}
                 </CardContent>
@@ -231,12 +227,12 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                       <div className="flex-grow space-y-4">
                         <FormField control={form.control} name={`academicsPage.programs.${index}.name`} render={({ field }) => ( <FormItem> <FormLabel>Program Name</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                         <FormField control={form.control} name={`academicsPage.programs.${index}.description`} render={({ field }) => ( <FormItem> <FormLabel>Program Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                        <FormField control={form.control} name={`academicsPage.programs.${index}.imageUrl`} render={({ field }) => ( <FormItem> <FormLabel>Image URL</FormLabel> <FormControl><Input placeholder="https://..." {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                        <ImageUploadInput fieldName={`academicsPage.programs.${index}.imageUrl`} label="Image" />
                       </div>
                       <Button type="button" variant="destructive" size="icon" onClick={() => removeProgram(index)}> <Trash2 className="h-4 w-4" /> </Button>
                     </div>
                   ))}
-                  <Button type="button" variant="outline" size="sm" onClick={() => appendProgram({ name: "", description: "", imageUrl: "" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Program </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => appendProgram({ name: "", description: "", imageUrl: "https://placehold.co/600x400.png" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Program </Button>
                 </CardContent>
               </Card>
             </AccordionContent>
@@ -274,7 +270,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
               <FormField control={form.control} name="contactPage.address" render={({ field }) => ( <FormItem> <FormLabel>Address</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
               <FormField control={form.control} name="contactPage.phone" render={({ field }) => ( <FormItem> <FormLabel>Phone Number</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
               <FormField control={form.control} name="contactPage.email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-              <FormField control={form.control} name="contactPage.mapImageUrl" render={({ field }) => ( <FormItem> <FormLabel>Map Image URL</FormLabel> <FormControl><Input placeholder="https://..." {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+              <ImageUploadInput fieldName="contactPage.mapImageUrl" label="Map Image" />
             </AccordionContent>
           </AccordionItem>
           
@@ -291,12 +287,12 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                       <div className="flex-grow space-y-4">
                         <FormField control={form.control} name={`studentLifePage.features.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Feature Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                         <FormField control={form.control} name={`studentLifePage.features.${index}.description`} render={({ field }) => ( <FormItem> <FormLabel>Feature Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                        <FormField control={form.control} name={`studentLifePage.features.${index}.imageUrl`} render={({ field }) => ( <FormItem> <FormLabel>Image URL</FormLabel> <FormControl><Input placeholder="https://..." {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                        <ImageUploadInput fieldName={`studentLifePage.features.${index}.imageUrl`} label="Image" />
                       </div>
                       <Button type="button" variant="destructive" size="icon" onClick={() => removeFeature(index)}> <Trash2 className="h-4 w-4" /> </Button>
                     </div>
                   ))}
-                  <Button type="button" variant="outline" size="sm" onClick={() => appendFeature({ title: "", description: "", imageUrl: "" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Feature </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => appendFeature({ title: "", description: "", imageUrl: "https://placehold.co/600x400.png" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Feature </Button>
                 </CardContent>
               </Card>
             </AccordionContent>
