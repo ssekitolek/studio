@@ -34,7 +34,7 @@ const websiteContentSchema = z.object({
     title: z.string().min(1, "Highlight title is required."),
     description: z.string().min(1, "Highlight description is required."),
     imageUrl: z.string().url("Must be a valid URL."),
-  })).length(3, "There must be exactly 3 program highlights."),
+  })),
   community: z.object({
       title: z.string().min(1, "Community title is required."),
       description: z.string().min(1, "Community description is required."),
@@ -45,7 +45,7 @@ const websiteContentSchema = z.object({
     date: z.string().min(1, "News date is required."),
     description: z.string().min(1, "News description is required."),
     imageUrl: z.string().url("Must be a valid URL."),
-  })).length(3, "There must be exactly 3 news items."),
+  })),
   inquireSection: z.object({
     buttonText: z.string().min(1, "Button text is required."),
     buttonLink: z.string().min(1, "Button link is required."),
@@ -108,8 +108,8 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
   });
 
   const { fields: atAGlanceFields, append: appendStat, remove: removeStat } = useFieldArray({ control: form.control, name: "atAGlance" });
-  const { fields: programHighlightFields } = useFieldArray({ control: form.control, name: "programHighlights" });
-  const { fields: newsFields } = useFieldArray({ control: form.control, name: "news" });
+  const { fields: programHighlightFields, append: appendHighlight, remove: removeHighlight } = useFieldArray({ control: form.control, name: "programHighlights" });
+  const { fields: newsFields, append: appendNews, remove: removeNews } = useFieldArray({ control: form.control, name: "news" });
   const { fields: academicProgramsFields, append: appendProgram, remove: removeProgram } = useFieldArray({ control: form.control, name: "academicsPage.programs" });
   const { fields: admissionProcessFields, append: appendProcess, remove: removeProcess } = useFieldArray({ control: form.control, name: "admissionsPage.process" });
   const { fields: studentLifeFeatures, append: appendFeature, remove: removeFeature } = useFieldArray({ control: form.control, name: "studentLifePage.features" });
@@ -175,15 +175,21 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
 
               <Card>
                 <CardHeader><CardTitle className="text-lg">Program Highlights Section</CardTitle></CardHeader>
-                <CardContent className="space-y-6">
-                  {programHighlightFields.map((field, index) => (
-                    <div key={field.id} className="p-4 border rounded-lg space-y-4">
-                      <h4 className="font-semibold">Highlight {index + 1}</h4>
-                      <FormField control={form.control} name={`programHighlights.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                      <FormField control={form.control} name={`programHighlights.${index}.description`} render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                      <ImageUploadInput fieldName={`programHighlights.${index}.imageUrl`} label="Image URL" />
-                    </div>
-                  ))}
+                <CardContent className="space-y-4">
+                  <div className="space-y-4">
+                    {programHighlightFields.map((field, index) => (
+                      <div key={field.id} className="flex items-start gap-4 p-4 border rounded-lg">
+                        <div className="flex-grow space-y-4">
+                          <h4 className="font-semibold">Highlight {index + 1}</h4>
+                          <FormField control={form.control} name={`programHighlights.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                          <FormField control={form.control} name={`programHighlights.${index}.description`} render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                          <ImageUploadInput fieldName={`programHighlights.${index}.imageUrl`} label="Image URL" />
+                        </div>
+                        <Button type="button" variant="destructive" size="icon" onClick={() => removeHighlight(index)}> <Trash2 className="h-4 w-4" /> </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => appendHighlight({ title: "", description: "", imageUrl: "https://placehold.co/600x400.png" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add Highlight </Button>
                 </CardContent>
               </Card>
 
@@ -198,16 +204,22 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
               
               <Card>
                 <CardHeader><CardTitle className="text-lg">News & Events Section</CardTitle></CardHeader>
-                <CardContent className="space-y-6">
-                  {newsFields.map((field, index) => (
-                    <div key={field.id} className="p-4 border rounded-lg space-y-4">
-                      <h4 className="font-semibold">News Item {index + 1}</h4>
-                      <FormField control={form.control} name={`news.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                      <FormField control={form.control} name={`news.${index}.date`} render={({ field }) => ( <FormItem> <FormLabel>Date</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                      <FormField control={form.control} name={`news.${index}.description`} render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                      <ImageUploadInput fieldName={`news.${index}.imageUrl`} label="Image URL" />
-                    </div>
-                  ))}
+                <CardContent className="space-y-4">
+                  <div className="space-y-4">
+                    {newsFields.map((field, index) => (
+                      <div key={field.id} className="flex items-start gap-4 p-4 border rounded-lg">
+                        <div className="flex-grow space-y-4">
+                          <h4 className="font-semibold">News Item {index + 1}</h4>
+                          <FormField control={form.control} name={`news.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                          <FormField control={form.control} name={`news.${index}.date`} render={({ field }) => ( <FormItem> <FormLabel>Date</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                          <FormField control={form.control} name={`news.${index}.description`} render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                          <ImageUploadInput fieldName={`news.${index}.imageUrl`} label="Image URL" />
+                        </div>
+                        <Button type="button" variant="destructive" size="icon" onClick={() => removeNews(index)}> <Trash2 className="h-4 w-4" /> </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => appendNews({ title: "", date: "", description: "", imageUrl: "https://placehold.co/600x400.png" })}> <PlusCircle className="mr-2 h-4 w-4" /> Add News Item </Button>
                 </CardContent>
               </Card>
 
