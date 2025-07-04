@@ -1,10 +1,9 @@
 
-
 'use server';
 
 import { db } from "@/lib/firebase";
 import type { WebsiteContent, SimplePageContent } from "@/lib/types";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { revalidatePath } from "next/cache";
 import { isValidUrl } from '@/lib/utils';
 
@@ -98,8 +97,8 @@ const defaultContent: WebsiteContent = {
   },
   contactPage: {
     title: "Get in Touch",
-    address: "St. Mbaaga's College, Naddangira, Uganda",
-    phone: "+256 758013161/ +256782923384",
+    address: "P.O BOX 8 Naddangira",
+    phone: "0758013161 / 0782923384",
     email: "ssegawarichard7@gmail.com",
     mapImageUrl: "https://placehold.co/1200x400.png",
   },
@@ -161,24 +160,6 @@ const defaultContent: WebsiteContent = {
   visitPage: simplePageDefault("Visit Us", "Experience Our Community", "campus welcome")
 };
 
-function deepMerge(target: any, source: any) {
-  const output = { ...target };
-
-  if (target && typeof target === 'object' && source && typeof source === 'object') {
-    Object.keys(source).forEach(key => {
-      if (Array.isArray(source[key])) {
-        output[key] = source[key];
-      } else if (source[key] && typeof source[key] === 'object' && key in target && target[key] && typeof target[key] === 'object') {
-        output[key] = deepMerge(target[key], source[key]);
-      } else {
-        output[key] = source[key];
-      }
-    });
-  }
-
-  return output;
-}
-
 function sanitizeContentUrls(content: WebsiteContent): WebsiteContent {
     const sanitized = JSON.parse(JSON.stringify(content)); 
 
@@ -193,6 +174,7 @@ function sanitizeContentUrls(content: WebsiteContent): WebsiteContent {
             arr.forEach(item => {
                 if (item && item.hasOwnProperty('imageUrls') && Array.isArray(item.imageUrls)) {
                     item.imageUrls = item.imageUrls.map((url: any) => sanitizeUrl(url, fallback));
+                    if(item.imageUrls.length === 0) item.imageUrls.push(fallback);
                 }
             });
         }
@@ -239,8 +221,31 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
     const contentRef = doc(db, "website_content", "homepage");
     const contentSnap = await getDoc(contentRef);
     if (contentSnap.exists()) {
-      const data = contentSnap.data() as Partial<WebsiteContent>;
-      const mergedContent = deepMerge(defaultContent, data);
+      const data = contentSnap.data();
+      const mergedContent = {
+        ...defaultContent,
+        ...data,
+        logoUrl: data.logoUrl || defaultContent.logoUrl,
+        heroSlideshowSection: { ...defaultContent.heroSlideshowSection, ...(data.heroSlideshowSection || {}) },
+        whyUsSection: { ...defaultContent.whyUsSection, ...(data.whyUsSection || {}) },
+        signatureProgramsSection: { ...defaultContent.signatureProgramsSection, ...(data.signatureProgramsSection || {}) },
+        newsSection: { ...defaultContent.newsSection, ...(data.newsSection || {}) },
+        academicsPage: { ...defaultContent.academicsPage, ...(data.academicsPage || {}) },
+        admissionsPage: { ...defaultContent.admissionsPage, ...(data.admissionsPage || {}) },
+        contactPage: { ...defaultContent.contactPage, ...(data.contactPage || {}) },
+        studentLifePage: { ...defaultContent.studentLifePage, ...(data.studentLifePage || {}) },
+        missionVisionPage: { ...defaultContent.missionVisionPage, ...(data.missionVisionPage || {}) },
+        campusPage: { ...defaultContent.campusPage, ...(data.campusPage || {}) },
+        clubsPage: { ...defaultContent.clubsPage, ...(data.clubsPage || {}) },
+        collegeCounselingPage: { ...defaultContent.collegeCounselingPage, ...(data.collegeCounselingPage || {}) },
+        employmentPage: { ...defaultContent.employmentPage, ...(data.employmentPage || {}) },
+        facultyPage: { ...defaultContent.facultyPage, ...(data.facultyPage || {}) },
+        historyPage: { ...defaultContent.historyPage, ...(data.historyPage || {}) },
+        parentsPage: { ...defaultContent.parentsPage, ...(data.parentsPage || {}) },
+        tuitionPage: { ...defaultContent.tuitionPage, ...(data.tuitionPage || {}) },
+        visitPage: { ...defaultContent.visitPage, ...(data.visitPage || {}) },
+      };
+      
       const sanitizedContent = sanitizeContentUrls(mergedContent);
       return sanitizedContent;
     } else {
@@ -253,19 +258,29 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
   }
 }
 
-export async function updateWebsiteContent(content: WebsiteContent): Promise<{ success: boolean; message: string }> {
+export async function updateWebsiteSection(
+  section: keyof WebsiteContent | 'logoUrl',
+  data: any
+): Promise<{ success: boolean; message: string }> {
   if (!db) {
     return { success: false, message: "Firestore not initialized." };
   }
   try {
     const contentRef = doc(db, "website_content", "homepage");
-    await setDoc(contentRef, content, { merge: true });
+
+    // If updating logoUrl, it's a top-level field.
+    // Otherwise, use dot notation for nested objects.
+    const payload = section === 'logoUrl' ? { logoUrl: data } : { [section]: data };
     
+    await updateDoc(contentRef, payload);
+    
+    // This is the most crucial part. Revalidate the entire site layout.
     revalidatePath("/", "layout");
     
-    return { success: true, message: "Website content updated successfully." };
+    const friendlySectionName = section === 'logoUrl' ? 'Logo URL' : section.replace(/([A-Z])/g, ' $1').replace(/Page/g, ' Page').trim();
+    return { success: true, message: `${friendlySectionName} updated successfully.` };
   } catch (error) {
-    console.error("Error updating website content:", error);
-    return { success: false, message: `Failed to update content: ${error instanceof Error ? error.message : "Unknown error"}` };
+    console.error(`Error updating website section ${section}:`, error);
+    return { success: false, message: `Failed to update ${section}: ${error instanceof Error ? error.message : "Unknown error"}` };
   }
 }
