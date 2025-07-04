@@ -1,11 +1,10 @@
 
 'use server';
 
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import type { WebsiteContent } from "@/lib/types";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { revalidatePath } from "next/cache";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
 const defaultContent: WebsiteContent = {
   logoUrl: "https://placehold.co/100x100.png",
@@ -176,81 +175,5 @@ export async function updateWebsiteContent(content: WebsiteContent): Promise<{ s
   } catch (error) {
     console.error("Error updating website content:", error);
     return { success: false, message: `Failed to update content: ${error instanceof Error ? error.message : "Unknown error"}` };
-  }
-}
-
-export async function uploadWebsiteMedia(formData: FormData): Promise<{ success: boolean; message: string; url?: string }> {
-  if (!storage) {
-    return { success: false, message: "Firebase Storage is not configured in the application code." };
-  }
-
-  const file = formData.get('file') as File;
-  const oldFileUrl = formData.get('oldFileUrl') as string | null;
-
-  if (!file) {
-    return { success: false, message: "No file provided." };
-  }
-
-  // Delete the old file if one was provided
-  if (oldFileUrl && oldFileUrl.includes("firebasestorage.googleapis.com")) {
-      try {
-        const oldFileRef = ref(storage, oldFileUrl);
-        await deleteObject(oldFileRef);
-      } catch (error: any) {
-          if (error.code !== 'storage/object-not-found') {
-              console.warn("Could not delete old image, continuing with upload:", error);
-          }
-      }
-  }
-
-  const fileBuffer = Buffer.from(await file.arrayBuffer());
-  const filename = `website-media/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
-  const storageRef = ref(storage, filename);
-
-  try {
-    await uploadBytes(storageRef, fileBuffer, {
-      contentType: file.type,
-    });
-    const downloadURL = await getDownloadURL(storageRef);
-    return { success: true, message: "Media uploaded successfully.", url: downloadURL };
-  } catch (error: any) {
-    console.error("Error uploading to Firebase Storage:", error);
-    
-    // Provide more specific error messages
-    let userMessage = `Upload failed: ${error.message || "An unknown error occurred"}`;
-    if (error.code === 'storage/unauthorized') {
-        userMessage = "Upload failed: Permission denied. Please check your Firebase Storage security rules in the Firebase Console. You may need to allow writes.";
-    } else if (error.code === 'storage/project-not-found') {
-        userMessage = "Upload failed: Firebase project not found. Please verify your NEXT_PUBLIC_FIREBASE_PROJECT_ID in the .env file.";
-    } else if (error.code === 'storage/bucket-not-found') {
-        userMessage = "Upload failed: Firebase Storage bucket not found. Please verify your NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET in the .env file and ensure Storage is enabled.";
-    }
-
-    return { success: false, message: userMessage };
-  }
-}
-
-export async function deleteWebsiteMedia(fileUrl: string): Promise<{ success: boolean; message: string }> {
-   if (!storage) {
-    return { success: false, message: "Firebase Storage is not configured." };
-  }
-  if (!fileUrl || !fileUrl.includes("firebasestorage.googleapis.com")) {
-    return { success: true, message: "File is not a Firebase Storage URL, no deletion needed." };
-  }
-
-  try {
-    const fileRef = ref(storage, fileUrl);
-    await deleteObject(fileRef);
-    return { success: true, message: "Media deleted successfully." };
-  } catch (error: any) {
-     let userMessage = `Deletion failed: ${error.message || "An unknown error occurred"}`;
-     if (error.code === 'storage/object-not-found') {
-        console.warn(`Attempted to delete a file that doesn't exist: ${fileUrl}`);
-        return { success: true, message: "File was already deleted or did not exist." };
-     } else if (error.code === 'storage/unauthorized') {
-        userMessage = "Deletion failed: Permission denied. Please check your Firebase Storage security rules in the Firebase Console.";
-     }
-    console.error("Error deleting from Firebase Storage:", error);
-    return { success: false, message: userMessage };
   }
 }

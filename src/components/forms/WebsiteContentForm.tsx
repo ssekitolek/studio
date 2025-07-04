@@ -138,7 +138,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
               <Card>
                 <CardHeader><CardTitle className="text-lg">Hero Slideshow Section</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
-                  <ImageUploadInput fieldName="logoUrl" label="Logo Image" />
+                  <ImageUploadInput fieldName="logoUrl" label="Logo Image URL" />
                   <FormField control={form.control} name="inquireSection.buttonText" render={({ field }) => ( <FormItem> <FormLabel>Button Text</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                   <FormField control={form.control} name="inquireSection.buttonLink" render={({ field }) => ( <FormItem> <FormLabel>Button Link</FormLabel> <FormControl><Input placeholder="#" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
 
@@ -149,7 +149,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                         <div className="flex-grow space-y-4">
                           <FormField control={form.control} name={`inquireSection.slides.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Slide Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                           <FormField control={form.control} name={`inquireSection.slides.${index}.subtitle`} render={({ field }) => ( <FormItem> <FormLabel>Slide Subtitle</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                          <ImageUploadInput fieldName={`inquireSection.slides.${index}.imageUrl`} label="Background Image" />
+                          <ImageUploadInput fieldName={`inquireSection.slides.${index}.imageUrl`} label="Background Image URL" />
                         </div>
                         <Button type="button" variant="destructive" size="icon" onClick={() => removeSlide(index)}> <Trash2 className="h-4 w-4" /> </Button>
                       </div>
@@ -181,7 +181,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                       <h4 className="font-semibold">Highlight {index + 1}</h4>
                       <FormField control={form.control} name={`programHighlights.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                       <FormField control={form.control} name={`programHighlights.${index}.description`} render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                      <ImageUploadInput fieldName={`programHighlights.${index}.imageUrl`} label="Image" />
+                      <ImageUploadInput fieldName={`programHighlights.${index}.imageUrl`} label="Image URL" />
                     </div>
                   ))}
                 </CardContent>
@@ -192,7 +192,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                 <CardContent className="space-y-4">
                   <FormField control={form.control} name="community.title" render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                   <FormField control={form.control} name="community.description" render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                  <ImageUploadInput fieldName="community.imageUrl" label="Image" />
+                  <ImageUploadInput fieldName="community.imageUrl" label="Image URL" />
                 </CardContent>
               </Card>
               
@@ -205,7 +205,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                       <FormField control={form.control} name={`news.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                       <FormField control={form.control} name={`news.${index}.date`} render={({ field }) => ( <FormItem> <FormLabel>Date</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                       <FormField control={form.control} name={`news.${index}.description`} render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                      <ImageUploadInput fieldName={`news.${index}.imageUrl`} label="Image" />
+                      <ImageUploadInput fieldName={`news.${index}.imageUrl`} label="Image URL" />
                     </div>
                   ))}
                 </CardContent>
@@ -227,7 +227,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                       <div className="flex-grow space-y-4">
                         <FormField control={form.control} name={`academicsPage.programs.${index}.name`} render={({ field }) => ( <FormItem> <FormLabel>Program Name</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                         <FormField control={form.control} name={`academicsPage.programs.${index}.description`} render={({ field }) => ( <FormItem> <FormLabel>Program Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                        <ImageUploadInput fieldName={`academicsPage.programs.${index}.imageUrl`} label="Image" />
+                        <ImageUploadInput fieldName={`academicsPage.programs.${index}.imageUrl`} label="Image URL" />
                       </div>
                       <Button type="button" variant="destructive" size="icon" onClick={() => removeProgram(index)}> <Trash2 className="h-4 w-4" /> </Button>
                     </div>
@@ -270,7 +270,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
               <FormField control={form.control} name="contactPage.address" render={({ field }) => ( <FormItem> <FormLabel>Address</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
               <FormField control={form.control} name="contactPage.phone" render={({ field }) => ( <FormItem> <FormLabel>Phone Number</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
               <FormField control={form.control} name="contactPage.email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-              <ImageUploadInput fieldName="contactPage.mapImageUrl" label="Map Image" />
+              <ImageUploadInput fieldName="contactPage.mapImageUrl" label="Map Image URL" />
             </AccordionContent>
           </AccordionItem>
           
@@ -287,7 +287,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
                       <div className="flex-grow space-y-4">
                         <FormField control={form.control} name={`studentLifePage.features.${index}.title`} render={({ field }) => ( <FormItem> <FormLabel>Feature Title</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                         <FormField control={form.control} name={`studentLifePage.features.${index}.description`} render={({ field }) => ( <FormItem> <FormLabel>Feature Description</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                        <ImageUploadInput fieldName={`studentLifePage.features.${index}.imageUrl`} label="Image" />
+                        <ImageUploadInput fieldName={`studentLifePage.features.${index}.imageUrl`} label="Image URL" />
                       </div>
                       <Button type="button" variant="destructive" size="icon" onClick={() => removeFeature(index)}> <Trash2 className="h-4 w-4" /> </Button>
                     </div>
