@@ -1,5 +1,4 @@
 
-import { PageHeader } from "@/components/shared/PageHeader";
 import { getWebsiteContent } from "@/lib/actions/website-actions";
 import Image from "next/image";
 import { Mail, Phone, MapPin } from "lucide-react";

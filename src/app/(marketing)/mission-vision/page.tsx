@@ -1,7 +1,6 @@
 
-import { PageHeader } from "@/components/shared/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Gem, Target, Eye, Heart } from 'lucide-react';
+import { Card } from "@/components/ui/card";
+import { Eye, Heart, Target } from 'lucide-react';
 import Image from 'next/image';
 
 export default function MissionVisionPage() {

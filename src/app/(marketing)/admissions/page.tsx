@@ -1,9 +1,8 @@
 
-import { PageHeader } from "@/components/shared/PageHeader";
 import { getWebsiteContent } from "@/lib/actions/website-actions";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ClipboardCheck, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 
 export default async function AdmissionsPage() {
@@ -37,7 +36,7 @@ export default async function AdmissionsPage() {
                 <div className="absolute -left-[50px] top-0 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-2xl transition-transform duration-300 group-hover:scale-110 shadow-lg">
                   {item.step}
                 </div>
-                <h3 className="text-2xl font-headline font-semibold text-primary transition-colors duration-300 group-hover:text-accent">{item.title}</h3>
+                <h3 className="text-2xl font-headline font-semibold text-primary transition-colors duration-300 group-hover:text-accent-foreground">{item.title}</h3>
                 <p className="mt-2 text-muted-foreground">{item.description}</p>
               </div>
             ))}
