@@ -2,8 +2,6 @@
 import { getWebsiteContent } from '@/lib/actions/website-actions';
 import { MarketingHeader } from '@/components/layout/MarketingHeader';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 
 export default async function MarketingLayout({
   children,
@@ -47,15 +45,6 @@ export default async function MarketingLayout({
                         <li><Link href="/login/dos" className="hover:text-accent">D.O.S. Login</Link></li>
                         <li><Link href="/login/admin" className="hover:text-accent">Admin Login</Link></li>
                     </ul>
-                </div>
-
-                <div className="md:col-span-4">
-                    <h5 className="font-semibold uppercase tracking-wider text-sm">Stay Connected</h5>
-                    <p className="mt-4 text-sm">Subscribe to our newsletter for the latest updates and news from campus.</p>
-                    <div className="mt-4 flex gap-2">
-                        <Input type="email" placeholder="Enter your email" className="bg-primary-foreground/20 border-primary-foreground/50 placeholder:text-primary-foreground/70 text-primary-foreground flex-1" />
-                        <Button variant="secondary">Subscribe</Button>
-                    </div>
                 </div>
             </div>
         </div>

@@ -44,7 +44,7 @@ const websiteContentSchema = z.object({
       description: z.string().min(1, "Point description is required."),
     })),
   }),
-  inquireApplySection: z.object({
+  connectWithUsSection: z.object({
     heading: z.string().min(1, "Heading is required."),
     inquireText: z.string().min(1, "Inquire button text is required."),
     inquireLink: z.string().min(1, "Inquire link is required."),
@@ -86,7 +86,7 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
       logoUrl: initialData.logoUrl,
       heroSection: initialData.heroSection,
       whyUsSection: initialData.whyUsSection,
-      inquireApplySection: initialData.inquireApplySection,
+      connectWithUsSection: initialData.connectWithUsSection,
       signatureProgramsSection: initialData.signatureProgramsSection,
       newsSection: initialData.newsSection,
     },
@@ -168,16 +168,16 @@ export function WebsiteContentForm({ initialData }: WebsiteContentFormProps) {
           </AccordionItem>
 
           <AccordionItem value="item-3" className="border rounded-lg bg-card">
-            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Inquire/Apply Section</CardTitle></AccordionTrigger>
+            <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Connect With Us Section</CardTitle></AccordionTrigger>
             <AccordionContent className="p-4 pt-0 space-y-4">
-                <FormField control={control} name="inquireApplySection.heading" render={({ field }) => ( <FormItem><FormLabel>Heading</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={control} name="connectWithUsSection.heading" render={({ field }) => ( <FormItem><FormLabel>Heading</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <div className="grid grid-cols-2 gap-4">
-                    <FormField control={control} name="inquireApplySection.inquireText" render={({ field }) => ( <FormItem><FormLabel>Inquire Button Text</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                    <FormField control={control} name="inquireApplySection.inquireLink" render={({ field }) => ( <FormItem><FormLabel>Inquire Button Link</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField control={control} name="connectWithUsSection.inquireText" render={({ field }) => ( <FormItem><FormLabel>Inquire Button Text</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField control={control} name="connectWithUsSection.inquireLink" render={({ field }) => ( <FormItem><FormLabel>Inquire Button Link</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 </div>
                  <div className="grid grid-cols-2 gap-4">
-                    <FormField control={control} name="inquireApplySection.applyText" render={({ field }) => ( <FormItem><FormLabel>Apply Button Text</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                    <FormField control={control} name="inquireApplySection.applyLink" render={({ field }) => ( <FormItem><FormLabel>Apply Button Link</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField control={control} name="connectWithUsSection.applyText" render={({ field }) => ( <FormItem><FormLabel>Apply Button Text</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <FormField control={control} name="connectWithUsSection.applyLink" render={({ field }) => ( <FormItem><FormLabel>Apply Button Link</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 </div>
             </AccordionContent>
           </AccordionItem>

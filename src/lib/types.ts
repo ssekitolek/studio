@@ -7,7 +7,7 @@ export interface Teacher {
   name: string;
   email: string;
   password?: string;
-  subjectsAssigned: Array<{ classId: string; subjectId: string; examIds: string[] }>;
+  subjectsAssigned: Array<{ classId: string; subjectId: string; examIds:string[] }>;
 }
 
 export interface Student {
@@ -328,7 +328,7 @@ export interface WebsiteContent {
       description: string;
     }>;
   };
-  inquireApplySection: {
+  connectWithUsSection: {
     heading: string;
     inquireText: string;
     inquireLink: string;
@@ -351,7 +351,6 @@ export interface WebsiteContent {
         imageUrl: string;
     }>;
   };
-  // The following pages are kept but may need redesigning later
   academicsPage: {
     title: string;
     description: string;

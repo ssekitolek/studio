@@ -15,7 +15,7 @@ const iconMap: { [key: string]: LucideIcon } = {
 
 export default async function SchoolHomePage() {
   const content = await getWebsiteContent();
-  const { heroSection, whyUsSection, inquireApplySection, signatureProgramsSection, newsSection } = content;
+  const { heroSection, whyUsSection, connectWithUsSection, signatureProgramsSection, newsSection } = content;
 
   return (
     <div className="bg-background text-foreground">
@@ -68,14 +68,14 @@ export default async function SchoolHomePage() {
         </div>
       </section>
       
-      {/* Inquire/Apply Section */}
+      {/* Connect With Us Section */}
       <section className="bg-secondary">
         <div className="container mx-auto px-4 md:px-6 py-12">
             <div className="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-8 text-center md:text-left">
-                <h3 className="text-2xl font-headline font-semibold">{inquireApplySection.heading}</h3>
+                <h3 className="text-2xl font-headline font-semibold">{connectWithUsSection.heading}</h3>
                 <div className="flex gap-4">
-                    <Button variant="outline" size="lg" asChild><Link href={inquireApplySection.inquireLink}>{inquireApplySection.inquireText}</Link></Button>
-                    <Button variant="default" size="lg" asChild><Link href={inquireApplySection.applyLink}>{inquireApplySection.applyText}</Link></Button>
+                    <Button variant="outline" size="lg" asChild><Link href={connectWithUsSection.inquireLink}>{connectWithUsSection.inquireText}</Link></Button>
+                    <Button variant="default" size="lg" asChild><Link href={connectWithUsSection.applyLink}>{connectWithUsSection.applyText}</Link></Button>
                 </div>
             </div>
         </div>

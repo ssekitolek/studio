@@ -13,7 +13,7 @@ const defaultContent: WebsiteContent = {
     subheading: "At St. Mbaaga's, we foster a vibrant community where intellectual curiosity and personal growth are at the heart of everything we do.",
     imageUrl: "https://placehold.co/1920x1080.png",
     primaryCtaText: "Inquire Now",
-    primaryCtaLink: "/admissions",
+    primaryCtaLink: "/contact",
     secondaryCtaText: "Explore Academics",
     secondaryCtaLink: "/academics"
   },
@@ -38,8 +38,8 @@ const defaultContent: WebsiteContent = {
       }
     ]
   },
-  inquireApplySection: {
-    heading: "Your Journey Starts Here",
+  connectWithUsSection: {
+    heading: "Connect With Us",
     inquireText: "Inquire",
     inquireLink: "/contact",
     applyText: "Apply",
@@ -61,7 +61,6 @@ const defaultContent: WebsiteContent = {
       { title: "Community Service Drive a Huge Success", date: "June 10, 2025", imageUrl: "https://placehold.co/600x400.png" }
     ]
   },
-  // Default values for other pages are retained but might need updates based on new design
   academicsPage: {
     title: "Our Academic Programs",
     description: "We offer a comprehensive curriculum designed to challenge and inspire students at every level.",
@@ -132,7 +131,7 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
         ...data,
         heroSection: { ...defaultContent.heroSection, ...data.heroSection },
         whyUsSection: { ...defaultContent.whyUsSection, ...data.whyUsSection },
-        inquireApplySection: { ...defaultContent.inquireApplySection, ...data.inquireApplySection },
+        connectWithUsSection: { ...defaultContent.connectWithUsSection, ...data.connectWithUsSection },
         signatureProgramsSection: { ...defaultContent.signatureProgramsSection, ...data.signatureProgramsSection },
         newsSection: { ...defaultContent.newsSection, ...data.newsSection },
       };
