@@ -2,10 +2,11 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { getWebsiteContent } from '@/lib/actions/website-actions';
 import { BookOpen, Users, Trophy, ArrowRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { SignatureProgramsCarousel } from '@/components/marketing/SignatureProgramsCarousel';
+import { NewsCarousel } from '@/components/marketing/NewsCarousel';
 
 const iconMap: { [key: string]: LucideIcon } = {
   BookOpen,
@@ -77,24 +78,8 @@ export default async function SchoolHomePage() {
           <div className="text-center max-w-3xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-headline font-bold text-primary">{signatureProgramsSection.heading}</h2>
           </div>
-          <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
-            {signatureProgramsSection.programs.map((program, index) => (
-              <Card key={index} className="bg-card overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
-                <div className="relative h-64 w-full">
-                  <Image
-                    src={(program.imageUrls && program.imageUrls.length > 0) ? program.imageUrls[0] : "https://placehold.co/600x400.png"}
-                    alt={program.title}
-                    fill
-                    className="object-cover"
-                    data-ai-hint={program.title.toLowerCase()}
-                  />
-                </div>
-                <CardContent className="p-6">
-                  <h3 className="text-xl font-bold font-headline">{program.title}</h3>
-                  <p className="mt-2 text-muted-foreground">{program.description}</p>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="mt-12">
+            <SignatureProgramsCarousel programs={signatureProgramsSection.programs} />
           </div>
         </div>
       </section>
@@ -108,25 +93,7 @@ export default async function SchoolHomePage() {
                 <Link href="#">All News <ArrowRight className="ml-2" /></Link>
             </Button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {newsSection.posts.map((post, index) => (
-              <Card key={index} className="bg-card overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
-                 <div className="relative h-64 w-full">
-                  <Image
-                    src={(post.imageUrls && post.imageUrls.length > 0) ? post.imageUrls[0] : "https://placehold.co/600x400.png"}
-                    alt={post.title}
-                    fill
-                    className="object-cover"
-                    data-ai-hint="school news event"
-                  />
-                </div>
-                <CardContent className="p-6">
-                  <p className="text-sm text-muted-foreground">{post.date}</p>
-                  <h3 className="text-xl font-bold font-headline mt-2">{post.title}</h3>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <NewsCarousel posts={newsSection.posts} />
         </div>
       </section>
     </div>
