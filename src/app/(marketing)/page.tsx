@@ -28,7 +28,7 @@ export default async function SchoolHomePage() {
       {/* Why Us Section */}
       <section className="py-16 md:py-24">
         <div className="container mx-auto px-4 md:px-6">
-          <div className="text-center max-w-3xl mx-auto">
+          <div className="text-center max-w-3xl mx-auto animate-fade-in-up opacity-0" style={{ animationFillMode: 'forwards', animationDelay: '100ms' }}>
             <h2 className="text-3xl md:text-4xl font-headline font-bold text-primary">{whyUsSection.heading}</h2>
             <p className="mt-4 text-lg text-muted-foreground">{whyUsSection.description}</p>
           </div>
@@ -36,13 +36,19 @@ export default async function SchoolHomePage() {
             {whyUsSection.points.map((point, index) => {
               const Icon = iconMap[point.icon] || BookOpen;
               return (
-                <div key={index} className="text-center">
-                  <div className="flex justify-center items-center h-16 w-16 rounded-full bg-primary/10 mx-auto">
-                    <Icon className="h-8 w-8 text-primary" />
-                  </div>
-                  <h3 className="mt-6 text-xl font-semibold">{point.title}</h3>
-                  <p className="mt-2 text-muted-foreground">{point.description}</p>
-                </div>
+                <Card 
+                  key={index} 
+                  className="text-center transition-all duration-300 ease-in-out hover:shadow-2xl hover:-translate-y-2 group animate-fade-in-up opacity-0 border-2 border-transparent hover:border-primary"
+                  style={{ animationDelay: `${300 + index * 200}ms`, animationFillMode: 'forwards' }}
+                >
+                  <CardContent className="pt-8 flex flex-col items-center">
+                    <div className="flex justify-center items-center h-20 w-20 rounded-full bg-primary/10 mx-auto transition-all duration-300 group-hover:bg-primary group-hover:scale-110">
+                      <Icon className="h-10 w-10 text-primary transition-colors duration-300 group-hover:text-primary-foreground" />
+                    </div>
+                    <h3 className="mt-6 text-xl font-semibold font-headline">{point.title}</h3>
+                    <p className="mt-2 text-muted-foreground">{point.description}</p>
+                  </CardContent>
+                </Card>
               );
             })}
           </div>
