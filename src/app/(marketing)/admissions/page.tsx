@@ -10,8 +10,8 @@ export default async function AdmissionsPage() {
   const { admissionsPage } = content;
 
   return (
-    <div className="animate-fade-in-up">
-       <div className="relative h-[30vh] w-full">
+    <div className="overflow-x-hidden">
+       <div className="relative h-[30vh] w-full animate-fade-in-up">
         <Image 
           src="https://placehold.co/1920x1080.png" 
           alt="Admissions at St. Mbaaga's" 
@@ -29,19 +29,26 @@ export default async function AdmissionsPage() {
 
       <div className="container mx-auto px-4 md:px-6 py-16">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-headline text-primary text-center mb-12">Admissions Process</h2>
+          <h2 className="text-3xl font-headline text-primary text-center mb-12 animate-fade-in-up opacity-0" style={{ animationDelay: '100ms', animationFillMode: 'forwards' }}>Admissions Process</h2>
           <div className="relative border-l-2 border-primary/20 pl-10 space-y-12">
             {admissionsPage.process.map((item, index) => (
-              <div key={index} className="relative group">
-                <div className="absolute -left-[50px] top-0 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-2xl transition-transform duration-300 group-hover:scale-110 shadow-lg">
+              <div 
+                key={index} 
+                className="relative group animate-fade-in-up opacity-0"
+                style={{ animationDelay: `${200 + index * 150}ms`, animationFillMode: 'forwards' }}
+              >
+                <div className="absolute -left-[11px] top-4 h-5 w-5 bg-background border-2 border-primary rounded-full transition-colors duration-300 group-hover:bg-accent" />
+                <div className="absolute -left-[50px] top-0 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-2xl transition-all duration-300 group-hover:scale-110 group-hover:bg-accent group-hover:-rotate-12 shadow-lg">
                   {item.step}
                 </div>
-                <h3 className="text-2xl font-headline font-semibold text-primary transition-colors duration-300 group-hover:text-accent-foreground">{item.title}</h3>
-                <p className="mt-2 text-muted-foreground">{item.description}</p>
+                <div className="transition-transform duration-300 group-hover:translate-x-2">
+                  <h3 className="text-2xl font-headline font-semibold text-primary transition-colors duration-300 group-hover:text-accent">{item.title}</h3>
+                  <p className="mt-2 text-muted-foreground">{item.description}</p>
+                </div>
               </div>
             ))}
           </div>
-          <div className="mt-16 text-center">
+          <div className="mt-16 text-center animate-fade-in-up opacity-0" style={{ animationDelay: `${200 + admissionsPage.process.length * 150}ms`, animationFillMode: 'forwards' }}>
               <Button size="lg" asChild className="text-lg py-7 px-10">
                   <Link href={admissionsPage.formUrl}>
                       Apply Now <ArrowRight className="ml-2 h-5 w-5" />
