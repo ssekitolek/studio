@@ -26,7 +26,7 @@ export default async function SchoolHomePage() {
       <InquireSlideshow content={heroSlideshowSection} />
 
       {/* Why Us Section */}
-      <section className="py-16 md:py-24 bg-secondary">
+      <section className="py-16 md:py-24 bg-secondary/20">
         <div className="container mx-auto px-4 md:px-6">
           <div className="text-center max-w-3xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-headline font-bold text-primary">{whyUsSection.heading}</h2>
@@ -36,8 +36,8 @@ export default async function SchoolHomePage() {
             {whyUsSection.points.map((point, index) => {
               const Icon = iconMap[point.icon] || BookOpen;
               return (
-                <Card key={index} className="bg-background p-8 text-center shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-                  <div className="p-4 inline-block bg-primary/10 rounded-lg mb-6">
+                <Card key={index} className="bg-background p-8 text-center shadow-lg hover:shadow-xl transition-shadow">
+                  <div className="p-4 inline-block bg-primary/10 rounded-full mb-6">
                      <Icon className="h-10 w-10 text-primary" />
                   </div>
                   <h3 className="text-2xl font-bold font-headline">{point.title}</h3>
