@@ -8,6 +8,7 @@ import { BookOpen, Trophy, Users, ArrowRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { InquireSlideshow } from '@/components/marketing/InquireSlideshow';
 import { SignatureProgramsCarousel } from '@/components/marketing/SignatureProgramsCarousel';
+import { NewsCarousel } from '@/components/marketing/NewsCarousel';
 
 const iconMap: { [key: string]: LucideIcon } = {
   BookOpen,
@@ -69,18 +70,8 @@ export default async function SchoolHomePage() {
                 <Link href="#">All News <ArrowRight className="ml-2" /></Link>
             </Button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {newsSection.posts.map((post, index) => (
-              <Card key={index} className="overflow-hidden group shadow-lg hover:shadow-2xl transition-shadow duration-300">
-                <div className="relative h-56 w-full">
-                    <Image src={(post.imageUrls && post.imageUrls.length > 0) ? post.imageUrls[0] : "https://placehold.co/600x400.png"} alt={post.title} fill className="object-cover" data-ai-hint="school news" />
-                </div>
-                <CardContent className="p-6">
-                  <p className="text-sm text-muted-foreground">{post.date}</p>
-                  <h3 className="mt-2 text-lg font-semibold text-primary group-hover:underline">{post.title}</h3>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="mt-12">
+            <NewsCarousel posts={newsSection.posts} />
           </div>
         </div>
       </section>
