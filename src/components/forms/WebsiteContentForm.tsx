@@ -599,7 +599,7 @@ function HousesPageForm({ initialData }: { initialData: WebsiteContent['housesPa
                 <ArrayEditor name="houses" title="House" control={control} renderItem={(index) => (
                     <>
                         <FormField control={control} name={`houses.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                        <FormField control={control} name={`houses.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormMessage> )}/>
+                        <FormField control={control} name={`houses.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
                         <ImageUploadInput fieldName={`houses.${index}.imageUrls.0`} label="Image URL" />
                     </>
                 )}/>
