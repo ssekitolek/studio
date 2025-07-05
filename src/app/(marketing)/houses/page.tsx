@@ -2,7 +2,9 @@
 import { getWebsiteContent } from "@/lib/actions/website-actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Image from "next/image";
-import { Shield } from "lucide-react";
+import { Shield, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default async function HousesPage() {
   const content = await getWebsiteContent();
@@ -42,8 +44,15 @@ export default async function HousesPage() {
               <CardHeader className="text-center">
                 <CardTitle className="text-xl font-headline text-primary flex items-center justify-center gap-2"><Shield /> {house.name}</CardTitle>
               </CardHeader>
-              <CardContent className="flex-grow text-center">
-                <p className="text-muted-foreground">{house.description}</p>
+              <CardContent className="flex-grow text-center flex flex-col justify-between">
+                <p className="text-muted-foreground mb-4">{house.description}</p>
+                {house.name === "St. Mulumba" && (
+                  <Button asChild variant="default" className="mt-auto bg-accent hover:bg-accent/80">
+                    <Link href="/houses/st-mulumba">
+                      View Achievements <ArrowRight className="ml-2 h-4 w-4"/>
+                    </Link>
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ))}
