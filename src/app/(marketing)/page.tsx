@@ -26,7 +26,7 @@ export default async function SchoolHomePage() {
       <InquireSlideshow content={heroSlideshowSection} />
 
       {/* Why Us Section */}
-      <section className="py-16 md:py-24">
+      <section className="py-16 md:py-24 bg-secondary">
         <div className="container mx-auto px-4 md:px-6">
           <div className="text-center max-w-3xl mx-auto animate-fade-in-up opacity-0" style={{ animationFillMode: 'forwards', animationDelay: '100ms' }}>
             <h2 className="text-3xl md:text-4xl font-headline font-bold text-primary">{whyUsSection.heading}</h2>
@@ -36,19 +36,21 @@ export default async function SchoolHomePage() {
             {whyUsSection.points.map((point, index) => {
               const Icon = iconMap[point.icon] || BookOpen;
               return (
-                <Card 
-                  key={index} 
-                  className="text-center transition-all duration-300 ease-in-out hover:shadow-2xl hover:-translate-y-2 group animate-fade-in-up opacity-0 border-2 border-transparent hover:border-primary"
+                <div 
+                  key={index}
+                  className="group relative rounded-lg bg-background p-8 text-left shadow-lg overflow-hidden transition-all duration-500 ease-in-out hover:shadow-2xl hover:-translate-y-2 animate-fade-in-up opacity-0"
                   style={{ animationDelay: `${300 + index * 200}ms`, animationFillMode: 'forwards' }}
                 >
-                  <CardContent className="pt-8 flex flex-col items-center">
-                    <div className="flex justify-center items-center h-20 w-20 rounded-full bg-primary/10 mx-auto transition-all duration-300 group-hover:bg-primary group-hover:scale-110">
-                      <Icon className="h-10 w-10 text-primary transition-colors duration-300 group-hover:text-primary-foreground" />
+                  <div className="absolute top-0 right-0 h-24 w-24 bg-primary/5 rounded-bl-full transition-all duration-500 group-hover:scale-[8]"></div>
+                  
+                  <div className="relative z-10">
+                    <div className="p-4 inline-block bg-primary/10 rounded-lg mb-6">
+                      <Icon className="h-10 w-10 text-primary transition-colors duration-300" />
                     </div>
-                    <h3 className="mt-6 text-xl font-semibold font-headline">{point.title}</h3>
-                    <p className="mt-2 text-muted-foreground">{point.description}</p>
-                  </CardContent>
-                </Card>
+                    <h3 className="text-2xl font-bold font-headline text-foreground group-hover:text-primary-foreground transition-colors duration-500">{point.title}</h3>
+                    <p className="mt-2 text-muted-foreground group-hover:text-primary-foreground/80 transition-colors duration-500">{point.description}</p>
+                  </div>
+                </div>
               );
             })}
           </div>
@@ -56,7 +58,7 @@ export default async function SchoolHomePage() {
       </section>
       
       {/* Signature Programs Section */}
-      <section className="py-16 md:py-24 bg-secondary">
+      <section className="py-16 md:py-24 bg-background">
         <div className="container mx-auto px-4 md:px-6">
           <div className="text-center max-w-3xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-headline font-bold text-primary">{signatureProgramsSection.heading}</h2>
@@ -68,7 +70,7 @@ export default async function SchoolHomePage() {
       </section>
 
       {/* News Section */}
-      <section className="py-16 md:py-24">
+      <section className="py-16 md:py-24 bg-secondary">
         <div className="container mx-auto px-4 md:px-6">
           <div className="flex justify-between items-center mb-12">
             <h2 className="text-3xl md:text-4xl font-headline font-bold text-primary">{newsSection.heading}</h2>
