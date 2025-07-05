@@ -1,10 +1,10 @@
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { getWebsiteContent } from '@/lib/actions/website-actions';
 import { BookOpen, Users, Trophy, ArrowRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { InquireSlideshow } from '@/components/marketing/InquireSlideshow';
 import { SignatureProgramsCarousel } from '@/components/marketing/SignatureProgramsCarousel';
 import { NewsCarousel } from '@/components/marketing/NewsCarousel';
 
@@ -16,40 +16,15 @@ const iconMap: { [key: string]: LucideIcon } = {
 
 export default async function SchoolHomePage() {
   const content = await getWebsiteContent();
-  const { whyUsSection, signatureProgramsSection, newsSection } = content;
+  const { heroSlideshowSection, whyUsSection, signatureProgramsSection, newsSection } = content;
 
   return (
     <div className="bg-background text-foreground">
       {/* Hero Section */}
-      <section className="relative h-[60vh] w-full flex items-center justify-center text-center text-primary-foreground">
-        <Image
-          src="https://placehold.co/1920x1080.png"
-          alt="Legacy of Excellence"
-          fill
-          className="object-cover"
-          priority
-          data-ai-hint="campus building"
-        />
-        <div className="absolute inset-0 bg-black/50" />
-        <div className="relative z-10 p-4">
-          <h1 className="text-4xl md:text-7xl font-headline font-bold drop-shadow-2xl">
-            Legacy of Excellence
-          </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-lg text-primary-foreground/90 drop-shadow-lg">
-            Join a community dedicated to intellectual discovery and profound impact.
-          </p>
-          <div className="mt-8">
-            <Button size="lg" asChild className="text-lg py-7 px-10 bg-destructive hover:bg-destructive/80 text-destructive-foreground transition-transform hover:scale-105">
-              <Link href="/contact">
-                Inquire Now <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </section>
+      <InquireSlideshow content={heroSlideshowSection} />
 
       {/* Why Us Section */}
-      <section className="py-16 md:py-24 bg-background">
+      <section className="py-16 md:py-24 bg-secondary">
         <div className="container mx-auto px-4 md:px-6">
           <div className="text-center max-w-3xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-headline font-bold text-primary">{whyUsSection.heading}</h2>
@@ -59,7 +34,7 @@ export default async function SchoolHomePage() {
             {whyUsSection.points.map((point, index) => {
               const Icon = iconMap[point.icon] || BookOpen;
               return (
-                <div key={index} className="text-center">
+                <div key={index} className="text-center p-8 bg-background rounded-lg shadow-sm hover:shadow-lg transition-shadow">
                   <div className="p-4 inline-block bg-primary/10 rounded-full mb-6">
                      <Icon className="h-10 w-10 text-primary" />
                   </div>
@@ -73,7 +48,7 @@ export default async function SchoolHomePage() {
       </section>
 
       {/* Signature Programs Section */}
-      <section className="py-16 md:py-24 bg-secondary">
+      <section className="py-16 md:py-24 bg-background">
         <div className="container mx-auto px-4 md:px-6">
           <div className="text-center max-w-3xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-headline font-bold text-primary">{signatureProgramsSection.heading}</h2>
@@ -85,7 +60,7 @@ export default async function SchoolHomePage() {
       </section>
 
       {/* News Section */}
-      <section className="py-16 md:py-24 bg-background">
+      <section className="py-16 md:py-24 bg-secondary">
         <div className="container mx-auto px-4 md:px-6">
           <div className="flex justify-between items-center mb-12">
             <h2 className="text-3xl md:text-4xl font-headline font-bold text-primary">{newsSection.heading}</h2>

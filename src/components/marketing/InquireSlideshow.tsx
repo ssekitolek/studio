@@ -61,7 +61,7 @@ export function InquireSlideshow({ content }: InquireSlideshowProps) {
                 {content.slides[currentIndex].subtitle}
             </p>
              <div className={cn("mt-8 transition-all duration-1000 ease-in-out delay-300", isAnimatingOut ? 'opacity-0 -translate-y-4' : 'opacity-100 translate-y-0')}>
-                <Button size="lg" asChild className="text-lg py-7 px-10 bg-accent hover:bg-accent/80 text-accent-foreground transition-transform hover:scale-105">
+                <Button size="lg" asChild className="text-lg py-7 px-10 bg-destructive hover:bg-destructive/80 text-destructive-foreground transition-transform hover:scale-105">
                     <Link href={content.buttonLink}>
                         {content.buttonText} <ArrowRight className="ml-2 h-5 w-5" />
                     </Link>
