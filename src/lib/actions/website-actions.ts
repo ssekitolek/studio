@@ -149,6 +149,17 @@ const defaultContent: WebsiteContent = {
       { title: "Openness to Diversity", description: "Embracing different perspectives and backgrounds to enrich our community." },
     ]
   },
+  housesPage: {
+    title: "School Houses",
+    description: "Fostering community, competition, and camaraderie.",
+    heroImageUrl: "https://placehold.co/1920x1080.png",
+    houses: [
+      { name: "St. Mulumba", description: "Known for determination and resilience.", imageUrls: ["https://placehold.co/600x400.png"] },
+      { name: "St. Kibuuka", description: "Champions of strategy and strength.", imageUrls: ["https://placehold.co/600x400.png"] },
+      { name: "St. Charles", description: "Exemplifying leadership and honor.", imageUrls: ["https://placehold.co/600x400.png"] },
+      { name: "St. Kizito", description: "Embodying spirit and youthful energy.", imageUrls: ["https://placehold.co/600x400.png"] },
+    ],
+  },
   campusPage: simplePageDefault("Our Campus", "Explore Our Facilities", "school campus"),
   clubsPage: simplePageDefault("Clubs & Organizations", "Find Your Passion", "student club"),
   collegeCounselingPage: simplePageDefault("College Counseling", "Guidance for Your Future", "university building"),
@@ -197,6 +208,11 @@ function sanitizeContentUrls(content: WebsiteContent): WebsiteContent {
         sanitized.missionVisionPage.missionImageUrl = sanitizeUrl(sanitized.missionVisionPage.missionImageUrl);
         sanitized.missionVisionPage.visionImageUrl = sanitizeUrl(sanitized.missionVisionPage.visionImageUrl);
     }
+    
+    if (sanitized.housesPage) {
+        sanitized.housesPage.heroImageUrl = sanitizeUrl(sanitized.housesPage.heroImageUrl, 'https://placehold.co/1920x1080.png');
+        sanitizeArrayWithImages(sanitized.housesPage.houses);
+    }
 
     sanitizeSimplePage(sanitized.campusPage);
     sanitizeSimplePage(sanitized.clubsPage);
@@ -244,6 +260,7 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
         parentsPage: { ...defaultContent.parentsPage, ...(data.parentsPage || {}) },
         tuitionPage: { ...defaultContent.tuitionPage, ...(data.tuitionPage || {}) },
         visitPage: { ...defaultContent.visitPage, ...(data.visitPage || {}) },
+        housesPage: { ...defaultContent.housesPage, ...(data.housesPage || {}) },
       };
       
       const sanitizedContent = sanitizeContentUrls(mergedContent);

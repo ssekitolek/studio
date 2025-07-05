@@ -410,6 +410,16 @@ export interface WebsiteContent {
     }>;
   };
   missionVisionPage: MissionVisionPageContent;
+  housesPage: {
+    title: string;
+    description: string;
+    heroImageUrl: string;
+    houses: Array<{
+      name: string;
+      description: string;
+      imageUrls: string[];
+    }>;
+  };
   campusPage: SimplePageContent;
   clubsPage: SimplePageContent;
   collegeCounselingPage: SimplePageContent;

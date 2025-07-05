@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -10,6 +11,7 @@ import { cn } from '@/lib/utils';
 import type { WebsiteContent } from '@/lib/types';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { isValidUrl } from '@/lib/utils';
 
 interface MarketingHeaderProps {
     content: WebsiteContent;
@@ -38,6 +40,7 @@ const navConfig = [
         items: [
             { title: "Student Life", href: "/student-life" },
             { title: "Clubs & Organizations", href: "/clubs" },
+            { title: "School Houses", href: "/houses" },
             { title: "Parent Association", href: "/parents" },
         ]
     },
@@ -65,7 +68,7 @@ export function MarketingHeader({ content }: MarketingHeaderProps) {
     };
   }, []);
 
-  const logoSrc = content.logoUrl && (content.logoUrl.startsWith('http') || content.logoUrl.startsWith('/')) 
+  const logoSrc = isValidUrl(content.logoUrl) 
     ? content.logoUrl 
     : "https://placehold.co/200x80.png";
 
