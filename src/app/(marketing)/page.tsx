@@ -41,11 +41,11 @@ export default async function SchoolHomePage() {
                   className="group relative rounded-lg bg-background p-8 text-left shadow-lg overflow-hidden transition-all duration-500 ease-in-out hover:shadow-2xl hover:-translate-y-2 animate-fade-in-up opacity-0"
                   style={{ animationDelay: `${300 + index * 200}ms`, animationFillMode: 'forwards' }}
                 >
-                  <div className="absolute top-0 right-0 h-24 w-24 bg-primary/5 rounded-bl-full transition-all duration-500 group-hover:scale-[8]"></div>
+                  <div className="absolute top-0 right-0 h-24 w-24 bg-primary rounded-bl-full transition-all duration-500 group-hover:scale-[8] opacity-10 group-hover:opacity-100"></div>
                   
                   <div className="relative z-10">
-                    <div className="p-4 inline-block bg-primary/10 rounded-lg mb-6">
-                      <Icon className="h-10 w-10 text-primary transition-colors duration-300" />
+                    <div className="p-4 inline-block bg-primary/10 rounded-lg mb-6 group-hover:bg-primary-foreground/10 transition-colors duration-500">
+                      <Icon className="h-10 w-10 text-primary transition-colors duration-500 group-hover:text-primary-foreground" />
                     </div>
                     <h3 className="text-2xl font-bold font-headline text-foreground group-hover:text-primary-foreground transition-colors duration-500">{point.title}</h3>
                     <p className="mt-2 text-muted-foreground group-hover:text-primary-foreground/80 transition-colors duration-500">{point.description}</p>
