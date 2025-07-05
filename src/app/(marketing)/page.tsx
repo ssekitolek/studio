@@ -48,7 +48,7 @@ export default async function SchoolHomePage() {
                       <Icon className="h-10 w-10 text-primary transition-colors duration-500 group-hover:text-primary-foreground" />
                     </div>
                     <h3 className="text-2xl font-bold font-headline text-foreground group-hover:text-primary-foreground transition-colors duration-500">{point.title}</h3>
-                    <p className="mt-2 text-muted-foreground group-hover:text-primary-foreground/80 transition-colors duration-500">{point.description}</p>
+                    <p className="mt-2 text-muted-foreground group-hover:text-primary-foreground transition-colors duration-500">{point.description}</p>
                   </div>
                 </div>
               );
