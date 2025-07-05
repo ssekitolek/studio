@@ -123,8 +123,6 @@ const housesPageSchema = z.object({
     })),
 });
 
-
-// Helper for array fields
 function ArrayEditor({ name, title, control, renderItem }: { name: string, title: string, control: any, renderItem: (index: number) => React.ReactNode }) {
     const { fields, append, remove } = useFieldArray({
         control,
@@ -145,7 +143,6 @@ function ArrayEditor({ name, title, control, renderItem }: { name: string, title
     );
 }
 
-// INDIVIDUAL FORM COMPONENTS
 function LogoForm({ initialData }: { initialData: WebsiteContent['logoUrl'] }) {
     const { toast } = useToast();
     const [isPending, startTransition] = React.useTransition();
@@ -583,7 +580,6 @@ function HousesPageForm({ initialData }: { initialData: WebsiteContent['housesPa
         resolver: zodResolver(housesPageSchema),
         defaultValues: initialData,
     });
-
     const { control } = form;
 
     const onSubmit = (data: z.infer<typeof housesPageSchema>) => {
@@ -618,7 +614,6 @@ function HousesPageForm({ initialData }: { initialData: WebsiteContent['housesPa
     );
 }
 
-// MAIN COMPONENT
 export function WebsiteContentForm({ initialData }: { initialData: WebsiteContent }) {
     const simplePageForms = [
         {key: 'campusPage', title: 'Campus Page'},
