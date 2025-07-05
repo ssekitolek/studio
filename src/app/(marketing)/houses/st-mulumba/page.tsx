@@ -1,21 +1,51 @@
+
+'use client';
+
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Award, Trophy, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
+const slideshowImages = [
+  { src: "https://placehold.co/1920x1080.png", alt: "St. Mulumba House of Champions", hint: "celebration confetti gold" },
+  { src: "https://placehold.co/1920x1080.png", alt: "Sports Victory", hint: "sports trophy victory" },
+  { src: "https://placehold.co/1920x1080.png", alt: "MDD Performance", hint: "drama stage performance" },
+];
+
+
 export default function StMulumbaHousePage() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % slideshowImages.length);
+    }, 5000); // Change slide every 5 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="animate-fade-in-up bg-secondary/30">
       {/* Hero Section */}
       <div className="relative h-[40vh] w-full flex items-center justify-center text-center text-primary-foreground overflow-hidden">
-        <Image 
-          src="https://placehold.co/1920x1080.png" 
-          alt="St. Mulumba House of Champions" 
-          fill 
-          className="object-cover" 
-          priority 
-          data-ai-hint="celebration confetti gold"
-        />
+        <div
+          className="absolute inset-0 flex transition-transform duration-1000 ease-in-out"
+          style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+        >
+          {slideshowImages.map((image, index) => (
+            <div key={index} className="relative w-full h-full flex-shrink-0">
+              <Image
+                src={image.src}
+                alt={image.alt}
+                fill
+                className="object-cover"
+                priority={index === 0}
+                data-ai-hint={image.hint}
+              />
+            </div>
+          ))}
+        </div>
         <div className="absolute inset-0 bg-primary/70" />
         <div className="relative z-10 p-4">
           <div className="flex justify-center items-center gap-4 mb-4">
