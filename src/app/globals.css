@@ -4,34 +4,25 @@
 
 @layer base {
   :root {
-    --background: 231 48% 95%; /* Very Light Blue */
-    --foreground: 224 71.4% 4.1%; /* Almost Black */
-    
+    --background: 0 0% 100%;
+    --foreground: 224 71.4% 4.1%;
     --card: 0 0% 100%;
     --card-foreground: 224 71.4% 4.1%;
-    
     --popover: 0 0% 100%;
     --popover-foreground: 224 71.4% 4.1%;
-    
-    --primary: 231 48% 48%; /* Dark Blue #3F51B5 */
-    --primary-foreground: 210 20% 98%; /* Light color for text on blue */
-    
-    --secondary: 231 48% 90%; /* Slightly darker light blue */
-    --secondary-foreground: 220.9 39.3% 11%;
-    
-    --muted: 220 14.3% 90%; /* Mid Grey */
+    --primary: 222.2 84% 4.9%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 220 14.3% 95.9%;
     --muted-foreground: 220 8.9% 46.1%;
-    
-    --accent: 45 100% 52%; /* Amber #FFC107 */
-    --accent-foreground: 24 9.8% 10%; /* Dark color for text on Amber */
-    
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 20% 98%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    
-    --border: 220 14.3% 85%;
-    --input: 220 14.3% 85%;
-    --ring: 231 48% 48%; /* Blue for focus rings */
-
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 222.2 84% 4.9%;
     --chart-1: 197 37% 24%;
     --chart-2: 45 86% 62%;
     --chart-3: 24 9.8% 10%;
@@ -63,8 +54,8 @@
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 45 100% 52%;
-    --accent-foreground: 24 9.8% 10%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
     --border: 217.2 32.6% 17.5%;
@@ -94,10 +85,5 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* Default font for body, can be overridden by .font-body if necessary */
-    font-family: var(--font-body);
-  }
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-headline;
   }
 }

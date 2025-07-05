@@ -38,10 +38,10 @@ export default async function SchoolHomePage() {
               return (
                 <div 
                   key={index}
-                  className="group relative rounded-lg bg-background p-8 text-left shadow-lg overflow-hidden transition-all duration-500 ease-in-out hover:shadow-2xl hover:-translate-y-2 animate-fade-in-up opacity-0 group-hover:bg-secondary"
+                  className="group relative rounded-lg bg-background p-8 text-left shadow-lg overflow-hidden transition-all duration-500 ease-in-out hover:shadow-2xl hover:-translate-y-2 animate-fade-in-up opacity-0 group-hover:bg-accent/10"
                   style={{ animationDelay: `${300 + index * 200}ms`, animationFillMode: 'forwards' }}
                 >
-                  <div className="absolute top-0 right-0 h-24 w-24 bg-primary rounded-bl-full transition-all duration-500 group-hover:scale-[8] opacity-10 group-hover:opacity-100"></div>
+                  <div className="absolute top-0 right-0 h-24 w-24 bg-primary/10 rounded-bl-full transition-all duration-500 group-hover:scale-[8] group-hover:bg-primary group-hover:opacity-100"></div>
                   
                   <div className="relative z-10">
                     <div className="p-4 inline-block bg-primary/10 rounded-lg mb-6 group-hover:bg-primary-foreground/10 transition-colors duration-500">
