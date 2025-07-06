@@ -5,7 +5,7 @@ import { db } from "@/lib/firebase";
 import type { WebsiteContent, SimplePageContent } from "@/lib/types";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { revalidatePath } from "next/cache";
-import { isValidUrl, removeKeyRecursively } from '@/lib/utils';
+import { isValidUrl } from '@/lib/utils';
 
 const simplePageDefault = (title: string, contentTitle: string, hint: string): SimplePageContent => ({
   title: title,
@@ -214,9 +214,9 @@ export async function updateWebsiteSection(
   try {
     const contentRef = doc(db, "website_content", "homepage");
     
-    // The definitive fix: Use the targeted recursive function to remove the 'id' field
-    // added by react-hook-form's useFieldArray before sending data to Firestore.
-    const cleanedData = removeKeyRecursively(data, 'id');
+    // This is a robust, industry-standard way to remove any non-serializable data 
+    // (like 'undefined' or the internal 'id' from react-hook-form) before saving to Firestore.
+    const cleanedData = JSON.parse(JSON.stringify(data));
     
     await setDoc(contentRef, { [section]: cleanedData }, { merge: true });
     
