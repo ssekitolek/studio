@@ -3,44 +3,9 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow public read access to website content, but restrict write access.
-    // For this prototype, we will allow all writes. In production, this should be
-    // restricted to authenticated admins.
-    match /website_content/{document=**} {
-      allow read, write: if true;
-    }
-
-    // Teachers, students, and academic data should be protected.
-    // For the prototype, we will allow all access. In production,
-    // implement specific rules for authenticated users (e.g., D.O.S., teachers).
-    match /teachers/{document=**} {
-      allow read, write: if true;
-    }
-    match /students/{document=**} {
-      allow read, write: if true;
-    }
-    match /classes/{document=**} {
-      allow read, write: if true;
-    }
-    match /subjects/{document=**} {
-      allow read, write: if true;
-    }
-    match /terms/{document=**} {
-      allow read, write: if true;
-    }
-    match /exams/{document=**} {
-      allow read, write: if true;
-    }
-    match /gradingPolicies/{document=**} {
-      allow read, write: if true;
-    }
-    match /settings/{document=**} {
-      allow read, write: if true;
-    }
-    match /markSubmissions/{document=**} {
-      allow read, write: if true;
-    }
-    match /attendance/{document=**} {
+    // Allow read and write access to all documents
+    // This is for development purposes and should be secured before production.
+    match /{document=**} {
       allow read, write: if true;
     }
   }
