@@ -226,9 +226,7 @@ export async function updateWebsiteSection(
   try {
     const contentRef = doc(db, "website_content", "homepage");
     
-    // This is the most reliable way to remove any 'undefined' values
-    // that are not supported by Firestore, which can cause the misleading
-    // "PERMISSION_DENIED" error.
+    // The most robust way to remove non-serializable data from react-hook-form
     const cleanedData = JSON.parse(JSON.stringify(data));
     
     const payload = section === 'logoUrl' ? { logoUrl: cleanedData } : { [section]: cleanedData };
