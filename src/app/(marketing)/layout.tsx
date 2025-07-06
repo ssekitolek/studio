@@ -47,7 +47,7 @@ export default async function MarketingLayout({
                 <div className="md:col-span-4">
                     <h5 className="font-semibold uppercase tracking-wider text-sm">Contact Us</h5>
                     <div className="mt-4 space-y-2 text-sm">
-                        <p>{content.contactPage.address}</p>
+                        <p className="whitespace-pre-line">{content.contactPage.address}</p>
                         <p>Phone: {content.contactPage.phone}</p>
                         <p>Email: {content.contactPage.email}</p>
                     </div>

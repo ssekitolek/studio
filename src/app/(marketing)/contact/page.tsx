@@ -31,7 +31,7 @@ export default async function ContactPage() {
                     <div className="flex flex-col items-center">
                         <MapPin className="h-10 w-10 text-primary mb-4"/>
                         <h3 className="font-semibold text-xl font-headline">Our Address</h3>
-                        <p className="text-muted-foreground mt-2">{contactPage.address}</p>
+                        <p className="text-muted-foreground mt-2 whitespace-pre-line">{contactPage.address}</p>
                     </div>
                     <div className="flex flex-col items-center">
                         <Phone className="h-10 w-10 text-primary mb-4"/>
