@@ -616,25 +616,25 @@ function HousesPageForm({ initialData }: { initialData: WebsiteContent['housesPa
 
 export function WebsiteContentForm({ initialData }: { initialData: WebsiteContent }) {
     const simplePageForms = [
-        {key: 'campusPage', title: 'Campus Page'},
-        {key: 'clubsPage', title: 'Clubs & Organizations Page'},
-        {key: 'collegeCounselingPage', title: 'College Counseling Page'},
-        {key: 'employmentPage', title: 'Employment Page'},
-        {key: 'facultyPage', title: 'Faculty Page'},
-        {key: 'historyPage', title: 'History Page'},
-        {key: 'parentsPage', title: 'Parent Association Page'},
-        {key: 'tuitionPage', title: 'Tuition & Fees Page'},
-        {key: 'visitPage', title: 'Visit Us Page'},
+        {key: 'campusPage', title: 'Pages: Campus'},
+        {key: 'clubsPage', title: 'Pages: Clubs & Organizations'},
+        {key: 'collegeCounselingPage', title: 'Pages: College Counseling'},
+        {key: 'employmentPage', title: 'Pages: Employment'},
+        {key: 'facultyPage', title: 'Pages: Faculty'},
+        {key: 'historyPage', title: 'Pages: History'},
+        {key: 'parentsPage', title: 'Pages: Parent Association'},
+        {key: 'tuitionPage', title: 'Pages: Tuition & Fees'},
+        {key: 'visitPage', title: 'Pages: Visit Us'},
     ];
 
     return (
         <Accordion type="multiple" defaultValue={["item-general"]} className="w-full space-y-4">
             <AccordionItem value="item-general" className="border rounded-lg bg-card">
-                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>General</CardTitle></AccordionTrigger>
+                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>General Settings</CardTitle></AccordionTrigger>
                 <AccordionContent className="p-4 pt-0"><LogoForm initialData={initialData.logoUrl} /></AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-hero" className="border rounded-lg bg-card">
-                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage: Hero Slideshow</CardTitle></AccordionTrigger>
+                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage: Hero</CardTitle></AccordionTrigger>
                 <AccordionContent className="p-4 pt-0"><HeroSlideshowForm initialData={initialData.heroSlideshowSection} /></AccordionContent>
             </AccordionItem>
              <AccordionItem value="item-whyus" className="border rounded-lg bg-card">
@@ -650,27 +650,27 @@ export function WebsiteContentForm({ initialData }: { initialData: WebsiteConten
                 <AccordionContent className="p-4 pt-0"><NewsForm initialData={initialData.newsSection} /></AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-academics" className="border rounded-lg bg-card">
-                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Academics Page</CardTitle></AccordionTrigger>
+                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Pages: Academics</CardTitle></AccordionTrigger>
                 <AccordionContent className="p-4 pt-0"><AcademicsPageForm initialData={initialData.academicsPage} /></AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-admissions" className="border rounded-lg bg-card">
-                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Admissions Page</CardTitle></AccordionTrigger>
+                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Pages: Admissions</CardTitle></AccordionTrigger>
                 <AccordionContent className="p-4 pt-0"><AdmissionsPageForm initialData={initialData.admissionsPage} /></AccordionContent>
             </AccordionItem>
              <AccordionItem value="item-studentlife" className="border rounded-lg bg-card">
-                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Student Life Page</CardTitle></AccordionTrigger>
+                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Pages: Student Life</CardTitle></AccordionTrigger>
                 <AccordionContent className="p-4 pt-0"><StudentLifePageForm initialData={initialData.studentLifePage} /></AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-houses" className="border rounded-lg bg-card">
-                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Houses Page</CardTitle></AccordionTrigger>
+                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Pages: Houses</CardTitle></AccordionTrigger>
                 <AccordionContent className="p-4 pt-0"><HousesPageForm initialData={initialData.housesPage} /></AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-contact" className="border rounded-lg bg-card">
-                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Contact Page</CardTitle></AccordionTrigger>
+                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Pages: Contact</CardTitle></AccordionTrigger>
                 <AccordionContent className="p-4 pt-0"><ContactPageForm initialData={initialData.contactPage} /></AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-mission" className="border rounded-lg bg-card">
-                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Mission & Vision Page</CardTitle></AccordionTrigger>
+                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Pages: Mission & Vision</CardTitle></AccordionTrigger>
                 <AccordionContent className="p-4 pt-0"><MissionVisionPageForm initialData={initialData.missionVisionPage} /></AccordionContent>
             </AccordionItem>
             {simplePageForms.map(page => (
@@ -684,5 +684,3 @@ export function WebsiteContentForm({ initialData }: { initialData: WebsiteConten
         </Accordion>
     );
 }
-
-    
