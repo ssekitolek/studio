@@ -340,14 +340,12 @@ export interface MissionVisionPageContent {
 
 export interface WebsiteContent {
   logoUrl: string;
-  heroSlideshowSection: {
+  heroSection: {
+    title: string;
+    subtitle: string;
+    imageUrl: string;
     buttonText: string;
     buttonLink: string;
-    slides: Array<{
-      title: string;
-      subtitle: string;
-      imageUrls: string[];
-    }>;
   };
   whyUsSection: {
     heading: string;

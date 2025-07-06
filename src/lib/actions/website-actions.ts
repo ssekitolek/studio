@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { db } from "@/lib/firebase";
@@ -17,39 +18,25 @@ const simplePageDefault = (title: string, contentTitle: string, hint: string): S
 
 const defaultContent: WebsiteContent = {
   logoUrl: "https://i.imgur.com/lZDibio.png",
-  heroSlideshowSection: {
+  heroSection: {
+    title: "Legacy of Excellence",
+    subtitle: "Join a community dedicated to intellectual discovery and profound impact.",
+    imageUrl: "https://placehold.co/1920x1080.png",
     buttonText: "Inquire Now",
     buttonLink: "/contact",
-    slides: [
-      {
-        title: "Education for Life",
-        subtitle: "Fostering intellectual curiosity and personal growth in a supportive community.",
-        imageUrls: ["https://placehold.co/1920x1080.png"]
-      },
-      {
-        title: "A Tradition of Excellence",
-        subtitle: "Celebrating decades of academic achievement and character development.",
-        imageUrls: ["https://placehold.co/1920x1080.png"]
-      },
-      {
-        title: "Discover Your Passion",
-        subtitle: "Explore a wide range of academic, athletic, and artistic opportunities.",
-        imageUrls: ["https://placehold.co/1920x1080.png"]
-      }
-    ]
   },
   whyUsSection: {
-    heading: "The St. Mbaaga's Difference",
-    description: "We are more than just a school; we are a crucible for innovation, character, and lifelong achievement.",
+    heading: "Why St. Mbaaga's College?",
+    description: "We are more than just a school; we are a community dedicated to empowering students to lead lives of purpose and impact.",
     points: [
       {
         icon: "BookOpen",
-        title: "Visionary Academics",
+        title: "Rigorous Academics",
         description: "Our curriculum challenges students to think critically, collaborate effectively, and solve complex problems."
       },
       {
         icon: "Users",
-        title: "Dynamic Community",
+        title: "Inclusive Community",
         description: "We celebrate diversity and foster a sense of belonging where every student feels known, valued, and supported."
       },
       {
@@ -185,7 +172,7 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
       const mergedContent = {
         ...defaultContent,
         ...data,
-        heroSlideshowSection: { ...defaultContent.heroSlideshowSection, ...(data.heroSlideshowSection || {}) },
+        heroSection: { ...defaultContent.heroSection, ...(data.heroSection || {}) },
         whyUsSection: { ...defaultContent.whyUsSection, ...(data.whyUsSection || {}) },
         signatureProgramsSection: { ...defaultContent.signatureProgramsSection, ...(data.signatureProgramsSection || {}) },
         newsSection: { ...defaultContent.newsSection, ...(data.newsSection || {}) },
@@ -217,7 +204,7 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
 }
 
 export async function updateWebsiteSection(
-  section: keyof WebsiteContent | 'logoUrl',
+  section: keyof WebsiteContent,
   data: any
 ): Promise<{ success: boolean; message: string }> {
   if (!db) {
@@ -226,16 +213,16 @@ export async function updateWebsiteSection(
   try {
     const contentRef = doc(db, "website_content", "homepage");
     
-    // The most robust way to remove non-serializable data from react-hook-form
+    // The robust way to remove any non-serializable data from react-hook-form.
     const cleanedData = JSON.parse(JSON.stringify(data));
     
-    const payload = section === 'logoUrl' ? { logoUrl: cleanedData } : { [section]: cleanedData };
+    const payload = { [section]: cleanedData };
     
     await setDoc(contentRef, payload, { merge: true });
     
     revalidatePath("/", "layout");
     
-    const friendlySectionName = section === 'logoUrl' ? 'Logo URL' : section.replace(/([A-Z])/g, ' $1').replace(/Page/g, ' Page').trim();
+    const friendlySectionName = section.replace(/([A-Z])/g, ' $1').replace(/Page/g, ' Page').trim();
     return { success: true, message: `${friendlySectionName} updated successfully.` };
   } catch (error) {
     console.error(`Error updating website section ${section}:`, error);
