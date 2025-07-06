@@ -22,18 +22,18 @@ const defaultContent: WebsiteContent = {
     buttonLink: "/contact",
     slides: [
       {
-        title: "Pioneering Futures",
-        subtitle: "Experience an education that transcends boundaries and unlocks potential.",
+        title: "Education for Life",
+        subtitle: "Fostering intellectual curiosity and personal growth in a supportive community.",
         imageUrls: ["https://placehold.co/1920x1080.png"]
       },
       {
-        title: "A Canvas for Brilliance",
-        subtitle: "Where creativity, technology, and ambition converge to shape the leaders of tomorrow.",
+        title: "A Tradition of Excellence",
+        subtitle: "Celebrating decades of academic achievement and character development.",
         imageUrls: ["https://placehold.co/1920x1080.png"]
       },
       {
-        title: "Legacy of Excellence",
-        subtitle: "Join a community dedicated to intellectual discovery and profound impact.",
+        title: "Discover Your Passion",
+        subtitle: "Explore a wide range of academic, athletic, and artistic opportunities.",
         imageUrls: ["https://placehold.co/1920x1080.png"]
       }
     ]
