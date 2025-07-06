@@ -4,8 +4,8 @@
 
 @layer base {
   :root {
-    /* Updated based on user feedback: Darker Blue, Light Blue BG, Amber Accent */
-    --background: 227 48% 95%; /* #E8EAF6 - Very light blue */
+    /* Updated based on user feedback: Light Grey Background */
+    --background: 0 0% 98%; /* #FAFAFA - Light Grey */
     --foreground: 222.2 47.4% 11.2%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 47.4% 11.2%;
@@ -13,7 +13,7 @@
     --popover-foreground: 222.2 47.4% 11.2%;
     --primary: 231 48% 48%; /* #3F51B5 - Dark Blue */
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 50% 97%; /* #F0F2F7 - A slightly different light blue for variety */
+    --secondary: 0 0% 95%; /* #F2F2F2 - Slightly darker grey */
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
