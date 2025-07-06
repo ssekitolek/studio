@@ -8,23 +8,6 @@ import { revalidatePath } from "next/cache";
 import { isValidUrl } from '@/lib/utils';
 
 
-// Helper function to remove undefined values from nested objects
-function removeUndefinedValues(obj: any): any {
-  if (Array.isArray(obj)) {
-    return obj.map(removeUndefinedValues).filter(v => v !== undefined);
-  } else if (obj !== null && typeof obj === 'object') {
-    return Object.keys(obj).reduce((acc, key) => {
-      const value = removeUndefinedValues(obj[key]);
-      if (value !== undefined) {
-        acc[key] = value;
-      }
-      return acc;
-    }, {} as {[key: string]: any});
-  }
-  return obj;
-}
-
-
 const simplePageDefault = (title: string, contentTitle: string, hint: string): SimplePageContent => ({
   title: title,
   description: `A brief and engaging description for the ${title.toLowerCase()} page goes here.`,
@@ -244,8 +227,8 @@ export async function updateWebsiteSection(
   try {
     const contentRef = doc(db, "website_content", "homepage");
     
-    // Clean the data to remove any `undefined` values before sending to Firestore
-    const cleanedData = removeUndefinedValues(data);
+    // This robustly cleans the data, removing any `undefined` values that cause Firestore to crash.
+    const cleanedData = JSON.parse(JSON.stringify(data));
     
     const payload = section === 'logoUrl' ? { logoUrl: cleanedData } : { [section]: cleanedData };
     
