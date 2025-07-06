@@ -18,12 +18,14 @@ const simplePageDefault = (title: string, contentTitle: string, hint: string): S
 
 const defaultContent: WebsiteContent = {
   logoUrl: "https://i.imgur.com/lZDibio.png",
-  heroSection: {
-    title: "Legacy of Excellence",
-    subtitle: "Join a community dedicated to intellectual discovery and profound impact.",
-    imageUrl: "https://placehold.co/1920x1080.png",
+  heroSlideshowSection: {
     buttonText: "Inquire Now",
     buttonLink: "/contact",
+    slides: [
+      { title: "Legacy of Excellence", subtitle: "Join a community dedicated to intellectual discovery and profound impact.", imageUrls: ["https://placehold.co/1920x1080.png"]},
+      { title: "Nurturing Future Leaders", subtitle: "Empowering students with knowledge, character, and vision.", imageUrls: ["https://placehold.co/1920x1080.png"]},
+      { title: "A World of Opportunity", subtitle: "Explore your passions in our diverse and supportive environment.", imageUrls: ["https://placehold.co/1920x1080.png"]},
+    ]
   },
   whyUsSection: {
     heading: "Why St. Mbaaga's College?",
@@ -172,7 +174,7 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
       const mergedContent = {
         ...defaultContent,
         ...data,
-        heroSection: { ...defaultContent.heroSection, ...(data.heroSection || {}) },
+        heroSlideshowSection: { ...defaultContent.heroSlideshowSection, ...(data.heroSlideshowSection || {}) },
         whyUsSection: { ...defaultContent.whyUsSection, ...(data.whyUsSection || {}) },
         signatureProgramsSection: { ...defaultContent.signatureProgramsSection, ...(data.signatureProgramsSection || {}) },
         newsSection: { ...defaultContent.newsSection, ...(data.newsSection || {}) },

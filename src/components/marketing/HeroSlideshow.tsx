@@ -9,11 +9,11 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
-interface InquireSlideshowProps {
+interface HeroSlideshowProps {
   content: WebsiteContent['heroSlideshowSection'];
 }
 
-export function InquireSlideshow({ content }: InquireSlideshowProps) {
+export function HeroSlideshow({ content }: HeroSlideshowProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 

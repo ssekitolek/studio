@@ -50,12 +50,14 @@ const missionVisionPageContentSchema = z.object({
         description: z.string().min(1),
     })),
 });
-const heroSectionSchema = z.object({
-    title: z.string().min(1),
-    subtitle: z.string().min(1),
-    imageUrl: z.string().url("Must be a valid URL.").or(z.literal('')),
+const heroSlideshowSectionSchema = z.object({
     buttonText: z.string().min(1),
     buttonLink: z.string().min(1),
+    slides: z.array(z.object({
+        title: z.string().min(1),
+        subtitle: z.string().min(1),
+        imageUrls: z.array(z.string().url("Must be a valid URL.").or(z.literal(''))),
+    })),
 });
 const whyUsSectionSchema = z.object({
     heading: z.string().min(1),
@@ -296,19 +298,28 @@ function MissionVisionPageForm({ initialData }: { initialData: WebsiteContent['m
     );
 }
 
-function HeroSectionForm({ initialData }: { initialData: WebsiteContent['heroSection'] }) {
+function HeroSlideshowForm({ initialData }: { initialData: WebsiteContent['heroSlideshowSection'] }) {
     const { toast } = useToast();
     const [isPending, startTransition] = React.useTransition();
-    const form = useForm<z.infer<typeof heroSectionSchema>>({
-        resolver: zodResolver(heroSectionSchema),
+    const form = useForm<z.infer<typeof heroSlideshowSectionSchema>>({
+        resolver: zodResolver(heroSlideshowSectionSchema),
         defaultValues: initialData,
     });
     const { control } = form;
 
-    const onSubmit = (data: z.infer<typeof heroSectionSchema>) => {
+    const onSubmit = (data: z.infer<typeof heroSlideshowSectionSchema>) => {
+        const cleanData = {
+            buttonText: data.buttonText,
+            buttonLink: data.buttonLink,
+            slides: data.slides.map(s => ({
+                title: s.title,
+                subtitle: s.subtitle,
+                imageUrls: s.imageUrls
+            }))
+        };
         startTransition(async () => {
-            const result = await updateWebsiteSection('heroSection', data);
-            if (result.success) toast({ title: "Success", description: "Hero Section updated." });
+            const result = await updateWebsiteSection('heroSlideshowSection', cleanData);
+            if (result.success) toast({ title: "Success", description: "Hero Slideshow updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
     };
@@ -316,11 +327,15 @@ function HeroSectionForm({ initialData }: { initialData: WebsiteContent['heroSec
     return (
         <FormProvider {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField control={control} name="title" render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <FormField control={control} name="subtitle" render={({ field }) => ( <FormItem><FormLabel>Subtitle</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <FormField control={control} name="imageUrl" render={({ field }) => ( <FormItem><FormLabel>Image URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={control} name="buttonText" render={({ field }) => ( <FormItem><FormLabel>Button Text</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={control} name="buttonLink" render={({ field }) => ( <FormItem><FormLabel>Button Link</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <ArrayEditor name="slides" title="Slide" control={form.control} defaultItem={{ title: '', subtitle: '', imageUrls: [''] }} renderItem={(index) => (
+                    <>
+                        <FormField control={form.control} name={`slides.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <FormField control={form.control} name={`slides.${index}.subtitle`} render={({ field }) => ( <FormItem><FormLabel>Subtitle</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <FormField control={form.control} name={`slides.${index}.imageUrls.0`} render={({ field }) => ( <FormItem><FormLabel>Image URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    </>
+                )}/>
                 <div className="flex justify-end">
                     <Button type="submit" disabled={isPending}>
                         {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -666,9 +681,9 @@ export function WebsiteContentForm({ initialData }: { initialData: WebsiteConten
                 <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>General Settings</CardTitle></AccordionTrigger>
                 <AccordionContent className="p-4 pt-0"><LogoForm initialData={initialData.logoUrl} /></AccordionContent>
             </AccordionItem>
-            <AccordionItem value="item-hero" className="border rounded-lg bg-card">
-                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage: Hero</CardTitle></AccordionTrigger>
-                <AccordionContent className="p-4 pt-0"><HeroSectionForm initialData={initialData.heroSection} /></AccordionContent>
+            <AccordionItem value="item-hero-slideshow" className="border rounded-lg bg-card">
+                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage: Hero Slideshow</CardTitle></AccordionTrigger>
+                <AccordionContent className="p-4 pt-0"><HeroSlideshowForm initialData={initialData.heroSlideshowSection} /></AccordionContent>
             </AccordionItem>
              <AccordionItem value="item-whyus" className="border rounded-lg bg-card">
                 <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage: Why Us</CardTitle></AccordionTrigger>

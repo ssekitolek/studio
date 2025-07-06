@@ -7,7 +7,8 @@ import { BookOpen, Users, Trophy, ArrowRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { SignatureProgramsCarousel } from '@/components/marketing/SignatureProgramsCarousel';
 import { NewsCarousel } from '@/components/marketing/NewsCarousel';
-import Image from 'next/image';
+import { HeroSlideshow } from '@/components/marketing/HeroSlideshow';
+
 
 const iconMap: { [key: string]: LucideIcon } = {
   BookOpen,
@@ -17,37 +18,12 @@ const iconMap: { [key: string]: LucideIcon } = {
 
 export default async function SchoolHomePage() {
   const content = await getWebsiteContent();
-  const { heroSection, whyUsSection, signatureProgramsSection, newsSection } = content;
+  const { heroSlideshowSection, whyUsSection, signatureProgramsSection, newsSection } = content;
 
   return (
     <div className="bg-background text-foreground">
       {/* Hero Section */}
-      <section className="relative h-[60vh] w-full flex items-center justify-center text-center text-primary-foreground overflow-hidden">
-        <Image
-          src={heroSection.imageUrl}
-          alt={heroSection.title}
-          fill
-          className="object-cover"
-          priority
-          data-ai-hint="school building students"
-        />
-        <div className="absolute inset-0 bg-black/50" />
-        <div className="relative z-10 max-w-4xl p-4">
-          <h1 className="text-4xl md:text-7xl font-headline font-bold drop-shadow-2xl">
-            {heroSection.title}
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-primary-foreground/90 drop-shadow-lg">
-            {heroSection.subtitle}
-          </p>
-          <div className="mt-8">
-            <Button size="lg" asChild className="text-lg py-7 px-10 bg-destructive hover:bg-destructive/80 text-destructive-foreground transition-transform hover:scale-105">
-              <Link href={heroSection.buttonLink}>
-                {heroSection.buttonText} <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </section>
+      <HeroSlideshow content={heroSlideshowSection} />
 
       {/* Why Us Section */}
       <section className="py-16 md:py-24 bg-secondary">
