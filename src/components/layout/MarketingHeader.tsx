@@ -42,6 +42,7 @@ const navConfig = [
             { title: "Clubs & Organizations", href: "/clubs" },
             { title: "School Houses", href: "/houses" },
             { title: "Parent Association", href: "/parents" },
+            { title: "Alumni", href: "/alumni" },
         ]
     },
     { 

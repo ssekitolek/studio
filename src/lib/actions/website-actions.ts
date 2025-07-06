@@ -148,6 +148,7 @@ const defaultContent: WebsiteContent = {
       { name: "St. Kizito", description: "Embodying spirit and youthful energy.", imageUrls: ["https://placehold.co/600x400.png"] },
     ],
   },
+  alumniPage: simplePageDefault("Alumni", "Stay Connected", "alumni reunion"),
   campusPage: simplePageDefault("Our Campus", "Explore Our Facilities", "school campus"),
   clubsPage: simplePageDefault("Clubs & Organizations", "Find Your Passion", "student club"),
   collegeCounselingPage: simplePageDefault("College Counseling", "Guidance for Your Future", "university building"),
@@ -182,6 +183,8 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
         contactPage: { ...defaultContent.contactPage, ...(data.contactPage || {}) },
         studentLifePage: { ...defaultContent.studentLifePage, ...(data.studentLifePage || {}) },
         missionVisionPage: { ...defaultContent.missionVisionPage, ...(data.missionVisionPage || {}) },
+        housesPage: { ...defaultContent.housesPage, ...(data.housesPage || {}) },
+        alumniPage: { ...defaultContent.alumniPage, ...(data.alumniPage || {}) },
         campusPage: { ...defaultContent.campusPage, ...(data.campusPage || {}) },
         clubsPage: { ...defaultContent.clubsPage, ...(data.clubsPage || {}) },
         collegeCounselingPage: { ...defaultContent.collegeCounselingPage, ...(data.collegeCounselingPage || {}) },
@@ -191,7 +194,6 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
         parentsPage: { ...defaultContent.parentsPage, ...(data.parentsPage || {}) },
         tuitionPage: { ...defaultContent.tuitionPage, ...(data.tuitionPage || {}) },
         visitPage: { ...defaultContent.visitPage, ...(data.visitPage || {}) },
-        housesPage: { ...defaultContent.housesPage, ...(data.housesPage || {}) },
       };
       return mergedContent;
     } else {

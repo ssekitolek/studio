@@ -420,6 +420,7 @@ export interface WebsiteContent {
       imageUrls: string[];
     }>;
   };
+  alumniPage: SimplePageContent;
   campusPage: SimplePageContent;
   clubsPage: SimplePageContent;
   collegeCounselingPage: SimplePageContent;

@@ -616,6 +616,7 @@ function HousesPageForm({ initialData }: { initialData: WebsiteContent['housesPa
 
 export function WebsiteContentForm({ initialData }: { initialData: WebsiteContent }) {
     const simplePageForms = [
+        {key: 'alumniPage', title: 'Pages: Alumni'},
         {key: 'campusPage', title: 'Pages: Campus'},
         {key: 'clubsPage', title: 'Pages: Clubs & Organizations'},
         {key: 'collegeCounselingPage', title: 'Pages: College Counseling'},
