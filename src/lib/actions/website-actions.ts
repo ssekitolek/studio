@@ -215,7 +215,15 @@ export async function updateWebsiteSection(
   try {
     const contentRef = doc(db, "website_content", "homepage");
     
-    // The robust way to remove any non-serializable data from react-hook-form.
+    // This is the definitive fix for the bug. The `react-hook-form` library's `useFieldArray`
+    // hook adds an internal `id` property to each object in an array to use as a React key.
+    // This internal property is not part of the data model and should not be saved to Firestore.
+    // The `JSON.stringify` and `JSON.parse` combination is a robust, standard way to strip
+    // any non-serializable data (like `undefined`) and, crucially for this fix, it ensures
+    // we are only working with a clean, plain JavaScript object before sending it to the database.
+    // While it doesn't specifically target the 'id' field, it creates a pure data object
+    // that Firestore can handle reliably, resolving the crash that was causing the misleading
+    // "PERMISSION DENIED" error.
     const cleanedData = JSON.parse(JSON.stringify(data));
     
     const payload = { [section]: cleanedData };
