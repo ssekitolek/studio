@@ -18,31 +18,31 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ImageUploadInput } from "@/components/shared/ImageUploadInput";
 
 // Schemas
-const logoUrlSchema = z.object({ logoUrl: z.string().url("Must be a valid URL.").or(z.literal('')) });
+const logoUrlSchema = z.object({ logoUrl: z.string() });
 const contactPageSchema = z.object({
       title: z.string().min(1, "Title is required."),
       address: z.string().min(1, "Address is required."),
       phone: z.string().min(1, "Phone number is required."),
       email: z.string().email("Must be a valid email."),
-      mapImageUrl: z.string().url("Must be a valid URL for the map image.").or(z.literal('')),
+      mapImageUrl: z.string(),
 });
 const simplePageContentSchema = z.object({
     title: z.string().min(1, "Title is required."),
     description: z.string().min(1, "Description is required."),
-    heroImageUrl: z.string().url("Must be a valid URL for the hero image.").or(z.literal('')),
+    heroImageUrl: z.string(),
     contentTitle: z.string().min(1, "Content title is required."),
     contentBody: z.string().min(1, "Content body is required."),
 });
 const missionVisionPageContentSchema = z.object({
     heroTitle: z.string().min(1),
     heroDescription: z.string().min(1),
-    heroImageUrl: z.string().url().or(z.literal('')),
+    heroImageUrl: z.string(),
     missionTitle: z.string().min(1),
     missionText: z.string().min(1),
-    missionImageUrl: z.string().url().or(z.literal('')),
+    missionImageUrl: z.string(),
     visionTitle: z.string().min(1),
     visionText: z.string().min(1),
-    visionImageUrl: z.string().url().or(z.literal('')),
+    visionImageUrl: z.string(),
     coreValuesTitle: z.string().min(1),
     coreValuesDescription: z.string().min(1),
     coreValues: z.array(z.object({
@@ -56,7 +56,7 @@ const heroSlideshowSectionSchema = z.object({
     slides: z.array(z.object({
         title: z.string().min(1),
         subtitle: z.string().min(1),
-        imageUrls: z.array(z.string().url().or(z.literal(''))).min(1),
+        imageUrls: z.array(z.string()).min(1),
     })),
 });
 const whyUsSectionSchema = z.object({
@@ -73,7 +73,7 @@ const signatureProgramsSectionSchema = z.object({
     programs: z.array(z.object({
         title: z.string().min(1),
         description: z.string().min(1),
-        imageUrls: z.array(z.string().url().or(z.literal(''))).min(1),
+        imageUrls: z.array(z.string()).min(1),
     })),
 });
 const newsSectionSchema = z.object({
@@ -81,7 +81,7 @@ const newsSectionSchema = z.object({
     posts: z.array(z.object({
         title: z.string().min(1),
         date: z.string().min(1),
-        imageUrls: z.array(z.string().url().or(z.literal(''))).min(1),
+        imageUrls: z.array(z.string()).min(1),
     })),
 });
 const academicsPageSchema = z.object({
@@ -90,7 +90,7 @@ const academicsPageSchema = z.object({
     programs: z.array(z.object({
         name: z.string().min(1),
         description: z.string().min(1),
-        imageUrls: z.array(z.string().url().or(z.literal(''))).min(1),
+        imageUrls: z.array(z.string()).min(1),
     })),
 });
 const admissionsPageSchema = z.object({
@@ -109,17 +109,17 @@ const studentLifePageSchema = z.object({
     features: z.array(z.object({
         title: z.string().min(1),
         description: z.string().min(1),
-        imageUrls: z.array(z.string().url().or(z.literal(''))).min(1),
+        imageUrls: z.array(z.string()).min(1),
     })),
 });
 const housesPageSchema = z.object({
     title: z.string().min(1),
     description: z.string().min(1),
-    heroImageUrl: z.string().url().or(z.literal('')),
+    heroImageUrl: z.string(),
     houses: z.array(z.object({
         name: z.string().min(1),
         description: z.string().min(1),
-        imageUrls: z.array(z.string().url().or(z.literal(''))).min(1),
+        imageUrls: z.array(z.string()).min(1),
     })),
 });
 

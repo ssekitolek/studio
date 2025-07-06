@@ -285,10 +285,7 @@ export async function updateWebsiteSection(
   try {
     const contentRef = doc(db, "website_content", "homepage");
 
-    // Sanitize the data payload to remove any undefined values, which Firestore rejects.
-    const sanitizedData = JSON.parse(JSON.stringify(data));
-
-    const payload = section === 'logoUrl' ? { logoUrl: sanitizedData } : { [section]: sanitizedData };
+    const payload = section === 'logoUrl' ? { logoUrl: data } : { [section]: data };
     
     await setDoc(contentRef, payload, { merge: true });
     
