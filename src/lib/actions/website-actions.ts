@@ -204,29 +204,6 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
   }
 }
 
-/**
- * Recursively removes any key named 'id' from objects within arrays.
- * This is crucial for cleaning data from react-hook-form's useFieldArray
- * before sending it to Firestore, as the 'id' field is for form state only.
- * @param data The data to clean.
- * @returns The cleaned data.
- */
-function cleanDataForFirestore(data: any): any {
-  if (Array.isArray(data)) {
-    return data.map(item => cleanDataForFirestore(item));
-  }
-  if (typeof data === 'object' && data !== null) {
-    const newData: { [key: string]: any } = {};
-    for (const key in data) {
-      if (key !== 'id') { // Explicitly remove the 'id' key from objects
-        newData[key] = cleanDataForFirestore(data[key]);
-      }
-    }
-    return newData;
-  }
-  return data;
-}
-
 export async function updateWebsiteSection(
   section: keyof WebsiteContent,
   data: any
@@ -237,14 +214,11 @@ export async function updateWebsiteSection(
   try {
     const contentRef = doc(db, "website_content", "homepage");
     
-    // First, use JSON stringify/parse to remove any 'undefined' values, which Firestore cannot handle.
-    const sanitizedData = JSON.parse(JSON.stringify(data));
-
-    // Then, use our custom cleaner to remove the internal 'id' fields from arrays of objects.
-    const cleanedData = cleanDataForFirestore(sanitizedData);
+    // The data is now expected to be clean from the client form components.
+    // This action now simply trusts the data it's given and saves it.
+    await setDoc(contentRef, { [section]: data }, { merge: true });
     
-    await setDoc(contentRef, { [section]: cleanedData }, { merge: true });
-    
+    // Revalidate the entire site layout to reflect changes everywhere.
     revalidatePath("/", "layout");
     
     const friendlySectionName = section.replace(/([A-Z])/g, ' $1').replace(/Page/g, ' Page').trim();
