@@ -3,7 +3,7 @@
 
 import { db } from "@/lib/firebase";
 import type { WebsiteContent, SimplePageContent } from "@/lib/types";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { revalidatePath } from "next/cache";
 import { isValidUrl } from '@/lib/utils';
 
@@ -285,13 +285,12 @@ export async function updateWebsiteSection(
   try {
     const contentRef = doc(db, "website_content", "homepage");
 
-    // If updating logoUrl, it's a top-level field.
-    // Otherwise, use dot notation for nested objects.
     const payload = section === 'logoUrl' ? { logoUrl: data } : { [section]: data };
     
-    await updateDoc(contentRef, payload);
+    // Use setDoc with merge:true for a more robust update/create operation.
+    await setDoc(contentRef, payload, { merge: true });
     
-    // This is the most crucial part. Revalidate the entire site layout.
+    // Revalidate the entire site layout to ensure changes are reflected.
     revalidatePath("/", "layout");
     
     const friendlySectionName = section === 'logoUrl' ? 'Logo URL' : section.replace(/([A-Z])/g, ' $1').replace(/Page/g, ' Page').trim();
