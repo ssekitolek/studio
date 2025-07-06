@@ -5,7 +5,7 @@ import { db } from "@/lib/firebase";
 import type { WebsiteContent, SimplePageContent } from "@/lib/types";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { revalidatePath } from "next/cache";
-import { isValidUrl } from '@/lib/utils';
+import { isValidUrl, removeKeyRecursively } from '@/lib/utils';
 
 const simplePageDefault = (title: string, contentTitle: string, hint: string): SimplePageContent => ({
   title: title,
@@ -214,14 +214,9 @@ export async function updateWebsiteSection(
   try {
     const contentRef = doc(db, "website_content", "homepage");
     
-    // This is the definitive fix for the bug. The `react-hook-form` library's `useFieldArray`
-    // hook adds an internal `id` property to each object in an array to use as a React key.
-    // This internal property is not part of the data model and should not be saved to Firestore.
-    // The `JSON.stringify` and `JSON.parse` combination is a robust, standard way to strip
-    // any non-serializable data (like `undefined`) and, crucially for this fix, it ensures
-    // we are only working with a clean, plain JavaScript object before sending it to the database.
-    // This creates a pure data object that Firestore can handle reliably, resolving the crash.
-    const cleanedData = JSON.parse(JSON.stringify(data));
+    // The definitive fix: Use the targeted recursive function to remove the 'id' field
+    // added by react-hook-form's useFieldArray before sending data to Firestore.
+    const cleanedData = removeKeyRecursively(data, 'id');
     
     await setDoc(contentRef, { [section]: cleanedData }, { merge: true });
     
