@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { db } from "@/lib/firebase";
@@ -221,14 +220,10 @@ export async function updateWebsiteSection(
     // The `JSON.stringify` and `JSON.parse` combination is a robust, standard way to strip
     // any non-serializable data (like `undefined`) and, crucially for this fix, it ensures
     // we are only working with a clean, plain JavaScript object before sending it to the database.
-    // While it doesn't specifically target the 'id' field, it creates a pure data object
-    // that Firestore can handle reliably, resolving the crash that was causing the misleading
-    // "PERMISSION DENIED" error.
+    // This creates a pure data object that Firestore can handle reliably, resolving the crash.
     const cleanedData = JSON.parse(JSON.stringify(data));
     
-    const payload = { [section]: cleanedData };
-    
-    await setDoc(contentRef, payload, { merge: true });
+    await setDoc(contentRef, { [section]: cleanedData }, { merge: true });
     
     revalidatePath("/", "layout");
     

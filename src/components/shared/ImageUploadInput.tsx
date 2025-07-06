@@ -65,5 +65,3 @@ export function ImageUploadInput({ fieldName, label }: ImageUploadInputProps) {
     />
   );
 }
-
-    
