@@ -123,7 +123,7 @@ const housesPageSchema = z.object({
     })),
 });
 
-function ArrayEditor({ name, title, control, renderItem }: { name: string, title: string, control: any, renderItem: (index: number) => React.ReactNode }) {
+function ArrayEditor({ name, title, control, renderItem, defaultItem }: { name: string, title: string, control: any, renderItem: (index: number) => React.ReactNode, defaultItem: any }) {
     const { fields, append, remove } = useFieldArray({
         control,
         name,
@@ -138,7 +138,7 @@ function ArrayEditor({ name, title, control, renderItem }: { name: string, title
                     <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} className="absolute top-2 right-2 h-7 w-7"><Trash2 className="h-4 w-4" /></Button>
                 </div>
             ))}
-            <Button type="button" variant="outline" onClick={() => append({})}><PlusCircle className="mr-2 h-4 w-4" /> Add {title}</Button>
+            <Button type="button" variant="outline" onClick={() => append(defaultItem)}><PlusCircle className="mr-2 h-4 w-4" /> Add {title}</Button>
         </div>
     );
 }
@@ -277,7 +277,7 @@ function MissionVisionPageForm({ initialData }: { initialData: WebsiteContent['m
                 <hr />
                 <FormField control={form.control} name="coreValuesTitle" render={({ field }) => ( <FormItem><FormLabel>Core Values Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={form.control} name="coreValuesDescription" render={({ field }) => ( <FormItem><FormLabel>Core Values Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <ArrayEditor name="coreValues" title="Core Value" control={form.control} renderItem={(index) => (
+                <ArrayEditor name="coreValues" title="Core Value" control={form.control} defaultItem={{ title: '', description: '' }} renderItem={(index) => (
                     <>
                         <FormField control={form.control} name={`coreValues.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Value Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                         <FormField control={form.control} name={`coreValues.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Value Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
@@ -316,7 +316,7 @@ function HeroSlideshowForm({ initialData }: { initialData: WebsiteContent['heroS
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField control={control} name="buttonText" render={({ field }) => ( <FormItem><FormLabel>Button Text</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={control} name="buttonLink" render={({ field }) => ( <FormItem><FormLabel>Button Link</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <ArrayEditor name="slides" title="Slide" control={control} renderItem={(index) => (
+                <ArrayEditor name="slides" title="Slide" control={control} defaultItem={{ title: '', subtitle: '', imageUrls: [''] }} renderItem={(index) => (
                     <>
                         <FormField control={control} name={`slides.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                         <FormField control={control} name={`slides.${index}.subtitle`} render={({ field }) => ( <FormItem><FormLabel>Subtitle</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
@@ -356,7 +356,7 @@ function WhyUsForm({ initialData }: { initialData: WebsiteContent['whyUsSection'
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField control={form.control} name="heading" render={({ field }) => ( <FormItem><FormLabel>Heading</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <ArrayEditor name="points" title="Point" control={form.control} renderItem={(index) => (
+                <ArrayEditor name="points" title="Point" control={form.control} defaultItem={{ icon: 'BookOpen', title: '', description: '' }} renderItem={(index) => (
                     <>
                         <FormField control={form.control} name={`points.${index}.icon`} render={({ field }) => ( <FormItem><FormLabel>Icon Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                         <FormField control={form.control} name={`points.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
@@ -395,7 +395,7 @@ function SignatureProgramsForm({ initialData }: { initialData: WebsiteContent['s
         <FormProvider {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField control={form.control} name="heading" render={({ field }) => ( <FormItem><FormLabel>Heading</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <ArrayEditor name="programs" title="Program" control={form.control} renderItem={(index) => (
+                <ArrayEditor name="programs" title="Program" control={form.control} defaultItem={{ title: '', description: '', imageUrls: [''] }} renderItem={(index) => (
                     <>
                         <FormField control={form.control} name={`programs.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                         <FormField control={form.control} name={`programs.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
@@ -434,7 +434,7 @@ function NewsForm({ initialData }: { initialData: WebsiteContent['newsSection'] 
         <FormProvider {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField control={form.control} name="heading" render={({ field }) => ( <FormItem><FormLabel>Heading</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <ArrayEditor name="posts" title="Post" control={form.control} renderItem={(index) => (
+                <ArrayEditor name="posts" title="Post" control={form.control} defaultItem={{ title: '', date: '', imageUrls: [''] }} renderItem={(index) => (
                     <>
                         <FormField control={form.control} name={`posts.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                         <FormField control={form.control} name={`posts.${index}.date`} render={({ field }) => ( <FormItem><FormLabel>Date</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
@@ -474,7 +474,7 @@ function AcademicsPageForm({ initialData }: { initialData: WebsiteContent['acade
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <ArrayEditor name="programs" title="Program" control={form.control} renderItem={(index) => (
+                <ArrayEditor name="programs" title="Program" control={form.control} defaultItem={{ name: '', description: '', imageUrls: [''] }} renderItem={(index) => (
                     <>
                         <FormField control={form.control} name={`programs.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                         <FormField control={form.control} name={`programs.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
@@ -515,7 +515,7 @@ function AdmissionsPageForm({ initialData }: { initialData: WebsiteContent['admi
                 <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={form.control} name="formUrl" render={({ field }) => ( <FormItem><FormLabel>Apply Form URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <ArrayEditor name="process" title="Step" control={form.control} renderItem={(index) => (
+                <ArrayEditor name="process" title="Step" control={form.control} defaultItem={{ step: '', title: '', description: '' }} renderItem={(index) => (
                     <>
                         <FormField control={form.control} name={`process.${index}.step`} render={({ field }) => ( <FormItem><FormLabel>Step Number</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                         <FormField control={form.control} name={`process.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
@@ -555,7 +555,7 @@ function StudentLifePageForm({ initialData }: { initialData: WebsiteContent['stu
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <ArrayEditor name="features" title="Feature" control={form.control} renderItem={(index) => (
+                <ArrayEditor name="features" title="Feature" control={form.control} defaultItem={{ title: '', description: '', imageUrls: [''] }} renderItem={(index) => (
                     <>
                         <FormField control={form.control} name={`features.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                         <FormField control={form.control} name={`features.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
@@ -596,7 +596,7 @@ function HousesPageForm({ initialData }: { initialData: WebsiteContent['housesPa
                 <FormField control={control} name="title" render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <ImageUploadInput fieldName="heroImageUrl" label="Hero Image URL" />
-                <ArrayEditor name="houses" title="House" control={control} renderItem={(index) => (
+                <ArrayEditor name="houses" title="House" control={control} defaultItem={{ name: '', description: '', imageUrls: [''] }} renderItem={(index) => (
                     <>
                         <FormField control={control} name={`houses.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                         <FormField control={control} name={`houses.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
@@ -684,3 +684,5 @@ export function WebsiteContentForm({ initialData }: { initialData: WebsiteConten
         </Accordion>
     );
 }
+
+    
