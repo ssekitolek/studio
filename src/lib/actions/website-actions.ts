@@ -226,9 +226,9 @@ export async function updateWebsiteSection(
   try {
     const contentRef = doc(db, "website_content", "homepage");
     
-    // The definitive fix: JSON.stringify ignores `undefined` fields,
+    // The definitive fix: JSON.stringify removes `undefined` values,
     // and JSON.parse brings the object back. This reliably cleans the
-    // data before sending it to Firestore.
+    // data before sending it to Firestore, preventing crashes from invalid data.
     const cleanedData = JSON.parse(JSON.stringify(data));
     
     const payload = section === 'logoUrl' ? { logoUrl: cleanedData } : { [section]: cleanedData };
