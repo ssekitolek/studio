@@ -31,17 +31,17 @@ export default async function ContactPage() {
                     <div className="flex flex-col items-center">
                         <MapPin className="h-10 w-10 text-primary mb-4"/>
                         <h3 className="font-semibold text-xl font-headline">Our Address</h3>
-                        <p className="text-muted-foreground mt-1">{contactPage.address}</p>
+                        <p className="text-muted-foreground mt-2">{contactPage.address}</p>
                     </div>
                     <div className="flex flex-col items-center">
                         <Phone className="h-10 w-10 text-primary mb-4"/>
                         <h3 className="font-semibold text-xl font-headline">Call Us</h3>
-                        <p className="text-muted-foreground mt-1">{contactPage.phone}</p>
+                        <p className="text-muted-foreground mt-2">{contactPage.phone}</p>
                     </div>
                     <div className="flex flex-col items-center">
                         <Mail className="h-10 w-10 text-primary mb-4"/>
                         <h3 className="font-semibold text-xl font-headline">Email Us</h3>
-                        <p className="text-muted-foreground mt-1">{contactPage.email}</p>
+                        <p className="text-muted-foreground mt-2">{contactPage.email}</p>
                     </div>
                 </div>
             </div>
