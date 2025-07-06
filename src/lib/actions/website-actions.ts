@@ -285,12 +285,13 @@ export async function updateWebsiteSection(
   try {
     const contentRef = doc(db, "website_content", "homepage");
 
-    const payload = section === 'logoUrl' ? { logoUrl: data } : { [section]: data };
+    // Sanitize the data payload to remove any undefined values, which Firestore rejects.
+    const sanitizedData = JSON.parse(JSON.stringify(data));
+
+    const payload = section === 'logoUrl' ? { logoUrl: sanitizedData } : { [section]: sanitizedData };
     
-    // Use setDoc with merge:true for a more robust update/create operation.
     await setDoc(contentRef, payload, { merge: true });
     
-    // Revalidate the entire site layout to ensure changes are reflected.
     revalidatePath("/", "layout");
     
     const friendlySectionName = section === 'logoUrl' ? 'Logo URL' : section.replace(/([A-Z])/g, ' $1').replace(/Page/g, ' Page').trim();
