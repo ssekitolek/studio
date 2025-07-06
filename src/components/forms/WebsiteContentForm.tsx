@@ -17,31 +17,31 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 // Schemas
-const logoUrlSchema = z.object({ logoUrl: z.string() });
+const logoUrlSchema = z.object({ logoUrl: z.string().url("Must be a valid URL.").or(z.literal('')) });
 const contactPageSchema = z.object({
       title: z.string().min(1, "Title is required."),
       address: z.string().min(1, "Address is required."),
       phone: z.string().min(1, "Phone number is required."),
       email: z.string().email("Must be a valid email."),
-      mapImageUrl: z.string(),
+      mapImageUrl: z.string().url("Must be a valid URL.").or(z.literal('')),
 });
 const simplePageContentSchema = z.object({
     title: z.string().min(1, "Title is required."),
     description: z.string().min(1, "Description is required."),
-    heroImageUrl: z.string(),
+    heroImageUrl: z.string().url("Must be a valid URL.").or(z.literal('')),
     contentTitle: z.string().min(1, "Content title is required."),
     contentBody: z.string().min(1, "Content body is required."),
 });
 const missionVisionPageContentSchema = z.object({
     heroTitle: z.string().min(1),
     heroDescription: z.string().min(1),
-    heroImageUrl: z.string(),
+    heroImageUrl: z.string().url("Must be a valid URL.").or(z.literal('')),
     missionTitle: z.string().min(1),
     missionText: z.string().min(1),
-    missionImageUrl: z.string(),
+    missionImageUrl: z.string().url("Must be a valid URL.").or(z.literal('')),
     visionTitle: z.string().min(1),
     visionText: z.string().min(1),
-    visionImageUrl: z.string(),
+    visionImageUrl: z.string().url("Must be a valid URL.").or(z.literal('')),
     coreValuesTitle: z.string().min(1),
     coreValuesDescription: z.string().min(1),
     coreValues: z.array(z.object({
@@ -55,7 +55,7 @@ const heroSlideshowSectionSchema = z.object({
     slides: z.array(z.object({
         title: z.string().min(1),
         subtitle: z.string().min(1),
-        imageUrls: z.array(z.string()),
+        imageUrls: z.array(z.string().url("Must be a valid URL.").or(z.literal(''))),
     })),
 });
 const whyUsSectionSchema = z.object({
@@ -72,7 +72,7 @@ const signatureProgramsSectionSchema = z.object({
     programs: z.array(z.object({
         title: z.string().min(1),
         description: z.string().min(1),
-        imageUrls: z.array(z.string()),
+        imageUrls: z.array(z.string().url("Must be a valid URL.").or(z.literal(''))),
     })),
 });
 const newsSectionSchema = z.object({
@@ -80,7 +80,7 @@ const newsSectionSchema = z.object({
     posts: z.array(z.object({
         title: z.string().min(1),
         date: z.string().min(1),
-        imageUrls: z.array(z.string()),
+        imageUrls: z.array(z.string().url("Must be a valid URL.").or(z.literal(''))),
     })),
 });
 const academicsPageSchema = z.object({
@@ -89,7 +89,7 @@ const academicsPageSchema = z.object({
     programs: z.array(z.object({
         name: z.string().min(1),
         description: z.string().min(1),
-        imageUrls: z.array(z.string()),
+        imageUrls: z.array(z.string().url("Must be a valid URL.").or(z.literal(''))),
     })),
 });
 const admissionsPageSchema = z.object({
@@ -108,17 +108,17 @@ const studentLifePageSchema = z.object({
     features: z.array(z.object({
         title: z.string().min(1),
         description: z.string().min(1),
-        imageUrls: z.array(z.string()),
+        imageUrls: z.array(z.string().url("Must be a valid URL.").or(z.literal(''))),
     })),
 });
 const housesPageSchema = z.object({
     title: z.string().min(1),
     description: z.string().min(1),
-    heroImageUrl: z.string(),
+    heroImageUrl: z.string().url("Must be a valid URL.").or(z.literal('')),
     houses: z.array(z.object({
         name: z.string().min(1),
         description: z.string().min(1),
-        imageUrls: z.array(z.string()),
+        imageUrls: z.array(z.string().url("Must be a valid URL.").or(z.literal(''))),
     })),
 });
 
@@ -252,8 +252,12 @@ function MissionVisionPageForm({ initialData }: { initialData: WebsiteContent['m
     });
 
     const onSubmit = (data: z.infer<typeof missionVisionPageContentSchema>) => {
+        const cleanData = {
+            ...data,
+            coreValues: data.coreValues.map(v => ({ title: v.title, description: v.description })),
+        };
         startTransition(async () => {
-            const result = await updateWebsiteSection('missionVisionPage', data);
+            const result = await updateWebsiteSection('missionVisionPage', cleanData);
             if (result.success) toast({ title: "Success", description: "Mission & Vision Page content updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -303,8 +307,17 @@ function HeroSlideshowForm({ initialData }: { initialData: WebsiteContent['heroS
     const { control } = form;
 
     const onSubmit = (data: z.infer<typeof heroSlideshowSectionSchema>) => {
+        const cleanData = {
+            buttonText: data.buttonText,
+            buttonLink: data.buttonLink,
+            slides: data.slides.map(slide => ({
+                title: slide.title,
+                subtitle: slide.subtitle,
+                imageUrls: slide.imageUrls,
+            })),
+        };
         startTransition(async () => {
-            const result = await updateWebsiteSection('heroSlideshowSection', data);
+            const result = await updateWebsiteSection('heroSlideshowSection', cleanData);
             if (result.success) toast({ title: "Success", description: "Hero Slideshow updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -343,8 +356,13 @@ function WhyUsForm({ initialData }: { initialData: WebsiteContent['whyUsSection'
     const { control } = form;
 
     const onSubmit = (data: z.infer<typeof whyUsSectionSchema>) => {
+        const cleanData = {
+            heading: data.heading,
+            description: data.description,
+            points: data.points.map(p => ({ icon: p.icon, title: p.title, description: p.description })),
+        };
         startTransition(async () => {
-            const result = await updateWebsiteSection('whyUsSection', data);
+            const result = await updateWebsiteSection('whyUsSection', cleanData);
             if (result.success) toast({ title: "Success", description: "Why Us Section updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -383,8 +401,12 @@ function SignatureProgramsForm({ initialData }: { initialData: WebsiteContent['s
     const { control } = form;
 
     const onSubmit = (data: z.infer<typeof signatureProgramsSectionSchema>) => {
+        const cleanData = {
+            heading: data.heading,
+            programs: data.programs.map(p => ({ title: p.title, description: p.description, imageUrls: p.imageUrls })),
+        };
         startTransition(async () => {
-            const result = await updateWebsiteSection('signatureProgramsSection', data);
+            const result = await updateWebsiteSection('signatureProgramsSection', cleanData);
             if (result.success) toast({ title: "Success", description: "Signature Programs section updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -422,8 +444,12 @@ function NewsForm({ initialData }: { initialData: WebsiteContent['newsSection'] 
     const { control } = form;
     
     const onSubmit = (data: z.infer<typeof newsSectionSchema>) => {
+        const cleanData = {
+            heading: data.heading,
+            posts: data.posts.map(p => ({ title: p.title, date: p.date, imageUrls: p.imageUrls })),
+        };
         startTransition(async () => {
-            const result = await updateWebsiteSection('newsSection', data);
+            const result = await updateWebsiteSection('newsSection', cleanData);
             if (result.success) toast({ title: "Success", description: "News section updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -461,8 +487,13 @@ function AcademicsPageForm({ initialData }: { initialData: WebsiteContent['acade
     const { control } = form;
     
     const onSubmit = (data: z.infer<typeof academicsPageSchema>) => {
+        const cleanData = {
+            title: data.title,
+            description: data.description,
+            programs: data.programs.map(p => ({ name: p.name, description: p.description, imageUrls: p.imageUrls })),
+        };
         startTransition(async () => {
-            const result = await updateWebsiteSection('academicsPage', data);
+            const result = await updateWebsiteSection('academicsPage', cleanData);
             if (result.success) toast({ title: "Success", description: "Academics page updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -501,8 +532,14 @@ function AdmissionsPageForm({ initialData }: { initialData: WebsiteContent['admi
     const { control } = form;
 
     const onSubmit = (data: z.infer<typeof admissionsPageSchema>) => {
+        const cleanData = {
+            title: data.title,
+            description: data.description,
+            formUrl: data.formUrl,
+            process: data.process.map(p => ({ step: p.step, title: p.title, description: p.description })),
+        };
         startTransition(async () => {
-            const result = await updateWebsiteSection('admissionsPage', data);
+            const result = await updateWebsiteSection('admissionsPage', cleanData);
             if (result.success) toast({ title: "Success", description: "Admissions page updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -542,8 +579,13 @@ function StudentLifePageForm({ initialData }: { initialData: WebsiteContent['stu
     const { control } = form;
 
     const onSubmit = (data: z.infer<typeof studentLifePageSchema>) => {
+        const cleanData = {
+            title: data.title,
+            description: data.description,
+            features: data.features.map(f => ({ title: f.title, description: f.description, imageUrls: f.imageUrls })),
+        };
         startTransition(async () => {
-            const result = await updateWebsiteSection('studentLifePage', data);
+            const result = await updateWebsiteSection('studentLifePage', cleanData);
             if (result.success) toast({ title: "Success", description: "Student Life page updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -582,8 +624,14 @@ function HousesPageForm({ initialData }: { initialData: WebsiteContent['housesPa
     const { control } = form;
 
     const onSubmit = (data: z.infer<typeof housesPageSchema>) => {
+        const cleanData = {
+            title: data.title,
+            description: data.description,
+            heroImageUrl: data.heroImageUrl,
+            houses: data.houses.map(h => ({ name: h.name, description: h.description, imageUrls: h.imageUrls })),
+        };
         startTransition(async () => {
-            const result = await updateWebsiteSection('housesPage', data);
+            const result = await updateWebsiteSection('housesPage', cleanData);
             if (result.success) toast({ title: "Success", description: "Houses Page content updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -595,11 +643,11 @@ function HousesPageForm({ initialData }: { initialData: WebsiteContent['housesPa
                 <FormField control={control} name="title" render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={control} name="heroImageUrl" render={({ field }) => ( <FormItem><FormLabel>Hero Image URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <ArrayEditor name="houses" title="House" control={control} defaultItem={{ name: '', description: '', imageUrls: [''] }} renderItem={(index) => (
+                <ArrayEditor name="houses" title="House" control={form.control} defaultItem={{ name: '', description: '', imageUrls: [''] }} renderItem={(index) => (
                     <>
-                        <FormField control={control} name={`houses.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                        <FormField control={control} name={`houses.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                        <FormField control={control} name={`houses.${index}.imageUrls.0`} render={({ field }) => ( <FormItem><FormLabel>Image URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <FormField control={form.control} name={`houses.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <FormField control={form.control} name={`houses.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <FormField control={form.control} name={`houses.${index}.imageUrls.0`} render={({ field }) => ( <FormItem><FormLabel>Image URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                     </>
                 )}/>
                 <div className="flex justify-end">

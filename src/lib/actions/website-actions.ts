@@ -226,9 +226,9 @@ export async function updateWebsiteSection(
   try {
     const contentRef = doc(db, "website_content", "homepage");
     
-    // The definitive fix: JSON.stringify removes `undefined` values,
-    // and JSON.parse brings the object back. This reliably cleans the
-    // data before sending it to Firestore, preventing crashes from invalid data.
+    // This is the most reliable way to remove any 'undefined' values
+    // that are not supported by Firestore, which can cause the misleading
+    // "PERMISSION_DENIED" error.
     const cleanedData = JSON.parse(JSON.stringify(data));
     
     const payload = section === 'logoUrl' ? { logoUrl: cleanedData } : { [section]: cleanedData };
