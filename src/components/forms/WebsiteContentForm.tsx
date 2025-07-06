@@ -18,31 +18,31 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 // Schemas
-const logoUrlSchema = z.object({ logoUrl: z.string().url("Must be a valid URL.").or(z.literal('')) });
+const logoUrlSchema = z.object({ logoUrl: z.string().or(z.literal('')) });
 const contactPageSchema = z.object({
       title: z.string().min(1, "Title is required."),
       address: z.string().min(1, "Address is required."),
       phone: z.string().min(1, "Phone number is required."),
       email: z.string().email("Must be a valid email."),
-      mapImageUrl: z.string().url("Must be a valid URL.").or(z.literal('')),
+      mapImageUrl: z.string().or(z.literal('')),
 });
 const simplePageContentSchema = z.object({
     title: z.string().min(1, "Title is required."),
     description: z.string().min(1, "Description is required."),
-    heroImageUrl: z.string().url("Must be a valid URL.").or(z.literal('')),
+    heroImageUrl: z.string().or(z.literal('')),
     contentTitle: z.string().min(1, "Content title is required."),
     contentBody: z.string().min(1, "Content body is required."),
 });
 const missionVisionPageContentSchema = z.object({
     heroTitle: z.string().min(1),
     heroDescription: z.string().min(1),
-    heroImageUrl: z.string().url("Must be a valid URL.").or(z.literal('')),
+    heroImageUrl: z.string().or(z.literal('')),
     missionTitle: z.string().min(1),
     missionText: z.string().min(1),
-    missionImageUrl: z.string().url("Must be a valid URL.").or(z.literal('')),
+    missionImageUrl: z.string().or(z.literal('')),
     visionTitle: z.string().min(1),
     visionText: z.string().min(1),
-    visionImageUrl: z.string().url("Must be a valid URL.").or(z.literal('')),
+    visionImageUrl: z.string().or(z.literal('')),
     coreValuesTitle: z.string().min(1),
     coreValuesDescription: z.string().min(1),
     coreValues: z.array(z.object({
@@ -56,7 +56,7 @@ const heroSlideshowSectionSchema = z.object({
     slides: z.array(z.object({
         title: z.string().min(1),
         subtitle: z.string().min(1),
-        imageUrls: z.array(z.string().url("Must be a valid URL.").or(z.literal(''))),
+        imageUrls: z.array(z.string().or(z.literal(''))),
     })),
 });
 const whyUsSectionSchema = z.object({
@@ -73,7 +73,7 @@ const signatureProgramsSectionSchema = z.object({
     programs: z.array(z.object({
         title: z.string().min(1),
         description: z.string().min(1),
-        imageUrls: z.array(z.string().url("Must be a valid URL.").or(z.literal(''))),
+        imageUrls: z.array(z.string().or(z.literal(''))),
     })),
 });
 const newsSectionSchema = z.object({
@@ -81,7 +81,7 @@ const newsSectionSchema = z.object({
     posts: z.array(z.object({
         title: z.string().min(1),
         date: z.string().min(1),
-        imageUrls: z.array(z.string().url("Must be a valid URL.").or(z.literal(''))),
+        imageUrls: z.array(z.string().or(z.literal(''))),
     })),
 });
 const academicsPageSchema = z.object({
@@ -90,7 +90,7 @@ const academicsPageSchema = z.object({
     programs: z.array(z.object({
         name: z.string().min(1),
         description: z.string().min(1),
-        imageUrls: z.array(z.string().url("Must be a valid URL.").or(z.literal(''))),
+        imageUrls: z.array(z.string().or(z.literal(''))),
     })),
 });
 const admissionsPageSchema = z.object({
@@ -109,17 +109,17 @@ const studentLifePageSchema = z.object({
     features: z.array(z.object({
         title: z.string().min(1),
         description: z.string().min(1),
-        imageUrls: z.array(z.string().url("Must be a valid URL.").or(z.literal(''))),
+        imageUrls: z.array(z.string().or(z.literal(''))),
     })),
 });
 const housesPageSchema = z.object({
     title: z.string().min(1),
     description: z.string().min(1),
-    heroImageUrl: z.string().url("Must be a valid URL.").or(z.literal('')),
+    heroImageUrl: z.string().or(z.literal('')),
     houses: z.array(z.object({
         name: z.string().min(1),
         description: z.string().min(1),
-        imageUrls: z.array(z.string().url("Must be a valid URL.").or(z.literal(''))),
+        imageUrls: z.array(z.string().or(z.literal(''))),
     })),
 });
 
@@ -253,12 +253,8 @@ function MissionVisionPageForm({ initialData }: { initialData: WebsiteContent['m
     });
 
     const onSubmit = (data: z.infer<typeof missionVisionPageContentSchema>) => {
-        const cleanData = {
-            ...data,
-            coreValues: data.coreValues.map(v => ({ title: v.title, description: v.description })),
-        };
         startTransition(async () => {
-            const result = await updateWebsiteSection('missionVisionPage', cleanData);
+            const result = await updateWebsiteSection('missionVisionPage', data);
             if (result.success) toast({ title: "Success", description: "Mission & Vision Page content updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -308,17 +304,8 @@ function HeroSlideshowForm({ initialData }: { initialData: WebsiteContent['heroS
     const { control } = form;
 
     const onSubmit = (data: z.infer<typeof heroSlideshowSectionSchema>) => {
-        const cleanData = {
-            buttonText: data.buttonText,
-            buttonLink: data.buttonLink,
-            slides: data.slides.map(s => ({
-                title: s.title,
-                subtitle: s.subtitle,
-                imageUrls: s.imageUrls
-            }))
-        };
         startTransition(async () => {
-            const result = await updateWebsiteSection('heroSlideshowSection', cleanData);
+            const result = await updateWebsiteSection('heroSlideshowSection', data);
             if (result.success) toast({ title: "Success", description: "Hero Slideshow updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -357,13 +344,8 @@ function WhyUsForm({ initialData }: { initialData: WebsiteContent['whyUsSection'
     const { control } = form;
 
     const onSubmit = (data: z.infer<typeof whyUsSectionSchema>) => {
-        const cleanData = {
-            heading: data.heading,
-            description: data.description,
-            points: data.points.map(p => ({ icon: p.icon, title: p.title, description: p.description })),
-        };
         startTransition(async () => {
-            const result = await updateWebsiteSection('whyUsSection', cleanData);
+            const result = await updateWebsiteSection('whyUsSection', data);
             if (result.success) toast({ title: "Success", description: "Why Us Section updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -402,12 +384,8 @@ function SignatureProgramsForm({ initialData }: { initialData: WebsiteContent['s
     const { control } = form;
 
     const onSubmit = (data: z.infer<typeof signatureProgramsSectionSchema>) => {
-        const cleanData = {
-            heading: data.heading,
-            programs: data.programs.map(p => ({ title: p.title, description: p.description, imageUrls: p.imageUrls })),
-        };
         startTransition(async () => {
-            const result = await updateWebsiteSection('signatureProgramsSection', cleanData);
+            const result = await updateWebsiteSection('signatureProgramsSection', data);
             if (result.success) toast({ title: "Success", description: "Signature Programs section updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -445,12 +423,8 @@ function NewsForm({ initialData }: { initialData: WebsiteContent['newsSection'] 
     const { control } = form;
     
     const onSubmit = (data: z.infer<typeof newsSectionSchema>) => {
-        const cleanData = {
-            heading: data.heading,
-            posts: data.posts.map(p => ({ title: p.title, date: p.date, imageUrls: p.imageUrls })),
-        };
         startTransition(async () => {
-            const result = await updateWebsiteSection('newsSection', cleanData);
+            const result = await updateWebsiteSection('newsSection', data);
             if (result.success) toast({ title: "Success", description: "News section updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -488,13 +462,8 @@ function AcademicsPageForm({ initialData }: { initialData: WebsiteContent['acade
     const { control } = form;
     
     const onSubmit = (data: z.infer<typeof academicsPageSchema>) => {
-        const cleanData = {
-            title: data.title,
-            description: data.description,
-            programs: data.programs.map(p => ({ name: p.name, description: p.description, imageUrls: p.imageUrls })),
-        };
         startTransition(async () => {
-            const result = await updateWebsiteSection('academicsPage', cleanData);
+            const result = await updateWebsiteSection('academicsPage', data);
             if (result.success) toast({ title: "Success", description: "Academics page updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -533,14 +502,8 @@ function AdmissionsPageForm({ initialData }: { initialData: WebsiteContent['admi
     const { control } = form;
 
     const onSubmit = (data: z.infer<typeof admissionsPageSchema>) => {
-        const cleanData = {
-            title: data.title,
-            description: data.description,
-            formUrl: data.formUrl,
-            process: data.process.map(p => ({ step: p.step, title: p.title, description: p.description })),
-        };
         startTransition(async () => {
-            const result = await updateWebsiteSection('admissionsPage', cleanData);
+            const result = await updateWebsiteSection('admissionsPage', data);
             if (result.success) toast({ title: "Success", description: "Admissions page updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -580,13 +543,8 @@ function StudentLifePageForm({ initialData }: { initialData: WebsiteContent['stu
     const { control } = form;
 
     const onSubmit = (data: z.infer<typeof studentLifePageSchema>) => {
-        const cleanData = {
-            title: data.title,
-            description: data.description,
-            features: data.features.map(f => ({ title: f.title, description: f.description, imageUrls: f.imageUrls })),
-        };
         startTransition(async () => {
-            const result = await updateWebsiteSection('studentLifePage', cleanData);
+            const result = await updateWebsiteSection('studentLifePage', data);
             if (result.success) toast({ title: "Success", description: "Student Life page updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -625,14 +583,8 @@ function HousesPageForm({ initialData }: { initialData: WebsiteContent['housesPa
     const { control } = form;
 
     const onSubmit = (data: z.infer<typeof housesPageSchema>) => {
-        const cleanData = {
-            title: data.title,
-            description: data.description,
-            heroImageUrl: data.heroImageUrl,
-            houses: data.houses.map(h => ({ name: h.name, description: h.description, imageUrls: h.imageUrls })),
-        };
         startTransition(async () => {
-            const result = await updateWebsiteSection('housesPage', cleanData);
+            const result = await updateWebsiteSection('housesPage', data);
             if (result.success) toast({ title: "Success", description: "Houses Page content updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
