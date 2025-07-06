@@ -4,25 +4,26 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    /* Updated based on user feedback: Darker Blue, Light Blue BG, Amber Accent */
+    --background: 227 48% 95%; /* #E8EAF6 - Very light blue */
     --foreground: 222.2 47.4% 11.2%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 47.4% 11.2%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 47.4% 11.2%;
-    --primary: 221 44% 46%;
+    --primary: 231 48% 48%; /* #3F51B5 - Dark Blue */
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96.1%;
+    --secondary: 220 50% 97%; /* #F0F2F7 - A slightly different light blue for variety */
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
+    --accent: 45 93% 58%; /* #FFC107 - Amber */
     --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 63% 40%; /* #B91C1C - Dark Red */
     --destructive-foreground: 0 0% 100%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 221 44% 46%;
+    --ring: 231 48% 48%; /* Ring to match new primary */
     --chart-1: 197 37% 24%;
     --chart-2: 45 86% 62%;
     --chart-3: 24 9.8% 10%;

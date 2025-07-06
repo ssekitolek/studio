@@ -10,8 +10,8 @@ export default async function AdmissionsPage() {
   const { admissionsPage } = content;
 
   return (
-    <div className="overflow-x-hidden">
-       <div className="relative h-[30vh] w-full animate-fade-in-up">
+    <div className="overflow-x-hidden animate-fade-in-up">
+       <div className="relative h-[30vh] w-full">
         <Image 
           src="https://placehold.co/1920x1080.png" 
           alt="Admissions at St. Mbaaga's" 

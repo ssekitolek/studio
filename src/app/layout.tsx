@@ -1,15 +1,17 @@
 
 import type { Metadata } from 'next';
-import { Inter, Space_Grotesk } from 'next/font/google';
+import { PT_Sans, Space_Grotesk } from 'next/font/google'; // Corrected fonts
 import '@/app/globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { getWebsiteContent } from '@/lib/actions/website-actions';
 import { isValidUrl } from '@/lib/utils';
 
-const inter = Inter({
+// Corrected fonts based on user PRD
+const ptSans = PT_Sans({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-body',
+  weight: ['400', '700'],
 });
 
 const spaceGrotesk = Space_Grotesk({
@@ -53,7 +55,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${ptSans.variable} ${spaceGrotesk.variable}`} suppressHydrationWarning>
       <head>
         {/* Next.js will automatically add the favicon link from the generated metadata. */}
       </head>

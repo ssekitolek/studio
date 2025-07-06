@@ -93,7 +93,7 @@ export function MarketingHeader({ content }: MarketingHeaderProps) {
           {navConfig.map((item) => (
             <DropdownMenu key={item.title}>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost">{item.title} <ChevronDown className="ml-1 h-4 w-4" /></Button>
+                    <Button variant="ghost" className="data-[state=open]:bg-destructive data-[state=open]:text-destructive-foreground">{item.title} <ChevronDown className="ml-1 h-4 w-4" /></Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                     {item.items.map((subItem) => (
@@ -111,7 +111,7 @@ export function MarketingHeader({ content }: MarketingHeaderProps) {
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className='hidden md:inline-flex'>
+              <Button variant="ghost" className='hidden md:inline-flex data-[state=open]:bg-destructive data-[state=open]:text-destructive-foreground'>
                 Portals <ChevronDown className="ml-1 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
