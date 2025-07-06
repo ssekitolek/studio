@@ -254,12 +254,7 @@ function MissionVisionPageForm({ initialData }: { initialData: WebsiteContent['m
 
     const onSubmit = (data: z.infer<typeof missionVisionPageContentSchema>) => {
         startTransition(async () => {
-            // Clean the data before submitting
-            const cleanedData = {
-                ...data,
-                coreValues: data.coreValues.map(({ title, description }) => ({ title, description })),
-            };
-            const result = await updateWebsiteSection('missionVisionPage', cleanedData);
+            const result = await updateWebsiteSection('missionVisionPage', data);
             if (result.success) toast({ title: "Success", description: "Mission & Vision Page content updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -310,11 +305,7 @@ function HeroSlideshowForm({ initialData }: { initialData: WebsiteContent['heroS
 
     const onSubmit = (data: z.infer<typeof heroSlideshowSectionSchema>) => {
         startTransition(async () => {
-            const cleanedData = {
-                ...data,
-                slides: data.slides.map(({ title, subtitle, imageUrls }) => ({ title, subtitle, imageUrls })),
-            };
-            const result = await updateWebsiteSection('heroSlideshowSection', cleanedData);
+            const result = await updateWebsiteSection('heroSlideshowSection', data);
             if (result.success) toast({ title: "Success", description: "Hero Slideshow updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -354,11 +345,7 @@ function WhyUsForm({ initialData }: { initialData: WebsiteContent['whyUsSection'
 
     const onSubmit = (data: z.infer<typeof whyUsSectionSchema>) => {
         startTransition(async () => {
-            const cleanedData = {
-                ...data,
-                points: data.points.map(({ icon, title, description }) => ({ icon, title, description })),
-            };
-            const result = await updateWebsiteSection('whyUsSection', cleanedData);
+            const result = await updateWebsiteSection('whyUsSection', data);
             if (result.success) toast({ title: "Success", description: "Why Us Section updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -398,11 +385,7 @@ function SignatureProgramsForm({ initialData }: { initialData: WebsiteContent['s
 
     const onSubmit = (data: z.infer<typeof signatureProgramsSectionSchema>) => {
         startTransition(async () => {
-            const cleanedData = {
-                ...data,
-                programs: data.programs.map(({ title, description, imageUrls }) => ({ title, description, imageUrls })),
-            };
-            const result = await updateWebsiteSection('signatureProgramsSection', cleanedData);
+            const result = await updateWebsiteSection('signatureProgramsSection', data);
             if (result.success) toast({ title: "Success", description: "Signature Programs section updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -441,11 +424,7 @@ function NewsForm({ initialData }: { initialData: WebsiteContent['newsSection'] 
     
     const onSubmit = (data: z.infer<typeof newsSectionSchema>) => {
         startTransition(async () => {
-            const cleanedData = {
-                ...data,
-                posts: data.posts.map(({ title, date, imageUrls }) => ({ title, date, imageUrls })),
-            };
-            const result = await updateWebsiteSection('newsSection', cleanedData);
+            const result = await updateWebsiteSection('newsSection', data);
             if (result.success) toast({ title: "Success", description: "News section updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -484,11 +463,7 @@ function AcademicsPageForm({ initialData }: { initialData: WebsiteContent['acade
     
     const onSubmit = (data: z.infer<typeof academicsPageSchema>) => {
         startTransition(async () => {
-             const cleanedData = {
-                ...data,
-                programs: data.programs.map(({ name, description, imageUrls }) => ({ name, description, imageUrls })),
-            };
-            const result = await updateWebsiteSection('academicsPage', cleanedData);
+            const result = await updateWebsiteSection('academicsPage', data);
             if (result.success) toast({ title: "Success", description: "Academics page updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -528,11 +503,7 @@ function AdmissionsPageForm({ initialData }: { initialData: WebsiteContent['admi
 
     const onSubmit = (data: z.infer<typeof admissionsPageSchema>) => {
         startTransition(async () => {
-            const cleanedData = {
-                ...data,
-                process: data.process.map(({ step, title, description }) => ({ step, title, description })),
-            };
-            const result = await updateWebsiteSection('admissionsPage', cleanedData);
+            const result = await updateWebsiteSection('admissionsPage', data);
             if (result.success) toast({ title: "Success", description: "Admissions page updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -573,11 +544,7 @@ function StudentLifePageForm({ initialData }: { initialData: WebsiteContent['stu
 
     const onSubmit = (data: z.infer<typeof studentLifePageSchema>) => {
         startTransition(async () => {
-            const cleanedData = {
-                ...data,
-                features: data.features.map(({ title, description, imageUrls }) => ({ title, description, imageUrls })),
-            };
-            const result = await updateWebsiteSection('studentLifePage', cleanedData);
+            const result = await updateWebsiteSection('studentLifePage', data);
             if (result.success) toast({ title: "Success", description: "Student Life page updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });
@@ -617,11 +584,7 @@ function HousesPageForm({ initialData }: { initialData: WebsiteContent['housesPa
 
     const onSubmit = (data: z.infer<typeof housesPageSchema>) => {
         startTransition(async () => {
-            const cleanedData = {
-                ...data,
-                houses: data.houses.map(({ name, description, imageUrls }) => ({ name, description, imageUrls })),
-            };
-            const result = await updateWebsiteSection('housesPage', cleanedData);
+            const result = await updateWebsiteSection('housesPage', data);
             if (result.success) toast({ title: "Success", description: "Houses Page content updated." });
             else toast({ title: "Error", description: result.message, variant: "destructive" });
         });

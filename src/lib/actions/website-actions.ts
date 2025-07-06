@@ -214,11 +214,12 @@ export async function updateWebsiteSection(
   try {
     const contentRef = doc(db, "website_content", "homepage");
     
-    // The data is now expected to be clean from the client form components.
-    // This action now simply trusts the data it's given and saves it.
-    await setDoc(contentRef, { [section]: data }, { merge: true });
+    // The definitive fix: This reliably removes any non-serializable data,
+    // including the internal `id` from react-hook-form's `useFieldArray`.
+    const cleanedData = JSON.parse(JSON.stringify(data));
     
-    // Revalidate the entire site layout to reflect changes everywhere.
+    await setDoc(contentRef, { [section]: cleanedData }, { merge: true });
+    
     revalidatePath("/", "layout");
     
     const friendlySectionName = section.replace(/([A-Z])/g, ' $1').replace(/Page/g, ' Page').trim();
