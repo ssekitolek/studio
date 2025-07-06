@@ -1,0 +1,11 @@
+
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      // This rule is insecure and should be updated for production.
+      // It allows any client to read and write to the entire storage bucket.
+      allow read, write: if true;
+    }
+  }
+}
