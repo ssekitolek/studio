@@ -204,6 +204,29 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
   }
 }
 
+/**
+ * Recursively removes any key named 'id' from objects within arrays.
+ * This is crucial for cleaning data from react-hook-form's useFieldArray
+ * before sending it to Firestore, as the 'id' field is for form state only.
+ * @param data The data to clean.
+ * @returns The cleaned data.
+ */
+function cleanDataForFirestore(data: any): any {
+  if (Array.isArray(data)) {
+    return data.map(item => cleanDataForFirestore(item));
+  }
+  if (typeof data === 'object' && data !== null) {
+    const newData: { [key: string]: any } = {};
+    for (const key in data) {
+      if (key !== 'id') { // Explicitly remove the 'id' key from objects
+        newData[key] = cleanDataForFirestore(data[key]);
+      }
+    }
+    return newData;
+  }
+  return data;
+}
+
 export async function updateWebsiteSection(
   section: keyof WebsiteContent,
   data: any
@@ -214,9 +237,11 @@ export async function updateWebsiteSection(
   try {
     const contentRef = doc(db, "website_content", "homepage");
     
-    // This is a robust, industry-standard way to remove any non-serializable data 
-    // (like 'undefined' or the internal 'id' from react-hook-form) before saving to Firestore.
-    const cleanedData = JSON.parse(JSON.stringify(data));
+    // First, use JSON stringify/parse to remove any 'undefined' values, which Firestore cannot handle.
+    const sanitizedData = JSON.parse(JSON.stringify(data));
+
+    // Then, use our custom cleaner to remove the internal 'id' fields from arrays of objects.
+    const cleanedData = cleanDataForFirestore(sanitizedData);
     
     await setDoc(contentRef, { [section]: cleanedData }, { merge: true });
     
@@ -226,6 +251,7 @@ export async function updateWebsiteSection(
     return { success: true, message: `${friendlySectionName} updated successfully.` };
   } catch (error) {
     console.error(`Error updating website section ${section}:`, error);
-    return { success: false, message: `Failed to update ${section}: ${error instanceof Error ? error.message : "Unknown error"}` };
+    const errorMessage = `Failed to update ${section}: ${error instanceof Error ? error.message : "Unknown error"}. This is often a data validation or permission issue with Firestore.`;
+    return { success: false, message: errorMessage };
   }
 }
