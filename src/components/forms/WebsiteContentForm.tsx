@@ -15,7 +15,6 @@ import type { WebsiteContent, SimplePageContent } from "@/lib/types";
 import { Loader2, Save, PlusCircle, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ImageUploadInput } from "@/components/shared/ImageUploadInput";
 
 // Schemas
 const logoUrlSchema = z.object({ logoUrl: z.string() });
@@ -56,7 +55,7 @@ const heroSlideshowSectionSchema = z.object({
     slides: z.array(z.object({
         title: z.string().min(1),
         subtitle: z.string().min(1),
-        imageUrls: z.array(z.string()).min(1),
+        imageUrls: z.array(z.string()),
     })),
 });
 const whyUsSectionSchema = z.object({
@@ -73,7 +72,7 @@ const signatureProgramsSectionSchema = z.object({
     programs: z.array(z.object({
         title: z.string().min(1),
         description: z.string().min(1),
-        imageUrls: z.array(z.string()).min(1),
+        imageUrls: z.array(z.string()),
     })),
 });
 const newsSectionSchema = z.object({
@@ -81,7 +80,7 @@ const newsSectionSchema = z.object({
     posts: z.array(z.object({
         title: z.string().min(1),
         date: z.string().min(1),
-        imageUrls: z.array(z.string()).min(1),
+        imageUrls: z.array(z.string()),
     })),
 });
 const academicsPageSchema = z.object({
@@ -90,7 +89,7 @@ const academicsPageSchema = z.object({
     programs: z.array(z.object({
         name: z.string().min(1),
         description: z.string().min(1),
-        imageUrls: z.array(z.string()).min(1),
+        imageUrls: z.array(z.string()),
     })),
 });
 const admissionsPageSchema = z.object({
@@ -109,7 +108,7 @@ const studentLifePageSchema = z.object({
     features: z.array(z.object({
         title: z.string().min(1),
         description: z.string().min(1),
-        imageUrls: z.array(z.string()).min(1),
+        imageUrls: z.array(z.string()),
     })),
 });
 const housesPageSchema = z.object({
@@ -119,7 +118,7 @@ const housesPageSchema = z.object({
     houses: z.array(z.object({
         name: z.string().min(1),
         description: z.string().min(1),
-        imageUrls: z.array(z.string()).min(1),
+        imageUrls: z.array(z.string()),
     })),
 });
 
@@ -158,7 +157,7 @@ function LogoForm({ initialData }: { initialData: WebsiteContent['logoUrl'] }) {
     return (
         <FormProvider {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <ImageUploadInput fieldName="logoUrl" label="School Logo URL" />
+                 <FormField control={form.control} name="logoUrl" render={({ field }) => ( <FormItem><FormLabel>School Logo URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <div className="flex justify-end">
                     <Button type="submit" disabled={isPending}>
                         {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -196,7 +195,7 @@ function ContactPageForm({ initialData }: { initialData: WebsiteContent['contact
                 <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormLabel>Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem><FormLabel>Phone</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <ImageUploadInput fieldName="mapImageUrl" label="Map Image URL" />
+                <FormField control={form.control} name="mapImageUrl" render={({ field }) => ( <FormItem><FormLabel>Map Image URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <div className="flex justify-end">
                     <Button type="submit" disabled={isPending}>
                         {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -229,7 +228,7 @@ function SimplePageForm({ sectionKey, initialData, title }: { sectionKey: keyof 
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                  <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Hero Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                  <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Hero Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                 <ImageUploadInput fieldName="heroImageUrl" label="Hero Image URL" />
+                 <FormField control={form.control} name="heroImageUrl" render={({ field }) => ( <FormItem><FormLabel>Hero Image URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                  <hr/>
                  <FormField control={form.control} name="contentTitle" render={({ field }) => ( <FormItem><FormLabel>Main Content Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                  <FormField control={form.control} name="contentBody" render={({ field }) => ( <FormItem><FormLabel>Main Content Body</FormLabel><FormControl><Textarea {...field} className="min-h-[200px]"/></FormControl><FormMessage /></FormItem> )}/>
@@ -265,15 +264,15 @@ function MissionVisionPageForm({ initialData }: { initialData: WebsiteContent['m
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField control={form.control} name="heroTitle" render={({ field }) => ( <FormItem><FormLabel>Hero Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={form.control} name="heroDescription" render={({ field }) => ( <FormItem><FormLabel>Hero Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <ImageUploadInput fieldName="heroImageUrl" label="Hero Image URL" />
+                <FormField control={form.control} name="heroImageUrl" render={({ field }) => ( <FormItem><FormLabel>Hero Image URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <hr />
                 <FormField control={form.control} name="missionTitle" render={({ field }) => ( <FormItem><FormLabel>Mission Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={form.control} name="missionText" render={({ field }) => ( <FormItem><FormLabel>Mission Text</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <ImageUploadInput fieldName="missionImageUrl" label="Mission Image URL" />
+                <FormField control={form.control} name="missionImageUrl" render={({ field }) => ( <FormItem><FormLabel>Mission Image URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <hr />
                 <FormField control={form.control} name="visionTitle" render={({ field }) => ( <FormItem><FormLabel>Vision Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={form.control} name="visionText" render={({ field }) => ( <FormItem><FormLabel>Vision Text</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <ImageUploadInput fieldName="visionImageUrl" label="Vision Image URL" />
+                <FormField control={form.control} name="visionImageUrl" render={({ field }) => ( <FormItem><FormLabel>Vision Image URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <hr />
                 <FormField control={form.control} name="coreValuesTitle" render={({ field }) => ( <FormItem><FormLabel>Core Values Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={form.control} name="coreValuesDescription" render={({ field }) => ( <FormItem><FormLabel>Core Values Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
@@ -320,7 +319,7 @@ function HeroSlideshowForm({ initialData }: { initialData: WebsiteContent['heroS
                     <>
                         <FormField control={control} name={`slides.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                         <FormField control={control} name={`slides.${index}.subtitle`} render={({ field }) => ( <FormItem><FormLabel>Subtitle</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                        <ImageUploadInput fieldName={`slides.${index}.imageUrls.0`} label="Image URL" />
+                        <FormField control={control} name={`slides.${index}.imageUrls.0`} render={({ field }) => ( <FormItem><FormLabel>Image URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                     </>
                 )}/>
                 <div className="flex justify-end">
@@ -399,7 +398,7 @@ function SignatureProgramsForm({ initialData }: { initialData: WebsiteContent['s
                     <>
                         <FormField control={form.control} name={`programs.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                         <FormField control={form.control} name={`programs.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                        <ImageUploadInput fieldName={`programs.${index}.imageUrls.0`} label="Image URL" />
+                        <FormField control={form.control} name={`programs.${index}.imageUrls.0`} render={({ field }) => ( <FormItem><FormLabel>Image URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                     </>
                 )}/>
                 <div className="flex justify-end">
@@ -438,7 +437,7 @@ function NewsForm({ initialData }: { initialData: WebsiteContent['newsSection'] 
                     <>
                         <FormField control={form.control} name={`posts.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                         <FormField control={form.control} name={`posts.${index}.date`} render={({ field }) => ( <FormItem><FormLabel>Date</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                        <ImageUploadInput fieldName={`posts.${index}.imageUrls.0`} label="Image URL" />
+                        <FormField control={form.control} name={`posts.${index}.imageUrls.0`} render={({ field }) => ( <FormItem><FormLabel>Image URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                     </>
                 )}/>
                 <div className="flex justify-end">
@@ -478,7 +477,7 @@ function AcademicsPageForm({ initialData }: { initialData: WebsiteContent['acade
                     <>
                         <FormField control={form.control} name={`programs.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                         <FormField control={form.control} name={`programs.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                        <ImageUploadInput fieldName={`programs.${index}.imageUrls.0`} label="Image URL" />
+                        <FormField control={form.control} name={`programs.${index}.imageUrls.0`} render={({ field }) => ( <FormItem><FormLabel>Image URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                     </>
                 )}/>
                 <div className="flex justify-end">
@@ -559,7 +558,7 @@ function StudentLifePageForm({ initialData }: { initialData: WebsiteContent['stu
                     <>
                         <FormField control={form.control} name={`features.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                         <FormField control={form.control} name={`features.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                        <ImageUploadInput fieldName={`features.${index}.imageUrls.0`} label="Image URL" />
+                        <FormField control={form.control} name={`features.${index}.imageUrls.0`} render={({ field }) => ( <FormItem><FormLabel>Image URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                     </>
                 )}/>
                 <div className="flex justify-end">
@@ -595,12 +594,12 @@ function HousesPageForm({ initialData }: { initialData: WebsiteContent['housesPa
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField control={control} name="title" render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <ImageUploadInput fieldName="heroImageUrl" label="Hero Image URL" />
+                <FormField control={control} name="heroImageUrl" render={({ field }) => ( <FormItem><FormLabel>Hero Image URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <ArrayEditor name="houses" title="House" control={control} defaultItem={{ name: '', description: '', imageUrls: [''] }} renderItem={(index) => (
                     <>
                         <FormField control={control} name={`houses.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                         <FormField control={control} name={`houses.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                        <ImageUploadInput fieldName={`houses.${index}.imageUrls.0`} label="Image URL" />
+                        <FormField control={control} name={`houses.${index}.imageUrls.0`} render={({ field }) => ( <FormItem><FormLabel>Image URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                     </>
                 )}/>
                 <div className="flex justify-end">

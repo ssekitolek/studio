@@ -7,6 +7,24 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { revalidatePath } from "next/cache";
 import { isValidUrl } from '@/lib/utils';
 
+
+// Helper function to remove undefined values from nested objects
+function removeUndefinedValues(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(removeUndefinedValues).filter(v => v !== undefined);
+  } else if (obj !== null && typeof obj === 'object') {
+    return Object.keys(obj).reduce((acc, key) => {
+      const value = removeUndefinedValues(obj[key]);
+      if (value !== undefined) {
+        acc[key] = value;
+      }
+      return acc;
+    }, {} as {[key: string]: any});
+  }
+  return obj;
+}
+
+
 const simplePageDefault = (title: string, contentTitle: string, hint: string): SimplePageContent => ({
   title: title,
   description: `A brief and engaging description for the ${title.toLowerCase()} page goes here.`,
@@ -171,63 +189,6 @@ const defaultContent: WebsiteContent = {
   visitPage: simplePageDefault("Visit Us", "Experience Our Community", "campus welcome")
 };
 
-function sanitizeContentUrls(content: WebsiteContent): WebsiteContent {
-    const sanitized = JSON.parse(JSON.stringify(content)); 
-
-    const sanitizeUrl = (url: any, fallback: string = 'https://placehold.co/600x400.png') => 
-        isValidUrl(url) ? url : fallback;
-
-    sanitized.logoUrl = sanitizeUrl(sanitized.logoUrl, 'https://i.imgur.com/lZDibio.png');
-    sanitized.contactPage.mapImageUrl = sanitizeUrl(sanitized.contactPage.mapImageUrl, 'https://placehold.co/1200x400.png');
-
-    const sanitizeArrayWithImages = (arr: any[], fallback: string = 'https://placehold.co/600x400.png') => {
-        if (Array.isArray(arr)) {
-            arr.forEach(item => {
-                if (item && item.hasOwnProperty('imageUrls') && Array.isArray(item.imageUrls)) {
-                    item.imageUrls = item.imageUrls.map((url: any) => sanitizeUrl(url, fallback));
-                    if(item.imageUrls.length === 0) item.imageUrls.push(fallback);
-                }
-            });
-        }
-    };
-    
-    const sanitizeSimplePage = (page: SimplePageContent) => {
-        if (page && page.hasOwnProperty('heroImageUrl')) {
-            page.heroImageUrl = sanitizeUrl(page.heroImageUrl, 'https://placehold.co/1920x1080.png');
-        }
-    }
-
-    sanitizeArrayWithImages(sanitized.heroSlideshowSection.slides, 'https://placehold.co/1920x1080.png');
-    sanitizeArrayWithImages(sanitized.signatureProgramsSection.programs);
-    sanitizeArrayWithImages(sanitized.newsSection.posts);
-    sanitizeArrayWithImages(sanitized.academicsPage.programs);
-    sanitizeArrayWithImages(sanitized.studentLifePage.features);
-    
-    if (sanitized.missionVisionPage) {
-        sanitized.missionVisionPage.heroImageUrl = sanitizeUrl(sanitized.missionVisionPage.heroImageUrl, 'https://placehold.co/1920x1080.png');
-        sanitized.missionVisionPage.missionImageUrl = sanitizeUrl(sanitized.missionVisionPage.missionImageUrl);
-        sanitized.missionVisionPage.visionImageUrl = sanitizeUrl(sanitized.missionVisionPage.visionImageUrl);
-    }
-    
-    if (sanitized.housesPage) {
-        sanitized.housesPage.heroImageUrl = sanitizeUrl(sanitized.housesPage.heroImageUrl, 'https://placehold.co/1920x1080.png');
-        sanitizeArrayWithImages(sanitized.housesPage.houses);
-    }
-
-    sanitizeSimplePage(sanitized.campusPage);
-    sanitizeSimplePage(sanitized.clubsPage);
-    sanitizeSimplePage(sanitized.collegeCounselingPage);
-    sanitizeSimplePage(sanitized.employmentPage);
-    sanitizeSimplePage(sanitized.facultyPage);
-    sanitizeSimplePage(sanitized.historyPage);
-    sanitizeSimplePage(sanitized.parentsPage);
-    sanitizeSimplePage(sanitized.tuitionPage);
-    sanitizeSimplePage(sanitized.visitPage);
-
-    return sanitized;
-}
-
-
 export async function getWebsiteContent(): Promise<WebsiteContent> {
   if (!db) {
     console.error("Firestore not initialized. Returning default website content.");
@@ -238,10 +199,10 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
     const contentSnap = await getDoc(contentRef);
     if (contentSnap.exists()) {
       const data = contentSnap.data();
+      // Deep merge to ensure all default fields are present
       const mergedContent = {
         ...defaultContent,
         ...data,
-        logoUrl: data.logoUrl || defaultContent.logoUrl,
         heroSlideshowSection: { ...defaultContent.heroSlideshowSection, ...(data.heroSlideshowSection || {}) },
         whyUsSection: { ...defaultContent.whyUsSection, ...(data.whyUsSection || {}) },
         signatureProgramsSection: { ...defaultContent.signatureProgramsSection, ...(data.signatureProgramsSection || {}) },
@@ -262,9 +223,7 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
         visitPage: { ...defaultContent.visitPage, ...(data.visitPage || {}) },
         housesPage: { ...defaultContent.housesPage, ...(data.housesPage || {}) },
       };
-      
-      const sanitizedContent = sanitizeContentUrls(mergedContent);
-      return sanitizedContent;
+      return mergedContent;
     } else {
       await setDoc(contentRef, defaultContent);
       return defaultContent;
@@ -284,8 +243,11 @@ export async function updateWebsiteSection(
   }
   try {
     const contentRef = doc(db, "website_content", "homepage");
-
-    const payload = section === 'logoUrl' ? { logoUrl: data } : { [section]: data };
+    
+    // Clean the data to remove any `undefined` values before sending to Firestore
+    const cleanedData = removeUndefinedValues(data);
+    
+    const payload = section === 'logoUrl' ? { logoUrl: cleanedData } : { [section]: cleanedData };
     
     await setDoc(contentRef, payload, { merge: true });
     
