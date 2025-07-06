@@ -7,6 +7,32 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { revalidatePath } from "next/cache";
 import { isValidUrl } from '@/lib/utils';
 
+// Helper function to recursively remove undefined values from an object
+function removeUndefinedValues(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(item => removeUndefinedValues(item));
+  }
+
+  if (typeof obj === 'object') {
+    const newObj: { [key: string]: any } = {};
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        const value = obj[key];
+        if (value !== undefined) {
+          newObj[key] = removeUndefinedValues(value);
+        }
+      }
+    }
+    return newObj;
+  }
+
+  return obj;
+}
+
 
 const simplePageDefault = (title: string, contentTitle: string, hint: string): SimplePageContent => ({
   title: title,
@@ -228,7 +254,7 @@ export async function updateWebsiteSection(
     const contentRef = doc(db, "website_content", "homepage");
     
     // This robustly cleans the data, removing any `undefined` values that cause Firestore to crash.
-    const cleanedData = JSON.parse(JSON.stringify(data));
+    const cleanedData = removeUndefinedValues(data);
     
     const payload = section === 'logoUrl' ? { logoUrl: cleanedData } : { [section]: cleanedData };
     
