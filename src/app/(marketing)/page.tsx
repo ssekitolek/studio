@@ -62,7 +62,7 @@ export default async function SchoolHomePage() {
                     </p>
                 </div>
                 <Button variant="outline" asChild className="mt-6 md:mt-0">
-                    <Link href="/contact">View All News <ArrowRight className="ml-2" /></Link>
+                    <Link href="/news">View All News <ArrowRight className="ml-2" /></Link>
                 </Button>
             </div>
             <NewsCarousel posts={newsSection.posts} />
