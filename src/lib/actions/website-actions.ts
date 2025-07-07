@@ -63,6 +63,30 @@ const defaultContent: WebsiteContent = {
       { title: "Community Service Drive a Huge Success", date: "June 10, 2025", imageUrls: ["https://placehold.co/600x400.png"] }
     ]
   },
+  alumniSpotlightSection: {
+    heading: "Voices of Our Alumni",
+    description: "Hear from those who have walked these halls and gone on to make their mark on the world.",
+    spotlights: [
+      {
+        name: "Dr. Evelyn Reed",
+        graduationYear: "Class of 2008",
+        quote: "St. Mbaaga's didn't just teach me facts; it taught me how to think, how to question, and how to lead with integrity. The foundation I built here has been essential to every success in my career.",
+        imageUrl: "https://placehold.co/600x600.png"
+      },
+      {
+        name: "David Chen",
+        graduationYear: "Class of 2014",
+        quote: "The sense of community is what I remember most. The friendships I made and the teachers who mentored me have been a constant source of support throughout my journey as an entrepreneur.",
+        imageUrl: "https://placehold.co/600x600.png"
+      },
+      {
+        name: "Amina Williams",
+        graduationYear: "Class of 2011",
+        quote: "The diverse opportunities, from the debate club to the science olympiad, allowed me to discover my passions and build the confidence to pursue them at the highest level.",
+        imageUrl: "https://placehold.co/600x600.png"
+      }
+    ]
+  },
   academicsPage: {
     title: "Our Academic Programs",
     description: "We offer a comprehensive curriculum designed to challenge and inspire students at every level.",
@@ -178,6 +202,7 @@ export async function getWebsiteContent(): Promise<WebsiteContent> {
         whyUsSection: { ...defaultContent.whyUsSection, ...(data.whyUsSection || {}) },
         signatureProgramsSection: { ...defaultContent.signatureProgramsSection, ...(data.signatureProgramsSection || {}) },
         newsSection: { ...defaultContent.newsSection, ...(data.newsSection || {}) },
+        alumniSpotlightSection: { ...defaultContent.alumniSpotlightSection, ...(data.alumniSpotlightSection || {}) },
         academicsPage: { ...defaultContent.academicsPage, ...(data.academicsPage || {}) },
         admissionsPage: { ...defaultContent.admissionsPage, ...(data.admissionsPage || {}) },
         contactPage: { ...defaultContent.contactPage, ...(data.contactPage || {}) },

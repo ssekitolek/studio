@@ -122,6 +122,17 @@ const housesPageSchema = z.object({
         imageUrls: z.array(z.string().or(z.literal(''))),
     })),
 });
+const alumniSpotlightSectionSchema = z.object({
+    heading: z.string().min(1),
+    description: z.string().min(1),
+    spotlights: z.array(z.object({
+        name: z.string().min(1),
+        graduationYear: z.string().min(1),
+        quote: z.string().min(1),
+        imageUrl: z.string().or(z.literal('')),
+    })),
+});
+
 
 function ArrayEditor({ name, title, control, renderItem, defaultItem }: { name: string, title: string, control: any, renderItem: (index: number) => React.ReactNode, defaultItem: any }) {
     const { fields, append, remove } = useFieldArray({
@@ -452,6 +463,47 @@ function NewsForm({ initialData }: { initialData: WebsiteContent['newsSection'] 
     );
 }
 
+function AlumniSpotlightForm({ initialData }: { initialData: WebsiteContent['alumniSpotlightSection'] }) {
+    const { toast } = useToast();
+    const [isPending, startTransition] = React.useTransition();
+    const form = useForm<z.infer<typeof alumniSpotlightSectionSchema>>({
+        resolver: zodResolver(alumniSpotlightSectionSchema),
+        defaultValues: initialData,
+    });
+    const { control } = form;
+    
+    const onSubmit = (data: z.infer<typeof alumniSpotlightSectionSchema>) => {
+        startTransition(async () => {
+            const result = await updateWebsiteSection('alumniSpotlightSection', data);
+            if (result.success) toast({ title: "Success", description: "Alumni Spotlight section updated." });
+            else toast({ title: "Error", description: result.message, variant: "destructive" });
+        });
+    };
+
+    return (
+        <FormProvider {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField control={form.control} name="heading" render={({ field }) => ( <FormItem><FormLabel>Heading</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <ArrayEditor name="spotlights" title="Spotlight" control={form.control} defaultItem={{ name: '', graduationYear: '', quote: '', imageUrl: '' }} renderItem={(index) => (
+                    <>
+                        <FormField control={form.control} name={`spotlights.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Alum Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <FormField control={form.control} name={`spotlights.${index}.graduationYear`} render={({ field }) => ( <FormItem><FormLabel>Graduation Year</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <FormField control={form.control} name={`spotlights.${index}.quote`} render={({ field }) => ( <FormItem><FormLabel>Quote</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <ImageUploadInput fieldName={`spotlights.${index}.imageUrl`} label="Image URL"/>
+                    </>
+                )}/>
+                <div className="flex justify-end">
+                    <Button type="submit" disabled={isPending}>
+                        {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        Save Alumni Spotlight
+                    </Button>
+                </div>
+            </form>
+        </FormProvider>
+    );
+}
+
 function AcademicsPageForm({ initialData }: { initialData: WebsiteContent['academicsPage'] }) {
     const { toast } = useToast();
     const [isPending, startTransition] = React.useTransition();
@@ -645,6 +697,10 @@ export function WebsiteContentForm({ initialData }: { initialData: WebsiteConten
             <AccordionItem value="item-sigprog" className="border rounded-lg bg-card">
                 <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage: Signature Programs</CardTitle></AccordionTrigger>
                 <AccordionContent className="p-4 pt-0"><SignatureProgramsForm initialData={initialData.signatureProgramsSection} /></AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-alumni" className="border rounded-lg bg-card">
+                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage: Alumni Spotlight</CardTitle></AccordionTrigger>
+                <AccordionContent className="p-4 pt-0"><AlumniSpotlightForm initialData={initialData.alumniSpotlightSection} /></AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-news" className="border rounded-lg bg-card">
                 <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage: News Section</CardTitle></AccordionTrigger>

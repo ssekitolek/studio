@@ -7,10 +7,11 @@ import { SignatureProgramsCarousel } from '@/components/marketing/SignatureProgr
 import { NewsCarousel } from '@/components/marketing/NewsCarousel';
 import { HeroSlideshow } from '@/components/marketing/HeroSlideshow';
 import { WhyUsCarousel } from '@/components/marketing/WhyUsCarousel';
+import { AlumniSpotlight } from '@/components/marketing/AlumniSpotlight';
 
 export default async function SchoolHomePage() {
   const content = await getWebsiteContent();
-  const { heroSlideshowSection, whyUsSection, signatureProgramsSection, newsSection } = content;
+  const { heroSlideshowSection, whyUsSection, signatureProgramsSection, alumniSpotlightSection, newsSection } = content;
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground overflow-x-hidden">
@@ -51,8 +52,23 @@ export default async function SchoolHomePage() {
           </div>
         </section>
 
+        {/* Alumni Spotlight Section */}
+        <section id="alumni-spotlight" className="py-20 md:py-32 bg-secondary">
+            <div className="container mx-auto px-4 md:px-6">
+                <div className="text-center max-w-3xl mx-auto mb-16">
+                    <h2 className="text-4xl md:text-5xl font-headline font-bold text-primary">
+                        {alumniSpotlightSection.heading}
+                    </h2>
+                    <p className="mt-6 text-lg md:text-xl text-muted-foreground">
+                        {alumniSpotlightSection.description}
+                    </p>
+                </div>
+                <AlumniSpotlight content={alumniSpotlightSection} />
+            </div>
+        </section>
+
         {/* News Section */}
-        <section id="news" className="py-20 md:py-32 bg-secondary">
+        <section id="news" className="py-20 md:py-32 bg-background">
           <div className="container mx-auto px-4 md:px-6">
             <div className="flex flex-col md:flex-row justify-between items-center text-center md:text-left mb-16">
                 <div className="max-w-xl">

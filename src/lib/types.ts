@@ -1,5 +1,4 @@
 
-
 import type { Timestamp } from "firebase/firestore";
 
 export interface Teacher {
@@ -372,6 +371,16 @@ export interface WebsiteContent {
         title: string;
         date: string;
         imageUrls: string[];
+    }>;
+  };
+  alumniSpotlightSection: {
+    heading: string;
+    description: string;
+    spotlights: Array<{
+      name: string;
+      graduationYear: string;
+      quote: string;
+      imageUrl: string;
     }>;
   };
   academicsPage: {
