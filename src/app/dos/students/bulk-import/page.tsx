@@ -23,11 +23,13 @@ interface ImportResult {
   errors: string[];
 }
 
+const NO_STREAM_VALUE = "_WHOLE_CLASS_";
+
 export default function BulkImportPage() {
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [targetClassId, setTargetClassId] = useState<string>("");
-  const [selectedStream, setSelectedStream] = useState<string>("");
+  const [selectedStream, setSelectedStream] = useState<string>(NO_STREAM_VALUE);
   const [isProcessing, startTransition] = useTransition();
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [classes, setClasses] = useState<ClassInfo[]>([]);
@@ -56,7 +58,7 @@ export default function BulkImportPage() {
   
   React.useEffect(() => {
     // Reset stream selection when class changes
-    setSelectedStream("");
+    setSelectedStream(NO_STREAM_VALUE);
   }, [targetClassId]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,7 +123,8 @@ export default function BulkImportPage() {
             return;
           }
 
-          const result = await bulkImportStudents(jsonData, targetClassId, selectedStream || undefined);
+          const streamForAction = selectedStream === NO_STREAM_VALUE ? undefined : selectedStream;
+          const result = await bulkImportStudents(jsonData, targetClassId, streamForAction);
           setImportResult(result);
           toast({ title: "Processing Complete", description: "The student import has finished."});
         } catch (error) {
@@ -178,7 +181,7 @@ export default function BulkImportPage() {
                         <SelectValue placeholder={availableStreams.length > 0 ? "Select stream (optional)" : "No streams for this class"} />
                     </SelectTrigger>
                     <SelectContent>
-                         <SelectItem value="">Whole Class (No Stream)</SelectItem>
+                         <SelectItem value={NO_STREAM_VALUE}>Whole Class (No Stream)</SelectItem>
                         {availableStreams.map((stream) => (
                             <SelectItem key={stream} value={stream}>{stream}</SelectItem>
                         ))}

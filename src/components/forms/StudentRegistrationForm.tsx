@@ -216,7 +216,7 @@ export function StudentRegistrationForm({ initialData, studentDocumentId, onSucc
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Stream</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={!selectedClassId || availableStreams.length === 0}>
+                  <Select onValueChange={field.onChange} value={field.value || EMPTY_STREAM_VALUE} disabled={!selectedClassId || availableStreams.length === 0}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder={availableStreams.length > 0 ? "Select" : "N/A"} />
