@@ -54,7 +54,8 @@ export default function BulkImportPage() {
       }
     }
     fetchClassesData();
-  }, [toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
   React.useEffect(() => {
     // Reset stream selection when class changes
@@ -182,7 +183,7 @@ export default function BulkImportPage() {
                     </SelectTrigger>
                     <SelectContent>
                          <SelectItem value={NO_STREAM_VALUE}>Whole Class (No Stream)</SelectItem>
-                        {availableStreams.map((stream) => (
+                        {Array.isArray(availableStreams) && availableStreams.map((stream) => (
                             <SelectItem key={stream} value={stream}>{stream}</SelectItem>
                         ))}
                     </SelectContent>
