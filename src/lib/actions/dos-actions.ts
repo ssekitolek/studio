@@ -227,6 +227,7 @@ export async function createStudent(studentData: Omit<Student, 'id'>): Promise<{
       ...studentData,
       dateOfBirth: studentData.dateOfBirth || undefined,
       gender: studentData.gender || undefined,
+      stream: studentData.stream || undefined,
     };
 
     const docRef = await addDoc(collection(db, "students"), studentPayload);
@@ -242,7 +243,8 @@ export async function createStudent(studentData: Omit<Student, 'id'>): Promise<{
 
 export async function bulkImportStudents(
   studentsData: Array<{ studentIdNumber: string; firstName: string; lastName: string }>,
-  classId: string
+  classId: string,
+  stream?: string
 ): Promise<{ success: boolean; successCount: number; errorCount: number; errors: string[] }> {
   if (!db) {
     return { success: false, successCount: 0, errorCount: studentsData.length, errors: ["Firestore is not initialized."] };
@@ -283,12 +285,16 @@ export async function bulkImportStudents(
       }
 
       const studentRef = doc(collection(db, "students"));
-      batch.set(studentRef, {
+      const studentPayload: Partial<Student> = {
         studentIdNumber,
         firstName,
         lastName,
         classId,
-      });
+      };
+      if (stream) {
+        studentPayload.stream = stream;
+      }
+      batch.set(studentRef, studentPayload);
       studentIdNumbersInFile.add(studentIdNumber);
       successCount++;
     });
@@ -343,6 +349,7 @@ export async function updateStudent(studentId: string, studentData: Partial<Omit
       ...studentData,
       dateOfBirth: studentData.dateOfBirth || null,
       gender: studentData.gender || null,
+      stream: studentData.stream || null,
     };
     await updateDoc(studentRef, dataToUpdate);
     revalidatePath("/dos/students");
@@ -427,7 +434,7 @@ export async function deleteStudentsByClass(classId: string): Promise<{ success:
 
 // --- Class & Subject Management ---
 export async function createClass(
-  classData: Omit<ClassInfo, 'id' | 'subjects'> & { subjectIds: string[] }
+  classData: Omit<ClassInfo, 'id' | 'subjects'> & { subjectIds: string[], streams: string[] }
 ): Promise<{ success: boolean; message: string; classInfo?: ClassInfo }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
@@ -439,7 +446,7 @@ export async function createClass(
     const classDataToSave = {
       ...restOfClassData,
       classTeacherId: restOfClassData.classTeacherId || null,
-      stream: restOfClassData.stream || null,
+      streams: restOfClassData.streams || [],
       subjectReferences: subjectReferences
     };
 
@@ -459,7 +466,7 @@ export async function createClass(
         ...restOfClassData,
         id: docRef.id,
         subjects,
-        stream: classDataToSave.stream === null ? undefined : classDataToSave.stream,
+        streams: classDataToSave.streams,
         classTeacherId: classDataToSave.classTeacherId === null ? undefined : classDataToSave.classTeacherId,
     };
 
@@ -471,6 +478,7 @@ export async function createClass(
     return { success: false, message: `Failed to create class: ${errorMessage}` };
   }
 }
+
 
 export async function getClassById(classId: string): Promise<ClassInfo | null> {
   if (!db) {
@@ -514,7 +522,7 @@ export async function getClassById(classId: string): Promise<ClassInfo | null> {
       id: classSnap.id,
       name: classData.name || "Unnamed Class",
       level: classData.level || "Unknown Level",
-      stream: classData.stream === null ? undefined : classData.stream,
+      streams: classData.streams || [],
       classTeacherId: classData.classTeacherId === null ? undefined : classData.classTeacherId,
       subjects: subjectsArray
     } as ClassInfo;
@@ -524,20 +532,22 @@ export async function getClassById(classId: string): Promise<ClassInfo | null> {
   }
 }
 
-export async function updateClass(classId: string, classData: Partial<Omit<ClassInfo, 'id' | 'subjects'>> & { subjectIds?: string[] }): Promise<{ success: boolean; message: string }> {
+export async function updateClass(classId: string, classData: Partial<Omit<ClassInfo, 'id' | 'subjects'>> & { subjectIds?: string[], streams?: string[] }): Promise<{ success: boolean; message: string }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
     const classRef = doc(db, "classes", classId);
-    const { subjectIds, ...restOfClassData } = classData;
+    const { subjectIds, streams, ...restOfClassData } = classData;
     let dataToUpdate: any = { ...restOfClassData };
 
     if (subjectIds) {
       dataToUpdate.subjectReferences = subjectIds.map(id => doc(db, "subjects", id));
     }
+    if (streams) {
+      dataToUpdate.streams = streams;
+    }
     dataToUpdate.classTeacherId = dataToUpdate.classTeacherId || null;
-    dataToUpdate.stream = dataToUpdate.stream || null;
 
     await updateDoc(classRef, dataToUpdate);
     revalidatePath("/dos/classes");
@@ -549,6 +559,7 @@ export async function updateClass(classId: string, classData: Partial<Omit<Class
     return { success: false, message: `Failed to update class: ${errorMessage}` };
   }
 }
+
 
 export async function createSubject(subjectData: Omit<Subject, 'id'>): Promise<{ success: boolean; message: string; subject?: Subject }> {
   if (!db) {
@@ -726,6 +737,7 @@ export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success:
       classId: examData.classId || null,
       subjectId: examData.subjectId || null,
       teacherId: examData.teacherId || null,
+      stream: examData.stream || null,
       marksSubmissionDeadline: examData.marksSubmissionDeadline || null,
       gradingPolicyId: examData.gradingPolicyId || null,
     };
@@ -740,6 +752,7 @@ export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success:
         classId: examPayload.classId === null ? undefined : examData.classId,
         subjectId: examPayload.subjectId === null ? undefined : examData.subjectId,
         teacherId: examPayload.teacherId === null ? undefined : examData.teacherId,
+        stream: examPayload.stream === null ? undefined : examData.stream,
         marksSubmissionDeadline: examPayload.marksSubmissionDeadline === null ? undefined : examData.marksSubmissionDeadline,
         gradingPolicyId: examPayload.gradingPolicyId === null ? undefined : examData.gradingPolicyId,
     };
@@ -751,6 +764,7 @@ export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success:
     return { success: false, message: `Failed to create exam: ${errorMessage}` };
   }
 }
+
 
 export async function getExamById(examId: string): Promise<Exam | null> {
   if (!db) {
@@ -772,6 +786,7 @@ export async function getExamById(examId: string): Promise<Exam | null> {
         classId: data.classId === null ? undefined : data.classId,
         subjectId: data.subjectId === null ? undefined : data.subjectId,
         teacherId: data.teacherId === null ? undefined : data.teacherId,
+        stream: data.stream === null ? undefined : data.stream,
         marksSubmissionDeadline: data.marksSubmissionDeadline === null ? undefined : data.marksSubmissionDeadline,
         gradingPolicyId: data.gradingPolicyId === null ? undefined : data.gradingPolicyId,
       } as Exam;
@@ -794,7 +809,7 @@ export async function updateExam(examId: string, examData: Partial<Omit<Exam, 'i
     if (examPayload.maxMarks !== undefined) {
       examPayload.maxMarks = Number(examPayload.maxMarks);
     }
-    const fieldsToPotentiallyNullify = ['description', 'examDate', 'classId', 'subjectId', 'teacherId', 'marksSubmissionDeadline', 'gradingPolicyId'];
+    const fieldsToPotentiallyNullify = ['description', 'examDate', 'classId', 'subjectId', 'teacherId', 'stream', 'marksSubmissionDeadline', 'gradingPolicyId'];
     fieldsToPotentiallyNullify.forEach(field => {
         if (examPayload.hasOwnProperty(field)) {
             examPayload[field] = examPayload[field] || null;
@@ -1395,7 +1410,7 @@ export async function getAssessmentAnalysisData(classId: string, subjectId: stri
   if (exam?.gradingPolicyId) {
       const policy = await getGradingPolicyById(exam.gradingPolicyId);
       if (policy?.scale) gradingScale = policy.scale;
-  }
+  } 
   if (gradingScale.length === 0) {
       const settings = await getGeneralSettings();
       gradingScale = settings.defaultGradingScale || [];
@@ -1522,6 +1537,7 @@ export async function getStudents(): Promise<Student[]> {
         lastName: data.lastName,
         classId: data.classId,
         dateOfBirth: data.dateOfBirth,
+        stream: data.stream,
         gender: data.gender,
        } as Student;
     });
@@ -1570,7 +1586,7 @@ export async function getClasses(): Promise<ClassInfo[]> {
                 id: classDoc.id,
                 name: classData.name || "Unnamed Class",
                 level: classData.level || "Unknown Level",
-                stream: classData.stream === null ? undefined : classData.stream,
+                streams: classData.streams || [],
                 classTeacherId: classData.classTeacherId === null ? undefined : classData.classTeacherId,
                 subjects: subjectsArray
             } as ClassInfo;
@@ -1634,6 +1650,7 @@ export async function getExams(): Promise<Exam[]> {
                 classId: data.classId === null ? undefined : data.classId,
                 subjectId: data.subjectId === null ? undefined : data.subjectId,
                 teacherId: data.teacherId === null ? undefined : data.teacherId,
+                stream: data.stream === null ? undefined : data.stream,
                 marksSubmissionDeadline: data.marksSubmissionDeadline === null ? undefined : data.marksSubmissionDeadline,
                 gradingPolicyId: data.gradingPolicyId === null ? undefined : data.gradingPolicyId,
             } as Exam;

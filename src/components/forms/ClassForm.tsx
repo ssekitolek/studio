@@ -23,6 +23,7 @@ import { createClass, getTeachers, getSubjects, updateClass } from "@/lib/action
 import type { Teacher, Subject, ClassInfo } from "@/lib/types";
 import { Loader2, Save, PlusCircle, Edit3 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Textarea } from "../ui/textarea";
 
 const classFormSchema = z.object({
   name: z.string().min(1, "Class name is required."),
@@ -96,14 +97,15 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
 
   const onSubmit = (data: ClassFormValues) => {
     startTransition(async () => {
-      const payload = {
+      const classPayload = {
         ...data,
         classTeacherId: data.classTeacherId === NONE_TEACHER_VALUE ? undefined : data.classTeacherId,
+        streams: data.streams ? data.streams.split(',').map(s => s.trim()).filter(Boolean) : [],
       };
 
       try {
         if (isEditMode && classId) {
-          const result = await updateClass(classId, payload as any);
+          const result = await updateClass(classId, classPayload as any);
           if (result.success) {
             toast({ title: "Class Updated", description: `Class "${data.name}" updated successfully.` });
             if (onSuccess) onSuccess(); else router.push("/dos/classes");
@@ -111,7 +113,7 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
             toast({ title: "Error", description: result.message || "Failed to update class.", variant: "destructive" });
           }
         } else {
-          const result = await createClass(payload);
+          const result = await createClass(classPayload as any);
           if (result.success && result.classInfo) {
             toast({
               title: "Class Created",
@@ -180,9 +182,9 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
               <FormItem>
                 <FormLabel>Streams (Optional)</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., A, B, C" {...field} />
+                  <Textarea placeholder="e.g., A, B, C, North, South" {...field} className="min-h-[60px]" />
                 </FormControl>
-                <FormDescription>If the level has multiple streams, enter them separated by commas.</FormDescription>
+                <FormDescription>If this class level has multiple streams, enter them separated by commas.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
