@@ -374,6 +374,57 @@ export async function deleteStudent(studentId: string): Promise<{ success: boole
   }
 }
 
+export async function deleteAllStudents(): Promise<{ success: boolean; message: string }> {
+  if (!db) {
+    return { success: false, message: "Firestore is not initialized." };
+  }
+  try {
+    const studentsRef = collection(db, "students");
+    const snapshot = await getDocs(studentsRef);
+    if (snapshot.empty) {
+        return { success: true, message: "No students to delete." };
+    }
+    const batch = writeBatch(db);
+    snapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+    await batch.commit();
+    revalidatePath("/dos/students");
+    return { success: true, message: `Successfully deleted ${snapshot.size} student records.` };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+    console.error("Error in deleteAllStudents:", error);
+    return { success: false, message: `Failed to delete all students: ${errorMessage}` };
+  }
+}
+
+export async function deleteStudentsByClass(classId: string): Promise<{ success: boolean; message: string }> {
+  if (!db) {
+    return { success: false, message: "Firestore is not initialized." };
+  }
+  if (!classId) {
+      return { success: false, message: "Class ID is required." };
+  }
+  try {
+    const studentsQuery = query(collection(db, "students"), where("classId", "==", classId));
+    const snapshot = await getDocs(studentsQuery);
+     if (snapshot.empty) {
+        return { success: true, message: "No students found in the selected class to delete." };
+    }
+    const batch = writeBatch(db);
+    snapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+    await batch.commit();
+    revalidatePath("/dos/students");
+    return { success: true, message: `Successfully deleted ${snapshot.size} students from the selected class.` };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+    console.error(`Error deleting students for class ${classId}:`, error);
+    return { success: false, message: `Failed to delete students by class: ${errorMessage}` };
+  }
+}
+
 // --- Class & Subject Management ---
 export async function createClass(
   classData: Omit<ClassInfo, 'id' | 'subjects'> & { subjectIds: string[] }
