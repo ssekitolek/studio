@@ -45,4 +45,3 @@ export default async function EditSubjectPage({ params, searchParams }: EditSubj
 
   return <SubjectEditView subject={subjectData} showDeletePromptInitially={showDeletePrompt} />;
 }
-

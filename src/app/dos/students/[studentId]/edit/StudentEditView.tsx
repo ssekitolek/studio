@@ -82,4 +82,3 @@ export function StudentEditView({ student, showDeletePromptInitially }: StudentE
     </div>
   );
 }
-

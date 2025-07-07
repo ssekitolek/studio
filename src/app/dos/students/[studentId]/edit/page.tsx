@@ -46,4 +46,3 @@ export default async function EditStudentPage({ params, searchParams }: EditStud
 
   return <StudentEditView student={student} showDeletePromptInitially={showDeletePrompt} />;
 }
-

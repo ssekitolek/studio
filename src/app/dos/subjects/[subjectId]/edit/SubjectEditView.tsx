@@ -79,4 +79,3 @@ export function SubjectEditView({ subject, showDeletePromptInitially }: SubjectE
     </div>
   );
 }
-
