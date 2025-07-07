@@ -64,7 +64,7 @@ export function HeroSlideshow({ content }: HeroSlideshowProps) {
                 {slide.subtitle}
             </p>
              <div className="mt-8">
-                <Button size="lg" asChild className="text-lg py-7 px-10 bg-accent hover:bg-accent/80 text-accent-foreground transition-transform hover:scale-105 shadow-lg">
+                <Button size="lg" asChild className="text-lg py-7 px-10 bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-transform hover:scale-105 shadow-lg">
                     <Link href={content.buttonLink}>
                         {content.buttonText} <ArrowRight className="ml-2 h-5 w-5" />
                     </Link>
