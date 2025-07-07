@@ -1,5 +1,4 @@
 
-
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { getWebsiteContent } from '@/lib/actions/website-actions';
@@ -9,61 +8,67 @@ import { NewsCarousel } from '@/components/marketing/NewsCarousel';
 import { HeroSlideshow } from '@/components/marketing/HeroSlideshow';
 import { WhyUsCarousel } from '@/components/marketing/WhyUsCarousel';
 
-
 export default async function SchoolHomePage() {
   const content = await getWebsiteContent();
   const { heroSlideshowSection, whyUsSection, signatureProgramsSection, newsSection } = content;
 
   return (
-    <div className="bg-background text-foreground">
+    <div className="flex flex-col min-h-screen bg-background text-foreground overflow-x-hidden">
       {/* Hero Section */}
       <HeroSlideshow content={heroSlideshowSection} />
 
-      {/* Why Us Section */}
-      <section className="py-16 md:py-24 bg-secondary">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <h2 
-              className="text-3xl md:text-4xl font-headline font-bold text-primary animate-fade-in-up opacity-0"
-              style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}
-            >
-              {whyUsSection.heading}
-            </h2>
-            <p 
-              className="mt-4 text-lg text-muted-foreground animate-fade-in-up opacity-0"
-              style={{ animationDelay: '300ms', animationFillMode: 'forwards' }}
-            >
-              {whyUsSection.description}
-            </p>
+      {/* Wrapper for the rest of the content to apply entrance animation */}
+      <div className="animate-fade-in-up" style={{ animationDuration: '1.2s' }}>
+        {/* Why Us Section */}
+        <section id="why-us" className="py-20 md:py-32 bg-secondary">
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="text-center max-w-3xl mx-auto mb-16">
+              <h2 
+                className="text-4xl md:text-5xl font-headline font-bold text-primary"
+              >
+                {whyUsSection.heading}
+              </h2>
+              <p 
+                className="mt-6 text-lg md:text-xl text-muted-foreground"
+              >
+                {whyUsSection.description}
+              </p>
+            </div>
+            <WhyUsCarousel points={whyUsSection.points} />
           </div>
-          <WhyUsCarousel points={whyUsSection.points} />
-        </div>
-      </section>
+        </section>
 
-      {/* Signature Programs Section */}
-      <section className="py-16 md:py-24 bg-background">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="text-center max-w-3xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-headline font-bold text-primary">{signatureProgramsSection.heading}</h2>
-          </div>
-          <div className="mt-12">
+        {/* Signature Programs Section */}
+        <section id="programs" className="py-20 md:py-32 bg-background">
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="text-center max-w-3xl mx-auto mb-16">
+              <h2 className="text-4xl md:text-5xl font-headline font-bold text-primary">{signatureProgramsSection.heading}</h2>
+               <p className="mt-6 text-lg md:text-xl text-muted-foreground">
+                Discover specialized pathways designed to ignite passion and cultivate expertise in high-demand fields.
+              </p>
+            </div>
             <SignatureProgramsCarousel programs={signatureProgramsSection.programs} />
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* News Section */}
-      <section className="py-16 md:py-24 bg-secondary">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="flex justify-between items-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-headline font-bold text-primary">{newsSection.heading}</h2>
-            <Button variant="link" asChild>
-                <Link href="#">All News <ArrowRight className="ml-2" /></Link>
-            </Button>
+        {/* News Section */}
+        <section id="news" className="py-20 md:py-32 bg-secondary">
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="flex flex-col md:flex-row justify-between items-center text-center md:text-left mb-16">
+                <div className="max-w-xl">
+                    <h2 className="text-4xl md:text-5xl font-headline font-bold text-primary">{newsSection.heading}</h2>
+                     <p className="mt-4 text-lg text-muted-foreground">
+                        Stay connected with the latest stories, achievements, and events from our vibrant community.
+                    </p>
+                </div>
+                <Button variant="outline" asChild className="mt-6 md:mt-0">
+                    <Link href="/contact">View All News <ArrowRight className="ml-2" /></Link>
+                </Button>
+            </div>
+            <NewsCarousel posts={newsSection.posts} />
           </div>
-          <NewsCarousel posts={newsSection.posts} />
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }
