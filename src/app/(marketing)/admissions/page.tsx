@@ -50,7 +50,7 @@ export default async function AdmissionsPage() {
           </div>
           <div className="mt-16 text-center animate-fade-in-up opacity-0" style={{ animationDelay: `${200 + admissionsPage.process.length * 150}ms`, animationFillMode: 'forwards' }}>
               <Button size="lg" asChild className="text-lg py-7 px-10">
-                  <Link href={admissionsPage.formUrl}>
+                  <Link href="/contact">
                       Apply Now <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
               </Button>
