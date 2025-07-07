@@ -85,7 +85,7 @@ const defaultContent: WebsiteContent = {
   },
   contactPage: {
     title: "Get in Touch",
-    address: "St. Mbaaga's College\nP.O BOX 8, Naddangira",
+    address: "St. Mbaaga's College\nP.O. Box 8, Naddangira",
     phone: "0758013161 / 0782923384",
     email: "ssegawarichard7@gmail.com",
     mapImageUrl: "https://placehold.co/1200x400.png",
