@@ -7,6 +7,7 @@ import { ClipboardList, PlusCircle, BookOpen, Edit3, Trash2, MoreHorizontal } fr
 import { getClasses, getSubjects, getTeachers } from "@/lib/actions/dos-actions";
 import type { ClassInfo, Subject as SubjectType, Teacher } from "@/lib/types"; 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 
 
 export default async function ManageClassesPage() {
@@ -54,7 +55,13 @@ export default async function ManageClassesPage() {
                 <Card key={classItem.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <CardTitle>{classItem.name}</CardTitle>
-                    <CardDescription>Level: {classItem.level} {classItem.stream || ''} - Teacher: {getTeacherName(classItem.classTeacherId)}</CardDescription>
+                    <CardDescription>Level: {classItem.level} - Teacher: {getTeacherName(classItem.classTeacherId)}</CardDescription>
+                     {classItem.streams && classItem.streams.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        <span className="text-xs text-muted-foreground mr-1">Streams:</span>
+                        {classItem.streams.map(stream => <Badge key={stream} variant="secondary">{stream}</Badge>)}
+                      </div>
+                    )}
                   </CardHeader>
                   <CardContent>
                     <h4 className="font-semibold mb-1">Subjects:</h4>
@@ -130,4 +137,3 @@ export default async function ManageClassesPage() {
     </div>
   );
 }
-

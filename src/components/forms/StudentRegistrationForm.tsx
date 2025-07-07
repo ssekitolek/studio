@@ -19,9 +19,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
-import { createStudent, getClasses, updateStudent } from "@/lib/actions/dos-actions"; // Added updateStudent
+import { createStudent, getClasses, updateStudent } from "@/lib/actions/dos-actions";
 import type { ClassInfo, Student } from "@/lib/types";
-import { Loader2, Save, UserPlus, Edit3 } from "lucide-react"; // Added Edit3
+import { Loader2, Save, UserPlus, Edit3 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 const studentRegistrationFormSchema = z.object({
@@ -29,8 +29,9 @@ const studentRegistrationFormSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters."),
   lastName: z.string().min(2, "Last name must be at least 2 characters."),
   classId: z.string().min(1, "Please select a class."),
+  stream: z.string().optional(),
   dateOfBirth: z.date().optional(),
-  gender: z.enum(["Male", "Female", "Other", ""]).optional(), // Added "" for unselected
+  gender: z.enum(["Male", "Female", "Other", ""]).optional(),
 });
 
 type StudentFormValues = z.infer<typeof studentRegistrationFormSchema>;
@@ -41,12 +42,15 @@ interface StudentRegistrationFormProps {
   onSuccess?: () => void;
 }
 
+const EMPTY_STREAM_VALUE = "_NONE_";
+
 export function StudentRegistrationForm({ initialData, studentDocumentId, onSuccess }: StudentRegistrationFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
   const [classes, setClasses] = React.useState<ClassInfo[]>([]);
   const [isLoadingClasses, setIsLoadingClasses] = React.useState(true);
+  const [availableStreams, setAvailableStreams] = React.useState<string[]>([]);
 
   const isEditMode = !!studentDocumentId && !!initialData;
 
@@ -57,10 +61,13 @@ export function StudentRegistrationForm({ initialData, studentDocumentId, onSucc
       firstName: initialData?.firstName || "",
       lastName: initialData?.lastName || "",
       classId: initialData?.classId || "",
+      stream: initialData?.stream || EMPTY_STREAM_VALUE,
       dateOfBirth: initialData?.dateOfBirth ? new Date(initialData.dateOfBirth) : undefined,
       gender: initialData?.gender || "",
     },
   });
+  
+  const selectedClassId = form.watch("classId");
 
   React.useEffect(() => {
     async function fetchClassesData() {
@@ -68,6 +75,11 @@ export function StudentRegistrationForm({ initialData, studentDocumentId, onSucc
       try {
         const classesData = await getClasses();
         setClasses(classesData);
+        // If in edit mode, populate streams for the initial class
+        if (initialData?.classId) {
+            const initialClass = classesData.find(c => c.id === initialData.classId);
+            setAvailableStreams(initialClass?.streams || []);
+        }
       } catch (error) {
         toast({ title: "Error", description: "Failed to load classes.", variant: "destructive" });
       } finally {
@@ -75,7 +87,23 @@ export function StudentRegistrationForm({ initialData, studentDocumentId, onSucc
       }
     }
     fetchClassesData();
-  }, [toast]);
+  }, [toast, initialData?.classId]);
+
+  React.useEffect(() => {
+    if (selectedClassId) {
+        const selectedClass = classes.find(c => c.id === selectedClassId);
+        setAvailableStreams(selectedClass?.streams || []);
+        
+        // When class changes, check if current stream is valid for new class
+        const currentStream = form.getValues('stream');
+        if (currentStream && currentStream !== EMPTY_STREAM_VALUE && !selectedClass?.streams?.includes(currentStream)) {
+            form.setValue('stream', EMPTY_STREAM_VALUE); // Reset if not valid
+        }
+    } else {
+        setAvailableStreams([]);
+    }
+  }, [selectedClassId, classes, form]);
+
 
   React.useEffect(() => {
     if (initialData) {
@@ -84,6 +112,7 @@ export function StudentRegistrationForm({ initialData, studentDocumentId, onSucc
         firstName: initialData.firstName,
         lastName: initialData.lastName,
         classId: initialData.classId,
+        stream: initialData.stream || EMPTY_STREAM_VALUE,
         dateOfBirth: initialData.dateOfBirth ? new Date(initialData.dateOfBirth) : undefined,
         gender: initialData.gender || "",
       });
@@ -97,6 +126,7 @@ export function StudentRegistrationForm({ initialData, studentDocumentId, onSucc
         ...data,
         dateOfBirth: data.dateOfBirth?.toISOString().split('T')[0], 
         gender: data.gender === "" ? undefined : data.gender,
+        stream: data.stream === EMPTY_STREAM_VALUE ? undefined : data.stream,
       };
 
       try {
@@ -115,7 +145,7 @@ export function StudentRegistrationForm({ initialData, studentDocumentId, onSucc
               title: "Student Registered",
               description: `Student "${result.student.firstName} ${result.student.lastName}" has been successfully registered.`,
             });
-            form.reset({ studentIdNumber: "", firstName: "", lastName: "", classId: "", dateOfBirth: undefined, gender: "" });
+            form.reset({ studentIdNumber: "", firstName: "", lastName: "", classId: "", stream: "", dateOfBirth: undefined, gender: "" });
             if (onSuccess) {
               onSuccess();
             } else {
@@ -157,29 +187,53 @@ export function StudentRegistrationForm({ initialData, studentDocumentId, onSucc
               </FormItem>
             )}
           />
-          <FormField
-            control={form.control}
-            name="classId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Class</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingClasses}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder={isLoadingClasses ? "Loading classes..." : "Select class"} />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {!isLoadingClasses && classes.map(cls => (
-                      <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormDescription>Assign the student to a class.</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+           <div className="grid grid-cols-2 gap-4">
+             <FormField
+                control={form.control}
+                name="classId"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Class</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingClasses}>
+                    <FormControl>
+                        <SelectTrigger>
+                        <SelectValue placeholder={isLoadingClasses ? "Loading classes..." : "Select class"} />
+                        </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        {!isLoadingClasses && classes.map(cls => (
+                        <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                    </Select>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+            <FormField
+              control={form.control}
+              name="stream"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Stream</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={!selectedClassId || availableStreams.length === 0}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={availableStreams.length > 0 ? "Select" : "N/A"} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value={EMPTY_STREAM_VALUE}>None</SelectItem>
+                      {availableStreams.map((stream) => (
+                        <SelectItem key={stream} value={stream}>{stream}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
           <FormField
             control={form.control}
             name="firstName"

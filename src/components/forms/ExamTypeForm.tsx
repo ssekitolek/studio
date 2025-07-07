@@ -19,13 +19,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Added imports
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { createExam, getTerms, updateExam, getClasses, getSubjects, getTeachers, getGradingPolicies } from "@/lib/actions/dos-actions";
 import type { Term, Exam, ClassInfo, Subject, Teacher, GradingPolicy } from "@/lib/types";
 import { Loader2, Save, PlusCircle, Edit3 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
+
+const EMPTY_OPTION_VALUE = "_NONE_";
 
 const examTypeFormSchema = z.object({
   name: z.string().min(3, "Exam name must be at least 3 characters."),
@@ -36,10 +38,10 @@ const examTypeFormSchema = z.object({
   classId: z.string().optional(),
   subjectId: z.string().optional(),
   teacherId: z.string().optional(),
+  stream: z.string().optional(),
   marksSubmissionDeadline: z.date().optional(),
   gradingPolicyId: z.string().optional(),
 }).refine(data => {
-  // If classId is selected (and not the EMPTY_OPTION_VALUE) and subjectId is not selected (or is EMPTY_OPTION_VALUE), then it's an error.
   if (data.classId && data.classId !== EMPTY_OPTION_VALUE && (!data.subjectId || data.subjectId === EMPTY_OPTION_VALUE)) {
     return false;
   }
@@ -57,7 +59,6 @@ interface ExamTypeFormProps {
   onSuccess?: () => void;
 }
 
-const EMPTY_OPTION_VALUE = "_NONE_";
 const DEFAULT_POLICY_VALUE = "_DEFAULT_";
 
 export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormProps) {
@@ -65,6 +66,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
   const [isLoadingData, setIsLoadingData] = React.useState(true);
+  const [availableStreams, setAvailableStreams] = React.useState<string[]>([]);
 
   const [terms, setTerms] = React.useState<Term[]>([]);
   const [classes, setClasses] = React.useState<ClassInfo[]>([]);
@@ -85,10 +87,23 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
       classId: initialData?.classId || EMPTY_OPTION_VALUE,
       subjectId: initialData?.subjectId || EMPTY_OPTION_VALUE,
       teacherId: initialData?.teacherId || EMPTY_OPTION_VALUE,
+      stream: initialData?.stream || EMPTY_OPTION_VALUE,
       marksSubmissionDeadline: initialData?.marksSubmissionDeadline ? new Date(initialData.marksSubmissionDeadline) : undefined,
       gradingPolicyId: initialData?.gradingPolicyId || DEFAULT_POLICY_VALUE,
     },
   });
+  
+  const selectedClassId = form.watch("classId");
+  
+  React.useEffect(() => {
+    if (selectedClassId && selectedClassId !== EMPTY_OPTION_VALUE) {
+        const selectedClass = classes.find(c => c.id === selectedClassId);
+        setAvailableStreams(selectedClass?.streams || []);
+    } else {
+        setAvailableStreams([]);
+        form.setValue("stream", EMPTY_OPTION_VALUE);
+    }
+  }, [selectedClassId, classes, form]);
 
   React.useEffect(() => {
     async function fetchData() {
@@ -126,6 +141,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
         classId: initialData.classId || EMPTY_OPTION_VALUE,
         subjectId: initialData.subjectId || EMPTY_OPTION_VALUE,
         teacherId: initialData.teacherId || EMPTY_OPTION_VALUE,
+        stream: initialData.stream || EMPTY_OPTION_VALUE,
         marksSubmissionDeadline: initialData.marksSubmissionDeadline ? new Date(initialData.marksSubmissionDeadline) : undefined,
         gradingPolicyId: initialData.gradingPolicyId || DEFAULT_POLICY_VALUE,
       });
@@ -141,6 +157,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
         classId: data.classId === EMPTY_OPTION_VALUE ? undefined : data.classId,
         subjectId: data.subjectId === EMPTY_OPTION_VALUE ? undefined : data.subjectId,
         teacherId: data.teacherId === EMPTY_OPTION_VALUE ? undefined : data.teacherId,
+        stream: data.stream === EMPTY_OPTION_VALUE ? undefined : data.stream,
         gradingPolicyId: data.gradingPolicyId === DEFAULT_POLICY_VALUE ? undefined : data.gradingPolicyId,
       };
 
@@ -160,7 +177,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
               title: "Exam Created",
               description: `Exam "${result.exam.name}" has been successfully created.`,
             });
-            form.reset({ name: "", termId: "", maxMarks: 100, description: "", examDate: undefined, classId: EMPTY_OPTION_VALUE, subjectId: EMPTY_OPTION_VALUE, teacherId: EMPTY_OPTION_VALUE, marksSubmissionDeadline: undefined, gradingPolicyId: DEFAULT_POLICY_VALUE });
+            form.reset({ name: "", termId: "", maxMarks: 100, description: "", examDate: undefined, classId: EMPTY_OPTION_VALUE, subjectId: EMPTY_OPTION_VALUE, teacherId: EMPTY_OPTION_VALUE, stream: EMPTY_OPTION_VALUE, marksSubmissionDeadline: undefined, gradingPolicyId: DEFAULT_POLICY_VALUE });
             if (onSuccess) onSuccess(); else router.push("/dos/settings/exams");
           } else {
             toast({
@@ -338,6 +355,30 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
                 />
                 <FormField
                     control={form.control}
+                    name="stream"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Assign to Stream (Optional)</FormLabel>
+                         <Select onValueChange={field.onChange} value={field.value || EMPTY_OPTION_VALUE} disabled={!selectedClassId || selectedClassId === EMPTY_OPTION_VALUE || availableStreams.length === 0}>
+                            <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder={availableStreams.length > 0 ? "All Streams" : "No streams for this class"} />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value={EMPTY_OPTION_VALUE}>All Streams</SelectItem>
+                                {availableStreams.map((stream) => (
+                                    <SelectItem key={stream} value={stream}>{stream}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <FormDescription>Assign exam to a specific stream within the class.</FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
                     name="teacherId"
                     render={({ field }) => (
                     <FormItem>
@@ -357,7 +398,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
                     control={form.control}
                     name="marksSubmissionDeadline"
                     render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                    <FormItem className="flex flex-col md:col-span-2">
                         <FormLabel>Marks Submission Deadline (Optional)</FormLabel>
                         <DatePicker
                             date={field.value}

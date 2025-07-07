@@ -15,6 +15,7 @@ export interface Student {
   firstName: string;
   lastName: string;
   classId: string;
+  stream?: string;
   dateOfBirth?: string;
   gender?: 'Male' | 'Female' | 'Other';
 }
@@ -23,7 +24,7 @@ export interface ClassInfo {
   id: string;
   name: string;
   level: string;
-  stream?: string;
+  streams?: string[];
   classTeacherId?: string;
   subjects: Subject[]; // Array of Subject objects, not just IDs
 }
@@ -52,6 +53,7 @@ export interface Exam {
   classId?: string; // Firestore document ID of the class
   subjectId?: string; // Firestore document ID of the subject
   teacherId?: string; // Firestore document ID of the teacher
+  stream?: string;
   marksSubmissionDeadline?: string; // Should be ISO string date e.g., "YYYY-MM-DD"
   gradingPolicyId?: string; // The ID of the assigned GradingPolicy
 }

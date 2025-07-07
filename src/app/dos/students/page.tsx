@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -101,7 +102,7 @@ export default function ManageStudentsPage() {
                       <TableCell>
                           <div className="flex items-center gap-1">
                              <UsersRound className="h-4 w-4 text-muted-foreground"/>
-                             {getClassName(student.classId)}
+                             {getClassName(student.classId)} {student.stream && `(${student.stream})`}
                           </div>
                       </TableCell>
                       <TableCell className="text-right">

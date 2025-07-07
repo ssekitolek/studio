@@ -5,7 +5,7 @@
 import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation, Exam as ExamTypeFirebase, TeacherStats, MarkSubmissionFirestoreRecord, SubmissionHistoryDisplayItem, ClassInfo, Subject as SubjectType, ClassTeacherData, ClassManagementStudent, GradingScaleItem, ClassAssessment, StudentClassMark, AttendanceData, StudentAttendanceInput, DailyAttendanceRecord, AttendanceHistoryData } from "@/lib/types";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
 import { revalidatePath } from "next/cache";
-import { getClasses, getSubjects, getExams as getAllExamsFromDOS, getGeneralSettings, getTeacherById as getTeacherByIdFromDOS, getTerms, getStudents as getAllStudents, getGradingPolicies } from '@/lib/actions/dos-actions';
+import { getClasses, getSubjects, getExams as getAllExamsFromDOS, getGeneralSettings, getTeacherById as getTeacherByIdFromDOS, getTerms, getStudents as getAllStudents, getGradingPolicies, getExamById } from '@/lib/actions/dos-actions';
 import type { GeneralSettings, Term } from '@/lib/types';
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, limit, addDoc, orderBy, Timestamp, doc, getDoc, getCountFromServer, FieldPath, updateDoc, setDoc } from "firebase/firestore";
@@ -283,16 +283,28 @@ export async function getStudentsForAssessment(assessmentId: string): Promise<St
       console.warn(`[getStudentsForAssessment] Invalid assessmentId format: ${assessmentId}. Expected examDocId_classDocId_subjectDocId.`);
       return [];
   }
-  const classId = parts[1]; 
-  console.log(`[getStudentsForAssessment] Extracted class document ID: ${classId} from assessmentId: ${assessmentId}`);
+  const [examId, classId] = parts; 
+  console.log(`[getStudentsForAssessment] Extracted class document ID: ${classId} and exam ID: ${examId} from assessmentId: ${assessmentId}`);
 
+  try {
+    const exam = await getExamById(examId);
+    const allStudentsForClass = await getStudentsForClass(classId);
 
-  const allStudentsData = await getAllStudents(); 
-  console.log(`[getStudentsForAssessment] Fetched ${allStudentsData.length} total students.`);
-  
-  const filteredStudents = allStudentsData.filter(student => student.classId === classId);
-  console.log(`[getStudentsForAssessment] Found ${filteredStudents.length} students for class document ID: ${classId}`);
-  return filteredStudents;
+    if (exam && exam.stream) {
+      // Exam is for a specific stream
+      console.log(`[getStudentsForAssessment] Exam is specific to stream: "${exam.stream}". Filtering ${allStudentsForClass.length} students.`);
+      const filteredStudents = allStudentsForClass.filter(student => student.stream === exam.stream);
+      console.log(`[getStudentsForAssessment] Found ${filteredStudents.length} students in stream "${exam.stream}".`);
+      return filteredStudents;
+    } else {
+      // Exam is for the whole class
+      console.log(`[getStudentsForAssessment] Exam is for the whole class. Returning all ${allStudentsForClass.length} students.`);
+      return allStudentsForClass;
+    }
+  } catch(error) {
+    console.error(`[getStudentsForAssessment] Error fetching students for assessment ${assessmentId}:`, error);
+    return [];
+  }
 }
 
 export async function getSubmittedMarksHistory(teacherId: string): Promise<SubmissionHistoryDisplayItem[]> {

@@ -27,7 +27,7 @@ import { useRouter } from "next/navigation";
 const classFormSchema = z.object({
   name: z.string().min(1, "Class name is required."),
   level: z.string().min(1, "Level is required (e.g., Form 1, Grade 10)."),
-  stream: z.string().optional(),
+  streams: z.string().optional(),
   classTeacherId: z.string().optional(),
   subjectIds: z.array(z.string()).min(1, "At least one subject must be selected."),
 });
@@ -57,7 +57,7 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
     defaultValues: {
       name: initialData?.name || "",
       level: initialData?.level || "",
-      stream: initialData?.stream || "",
+      streams: initialData?.streams?.join(", ") || "",
       classTeacherId: initialData?.classTeacherId || "", 
       subjectIds: initialData?.subjects.map(s => s.id) || [],
     },
@@ -87,7 +87,7 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
       form.reset({
         name: initialData.name,
         level: initialData.level,
-        stream: initialData.stream || "",
+        streams: initialData.streams?.join(", ") || "",
         classTeacherId: initialData.classTeacherId || "", 
         subjectIds: initialData.subjects.map(s => s.id),
       });
@@ -103,7 +103,7 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
 
       try {
         if (isEditMode && classId) {
-          const result = await updateClass(classId, payload as { name: string; level: string; stream?: string; classTeacherId?: string; subjectIds: string[] });
+          const result = await updateClass(classId, payload as any);
           if (result.success) {
             toast({ title: "Class Updated", description: `Class "${data.name}" updated successfully.` });
             if (onSuccess) onSuccess(); else router.push("/dos/classes");
@@ -117,7 +117,7 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
               title: "Class Created",
               description: `Class "${result.classInfo.name}" has been successfully created.`,
             });
-            form.reset({ name: "", level: "", stream: "", classTeacherId: "", subjectIds: [] });
+            form.reset({ name: "", level: "", streams: "", classTeacherId: "", subjectIds: [] });
             if (onSuccess) {
               onSuccess();
             } else {
@@ -152,9 +152,9 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
               <FormItem>
                 <FormLabel>Class Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., Form 1A, Year 10 Blue" {...field} />
+                  <Input placeholder="e.g., Form 1, Year 10" {...field} />
                 </FormControl>
-                <FormDescription>The full display name of the class.</FormDescription>
+                <FormDescription>The general name of the class (e.g., Form 1). Streams are handled separately.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -166,7 +166,7 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
               <FormItem>
                 <FormLabel>Level</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., Form 1, Grade 10, Year 7" {...field} />
+                  <Input placeholder="e.g., 1, 10, 7" {...field} />
                 </FormControl>
                 <FormDescription>The academic level of the class.</FormDescription>
                 <FormMessage />
@@ -175,14 +175,14 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
           />
           <FormField
             control={form.control}
-            name="stream"
+            name="streams"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Stream (Optional)</FormLabel>
+                <FormLabel>Streams (Optional)</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., A, Blue, North" {...field} />
+                  <Input placeholder="e.g., A, B, C" {...field} />
                 </FormControl>
-                <FormDescription>If the level has multiple streams or groups.</FormDescription>
+                <FormDescription>If the level has multiple streams, enter them separated by commas.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}

@@ -27,10 +27,17 @@ export default function BulkImportPage() {
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [targetClassId, setTargetClassId] = useState<string>("");
+  const [selectedStream, setSelectedStream] = useState<string>("");
   const [isProcessing, startTransition] = useTransition();
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [isLoadingClasses, setIsLoadingClasses] = useState(true);
+
+  const availableStreams = React.useMemo(() => {
+    if (!targetClassId) return [];
+    const selectedClass = classes.find(c => c.id === targetClassId);
+    return selectedClass?.streams || [];
+  }, [targetClassId, classes]);
 
   React.useEffect(() => {
     async function fetchClassesData() {
@@ -46,6 +53,11 @@ export default function BulkImportPage() {
     }
     fetchClassesData();
   }, [toast]);
+  
+  React.useEffect(() => {
+    // Reset stream selection when class changes
+    setSelectedStream("");
+  }, [targetClassId]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -109,7 +121,7 @@ export default function BulkImportPage() {
             return;
           }
 
-          const result = await bulkImportStudents(jsonData, targetClassId);
+          const result = await bulkImportStudents(jsonData, targetClassId, selectedStream || undefined);
           setImportResult(result);
           toast({ title: "Processing Complete", description: "The student import has finished."});
         } catch (error) {
@@ -145,20 +157,34 @@ export default function BulkImportPage() {
           </div>
 
           <div className="space-y-2">
-            <h3 className="font-semibold">Step 2: Select Target Class</h3>
-            <p className="text-sm text-muted-foreground">Choose the class where the new students will be enrolled.</p>
-            <Select value={targetClassId} onValueChange={setTargetClassId} disabled={isLoadingClasses}>
-              <SelectTrigger className="w-full md:w-1/2">
-                <SelectValue placeholder={isLoadingClasses ? "Loading classes..." : "Select a class"} />
-              </SelectTrigger>
-              <SelectContent>
-                {classes.map((cls) => (
-                  <SelectItem key={cls.id} value={cls.id}>
-                    {cls.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <h3 className="font-semibold">Step 2: Select Target Class & Stream</h3>
+            <p className="text-sm text-muted-foreground">Choose the class and optional stream where the new students will be enrolled.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Select value={targetClassId} onValueChange={setTargetClassId} disabled={isLoadingClasses}>
+                <SelectTrigger>
+                    <SelectValue placeholder={isLoadingClasses ? "Loading classes..." : "Select a class"} />
+                </SelectTrigger>
+                <SelectContent>
+                    {classes.map((cls) => (
+                    <SelectItem key={cls.id} value={cls.id}>
+                        {cls.name}
+                    </SelectItem>
+                    ))}
+                </SelectContent>
+                </Select>
+
+                <Select value={selectedStream} onValueChange={setSelectedStream} disabled={!targetClassId || availableStreams.length === 0}>
+                    <SelectTrigger>
+                        <SelectValue placeholder={availableStreams.length > 0 ? "Select stream (optional)" : "No streams for this class"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                         <SelectItem value="">Whole Class (No Stream)</SelectItem>
+                        {availableStreams.map((stream) => (
+                            <SelectItem key={stream} value={stream}>{stream}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
           </div>
 
           <div className="space-y-2">
