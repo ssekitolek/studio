@@ -818,29 +818,60 @@ export async function deleteExam(examId: string): Promise<{ success: boolean; me
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
-    // Dependency check: Check for mark submissions
+    const batch = writeBatch(db);
+
+    // Find and delete all associated mark submissions
     const submissionsRef = collection(db, "markSubmissions");
-    const q = query(
+    const submissionsQuery = query(
       submissionsRef,
       where("assessmentId", ">=", `${examId}_`),
-      where("assessmentId", "<", `${examId}_\uf8ff`),
-      limit(1)
+      where("assessmentId", "<", `${examId}_\uf8ff`)
     );
-    const querySnapshot = await getDocs(q);
-
-    if (!querySnapshot.empty) {
-      return {
-        success: false,
-        message: "Cannot delete exam: Marks have already been submitted for this exam. Please handle or remove existing submissions first."
-      };
+    const submissionsSnapshot = await getDocs(submissionsQuery);
+    
+    let deletedSubmissionsCount = 0;
+    if (!submissionsSnapshot.empty) {
+      submissionsSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+        deletedSubmissionsCount++;
+      });
     }
+
+    // Remove this examId from any Teacher's subjectsAssigned.examIds array
+    const teachersRef = collection(db, "teachers");
+    const teachersSnapshot = await getDocs(teachersRef);
+    teachersSnapshot.forEach(teacherDoc => {
+      const teacherData = teacherDoc.data() as Teacher;
+      if (teacherData.subjectsAssigned && teacherData.subjectsAssigned.length > 0) {
+        let wasModified = false;
+        const newSubjectsAssigned = teacherData.subjectsAssigned.map(assignment => {
+          if (assignment.examIds && assignment.examIds.includes(examId)) {
+            wasModified = true;
+            return {
+              ...assignment,
+              examIds: assignment.examIds.filter(id => id !== examId)
+            };
+          }
+          return assignment;
+        }).filter(assignment => assignment.examIds.length > 0); 
+
+        if (wasModified) {
+          batch.update(teacherDoc.ref, { subjectsAssigned: newSubjectsAssigned });
+        }
+      }
+    });
+
+    // Finally, delete the exam itself
+    const examRef = doc(db, "exams", examId);
+    batch.delete(examRef);
+
+    await batch.commit();
     
-    // TODO: Also remove this examId from Teacher's subjectsAssigned.examIds array.
-    console.warn(`[deleteExam] Deleting exam ${examId}. IMPORTANT: Unlinking from teacher assignments is not yet implemented.`);
-    
-    await deleteDoc(doc(db, "exams", examId));
     revalidatePath("/dos/settings/exams");
-    return { success: true, message: "Exam deleted successfully." };
+    revalidatePath("/dos/teachers/assignments");
+
+    const message = `Exam and ${deletedSubmissionsCount} associated mark submission(s) deleted successfully.`;
+    return { success: true, message };
   } catch (error) {
     console.error(`Error in deleteExam for ${examId}:`, error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";

@@ -41,7 +41,7 @@ export function DeleteExamConfirmationDialog({
       if (result.success) {
         toast({
           title: "Exam Deleted",
-          description: `Exam type "${examName}" has been successfully deleted.`,
+          description: result.message || `Exam type "${examName}" has been successfully deleted.`,
         });
         onOpenChange(false); 
         router.push("/dos/settings/exams"); 
@@ -65,7 +65,7 @@ export function DeleteExamConfirmationDialog({
             Are you sure?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete the <strong>{examName}</strong> exam type. Any submitted marks for this exam will prevent deletion.
+            This action is irreversible. This will permanently delete the <strong>{examName}</strong> exam type and <strong>ALL</strong> of its associated mark submissions.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
