@@ -56,7 +56,7 @@ export default async function ManageClassesPage() {
                   <CardHeader>
                     <CardTitle>{classItem.name}</CardTitle>
                     <CardDescription>Level: {classItem.level} - Teacher: {getTeacherName(classItem.classTeacherId)}</CardDescription>
-                     {classItem.streams && classItem.streams.length > 0 && (
+                     {Array.isArray(classItem.streams) && classItem.streams.length > 0 && (
                       <div className="flex flex-wrap gap-1 pt-1">
                         <span className="text-xs text-muted-foreground mr-1">Streams:</span>
                         {classItem.streams.map(stream => <Badge key={stream} variant="secondary">{stream}</Badge>)}
