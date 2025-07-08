@@ -49,37 +49,29 @@ if (isAiConfigured) {
     model: 'googleai/gemini-1.5-flash-latest', // Explicitly specify the model
     input: {schema: GradeAnomalyDetectionInputSchema},
     output: {schema: GradeAnomalyDetectionOutputSchema},
-    prompt: `You are an AI assistant specialized in detecting anomalies in student grades. 
+    prompt: `You are an expert AI assistant for a Director of Studies, specialized in reviewing student grade submissions to detect anomalies and ensure data integrity.
 
-    You will receive a list of student grades for a specific subject and exam. Your task is to identify any unusual patterns or anomalies in the grades, such as:
+    You will be given the grades for a specific subject and exam. Your primary goal is to identify any results that seem unusual, incorrect, or worthy of a second look by a human.
 
-    - All students receiving the same grade if the class size is greater than 5.
-    - Grades significantly deviating from the historical average (if provided, by more than 2 standard deviations or 20 percentage points).
-    - Any individual grade being drastically different from the mean of the submitted grades for this specific assessment (e.g., more than 3 standard deviations if class size permits, or a large absolute difference).
-    - Unusual clustering of grades at the pass/fail boundary or at maximum/minimum scores.
-    - Any other unusual patterns that might indicate a data entry error or other irregularities.
-    Pay special attention to students for whom no grade was submitted (the grade value will be empty or null). A large number of missing grades is itself an anomaly.
+    Analyze the provided data for the following types of anomalies:
+    1.  **Uniform Scores:** Check if all students received the exact same grade. This is a strong anomaly indicator, especially if the class has more than 5 students.
+    2.  **Statistical Outliers:**
+        -   **Individual Scores:** Identify any student whose grade is a significant outlier compared to the rest of the class (e.g., more than 2.5 standard deviations from the class mean).
+        -   **Deviation from History:** If a historical average is provided, flag the submission if the current class average deviates from it by a large margin (e.g., more than 15-20 percentage points).
+    3.  **Missing Data:** Identify students with null or missing grades. A high percentage of missing grades for an assessment is a significant anomaly in itself.
+    4.  **Unusual Distribution:** Look for strange patterns in grade distribution. For example, an unusual number of students scoring the maximum possible marks, the minimum possible marks (0), or clustering just above a common passing threshold (like 50%).
 
+    Context:
     Subject: {{{subject}}}
     Exam: {{{exam}}}
-    Grades: {{#each grades}}{{{studentId}}}: {{{grade}}}, {{/each}}
-    {{#if historicalAverage}}Historical Average: {{{historicalAverage}}}{{/if}}
-    
-    Based on the provided information, determine if there are any anomalies in the grade submissions. If anomalies are detected, provide clear explanations for each anomaly, including the student ID and a description of the issue.
+    Grades: {{#each grades}}{{{studentId}}}: {{#if grade}}{{{grade}}}{{else}}NO_GRADE_SUBMITTED{{/if}}, {{/each}}
+    {{#if historicalAverage}}Historical Average Score: {{{historicalAverage}}}{{/if}}
 
-    Return your output in the following JSON format:
-    {
-      "hasAnomalies": true/false,
-      "anomalies": [
-        {
-          "studentId": "student_id_or_general_observation_if_not_student_specific",
-          "explanation": "Explanation of the anomaly"
-        },
-        ...
-      ]
-    }
-    If no anomalies are found, "anomalies" should be an empty array and "hasAnomalies" should be false.
-    If an anomaly is about a general pattern (e.g. all students same grade), use a placeholder like "GENERAL" for studentId.
+    Your response MUST be in the specified JSON format.
+    - If you find any anomalies, set "hasAnomalies" to true and provide a clear, concise explanation for each anomaly in the "anomalies" array.
+    - For anomalies affecting the whole class (like uniform scores or historical deviation), use "GENERAL" as the studentId.
+    - For anomalies affecting specific students, use their studentId.
+    - If no anomalies are found, "hasAnomalies" MUST be false and "anomalies" MUST be an empty array.
     `,
   });
 
