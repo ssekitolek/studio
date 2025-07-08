@@ -111,49 +111,44 @@ export default function MarksReviewPage() {
     }
   };
 
-   useEffect(() => {
-    // Automatically run anomaly check when marks are loaded
+  const handleRunAnomalyCheck = async () => {
     if (!marksPayload?.submissionId || marksPayload.marks.length === 0 || !isAiConfigured) {
+      toast({ title: "Cannot Run Check", description: "Load marks first. AI features must be configured.", variant: "destructive" });
       return;
     }
 
-    const check = async () => {
-        const currentSubjectObj = subjects.find(s => s.id === selectedSubject);
-        const currentExamObj = exams.find(e => e.id === selectedExam);
+    const currentSubjectObj = subjects.find(s => s.id === selectedSubject);
+    const currentExamObj = exams.find(e => e.id === selectedExam);
 
-        if (!currentSubjectObj || !currentExamObj) {
-            console.warn("Could not find subject or exam details for automatic anomaly check.");
-            return;
-        }
+    if (!currentSubjectObj || !currentExamObj) {
+        toast({ title: "Error", description: "Could not find subject or exam details for the check.", variant: "destructive" });
+        return;
+    }
 
-        const gradeEntries: GenkitGradeEntry[] = marksPayload.marks.map(m => ({ studentId: m.studentId, grade: m.grade }));
-        const anomalyInput: GradeAnomalyDetectionInput = {
-          subject: currentSubjectObj.name,
-          exam: currentExamObj.name,
-          grades: gradeEntries,
-          historicalAverage: historicalAverage,
-        };
-
-        startAnomalyCheckTransition(async () => {
-          try {
-            const result = await gradeAnomalyDetection(anomalyInput);
-            if (result.hasAnomalies) {
-              setAiAnomalies(result.anomalies);
-              toast({ title: "Anomalies Detected", description: "AI review found potential issues in the marks.", variant: "default", action: <FileWarning className="text-yellow-500"/> });
-            } else {
-              setAiAnomalies([]);
-              toast({ title: "AI Check Complete", description: "No anomalies were detected by the AI review.", variant: "default", action: <CheckCircle className="text-green-500"/> });
-            }
-          } catch (error) {
-            console.error("Automatic anomaly detection error:", error);
-            // Do not show a toast for a failed AI check, as it could be a config issue. A console error is sufficient.
-          }
-        });
+    const gradeEntries: GenkitGradeEntry[] = marksPayload.marks.map(m => ({ studentId: m.studentId, grade: m.grade }));
+    const anomalyInput: GradeAnomalyDetectionInput = {
+      subject: currentSubjectObj.name,
+      exam: currentExamObj.name,
+      grades: gradeEntries,
+      historicalAverage: historicalAverage,
     };
 
-    check();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [marksPayload]);
+    startAnomalyCheckTransition(async () => {
+      try {
+        const result = await gradeAnomalyDetection(anomalyInput);
+        if (result.hasAnomalies) {
+          setAiAnomalies(result.anomalies);
+          toast({ title: "Anomalies Detected", description: "AI review found potential issues in the marks.", variant: "default", action: <FileWarning className="text-yellow-500"/> });
+        } else {
+          setAiAnomalies([]);
+          toast({ title: "AI Check Complete", description: "No anomalies were detected by the AI review.", variant: "default", action: <CheckCircle className="text-green-500"/> });
+        }
+      } catch (error) {
+        console.error("Manual anomaly detection error:", error);
+        toast({ title: "AI Check Failed", description: `An error occurred: ${error instanceof Error ? error.message : String(error)}`, variant: "destructive" });
+      }
+    });
+  };
 
   const handleApprove = () => {
     if (!marksPayload?.submissionId) return;
@@ -365,7 +360,7 @@ export default function MarksReviewPage() {
     <div className="space-y-6">
       <PageHeader
         title="Marks Review & Anomaly Detection"
-        description="Review submissions, which are automatically checked by AI for potential anomalies. Approve or reject marks."
+        description="Review submissions, check for potential anomalies, and approve or reject marks."
         icon={ShieldAlert}
       />
 
@@ -423,14 +418,14 @@ export default function MarksReviewPage() {
                 D.O.S. Status: <Badge variant={currentDosStatus === 'Approved' ? 'default' : currentDosStatus === 'Rejected' ? 'destructive' : 'secondary'} className={`${currentDosStatus === 'Approved' ? 'bg-green-500 text-white' : currentDosStatus === 'Rejected' ? 'bg-red-500 text-white' : '' } align-middle`}>{currentDosStatus || 'N/A'}</Badge>
                 {currentDosStatus === 'Rejected' && currentDosRejectReason && <span className="text-xs italic ml-1"> Reason: {currentDosRejectReason}</span>}
               </CardDescription>
-              {isProcessingAnomalyCheck && (
-                <div className="flex items-center text-sm text-muted-foreground mt-2">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  <span>Running AI Anomaly Check...</span>
-                </div>
-              )}
             </div>
             <div className="flex flex-wrap gap-2">
+                {isAiConfigured && (
+                  <Button onClick={handleRunAnomalyCheck} variant="outline" disabled={isActionDisabled || currentMarks.length === 0}>
+                    {isProcessingAnomalyCheck ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
+                    Run AI Anomaly Check
+                  </Button>
+                )}
                 <Select onValueChange={(value: 'csv' | 'xlsx' | 'pdf') => handleDownload(value)} disabled={isDownloading || !marksPayload?.submissionId || currentMarks.length === 0}>
                     <SelectTrigger className="w-auto" disabled={isDownloading || !marksPayload?.submissionId || currentMarks.length === 0}>
                         <SelectValue placeholder={isDownloading ? "Downloading..." : "Download As"} />
@@ -558,7 +553,7 @@ export default function MarksReviewPage() {
           </AlertDescription>
         </Alert>
       )}
-      {isProcessingAnomalyCheck && aiAnomalies.length === 0 && (
+      {isProcessingAnomalyCheck && (
          <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="ml-2">Checking for anomalies...</p>
