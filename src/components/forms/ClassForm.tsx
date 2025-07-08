@@ -43,6 +43,16 @@ interface ClassFormProps {
 
 const NONE_TEACHER_VALUE = "_NONE_"; 
 
+const getStreamsAsString = (streams: unknown): string => {
+  if (Array.isArray(streams)) {
+    return streams.join(", ");
+  }
+  if (typeof streams === 'string') {
+    return streams;
+  }
+  return "";
+};
+
 export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
   const { toast } = useToast();
   const router = useRouter();
@@ -58,7 +68,7 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
     defaultValues: {
       name: initialData?.name || "",
       level: initialData?.level || "",
-      streams: initialData?.streams?.join(", ") || "",
+      streams: getStreamsAsString(initialData?.streams),
       classTeacherId: initialData?.classTeacherId || "", 
       subjectIds: initialData?.subjects.map(s => s.id) || [],
     },
@@ -88,7 +98,7 @@ export function ClassForm({ initialData, classId, onSuccess }: ClassFormProps) {
       form.reset({
         name: initialData.name,
         level: initialData.level,
-        streams: initialData.streams?.join(", ") || "",
+        streams: getStreamsAsString(initialData.streams),
         classTeacherId: initialData.classTeacherId || "", 
         subjectIds: initialData.subjects.map(s => s.id),
       });
