@@ -17,21 +17,13 @@ const spaceGrotesk = Space_Grotesk({
   variable: '--font-headline',
 });
 
-const faviconUrl = "https://i.imgur.com/lZDibio.png?v=5";
-
+// Remove favicon from metadata object to prevent conflicts
 export const metadata: Metadata = {
   title: "St. Mbaaga's College Naddangira",
   description: 'Online student marks portal',
-  icons: {
-    icon: [
-        { url: faviconUrl, type: 'image/png' },
-        { url: faviconUrl, type: 'image/png', sizes: '32x32' },
-        { url: faviconUrl, type: 'image/png', sizes: '16x16' },
-    ],
-    shortcut: { url: faviconUrl, type: 'image/png' },
-    apple: { url: faviconUrl, type: 'image/png' },
-  }
 };
+
+const faviconUrl = "https://i.imgur.com/lZDibio.png?v=6";
 
 
 export default function RootLayout({
@@ -41,6 +33,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${ptSans.variable} ${spaceGrotesk.variable}`} suppressHydrationWarning>
+       <head>
+        <link rel="icon" href={faviconUrl} type="image/png" sizes="any" />
+        <link rel="shortcut icon" href={faviconUrl} type="image/png" />
+        <link rel="apple-touch-icon" href={faviconUrl} type="image/png" />
+      </head>
       <body className="font-body antialiased">
         {children}
         <Toaster />
