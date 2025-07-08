@@ -55,11 +55,6 @@ export default function ManageStudentsPage() {
                 <Button variant="destructive" onClick={() => setIsDeleteAllOpen(true)}>
                   <Trash2 className="mr-2 h-4 w-4" /> Delete All Students
                 </Button>
-                 <Button asChild>
-                    <Link href="/dos/students/bulk-import">
-                        <FileUp className="mr-2 h-4 w-4" /> Bulk Import
-                    </Link>
-                </Button>
                 <Button asChild>
                     <Link href="/dos/students/new">
                     <UserPlus className="mr-2 h-4 w-4" /> Register New Student
