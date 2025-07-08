@@ -1,4 +1,3 @@
-
 import type { Metadata } from 'next';
 import { PT_Sans, Space_Grotesk } from 'next/font/google';
 import '@/app/globals.css';
@@ -18,15 +17,19 @@ const spaceGrotesk = Space_Grotesk({
   variable: '--font-headline',
 });
 
-const faviconUrl = "https://i.imgur.com/lZDibio.png?v=4";
+const faviconUrl = "https://i.imgur.com/lZDibio.png?v=5";
 
 export const metadata: Metadata = {
   title: "St. Mbaaga's College Naddangira",
   description: 'Online student marks portal',
   icons: {
-    icon: faviconUrl,
-    shortcut: faviconUrl,
-    apple: faviconUrl,
+    icon: [
+        { url: faviconUrl, type: 'image/png' },
+        { url: faviconUrl, type: 'image/png', sizes: '32x32' },
+        { url: faviconUrl, type: 'image/png', sizes: '16x16' },
+    ],
+    shortcut: { url: faviconUrl, type: 'image/png' },
+    apple: { url: faviconUrl, type: 'image/png' },
   }
 };
 
