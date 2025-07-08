@@ -18,14 +18,15 @@ const spaceGrotesk = Space_Grotesk({
   variable: '--font-headline',
 });
 
-// Statically set metadata for reliability, ensuring the favicon loads correctly.
+const faviconUrl = "https://i.imgur.com/lZDibio.png?v=4";
+
 export const metadata: Metadata = {
   title: "St. Mbaaga's College Naddangira",
   description: 'Online student marks portal',
   icons: {
-    icon: "https://i.imgur.com/lZDibio.png",
-    shortcut: "https://i.imgur.com/lZDibio.png",
-    apple: "https://i.imgur.com/lZDibio.png",
+    icon: faviconUrl,
+    shortcut: faviconUrl,
+    apple: faviconUrl,
   }
 };
 
