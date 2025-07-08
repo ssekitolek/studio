@@ -1,10 +1,8 @@
 
 import type { Metadata } from 'next';
-import { PT_Sans, Space_Grotesk } from 'next/font/google'; // Corrected fonts
+import { PT_Sans, Space_Grotesk } from 'next/font/google';
 import '@/app/globals.css';
 import { Toaster } from "@/components/ui/toaster";
-import { getWebsiteContent } from '@/lib/actions/website-actions';
-import { isValidUrl } from '@/lib/utils';
 
 // Corrected fonts based on user PRD
 const ptSans = PT_Sans({
@@ -20,33 +18,16 @@ const spaceGrotesk = Space_Grotesk({
   variable: '--font-headline',
 });
 
-// This function dynamically generates metadata, including the favicon.
-export async function generateMetadata(): Promise<Metadata> {
-  // A safe default logo URL to use as a fallback. This is the official school logo.
-  const fallbackLogoUrl = "https://i.imgur.com/lZDibio.png";
-  let finalLogoUrl = fallbackLogoUrl;
-
-  try {
-    const content = await getWebsiteContent();
-    // Use the logo from the database only if it's a valid, non-empty URL.
-    if (content?.logoUrl && isValidUrl(content.logoUrl)) {
-      finalLogoUrl = content.logoUrl;
-    }
-  } catch (error) {
-    console.error("Failed to fetch website content for metadata, using fallback logo:", error);
-    // In case of an error, we'll stick with the hardcoded fallback.
+// Statically set metadata for reliability, ensuring the favicon loads correctly.
+export const metadata: Metadata = {
+  title: "St. Mbaaga's College Naddangira",
+  description: 'Online student marks portal',
+  icons: {
+    icon: "https://i.imgur.com/lZDibio.png",
+    shortcut: "https://i.imgur.com/lZDibio.png",
+    apple: "https://i.imgur.com/lZDibio.png",
   }
-  
-  return {
-    title: "St. Mbaaga's College Naddangira",
-    description: 'Online student marks portal',
-    icons: {
-      icon: finalLogoUrl,
-      shortcut: finalLogoUrl,
-      apple: finalLogoUrl,
-    }
-  };
-}
+};
 
 
 export default function RootLayout({
