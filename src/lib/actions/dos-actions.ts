@@ -1247,16 +1247,19 @@ export async function rejectMarkSubmission(submissionId: string, reason: string)
 
 export async function updateSubmittedMarksByDOS(
   submissionId: string,
-  updatedMarks: Array<{ studentId: string; score: number }>
+  updatedMarks: Array<{ studentId: string; score: number | null }>
 ): Promise<{ success: boolean; message: string }> {
   if (!db) return { success: false, message: "Firestore not initialized." };
   if (!submissionId) return { success: false, message: "Submission ID is required." };
 
   try {
     const submissionRef = doc(db, "markSubmissions", submissionId);
+    
+    const marksWithScores = updatedMarks.filter(mark => mark.score !== null && typeof mark.score === 'number');
+    const studentCountWithScores = marksWithScores.length;
+    const totalScore = marksWithScores.reduce((sum, mark) => sum + (mark.score as number), 0);
+    const averageScore = studentCountWithScores > 0 ? totalScore / studentCountWithScores : null;
     const studentCount = updatedMarks.length;
-    const totalScore = updatedMarks.reduce((sum, mark) => sum + (mark.score || 0), 0);
-    const averageScore = studentCount > 0 ? totalScore / studentCount : null;
 
     await updateDoc(submissionRef, {
       submittedMarks: updatedMarks,
@@ -1397,7 +1400,7 @@ export async function getAssessmentAnalysisData(classId: string, subjectId: stri
     return { success: false, message: "No submitted marks found for the selected assessment to analyze." };
   }
 
-  const scores = marksPayload.marks.map(m => m.grade);
+  const scores = marksPayload.marks.map(m => m.grade).filter((g): g is number => g !== null && g !== undefined);
   
   if (scores.length === 0) {
       return { success: false, message: "No valid scores available for analysis."};
@@ -1425,7 +1428,7 @@ export async function getAssessmentAnalysisData(classId: string, subjectId: stri
   }));
 
   // Sort by score descending to calculate rank
-  marksWithGrades.sort((a, b) => b.score - a.score);
+  marksWithGrades.sort((a, b) => (b.score ?? -Infinity) - (a.score ?? -Infinity));
 
   // Assign ranks, handling ties correctly
   let currentRank = 0;
@@ -1433,7 +1436,7 @@ export async function getAssessmentAnalysisData(classId: string, subjectId: stri
   marksWithGrades.forEach((student, index) => {
     if (student.score !== lastScore) {
       currentRank = index + 1;
-      lastScore = student.score;
+      lastScore = student.score as number;
     }
     student.rank = currentRank;
   });

@@ -14,7 +14,7 @@ import {z} from 'zod';
 
 const GradeEntrySchema = z.object({
   studentId: z.string().describe('Unique identifier for the student.'),
-  grade: z.number().describe('The grade received by the student.'),
+  grade: z.number().nullable().describe('The grade received by the student. A null value indicates that no grade was submitted.'),
 });
 
 const GradeAnomalyDetectionInputSchema = z.object({
@@ -58,6 +58,7 @@ if (isAiConfigured) {
     - Any individual grade being drastically different from the mean of the submitted grades for this specific assessment (e.g., more than 3 standard deviations if class size permits, or a large absolute difference).
     - Unusual clustering of grades at the pass/fail boundary or at maximum/minimum scores.
     - Any other unusual patterns that might indicate a data entry error or other irregularities.
+    Pay special attention to students for whom no grade was submitted (the grade value will be empty or null). A large number of missing grades is itself an anomaly.
 
     Subject: {{{subject}}}
     Exam: {{{exam}}}

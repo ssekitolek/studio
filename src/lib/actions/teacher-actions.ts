@@ -14,7 +14,7 @@ import { subDays } from "date-fns";
 
 interface MarksSubmissionData {
   assessmentId: string; // Composite ID: examDocId_classDocId_subjectDocId
-  marks: Array<{ studentId: string; score: number }>; // studentId is studentIdNumber
+  marks: Array<{ studentId: string; score: number | null }>; // studentId is studentIdNumber
 }
 
 function calculateGrade(
@@ -118,7 +118,8 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
 
   let anomalyResult: GradeAnomalyDetectionOutput | undefined = undefined;
   
-  if (gradeEntries.length > 0) {
+  const submittedGradeEntries = gradeEntries.filter(g => g.grade !== null);
+  if (submittedGradeEntries.length > 0) {
     if (!assessmentDetails.subjectName || !assessmentDetails.examName || assessmentDetails.subjectName.startsWith("Unknown") || assessmentDetails.examName.startsWith("Unknown") || assessmentDetails.subjectName.startsWith("Error:") || assessmentDetails.examName.startsWith("Error:")) {
         console.warn(`[Teacher Action - submitMarks] SKIPPING_AI_CHECK for composite assessmentId ${data.assessmentId}: Could not retrieve valid subject or exam names. Subject: "${assessmentDetails.subjectName}", Exam: "${assessmentDetails.examName}".`);
     } else {
@@ -141,9 +142,11 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
      console.log(`[Teacher Action - submitMarks] NO_GRADE_ENTRIES for composite assessmentId ${data.assessmentId}: No actual marks entered to process for anomaly detection.`);
   }
 
+  const marksWithScores = data.marks.filter(m => m.score !== null && m.score !== undefined);
   const studentCount = data.marks.length;
-  const totalScore = data.marks.reduce((sum, mark) => sum + (mark.score || 0), 0);
-  const averageScore = studentCount > 0 ? totalScore / studentCount : null;
+  const studentCountWithScores = marksWithScores.length;
+  const totalScore = marksWithScores.reduce((sum, mark) => sum + (mark.score as number), 0);
+  const averageScore = studentCountWithScores > 0 ? totalScore / studentCountWithScores : null;
 
   const initialTeacherStatus: MarkSubmissionFirestoreRecord['status'] = anomalyResult?.hasAnomalies ? "Pending Review (Anomaly Detected)" : "Accepted";
   console.log(`[Teacher Action - submitMarks] Initial teacher-facing status for composite assessmentId ${data.assessmentId} set to: "${initialTeacherStatus}"`);
@@ -556,73 +559,6 @@ async function getTeacherCurrentAssignments(teacherId: string): Promise<{ assign
     };
 }
 
-
-export async function getTeacherAssessments(teacherId: string): Promise<Array<{id: string, name: string, maxMarks: number}>> {
-    if (!db) {
-      console.error("[getTeacherAssessments] CRITICAL_ERROR_DB_NULL: Firestore db object is null.");
-      return [];
-    }
-    if (!teacherId || teacherId.toLowerCase() === "undefined" || teacherId.trim() === "" || teacherId === "undefined") {
-      console.warn(`[getTeacherAssessments] INVALID_TEACHER_ID: Received "${teacherId}". Returning empty array.`);
-      return [];
-    }
-
-    const responsibilitiesMap = await getTeacherAssessmentResponsibilities(teacherId);
-    let assessmentsForForm: Array<{id: string, name: string, maxMarks: number}> = [];
-
-    for (const [compositeId, { examObj }] of responsibilitiesMap) {
-        const details = await getAssessmentDetails(compositeId); 
-        if (!details.name.startsWith("Error:")) {
-            assessmentsForForm.push({
-                id: compositeId, 
-                name: details.name, 
-                maxMarks: examObj.maxMarks,
-            });
-        } else {
-            console.warn(`[getTeacherAssessments] Could not get valid details for responsibility composite ID ${compositeId}. Details: ${JSON.stringify(details)}`);
-        }
-    }
-    
-    if (assessmentsForForm.length > 0) {
-        const generalSettingsResult = await getGeneralSettings();
-        const { isDefaultTemplate: gsIsDefault, ...actualGeneralSettings } = generalSettingsResult;
-        const currentTermId = actualGeneralSettings.currentTermId;
-
-        if (currentTermId) { 
-            const markSubmissionsRef = collection(db, "markSubmissions");
-            
-            const assessmentIdsForCurrentTermResponsibilities = Array.from(responsibilitiesMap.keys());
-
-            if (assessmentIdsForCurrentTermResponsibilities.length > 0) {
-                const q = query(
-                    markSubmissionsRef,
-                    where("teacherId", "==", teacherId),
-                    where("assessmentId", "in", assessmentIdsForCurrentTermResponsibilities.length > 0 ? assessmentIdsForCurrentTermResponsibilities : ["_DUMMY_ID_TO_AVOID_EMPTY_IN_QUERY_ERROR_"]) 
-                );
-                const submissionsSnapshot = await getDocs(q);
-                
-                const submittedOrFinalizedAssessmentIds = new Set<string>();
-
-                submissionsSnapshot.forEach(docSnap => {
-                    const submission = docSnap.data() as MarkSubmissionFirestoreRecord;
-                    if (submission.dosStatus === 'Approved' || submission.dosStatus === 'Pending') {
-                        submittedOrFinalizedAssessmentIds.add(submission.assessmentId); 
-                    }
-                });
-
-                assessmentsForForm = assessmentsForForm.filter(assessment => {
-                    const shouldKeep = !submittedOrFinalizedAssessmentIds.has(assessment.id);
-                    return shouldKeep;
-                });
-            }
-        } else {
-            console.warn("[getTeacherAssessments] No current term ID set. Cannot filter by submitted assessments for the current term. All potential assessments will be shown.");
-        }
-    }
-
-    assessmentsForForm.sort((a, b) => a.name.localeCompare(b.name));
-    return assessmentsForForm;
-}
 
 export async function getTeacherDashboardData(teacherId: string): Promise<TeacherDashboardData> {
   console.log(`[LOG_TDD] ACTION START for teacherId: "${teacherId}"`);

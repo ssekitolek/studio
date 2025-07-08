@@ -171,7 +171,7 @@ export default function SubmitMarksPage() {
     const marksToSubmit = data.marks.map(m => ({
         studentId: m.studentId,
         score: m.score
-    })).filter(m => m.score !== null && m.score !== undefined && m.score.toString().trim() !== '');
+    }));
 
 
     if (marksToSubmit.length === 0) {
@@ -204,7 +204,7 @@ export default function SubmitMarksPage() {
         console.log(`[SubmitMarksPage] Submitting marks for teacherId: ${currentTeacherId}, assessmentId (composite): ${data.assessmentId}`);
         const result = await submitMarks(currentTeacherId, {
           assessmentId: data.assessmentId,
-          marks: marksToSubmit as Array<{ studentId: string; score: number }>,
+          marks: marksToSubmit as Array<{ studentId: string; score: number | null }>,
         });
         console.log(`[SubmitMarksPage] Submission result for assessmentId ${data.assessmentId}:`, result);
 

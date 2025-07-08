@@ -86,7 +86,7 @@ export interface Mark {
 
 export interface GradeEntry {
   studentId: string; // Student's official ID number (studentIdNumber)
-  grade: number;
+  grade: number | null;
 }
 
 export interface AnomalyExplanation {
@@ -158,7 +158,7 @@ export interface MarkSubmissionFirestoreRecord {
   studentCount: number;
   averageScore: number | null;
   status: string; // Teacher-facing status from AI check: "Pending Review (Anomaly Detected)" | "Accepted"
-  submittedMarks: Array<{ studentId: string; score: number }>; // studentId is studentIdNumber
+  submittedMarks: Array<{ studentId: string; score: number | null }>; // studentId is studentIdNumber
   anomalyExplanations: Array<AnomalyExplanation>; // Anomaly explanations if any from AI
   // D.O.S. specific fields
   dosStatus: 'Pending' | 'Approved' | 'Rejected';
@@ -227,7 +227,7 @@ export interface AssessmentAnalysisData {
     rank: number;
     studentId: string;
     studentName: string;
-    score: number;
+    score: number | null;
     grade: string;
   }>;
 }

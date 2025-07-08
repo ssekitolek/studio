@@ -311,12 +311,20 @@ export default function MarksReviewPage() {
   };
 
   const handleEditMarkChange = (studentId: string, newGrade: string) => {
-    const newScore = newGrade === "" ? 0 : parseFloat(newGrade); 
-    setEditableMarks(prev =>
-      prev.map(mark =>
-        mark.studentId === studentId ? { ...mark, grade: isNaN(newScore) ? 0 : newScore } : mark
-      )
-    );
+    const trimmedGrade = newGrade.trim();
+    if (trimmedGrade === "") {
+        setEditableMarks(prev =>
+            prev.map(mark => (mark.studentId === studentId ? { ...mark, grade: null } : mark))
+        );
+        return;
+    }
+    const newScore = parseFloat(trimmedGrade);
+    if (!isNaN(newScore)) {
+        setEditableMarks(prev =>
+            prev.map(mark => (mark.studentId === studentId ? { ...mark, grade: newScore } : mark))
+        );
+    }
+    // If it's not a number and not empty, do nothing, keeping the old value.
   };
 
   const handleSaveEditedMarks = () => {
@@ -325,7 +333,7 @@ export default function MarksReviewPage() {
     const currentExamDetails = exams.find(e => e.id === selectedExam);
     const maxMarksForCurrentExam = currentExamDetails?.maxMarks || 100;
 
-    const invalidScores = editableMarks.filter(mark => mark.grade < 0 || mark.grade > maxMarksForCurrentExam);
+    const invalidScores = editableMarks.filter(mark => mark.grade !== null && (mark.grade < 0 || mark.grade > maxMarksForCurrentExam));
     if (invalidScores.length > 0) {
       toast({ title: "Invalid Scores", description: `One or more scores are outside the valid range (0-${maxMarksForCurrentExam}).`, variant: "destructive" });
       return;
@@ -470,8 +478,8 @@ export default function MarksReviewPage() {
                         <TableCell className="text-right">
                         {isEditingMarks ? (
                             <Input
-                            type="number"
-                            value={mark.grade}
+                            type="text"
+                            value={mark.grade ?? ''}
                             onChange={(e) => handleEditMarkChange(mark.studentId, e.target.value)}
                             className="max-w-[100px] ml-auto text-right"
                             min="0"
