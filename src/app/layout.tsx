@@ -37,12 +37,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${ptSans.variable} ${spaceGrotesk.variable}`} suppressHydrationWarning>
-      <head>
-        {/* Forcefully setting favicon links for maximum compatibility */}
-        <link rel="icon" href="https://i.imgur.com/lZDibio.png" sizes="any" />
-        <link rel="shortcut icon" href="https://i.imgur.com/lZDibio.png" />
-        <link rel="apple-touch-icon" href="https://i.imgur.com/lZDibio.png" />
-      </head>
       <body className="font-body antialiased">
         {children}
         <Toaster />
