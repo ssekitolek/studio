@@ -1,42 +1,52 @@
 
-"use server";
+"use client";
 
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { LayoutDashboard, BookOpenCheck, CalendarClock, Bell, ListChecks, AlertCircle, AlertTriangle, Info, BarChart3, BookCopy, CheckSquare } from "lucide-react";
+import { LayoutDashboard, BookOpenCheck, CalendarClock, Bell, ListChecks, AlertCircle, AlertTriangle, Info, BarChart3, BookCopy, CheckSquare, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { getTeacherDashboardData } from "@/lib/actions/teacher-actions";
-import type { TeacherDashboardData, TeacherNotification, TeacherStats } from "@/lib/types";
+import type { TeacherDashboardData } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle as UIAlertTitle } from "@/components/ui/alert";
 import { StatCard } from "@/components/shared/StatCard";
-import { adminAuth } from "@/lib/firebase-admin";
 
-async function getCurrentUser() {
-  const sessionCookie = cookies().get("__session")?.value;
-  if (!sessionCookie) {
-    return null;
-  }
-  try {
-    const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true);
-    return decodedClaims;
-  } catch (error) {
-    return null;
-  }
-}
+export default function TeacherDashboardPage() {
+  const { user } = useAuth();
+  const [dashboardData, setDashboardData] = useState<TeacherDashboardData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-export default async function TeacherDashboardPage() {
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect('/login/teacher');
+  useEffect(() => {
+    if (user) {
+      setIsLoading(true);
+      getTeacherDashboardData(user.uid)
+        .then(data => {
+          setDashboardData(data);
+        })
+        .catch(error => {
+          console.error("Failed to load teacher dashboard data:", error);
+          // Handle error state if needed
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    }
+  }, [user]);
+
+  if (isLoading || !dashboardData) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Loading Dashboard...</span>
+      </div>
+    );
   }
 
-  const dashboardData = await getTeacherDashboardData(user.uid);
   const { assignments, notifications, teacherName, resourcesText, stats } = dashboardData;
-  const displayTeacherName = teacherName || user.name || user.email || "Teacher";
+  const displayTeacherName = teacherName || user?.displayName || user?.email || "Teacher";
 
   const dashboardStats = [
     { title: "Assigned Classes", value: stats.assignedClassesCount, icon: BookCopy, description: "Unique classes you manage." },
