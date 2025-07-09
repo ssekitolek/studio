@@ -124,8 +124,18 @@ export default function MarksReviewPage() {
   };
 
   const handleRunAnomalyCheck = async () => {
-    if (!marksPayload?.submissionId || marksPayload.marks.length === 0 || !isAiConfigured) {
-      toast({ title: "Cannot Run Check", description: "Load marks first. AI features must be configured.", variant: "destructive" });
+    if (!isAiConfigured) {
+      toast({
+        title: "AI Not Configured",
+        description:
+          "To use this feature, the NEXT_PUBLIC_GOOGLE_API_KEY must be set in your environment file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!marksPayload?.submissionId || marksPayload.marks.length === 0) {
+      toast({ title: "Cannot Run Check", description: "Load marks first before running the AI check.", variant: "destructive" });
       return;
     }
 
