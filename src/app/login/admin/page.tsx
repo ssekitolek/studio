@@ -42,14 +42,15 @@ export default function AdminLoginPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create session.");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create session.");
       }
       
       router.push("/admin/dashboard");
 
     } catch (err: any) {
       let friendlyMessage = "An unexpected error occurred.";
-       if (err.code) {
+       if (err.code) { // This handles Firebase client-side auth errors
         switch (err.code) {
           case 'auth/user-not-found':
           case 'auth/wrong-password':
@@ -69,6 +70,8 @@ export default function AdminLoginPage() {
             friendlyMessage = "Login failed. Please try again later.";
             break;
         }
+      } else if (err.message) { // This will now catch the detailed message from our API route
+        friendlyMessage = err.message;
       }
       setError(friendlyMessage);
       console.error("Admin Login error:", err);

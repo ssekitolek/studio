@@ -24,8 +24,10 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ status: 'success' });
-  } catch (error) {
+  } catch (error: any) {
+    const errorMessage = error.message || 'An unknown error occurred during session creation.';
     console.error('Session login error:', error);
-    return NextResponse.json({ error: 'Failed to create session' }, { status: 401 });
+    // Pass back the specific error message for better client-side diagnostics
+    return NextResponse.json({ error: `Failed to create session: ${errorMessage}` }, { status: 401 });
   }
 }
