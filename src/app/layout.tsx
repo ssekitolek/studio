@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { PT_Sans, Space_Grotesk } from 'next/font/google';
 import '@/app/globals.css';
@@ -17,13 +18,17 @@ const spaceGrotesk = Space_Grotesk({
   variable: '--font-headline',
 });
 
-// Remove favicon from metadata object to prevent conflicts
+const faviconUrl = "https://i.imgur.com/lZDibio.png?v=9";
+
 export const metadata: Metadata = {
   title: "St. Mbaaga's College Naddangira",
   description: 'Online student marks portal',
+  icons: {
+    icon: faviconUrl,
+    shortcut: faviconUrl,
+    apple: faviconUrl,
+  },
 };
-
-const faviconUrl = "https://i.imgur.com/lZDibio.png?v=6";
 
 
 export default function RootLayout({
@@ -33,11 +38,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${ptSans.variable} ${spaceGrotesk.variable}`} suppressHydrationWarning>
-       <head>
-        <link rel="icon" href={faviconUrl} type="image/png" sizes="any" />
-        <link rel="shortcut icon" href={faviconUrl} type="image/png" />
-        <link rel="apple-touch-icon" href={faviconUrl} type="image/png" />
-      </head>
       <body className="font-body antialiased">
         {children}
         <Toaster />
