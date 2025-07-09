@@ -42,15 +42,21 @@ export default function AdminLoginPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create session.");
+        let errorText = `Server responded with status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorText = errorData.error || `Failed to create session. Server response: ${JSON.stringify(errorData)}`;
+        } catch (jsonError) {
+          console.error("Could not parse server error response as JSON.", jsonError);
+        }
+        throw new Error(errorText);
       }
       
       router.push("/admin/dashboard");
 
     } catch (err: any) {
-      let friendlyMessage = "An unexpected error occurred.";
-       if (err.code) { // This handles Firebase client-side auth errors
+      let friendlyMessage = "An unexpected error occurred. Please try again later.";
+      if (err.code) {
         switch (err.code) {
           case 'auth/user-not-found':
           case 'auth/wrong-password':
@@ -60,6 +66,9 @@ export default function AdminLoginPage() {
           case 'auth/invalid-email':
             friendlyMessage = "Please enter a valid email address.";
             break;
+          case 'auth/user-disabled':
+            friendlyMessage = "This admin account has been disabled. Please contact the main administrator.";
+            break;
           case 'auth/operation-not-allowed':
             friendlyMessage = "Login method not enabled. Please enable Email/Password sign-in in your Firebase console's Authentication settings.";
             break;
@@ -67,10 +76,10 @@ export default function AdminLoginPage() {
             friendlyMessage = "Connection to authentication service failed due to an invalid configuration. Please ensure all NEXT_PUBLIC_FIREBASE_ environment variables are correct.";
             break;
           default:
-            friendlyMessage = "Login failed. Please try again later.";
+            friendlyMessage = `An unexpected Firebase error occurred: ${err.code}. Please try again later.`;
             break;
         }
-      } else if (err.message) { // This will now catch the detailed message from our API route
+      } else if (err.message) {
         friendlyMessage = err.message;
       }
       setError(friendlyMessage);

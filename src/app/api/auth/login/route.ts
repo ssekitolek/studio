@@ -26,8 +26,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: 'success' });
   } catch (error: any) {
     const errorMessage = error.message || 'An unknown error occurred during session creation.';
-    console.error('Session login error:', error);
-    // Pass back the specific error message for better client-side diagnostics
+    // Log the detailed error object for server-side debugging
+    try {
+        console.error('Session login error:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    } catch (e) {
+        console.error('Session login error (unserializable):', error);
+    }
     return NextResponse.json({ error: `Failed to create session: ${errorMessage}` }, { status: 401 });
   }
 }
