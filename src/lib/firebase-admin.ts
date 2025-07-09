@@ -3,9 +3,11 @@ import * as admin from 'firebase-admin';
 
 if (!admin.apps.length) {
   try {
-    // On App Hosting, initializeApp() should automatically discover credentials.
-    admin.initializeApp();
-    console.log('Firebase Admin SDK initialized successfully using default credentials.');
+    // Make the credential fetching explicit. This can help in some environments.
+    admin.initializeApp({
+      credential: admin.credential.applicationDefault(),
+    });
+    console.log('Firebase Admin SDK initialized explicitly using Application Default Credentials.');
   } catch (error) {
     console.error('Firebase Admin SDK initialization error:', error);
   }
