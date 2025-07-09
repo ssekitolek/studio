@@ -1,48 +1,78 @@
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Public read for website content, only admins can write
-    match /website_content/{document=**} {
-      allow read: if true;
+
+    // Helper functions
+    function isDosOrAdmin(userId) {
+      let role = get(/databases/$(database)/documents/teachers/$(userId)).data.role;
+      return role == 'dos' || role == 'admin';
     }
 
-    // Allow any authenticated user to read data needed for the portals.
-    // Write access is handled by server actions, which have admin privileges and bypass these rules.
-    // This permissive read rule is necessary for the client-side logic to function without a billed account.
-    match /teachers/{document=**} {
-      allow read: if request.auth != null;
-    }
-    match /students/{document=**} {
-      allow read: if request.auth != null;
-    }
-     match /classes/{document=**} {
-      allow read: if request.auth != null;
-    }
-     match /subjects/{document=**} {
-      allow read: if request.auth != null;
-    }
-    match /terms/{document=**} {
-      allow read: if request.auth != null;
-    }
-    match /exams/{document=**} {
-      allow read: if request.auth != null;
-    }
-    match /markSubmissions/{document=**} {
-      allow read: if request.auth != null;
-    }
-    match /gradingPolicies/{document=**} {
-      allow read: if request.auth != null;
-    }
-     match /attendance/{document=**} {
-      allow read: if request.auth != null;
-    }
-    match /settings/{document=**} {
-      allow read: if request.auth != null;
+    function isAdmin(userId) {
+      let role = get(/databases/$(database)/documents/teachers/$(userId)).data.role;
+      return role == 'admin';
     }
     
-    // Default deny all client-side writes.
-     match /{path=**} {
-      allow write: if false;
+    function isTeacherOrAbove(userId) {
+       let role = get(/databases/$(database)/documents/teachers/$(userId)).data.role;
+      return role in ['teacher', 'dos', 'admin'];
+    }
+
+    // Teachers collection:
+    // - Authenticated users can read their own record (for role checking).
+    // - DOS/Admin can read all teacher records.
+    // - DOS/Admin can create/update teachers.
+    // - Only Admin should delete teachers (safer).
+    match /teachers/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isDosOrAdmin(request.auth.uid));
+      allow create, update: if request.auth != null && isDosOrAdmin(request.auth.uid);
+      allow delete: if request.auth != null && isAdmin(request.auth.uid);
+    }
+    
+    // Website Content: Publicly readable, only admin can write.
+    match /website_content/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null && isAdmin(request.auth.uid);
+    }
+    
+    // Students, Classes, Subjects, Terms, Exams, Grading Policies:
+    // - DOS/Admin can create, update, delete.
+    // - All authenticated teachers/dos/admins can read.
+    match /{collectionName}/{docId}
+      where collectionName in ['students', 'classes', 'subjects', 'terms', 'exams', 'gradingPolicies'] {
+        allow read: if request.auth != null && isTeacherOrAbove(request.auth.uid);
+        allow write: if request.auth != null && isDosOrAdmin(request.auth.uid);
+    }
+    
+    // Mark Submissions:
+    // - Teachers can create new submissions.
+    // - Teachers can only read their own submissions.
+    // - DOS/Admin can read all submissions.
+    // - DOS/Admin can update submissions (approve/reject).
+    match /markSubmissions/{submissionId} {
+        allow read: if request.auth != null && (isDosOrAdmin(request.auth.uid) || resource.data.teacherId == request.auth.uid);
+        allow create: if request.auth != null && request.resource.data.teacherId == request.auth.uid;
+        allow update: if request.auth != null && isDosOrAdmin(request.auth.uid);
+        allow delete: if false; // Disallow deletion for data integrity
+    }
+
+    // Attendance records
+    match /attendance/{recordId} {
+        allow read, create, update: if request.auth != null && isTeacherOrAbove(request.auth.uid);
+        allow delete: if false;
+    }
+
+    // Settings
+    match /settings/general {
+       allow read: if request.auth != null && isTeacherOrAbove(request.auth.uid);
+       allow write: if request.auth != null && isDosOrAdmin(request.auth.uid);
+    }
+    
+     // Default deny all other access
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

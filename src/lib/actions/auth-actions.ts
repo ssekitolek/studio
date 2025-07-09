@@ -1,6 +1,4 @@
 
-'use server';
-
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
@@ -11,7 +9,7 @@ const ADMIN_EMAIL = "mathius@admin.staff";
  * It is intended to be called from a client component (like AuthProvider).
  * It determines the user's role by checking their email for admin status,
  * or by reading their document from Firestore.
- * This avoids server-side Admin SDK issues related to billing accounts.
+ * This avoids server-side Admin SDK issues.
  * 
  * @param uid The Firebase Auth User ID.
  * @param email The user's email address.
