@@ -42,7 +42,7 @@ export default function DosLoginPage() {
           case 'auth/user-not-found':
           case 'auth/wrong-password':
           case 'auth/invalid-credential':
-            friendlyMessage = "Invalid D.O.S. credentials. Please try again.";
+            friendlyMessage = "Invalid credentials. Please check your email and password, and ensure this user has been created in the Firebase Authentication console.";
             break;
           case 'auth/invalid-email':
             friendlyMessage = "Please enter a valid email address.";
@@ -53,7 +53,6 @@ export default function DosLoginPage() {
           case 'auth/operation-not-allowed':
             friendlyMessage = "Login method not enabled. Please enable Email/Password sign-in in your Firebase console's Authentication settings.";
             break;
-          case 'auth/invalid-api-key':
           case 'auth/api-key-not-valid':
             friendlyMessage = "Connection to authentication service failed due to an invalid configuration. Please ensure all NEXT_PUBLIC_FIREBASE_ environment variables are correct.";
             break;

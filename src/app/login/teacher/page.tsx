@@ -42,7 +42,7 @@ export default function TeacherLoginPage() {
           case 'auth/user-not-found':
           case 'auth/wrong-password':
           case 'auth/invalid-credential':
-            friendlyMessage = "Invalid email or password. Please try again.";
+            friendlyMessage = "Invalid email or password. Please check your credentials or contact your Director of Studies if you are unable to log in.";
             break;
           case 'auth/invalid-email':
             friendlyMessage = "Please enter a valid email address.";
