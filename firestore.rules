@@ -3,28 +3,69 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Default deny all access on the client side.
-    // Server Actions using the Admin SDK will bypass these rules.
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // Allow public read access for website content.
-    // Writes are handled by server actions.
-    match /website_content/{docId} {
-      allow read: if true;
-      allow write: if false; 
+    // --- Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
     }
     
-    // This is the critical rule for our authentication system.
-    // It allows a logged-in user to read ONLY their own document
-    // from the 'teachers' collection to determine their role.
-    match /teachers/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == 'mathius@admin.staff';
     }
 
-    // All other client-side operations (e.g., writing to 'students' or 'classes')
-    // are blocked by the default deny rule. They must be performed
-    // by trusted Server Actions.
+    // This requires a `get` call, so it should be used in rules that are not frequently evaluated if possible.
+    function isDOSorAdmin() {
+      // Check if the user is an admin first (no DB read).
+      if (isAdmin()) {
+        return true;
+      }
+      // If not admin, check if they are a signed-in user with the 'dos' role.
+      return isSignedIn() && get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.role == 'dos';
+    }
+
+    // --- Collection Rules ---
+
+    match /teachers/{teacherId} {
+      // A user can read their own document if the ID matches their UID, or if the email matches.
+      // D.O.S. and Admin can read any teacher document.
+      allow read: if (isSignedIn() && (request.auth.uid == teacherId || resource.data.email == request.auth.token.email)) || isDOSorAdmin();
+
+      // Only DOS or Admin can create, update, or delete teacher records.
+      allow write: if isDOSorAdmin();
+    }
+    
+    // Most data collections can be read by any signed-in user.
+    // This allows dashboards and forms to populate correctly.
+    // Writes are restricted to DOS/Admin.
+    match /students/{docId} { allow read: if isSignedIn(); allow write: if isDOSorAdmin(); }
+    match /classes/{docId} { allow read: if isSignedIn(); allow write: if isDOSorAdmin(); }
+    match /subjects/{docId} { allow read: if isSignedIn(); allow write: if isDOSorAdmin(); }
+    match /terms/{docId} { allow read: if isSignedIn(); allow write: if isDOSorAdmin(); }
+    match /exams/{docId} { allow read: if isSignedIn(); allow write: if isDOSorAdmin(); }
+    match /gradingPolicies/{docId} { allow read: if isSignedIn(); allow write: if isDOSorAdmin(); }
+    
+    // Mark Submissions can be read by the teacher who submitted them, or by DOS/Admin.
+    // A teacher can only create submissions where they are the teacherId.
+    match /markSubmissions/{submissionId} {
+      allow read: if (isSignedIn() && resource.data.teacherId == request.auth.uid) || isDOSorAdmin();
+      allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid;
+      allow update, delete: if isDOSorAdmin(); // Only DOS/Admin can edit/delete submissions
+    }
+    
+    // Settings can be read by any authenticated user, but only written by DOS/Admin.
+    match /settings/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isDOSorAdmin();
+    }
+    
+    // Website content is public read, but only admin write.
+    match /website_content/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Attendance can be read/written by any signed-in user.
+    match /attendance/{docId} {
+      allow read, write: if isSignedIn();
+    }
   }
 }
