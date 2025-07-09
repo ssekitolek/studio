@@ -36,11 +36,15 @@ export default function TeacherLoginPage() {
       const idToken = await userCredential.user.getIdToken();
 
       // Create session cookie via API route
-      await fetch('/api/auth/login', {
+      const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ idToken }),
       });
+
+      if (!response.ok) {
+        throw new Error("Failed to create session.");
+      }
       
       router.push("/teacher/dashboard");
 
@@ -55,6 +59,9 @@ export default function TeacherLoginPage() {
             break;
           case 'auth/invalid-email':
             friendlyMessage = "Please enter a valid email address.";
+            break;
+           case 'auth/operation-not-allowed':
+            friendlyMessage = "Login method not enabled. Please enable Email/Password sign-in in your Firebase console's Authentication settings.";
             break;
            case 'auth/invalid-api-key':
             friendlyMessage = "Connection to authentication service failed due to an invalid configuration. Please ensure all NEXT_PUBLIC_FIREBASE_ environment variables are correct.";
