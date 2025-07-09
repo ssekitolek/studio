@@ -1,22 +1,21 @@
+
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from '@/lib/firebase';
-import { Loader2 } from 'lucide-react';
 
-// --- Logic from auth-actions.ts has been moved directly into this component for reliability ---
 const ADMIN_EMAIL = "mathius@admin.staff";
 
 async function determineUserRole(user: User): Promise<string | null> {
-  // 1. Check for Admin role by the hardcoded email. This is the fastest and most reliable check.
+  // 1. Admin check is the highest priority and fastest check.
   if (user.email && user.email === ADMIN_EMAIL) {
     console.log(`[AuthProvider] User ${user.uid} identified as ADMIN via email.`);
     return 'admin';
   }
 
-  // 2. If not admin, check Firestore for a 'teacher' or 'dos' role.
+  // 2. If not admin, check Firestore for a role.
   try {
     // The document ID in the 'teachers' collection IS the user's UID.
     const teacherRef = doc(db, "teachers", user.uid);
@@ -24,23 +23,22 @@ async function determineUserRole(user: User): Promise<string | null> {
 
     if (teacherSnap.exists()) {
       const teacherData = teacherSnap.data();
-      // Securely default to 'teacher' if the role field is missing or invalid.
+      // Role exists, return it. Default to 'teacher' if the role field is missing or invalid.
       const role = teacherData.role === 'dos' ? 'dos' : 'teacher';
       console.log(`[AuthProvider] Role for UID ${user.uid} found in Firestore: ${role}`);
       return role;
     } else {
-      // This is expected for the admin user, but a problem for any other user.
-      console.warn(`[AuthProvider] No Firestore document found for teacher with UID: ${user.uid}. Cannot determine role from database.`);
+      // THIS IS THE KEY: The user is authenticated but has no role document.
+      // This is an invalid state for a non-admin user. Return null so the
+      // layout's protection logic can handle the redirect gracefully.
+      console.warn(`[AuthProvider] CRITICAL: Authenticated user ${user.uid} (${user.email}) has no corresponding document in the 'teachers' collection. They have no role and will be denied access to protected routes.`);
       return null;
     }
   } catch (error) {
-    // This catch block will trigger if Firestore rules deny the read.
-    console.error(`[AuthProvider] CRITICAL ERROR checking role for UID ${user.uid}:`, error);
+    console.error(`[AuthProvider] Firestore error checking role for UID ${user.uid}:`, error);
     return null;
   }
 }
-// --- End of moved logic ---
-
 
 interface AuthContextType {
   user: User | null;
