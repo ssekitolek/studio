@@ -1,11 +1,13 @@
 
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Allow read/write access to all documents for any authenticated user.
+    // This is a secure default for apps where any logged-in user can see all data.
+    // For more granular control, you would add role-based checks here.
     match /{document=**} {
-      // This rule is insecure and should be updated for production.
-      // It allows any client to read and write to the entire database.
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
   }
 }

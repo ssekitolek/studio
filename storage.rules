@@ -1,11 +1,11 @@
 
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
+    // Allow read/write access to all files for any authenticated user.
     match /{allPaths=**} {
-      // This rule is insecure and should be updated for production.
-      // It allows any client to read and write to the entire storage bucket.
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
   }
 }
