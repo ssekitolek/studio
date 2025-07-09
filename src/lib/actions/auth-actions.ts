@@ -2,7 +2,7 @@
 'use server';
 
 import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import { adminAuth } from "@/lib/firebase-admin";
 
 const ADMIN_EMAIL = "mathius@admin.staff";
@@ -32,27 +32,28 @@ export async function getAndSyncUserRole(uid: string): Promise<string | null> {
       console.log(`[AuthAction] User ${uid} identified as ADMIN via email.`);
       role = 'admin';
     } else {
-      // 2. If not admin, check for Teacher/D.O.S. role in Firestore
-      console.log(`[AuthAction] User ${uid} is not admin, checking Firestore 'teachers' collection.`);
-      const userDocRef = doc(db, "teachers", uid);
-      const userDocSnap = await getDoc(userDocRef);
+      // 2. If not admin, check for Teacher/D.O.S. role in Firestore by querying the 'uid' field
+      // This is the FIX: query by 'uid' field instead of assuming doc ID is uid.
+      // This supports both users created before and after the `setDoc(uid)` change.
+      console.log(`[AuthAction] User ${uid} is not admin, querying 'teachers' collection for uid field.`);
+      const teachersRef = collection(db, "teachers");
+      const q = query(teachersRef, where("uid", "==", uid), limit(1));
+      const querySnapshot = await getDocs(q);
 
-      if (userDocSnap.exists()) {
+      if (!querySnapshot.empty) {
+        const userDocSnap = querySnapshot.docs[0];
         const userData = userDocSnap.data();
         
-        // This logic is now more robust. It ensures that if a user exists in the 
-        // 'teachers' collection, they get a valid role.
         if (userData.role === 'dos') {
             role = 'dos';
         } else {
-            // Default to 'teacher' if the role is missing, undefined, or explicitly 'teacher'.
-            // This ensures existing users (created before the role field was added) can log in.
+            // Default to 'teacher' if the role is missing or explicitly 'teacher'.
             role = 'teacher';
         }
-        console.log(`[AuthAction] Determined role for ${uid} as: ${role}`);
+        console.log(`[AuthAction] Found teacher doc ${userDocSnap.id} and determined role for ${uid} as: ${role}`);
 
       } else {
-          console.log(`[AuthAction] No Firestore document found for user ${uid} in 'teachers' collection.`);
+          console.log(`[AuthAction] No Firestore document found for user ${uid} in 'teachers' collection via query.`);
       }
     }
 
