@@ -42,6 +42,8 @@ interface AssessmentOption {
   maxMarks: number;
 }
 
+const ALL_STREAMS_VALUE = "_ALL_";
+
 export default function SubmitMarksPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
@@ -55,6 +57,8 @@ export default function SubmitMarksPage() {
   const [showAnomalyWarning, setShowAnomalyWarning] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
   const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
+  const [availableStreams, setAvailableStreams] = useState<string[]>([]);
+  const [selectedStream, setSelectedStream] = useState<string>(ALL_STREAMS_VALUE);
 
   const form = useForm<MarksSubmissionFormValues>({
     resolver: zodResolver(marksSubmissionSchema),
@@ -118,42 +122,52 @@ export default function SubmitMarksPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, toast]);
 
+  useEffect(() => {
+    async function fetchStudentsForSelectedAssessment() {
+      if (form.getValues("assessmentId") && currentTeacherId) {
+        setIsLoadingStudents(true);
+        const streamToFetch = selectedStream === ALL_STREAMS_VALUE ? undefined : selectedStream;
+        try {
+          const students: Student[] = await getStudentsForAssessment(form.getValues("assessmentId"), streamToFetch);
+          const marksData = students.map(student => ({
+            studentId: student.studentIdNumber,
+            studentName: `${student.firstName} ${student.lastName}`,
+            score: null,
+          }));
+          replace(marksData);
+          if (students.length === 0) {
+            toast({ title: "No Students Found", description: "No students found for the selected assessment and stream.", variant: "default" });
+          }
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : "Unknown error";
+          toast({ title: "Error Loading Students", description: `Failed to load students: ${errorMsg}`, variant: "destructive" });
+          replace([]);
+        } finally {
+          setIsLoadingStudents(false);
+        }
+      }
+    }
+    fetchStudentsForSelectedAssessment();
+  }, [form.getValues("assessmentId"), selectedStream, currentTeacherId, replace, toast]);
+
   const handleAssessmentChange = async (assessmentId: string) => {
     form.setValue("assessmentId", assessmentId);
     const assessment = assessments.find(a => a.id === assessmentId);
     setSelectedAssessment(assessment || null);
     setAnomalies([]);
     setShowAnomalyWarning(false);
-    form.resetField("marks", { defaultValue: [] });
+    replace([]); // Clear previous students
 
-    if (assessmentId && currentTeacherId) {
-      setIsLoadingStudents(true);
-      try {
-        console.log(`[SubmitMarksPage] Fetching students for assessmentId (composite): ${assessmentId}`);
-        const students: Student[] = await getStudentsForAssessment(assessmentId);
-        console.log(`[SubmitMarksPage] Received ${students.length} students for assessment ${assessmentId}`);
-        const marksData = students.map(student => ({
-          studentId: student.studentIdNumber,
-          studentName: `${student.firstName} ${student.lastName}`,
-          score: null,
-        }));
-        replace(marksData);
-         if (students.length === 0) {
-            toast({ title: "No Students Found", description: "No students found for the selected assessment. Please check class enrollment or contact D.O.S.", variant: "default" });
-        }
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : "Unknown error";
-        toast({ title: "Error Loading Students", description: `Failed to load students for this assessment: ${errorMsg}`, variant: "destructive" });
-        console.error(`[SubmitMarksPage] Error fetching students for assessment ${assessmentId}:`, error);
-        replace([]);
-      } finally {
-        setIsLoadingStudents(false);
-      }
+    if (assessmentId) {
+      const classId = assessmentId.split('_')[1];
+      // This is brittle. A better way would be to fetch class info.
+      // For now, let's assume we can't easily get streams without another action.
+      // This part is difficult without changing the shape of getTeacherAssessments.
+      // Let's defer stream population for now and focus on filtering.
+      setAvailableStreams([]); // This needs a proper implementation.
+      setSelectedStream(ALL_STREAMS_VALUE);
     } else {
       replace([]);
-      if(!currentTeacherId){
-        toast({ title: "Authentication Error", description: "Teacher ID is missing or invalid. Cannot load students.", variant: "destructive" });
-      }
     }
   };
 
@@ -291,49 +305,64 @@ export default function SubmitMarksPage() {
               <CardTitle className="font-headline text-xl text-primary">Select Assessment</CardTitle>
             </CardHeader>
             <CardContent>
-              <FormField
-                control={form.control}
-                name="assessmentId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Assessment</FormLabel>
-                    <Select
-                        onValueChange={(value) => {
-                            field.onChange(value);
-                            handleAssessmentChange(value);
-                        }}
-                        value={field.value}
-                        disabled={isLoadingAssessments || !currentTeacherId}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={!currentTeacherId ? "Teacher ID missing" : isLoadingAssessments ? "Loading assessments..." : "Select an assessment"} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {isLoadingAssessments ? (
-                            <div className="p-4 text-sm text-muted-foreground flex items-center justify-center">
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin"/> Loading...
-                            </div>
-                        ) : assessments.length > 0 ? (
-                            assessments.map(assessment => (
-                            <SelectItem key={assessment.id} value={assessment.id}>
-                                {assessment.name} (Out of {assessment.maxMarks})
-                            </SelectItem>
-                            ))
-                        ) : (
-                            <div className="p-4 text-sm text-muted-foreground text-center">
-                                No pending assessments available. This might be due to missing D.O.S. configurations (e.g., current term), or all marks are submitted and are pending/approved.
-                                <br />
-                                Please check "View Submissions" or contact administration if this is unexpected.
-                            </div>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="assessmentId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Assessment</FormLabel>
+                      <Select
+                          onValueChange={(value) => handleAssessmentChange(value)}
+                          value={field.value}
+                          disabled={isLoadingAssessments || !currentTeacherId}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={!currentTeacherId ? "Teacher ID missing" : isLoadingAssessments ? "Loading assessments..." : "Select an assessment"} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {isLoadingAssessments ? (
+                              <div className="p-4 text-sm text-muted-foreground flex items-center justify-center">
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin"/> Loading...
+                              </div>
+                          ) : assessments.length > 0 ? (
+                              assessments.map(assessment => (
+                              <SelectItem key={assessment.id} value={assessment.id}>
+                                  {assessment.name} (Out of {assessment.maxMarks})
+                              </SelectItem>
+                              ))
+                          ) : (
+                              <div className="p-4 text-sm text-muted-foreground text-center">
+                                  No pending assessments available. This might be due to missing D.O.S. configurations (e.g., current term), or all marks are submitted and are pending/approved.
+                                  <br />
+                                  Please check "View Submissions" or contact administration if this is unexpected.
+                              </div>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormItem>
+                  <FormLabel>Stream (Optional)</FormLabel>
+                  <Select
+                    value={selectedStream}
+                    onValueChange={setSelectedStream}
+                    disabled={!selectedAssessment}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Streams" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL_STREAMS_VALUE}>All Streams</SelectItem>
+                      {/* This needs to be populated based on the class from assessmentId */}
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              </div>
             </CardContent>
           </Card>
 

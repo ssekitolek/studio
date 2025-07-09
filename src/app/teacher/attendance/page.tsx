@@ -39,6 +39,8 @@ const attendanceFormSchema = z.object({
 
 type AttendanceFormValues = z.infer<typeof attendanceFormSchema>;
 
+const ALL_STREAMS_VALUE = "_ALL_";
+
 export default function TakeAttendancePage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
@@ -49,6 +51,8 @@ export default function TakeAttendancePage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [pageError, setPageError] = useState<string | null>(null);
   const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
+  const [availableStreams, setAvailableStreams] = useState<string[]>([]);
+  const [selectedStream, setSelectedStream] = useState<string>(ALL_STREAMS_VALUE);
 
   const form = useForm<AttendanceFormValues>({
     resolver: zodResolver(attendanceFormSchema),
@@ -61,6 +65,12 @@ export default function TakeAttendancePage() {
 
   const { control, watch, setValue } = form;
   const selectedClassId = watch("classId");
+  
+  useEffect(() => {
+    const classInfo = classes.find(c => c.id === selectedClassId);
+    setAvailableStreams(classInfo?.streams || []);
+    setSelectedStream(ALL_STREAMS_VALUE);
+  }, [selectedClassId, classes]);
 
   useEffect(() => {
     const teacherIdFromUrl = searchParams.get("teacherId");
@@ -91,8 +101,9 @@ export default function TakeAttendancePage() {
     async function fetchStudents() {
       if (selectedClassId) {
         setIsLoading(true);
+        const streamToFetch = selectedStream === ALL_STREAMS_VALUE ? undefined : selectedStream;
         try {
-          const classStudents = await getStudentsForClass(selectedClassId);
+          const classStudents = await getStudentsForClass(selectedClassId, streamToFetch);
           setStudents(classStudents);
           setValue(
             "students",
@@ -109,7 +120,7 @@ export default function TakeAttendancePage() {
       }
     }
     fetchStudents();
-  }, [selectedClassId, setValue, toast]);
+  }, [selectedClassId, selectedStream, setValue, toast]);
   
   const setAllStudentsStatus = (status: "present" | "absent" | "late") => {
     const currentStudentValues = form.getValues('students');
@@ -184,7 +195,7 @@ export default function TakeAttendancePage() {
             <CardHeader>
               <CardTitle>Select Class and Date</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <FormField
                 control={control}
                 name="classId"
@@ -204,6 +215,16 @@ export default function TakeAttendancePage() {
                   </FormItem>
                 )}
               />
+              <FormItem>
+                <FormLabel>Stream (Optional)</FormLabel>
+                <Select value={selectedStream} onValueChange={setSelectedStream} disabled={!selectedClassId || availableStreams.length === 0}>
+                  <SelectTrigger><SelectValue placeholder="Select Stream" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_STREAMS_VALUE}>All Streams</SelectItem>
+                    {availableStreams.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </FormItem>
               <FormField
                 control={control}
                 name="date"
@@ -289,7 +310,7 @@ export default function TakeAttendancePage() {
                     </div>
                   </>
                 ) : (
-                  <p className="text-center text-muted-foreground py-8">No students found in this class.</p>
+                  <p className="text-center text-muted-foreground py-8">No students found in this class or stream.</p>
                 )}
               </CardContent>
             </Card>

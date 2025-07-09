@@ -340,8 +340,8 @@ async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName
     }
 }
 
-export async function getStudentsForAssessment(assessmentId: string): Promise<Student[]> {
-  console.log(`[getStudentsForAssessment] Called for assessmentId (Composite): ${assessmentId}`);
+export async function getStudentsForAssessment(assessmentId: string, stream?: string): Promise<Student[]> {
+  console.log(`[getStudentsForAssessment] Called for assessmentId (Composite): ${assessmentId}, Stream: ${stream}`);
   if (!db) {
     console.error("[getStudentsForAssessment] CRITICAL_ERROR_DB_NULL: Firestore db object is null.");
     return [];
@@ -356,16 +356,24 @@ export async function getStudentsForAssessment(assessmentId: string): Promise<St
 
   try {
     const exam = await getExamById(examId);
-    const allStudentsForClass = await getStudentsForClass(classId);
+    // This will now get all students for the class regardless of stream. Filtering happens next.
+    const allStudentsForClass = await getStudentsForClass(classId); 
 
     if (exam && exam.stream) {
-      // Exam is for a specific stream
+      // Exam is for a specific stream, this overrides any user selection.
       console.log(`[getStudentsForAssessment] Exam is specific to stream: "${exam.stream}". Filtering ${allStudentsForClass.length} students.`);
       const filteredStudents = allStudentsForClass.filter(student => student.stream === exam.stream);
-      console.log(`[getStudentsForAssessment] Found ${filteredStudents.length} students in stream "${exam.stream}".`);
+      console.log(`[getStudentsForAssessment] Found ${filteredStudents.length} students in exam's stream "${exam.stream}".`);
       return filteredStudents;
-    } else {
-      // Exam is for the whole class
+    } else if (stream) {
+      // Exam is for the whole class, but user has selected a stream to filter by.
+      console.log(`[getStudentsForAssessment] User selected stream: "${stream}". Filtering ${allStudentsForClass.length} students.`);
+       const filteredStudents = allStudentsForClass.filter(student => student.stream === stream);
+       console.log(`[getStudentsForAssessment] Found ${filteredStudents.length} students in user-selected stream "${stream}".`);
+      return filteredStudents;
+    }
+    else {
+      // Exam is for the whole class, and no stream is selected by user.
       console.log(`[getStudentsForAssessment] Exam is for the whole class. Returning all ${allStudentsForClass.length} students.`);
       return allStudentsForClass;
     }
@@ -1031,7 +1039,7 @@ export async function getClassTeacherManagementData(teacherId: string): Promise<
             const classAssessments: ClassAssessment[] = [];
             const studentsInClass = allStudents
                 .filter(s => s.classId === classInfo.id)
-                .map(s => ({ id: s.id, studentIdNumber: s.studentIdNumber, firstName: s.firstName, lastName: s.lastName }));
+                .map(s => ({ id: s.id, studentIdNumber: s.studentIdNumber, firstName: s.firstName, lastName: s.lastName, stream: s.stream }));
 
             if(currentTermId){
                 const examsForCurrentTerm = allExams.filter(e => e.termId === currentTermId);
@@ -1123,12 +1131,18 @@ export async function getClassesForTeacher(teacherId: string): Promise<ClassInfo
     return allClasses.filter(c => c.classTeacherId === teacherId);
 }
 
-export async function getStudentsForClass(classId: string): Promise<Student[]> {
+export async function getStudentsForClass(classId: string, stream?: string): Promise<Student[]> {
   if (!db) return [];
-  const q = query(collection(db, "students"), where("classId", "==", classId));
-  const snapshot = await getDocs(q);
+  let studentQuery;
+  if (stream) {
+      studentQuery = query(collection(db, "students"), where("classId", "==", classId), where("stream", "==", stream));
+  } else {
+      studentQuery = query(collection(db, "students"), where("classId", "==", classId));
+  }
+  const snapshot = await getDocs(studentQuery);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
 }
+
 
 export async function saveAttendance(data: StudentAttendanceInput): Promise<{ success: boolean; message: string }> {
   if (!db) return { success: false, message: "Database not initialized." };
