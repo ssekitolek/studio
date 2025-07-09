@@ -29,9 +29,15 @@ async function determineUserRole(user: User): Promise<string | null> {
 
     if (teacherSnapByUid.exists()) {
       const teacherData = teacherSnapByUid.data();
-      const role = teacherData.role === 'dos' ? 'dos' : 'teacher';
-      console.log(`[AuthProvider] Role for UID ${user.uid} found via direct UID document lookup: ${role}`);
-      return role;
+      const role = teacherData.role; // Directly get the role
+      // Explicitly check if the role is one of the valid, expected roles
+      if (role === 'dos' || role === 'teacher') {
+        console.log(`[AuthProvider] Role for UID ${user.uid} found via direct UID document lookup: ${role}`);
+        return role;
+      }
+      // If the role field is missing or invalid, we can't grant access.
+      console.warn(`[AuthProvider] User ${user.uid} has an invalid or missing role in their document (role: '${role}'). Denying role assignment.`);
+      return null;
     }
 
     // 3. Fallback check: If no doc by UID, query by email. This handles legacy or inconsistently created users.
@@ -43,10 +49,16 @@ async function determineUserRole(user: User): Promise<string | null> {
     if (!teacherSnapByEmail.empty) {
       const teacherDoc = teacherSnapByEmail.docs[0];
       const teacherData = teacherDoc.data();
-      const role = teacherData.role === 'dos' ? 'dos' : 'teacher';
-      console.log(`[AuthProvider] Role for UID ${user.uid} found via EMAIL fallback lookup (Doc ID: ${teacherDoc.id}): ${role}`);
-      // Future enhancement: We could trigger a server action here to "heal" the data by syncing the doc ID with the UID.
-      return role;
+      const role = teacherData.role; // Directly get the role
+      // Explicitly check if the role is one of the valid, expected roles
+      if (role === 'dos' || role === 'teacher') {
+        console.log(`[AuthProvider] Role for UID ${user.uid} found via EMAIL fallback lookup (Doc ID: ${teacherDoc.id}): ${role}`);
+        // Future enhancement: We could trigger a server action here to "heal" the data by syncing the doc ID with the UID.
+        return role;
+      }
+       // If the role field is missing or invalid, we can't grant access.
+      console.warn(`[AuthProvider] User ${user.uid} (found via email) has an invalid or missing role in their document (Doc ID: ${teacherDoc.id}, role: '${role}'). Denying role assignment.`);
+      return null;
     }
     
     // 4. If all checks fail, the user has no role defined in the system.
