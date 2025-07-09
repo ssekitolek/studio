@@ -26,7 +26,7 @@ export default function TeacherLoginPage() {
     setIsLoading(true);
 
     if (!auth) {
-        setError("Authentication service is not available. Please contact support.");
+        setError("Authentication service is not available. Please check your Firebase configuration in the .env file.");
         setIsLoading(false);
         return;
     }
@@ -55,6 +55,9 @@ export default function TeacherLoginPage() {
             break;
           case 'auth/invalid-email':
             friendlyMessage = "Please enter a valid email address.";
+            break;
+           case 'auth/invalid-api-key':
+            friendlyMessage = "Connection to authentication service failed due to an invalid configuration. Please ensure all NEXT_PUBLIC_FIREBASE_ environment variables are correct.";
             break;
           default:
             friendlyMessage = "Login failed. Please try again later.";
