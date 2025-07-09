@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -15,7 +14,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 
 export default function DosLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("root@adminmathius.staff");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
