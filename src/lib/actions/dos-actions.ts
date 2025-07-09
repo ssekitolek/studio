@@ -1,5 +1,4 @@
 
-
 "use server";
 
 import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData } from "@/lib/types";
@@ -1106,7 +1105,12 @@ function calculateGrade(
 }
 
 
-export async function getMarksForReview(classId: string, subjectId: string, examId: string): Promise<MarksForReviewPayload> {
+export async function getMarksForReview(
+  classId: string,
+  subjectId: string,
+  examId: string,
+  stream?: string
+): Promise<MarksForReviewPayload> {
   const defaultPayload: MarksForReviewPayload = { submissionId: null, assessmentName: null, marks: [], dosStatus: undefined, dosRejectReason: undefined };
   if (!db) {
     console.error("[DOS Action - getMarksForReview] CRITICAL_ERROR_DB_NULL: Firestore db object is null.");
@@ -1114,11 +1118,10 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
   }
 
   const compositeAssessmentId = `${examId}_${classId}_${subjectId}`;
-  console.log(`[DOS Action - getMarksForReview] Fetching marks for Class ID: ${classId}, Subject ID: ${subjectId}, Exam ID: ${examId}. Constructed composite assessmentId for query: "${compositeAssessmentId}"`);
+  console.log(`[DOS Action - getMarksForReview] Fetching marks for Class ID: ${classId}, Subject ID: ${subjectId}, Exam ID: ${examId}, Stream: ${stream || 'All'}.`);
 
   try {
     const markSubmissionsRef = collection(db, "markSubmissions");
-    console.log(`[DOS Action - getMarksForReview] Preparing to query 'markSubmissions' where 'assessmentId' == '${compositeAssessmentId}', ordered by 'dateSubmitted' desc, limit 1.`);
     const q = query(
       markSubmissionsRef,
       where("assessmentId", "==", compositeAssessmentId),
@@ -1126,31 +1129,47 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
       limit(1)
     );
     const submissionSnapshot = await getDocs(q);
-    console.log(`[DOS Action - getMarksForReview] Firestore query for composite assessmentId: "${compositeAssessmentId}". Snapshot empty: ${submissionSnapshot.empty}, Size: ${submissionSnapshot.size}`);
-
+    
     if (submissionSnapshot.empty) {
-      console.warn(`[DOS Action - getMarksForReview] NO SUBMISSION DOCUMENT FOUND in Firestore for composite assessmentId: "${compositeAssessmentId}"`);
+      console.warn(`[DOS Action - getMarksForReview] NO SUBMISSION DOCUMENT FOUND for composite assessmentId: "${compositeAssessmentId}"`);
       return defaultPayload;
     }
 
     const latestSubmissionDoc = submissionSnapshot.docs[0];
     const submissionData = latestSubmissionDoc.data() as MarkSubmissionFirestoreRecord;
-    console.log(`[DOS Action - getMarksForReview] Found submission doc ID: ${latestSubmissionDoc.id} matching composite assessmentId: "${compositeAssessmentId}". Raw data: ${JSON.stringify(submissionData)}`);
-
     const assessmentName = submissionData.assessmentName || "Assessment Name Not Recorded";
+    console.log(`[DOS Action - getMarksForReview] Found submission doc ID: ${latestSubmissionDoc.id} for composite assessmentId: "${compositeAssessmentId}".`);
 
     if (!submissionData.submittedMarks || submissionData.submittedMarks.length === 0) {
-      console.log(`[DOS Action - getMarksForReview] Submission found (ID: ${latestSubmissionDoc.id}) but contains no marks for composite assessmentId: ${compositeAssessmentId}`);
+      console.log(`[DOS Action - getMarksForReview] Submission found (ID: ${latestSubmissionDoc.id}) but contains no marks.`);
       return { ...defaultPayload, submissionId: latestSubmissionDoc.id, assessmentName: assessmentName, dosStatus: submissionData.dosStatus, dosRejectReason: submissionData.dosRejectReason };
     }
 
     const allStudents = await getStudents();
-    const studentsMap = new Map(allStudents.map(s => [s.studentIdNumber, `${s.firstName} ${s.lastName}`]));
+    const studentsMap = new Map(allStudents.map(s => [s.studentIdNumber, s]));
 
-    const marksForReview: MarksForReviewEntry[] = submissionData.submittedMarks.map(mark => ({
+    let marksToProcess = submissionData.submittedMarks;
+    
+    // If a stream is specified, filter the marks
+    if (stream) {
+        console.log(`[DOS Action - getMarksForReview] Filtering marks for stream: "${stream}".`);
+        const studentIdsInStream = new Set<string>();
+        allStudents.forEach(s => {
+            if (s.classId === classId && s.stream === stream) {
+                studentIdsInStream.add(s.studentIdNumber);
+            }
+        });
+        
+        marksToProcess = submissionData.submittedMarks.filter(mark => 
+            studentIdsInStream.has(mark.studentId)
+        );
+        console.log(`[DOS Action - getMarksForReview] Original marks: ${submissionData.submittedMarks.length}, Filtered marks for stream "${stream}": ${marksToProcess.length}.`);
+    }
+
+    const marksForReview: MarksForReviewEntry[] = marksToProcess.map(mark => ({
       studentId: mark.studentId,
       grade: mark.score,
-      studentName: studentsMap.get(mark.studentId) || "Unknown Student",
+      studentName: studentsMap.get(mark.studentId) ? `${studentsMap.get(mark.studentId)!.firstName} ${studentsMap.get(mark.studentId)!.lastName}` : "Unknown Student",
     }));
 
     let teacherName: string | undefined;
@@ -1163,7 +1182,7 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
         }
     }
 
-    console.log(`[DOS Action - getMarksForReview] Processed ${marksForReview.length} marks for composite assessmentId: ${compositeAssessmentId}. Submission ID: ${latestSubmissionDoc.id}. Assessment Name from record: ${assessmentName}`);
+    console.log(`[DOS Action - getMarksForReview] Processed ${marksForReview.length} marks for review.`);
     return {
         submissionId: latestSubmissionDoc.id,
         assessmentName: assessmentName,
@@ -1175,9 +1194,9 @@ export async function getMarksForReview(classId: string, subjectId: string, exam
     };
 
   } catch (error: any) {
-    console.error(`[DOS Action - getMarksForReview] ERROR fetching marks for review (composite assessmentId: ${compositeAssessmentId}):`, error);
+    console.error(`[DOS Action - getMarksForReview] ERROR fetching marks for review:`, error);
      if (error.code === 'failed-precondition') {
-      const specificErrorMessage = "FIRESTORE ERROR (getMarksForReview): The query requires an index. This typically involves 'assessmentId' (Ascending) and 'dateSubmitted' (Descending) on the 'markSubmissions' collection. Please create this index in your Firebase Firestore console. The full Firebase error (containing a direct link to create it) should be in your server logs.";
+      const specificErrorMessage = "FIRESTORE ERROR (getMarksForReview): The query requires an index. This typically involves 'assessmentId' (Ascending) and 'dateSubmitted' (Descending) on the 'markSubmissions' collection. Please create this index in your Firebase Firestore console.";
       console.error("*********************************************************************************");
       console.error(specificErrorMessage);
       console.error("*********************************************************************************");
@@ -1394,27 +1413,14 @@ export async function downloadSingleMarkSubmission(
 }
 
 export async function getAssessmentAnalysisData(classId: string, subjectId: string, examId: string, stream?: string): Promise<{ success: boolean; message: string; data?: AssessmentAnalysisData }> {
-  const marksPayload = await getMarksForReview(classId, subjectId, examId);
+  const marksPayload = await getMarksForReview(classId, subjectId, examId, stream); // Pass stream here
 
   if (!marksPayload.submissionId || marksPayload.marks.length === 0) {
     return { success: false, message: "No submitted marks found for the selected assessment to analyze." };
   }
   
+  // No need to filter again here as getMarksForReview now handles it
   let marksToAnalyze = marksPayload.marks;
-
-  if (stream) {
-    console.log(`[getAssessmentAnalysisData] Filtering analysis for stream: "${stream}"`);
-    const allStudents = await getStudents();
-    const studentsInStream = new Set(allStudents
-      .filter(s => s.classId === classId && s.stream === stream)
-      .map(s => s.studentIdNumber));
-    
-    marksToAnalyze = marksPayload.marks.filter(mark => studentsInStream.has(mark.studentId));
-    
-    if (marksToAnalyze.length === 0) {
-      return { success: false, message: `No marks found for the selected stream "${stream}".` };
-    }
-  }
 
   const scores = marksToAnalyze.map(m => m.grade).filter((g): g is number => g !== null && g !== undefined);
   

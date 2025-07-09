@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
@@ -21,6 +20,8 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
+const WHOLE_CLASS_VALUE = "_ALL_";
+
 export default function MarksReviewPage() {
   const { toast } = useToast();
   const [isProcessingAnomalyCheck, startAnomalyCheckTransition] = useTransition();
@@ -40,6 +41,8 @@ export default function MarksReviewPage() {
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [selectedSubject, setSelectedSubject] = useState<string>("");
   const [selectedExam, setSelectedExam] = useState<string>("");
+  const [selectedStream, setSelectedStream] = useState<string>(WHOLE_CLASS_VALUE);
+  const [availableStreams, setAvailableStreams] = useState<string[]>([]);
 
   const [marksPayload, setMarksPayload] = useState<MarksForReviewPayload | null>(null);
   const [aiAnomalies, setAiAnomalies] = useState<AnomalyExplanation[]>([]);
@@ -78,6 +81,12 @@ export default function MarksReviewPage() {
     }
     fetchData();
   }, [toast]);
+  
+  useEffect(() => {
+    const classInfo = classes.find(c => c.id === selectedClass);
+    setAvailableStreams(classInfo?.streams || []);
+    setSelectedStream(WHOLE_CLASS_VALUE);
+  }, [selectedClass, classes]);
 
   const handleFetchMarks = async () => {
     if (!selectedClass || !selectedSubject || !selectedExam) {
@@ -90,9 +99,11 @@ export default function MarksReviewPage() {
     setShowRejectInput(false);
     setRejectReason("");
     setIsEditingMarks(false); // Reset editing state
-    console.log(`[MarksReviewPage] Fetching marks for Class: ${selectedClass}, Subject: ${selectedSubject}, Exam: ${selectedExam}`);
+    
+    const streamToFetch = selectedStream === WHOLE_CLASS_VALUE ? undefined : selectedStream;
+    console.log(`[MarksReviewPage] Fetching marks for Class: ${selectedClass}, Subject: ${selectedSubject}, Exam: ${selectedExam}, Stream: ${streamToFetch}`);
     try {
-      const fetchedPayload = await getMarksForReview(selectedClass, selectedSubject, selectedExam);
+      const fetchedPayload = await getMarksForReview(selectedClass, selectedSubject, selectedExam, streamToFetch);
       setMarksPayload(fetchedPayload);
       if (fetchedPayload && fetchedPayload.marks) {
         setEditableMarks(JSON.parse(JSON.stringify(fetchedPayload.marks))); // Deep copy for editing
@@ -369,10 +380,17 @@ export default function MarksReviewPage() {
           <CardTitle className="font-headline text-xl text-primary">Selection Criteria</CardTitle>
           <CardDescription>Select class, subject, and exam to review the latest marks submitted by the teacher.</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Select value={selectedClass} onValueChange={setSelectedClass} disabled={isLoadingInitialData}>
             <SelectTrigger><SelectValue placeholder={isLoadingInitialData ? "Loading..." : "Select Class"} /></SelectTrigger>
             <SelectContent>{classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+          </Select>
+           <Select value={selectedStream} onValueChange={setSelectedStream} disabled={!selectedClass || availableStreams.length === 0}>
+            <SelectTrigger><SelectValue placeholder={availableStreams.length > 0 ? "Select Stream" : "No Streams"} /></SelectTrigger>
+            <SelectContent>
+                <SelectItem value={WHOLE_CLASS_VALUE}>Whole Class</SelectItem>
+                {availableStreams.map(stream => <SelectItem key={stream} value={stream}>{stream}</SelectItem>)}
+            </SelectContent>
           </Select>
           <Select value={selectedSubject} onValueChange={setSelectedSubject} disabled={isLoadingInitialData}>
             <SelectTrigger><SelectValue placeholder={isLoadingInitialData ? "Loading..." : "Select Subject"} /></SelectTrigger>
