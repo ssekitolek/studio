@@ -1,9 +1,13 @@
+
+'use client';
+
+import { useState, useEffect } from 'react';
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatCard } from "@/components/shared/StatCard";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { LayoutDashboard, Users, BookUser, ClipboardList, Settings2, CalendarCheck2, AlertTriangle, UserPlus, PlusCircle, FileWarning } from "lucide-react";
+import { LayoutDashboard, Users, BookUser, ClipboardList, Settings2, CalendarCheck2, AlertTriangle, UserPlus, PlusCircle, FileWarning, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { getTeachers, getStudents, getClasses, getSubjects, getExams, getGeneralSettings, getTerms } from "@/lib/actions/dos-actions";
 import type { Term, GeneralSettings, Teacher, Student, ClassInfo, Subject as SubjectType, Exam } from "@/lib/types";
@@ -19,9 +23,9 @@ const quickActions = [
 function calculateDaysRemaining(deadline?: string): string {
   if (!deadline) return "Not set";
   const today = new Date();
-  today.setHours(0, 0, 0, 0); 
+  today.setHours(0, 0, 0, 0);
   const deadlineDate = new Date(deadline);
-  deadlineDate.setHours(0,0,0,0); 
+  deadlineDate.setHours(0, 0, 0, 0);
 
   const diffTime = deadlineDate.getTime() - today.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -32,38 +36,60 @@ function calculateDaysRemaining(deadline?: string): string {
   return `${diffDays} days`;
 }
 
-export default async function DosDashboardPage() {
-  console.log(">>>> SERVER LOGS WILL APPEAR HERE IN THE BOTTOM PANEL! <<<<");
-  let teachers: Teacher[] = [];
-  let students: Student[] = [];
-  let classes: ClassInfo[] = [];
-  let subjectsData: SubjectType[] = [];
-  let exams: Exam[] = [];
-  let generalSettings: GeneralSettings | null = null;
-  let terms: Term[] = [];
-  let fetchError: string | null = null;
+interface DashboardData {
+  teachers: Teacher[];
+  students: Student[];
+  classes: ClassInfo[];
+  subjectsData: SubjectType[];
+  exams: Exam[];
+  generalSettings: GeneralSettings | null;
+  terms: Term[];
+}
 
-  try {
-    [teachers, students, classes, subjectsData, exams, generalSettings, terms] = await Promise.all([
-      getTeachers(),
-      getStudents(),
-      getClasses(),
-      getSubjects(),
-      getExams(),
-      getGeneralSettings(),
-      getTerms(),
-    ]);
-  } catch (error) {
-    console.error("CRITICAL ERROR in DosDashboardPage Promise.all data fetching:", error);
-    try {
-      console.error("Detailed error object (DosDashboardPage):", JSON.stringify(error, Object.getOwnPropertyNames(error)));
-    } catch (stringifyError) {
-      console.error("Could not stringify the error object:", stringifyError);
+export default function DosDashboardPage() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadDashboardData() {
+      setIsLoading(true);
+      setFetchError(null);
+      try {
+        const [teachers, students, classes, subjectsData, exams, generalSettings, terms] = await Promise.all([
+          getTeachers(),
+          getStudents(),
+          getClasses(),
+          getSubjects(),
+          getExams(),
+          getGeneralSettings(),
+          getTerms(),
+        ]);
+        setData({ teachers, students, classes, subjectsData, exams, generalSettings, terms });
+      } catch (error) {
+        console.error("CRITICAL ERROR in DosDashboardPage data fetching:", error);
+        setFetchError(`Dashboard loading failed: ${error instanceof Error ? error.message : String(error)}. Please check server logs and ensure Firebase services are reachable.`);
+      } finally {
+        setIsLoading(false);
+      }
     }
-    
-    fetchError = `Dashboard loading failed: ${error instanceof Error ? error.message : String(error)}. Please check server logs and ensure Firebase services are reachable. The system might be offline or experiencing issues.`;
-    
-    generalSettings = {
+    loadDashboardData();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const { teachers = [], students = [], classes = [], subjectsData = [], exams = [], generalSettings, terms = [] } = data || {};
+
+  let currentGeneralSettings = generalSettings;
+
+  if (fetchError && !currentGeneralSettings) {
+    currentGeneralSettings = {
         defaultGradingScale: [{ grade: 'N/A', minScore: 0, maxScore: 0 }],
         markSubmissionTimeZone: 'UTC',
         currentTermId: undefined,
@@ -72,19 +98,15 @@ export default async function DosDashboardPage() {
         dosGlobalAnnouncementType: "warning",
         teacherDashboardResourcesText: "Resources could not be loaded due to an error.",
     };
-  }
-  
-  if (!generalSettings) {
-    generalSettings = {
+  } else if (!currentGeneralSettings) {
+      currentGeneralSettings = {
         defaultGradingScale: [{ grade: 'Error', minScore: 0, maxScore: 0 }],
         markSubmissionTimeZone: 'UTC',
         dosGlobalAnnouncementText: "Failed to load system settings. Dashboard may be incomplete.",
         dosGlobalAnnouncementType: "warning",
         teacherDashboardResourcesText: "Failed to load resources text due to settings issue.",
     };
-    if (!fetchError) fetchError = "System settings could not be loaded. Dashboard may be incomplete.";
   }
-
 
   const totalTeachers = teachers.length;
   const totalStudents = students.length;
@@ -96,22 +118,21 @@ export default async function DosDashboardPage() {
   let upcomingDeadlineAlertText = "No specific deadline set.";
   let upcomingDeadlineDaysRemaining = "";
 
-  const currentTerm = generalSettings.currentTermId ? terms.find(t => t.id === generalSettings.currentTermId) : null;
+  const currentTerm = currentGeneralSettings.currentTermId ? terms.find(t => t.id === currentGeneralSettings?.currentTermId) : null;
 
   if (currentTerm) {
     pendingSubmissionsCount = exams.filter(exam => exam.termId === currentTerm.id).length;
   }
-  
-  if (generalSettings.globalMarksSubmissionDeadline) {
-    pendingSubmissionsDeadlineText = `Global: ${new Date(generalSettings.globalMarksSubmissionDeadline).toLocaleDateString()}`;
-    upcomingDeadlineAlertText = `Global marks submission deadline is approaching: ${new Date(generalSettings.globalMarksSubmissionDeadline).toLocaleDateString()}.`;
-    upcomingDeadlineDaysRemaining = calculateDaysRemaining(generalSettings.globalMarksSubmissionDeadline);
+
+  if (currentGeneralSettings.globalMarksSubmissionDeadline) {
+    pendingSubmissionsDeadlineText = `Global: ${new Date(currentGeneralSettings.globalMarksSubmissionDeadline).toLocaleDateString()}`;
+    upcomingDeadlineAlertText = `Global marks submission deadline is approaching: ${new Date(currentGeneralSettings.globalMarksSubmissionDeadline).toLocaleDateString()}.`;
+    upcomingDeadlineDaysRemaining = calculateDaysRemaining(currentGeneralSettings.globalMarksSubmissionDeadline);
   } else if (currentTerm?.endDate) {
     pendingSubmissionsDeadlineText = `Term End: ${new Date(currentTerm.endDate).toLocaleDateString()}`;
     upcomingDeadlineAlertText = `Current term submission deadline (term end): ${new Date(currentTerm.endDate).toLocaleDateString()}.`;
     upcomingDeadlineDaysRemaining = calculateDaysRemaining(currentTerm.endDate);
   }
-
 
   const stats = [
     { title: "Total Teachers", value: totalTeachers, icon: BookUser, description: "" },
@@ -199,7 +220,7 @@ export default async function DosDashboardPage() {
           </CardContent>
         </Card>
       </div>
-      
+
       <Card className="shadow-md overflow-hidden">
         <CardHeader>
             <CardTitle className="font-headline text-xl text-primary">Welcome</CardTitle>
@@ -207,7 +228,7 @@ export default async function DosDashboardPage() {
         <CardContent className="flex flex-col md:flex-row items-center gap-6">
             <div className="md:w-2/3">
                 <p className="text-foreground/90 mb-4">
-                    This system empowers you to efficiently manage student grades, teacher assignments, and academic configurations. 
+                    This system empowers you to efficiently manage student grades, teacher assignments, and academic configurations.
                     Utilize the sidebar to navigate through different management sections.
                 </p>
                 <p className="text-foreground/90">
