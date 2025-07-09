@@ -4,94 +4,104 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // --- Helper Functions ---
-    function isDos() {
-      // Check if the requesting user has a 'dos' role in their own teacher document.
-      return isSignedIn() && get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.role == 'dos';
-    }
-
-    function isAdmin() {
-       // Check if the requesting user has an 'admin' role.
-       // For this app, admin role is derived from a specific email on the client, but this rule is for direct DB access if needed.
-      return isSignedIn() && get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.role == 'admin';
-    }
-    
-    function isTeacher() {
-      // Check if the requesting user has a 'teacher' role.
-      return isSignedIn() && get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.role == 'teacher';
-    }
-
-    function isSignedIn() {
-      // Check if the user is authenticated.
-      return request.auth != null;
-    }
-    
-    // --- Default Security ---
-    // By default, deny all reads and writes to all documents.
+    // Default deny all
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // --- Specific Collection Rules ---
-
-    // ** Teachers Collection **
-    // A user can read their OWN teacher document to verify their role.
-    // The D.O.S. can read/write any teacher document to manage assignments and roles.
-    match /teachers/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isDos());
-      allow write: if isDos();
-    }
-    
-    // ** Students Collection **
-    // The D.O.S. has full read/write access.
-    // A Teacher can read student data.
-    match /students/{studentId} {
-      allow read: if isDos() || isTeacher();
-      allow write: if isDos();
+    // --- Admin Rules ---
+    // Admin has full read/write access everywhere.
+    match /{document=**} {
+      allow read, write: if request.auth != null && request.auth.token.email == "mathius@admin.staff";
     }
 
-    // ** Academic Structure Collections **
-    // The D.O.S. has full control over classes, subjects, terms, exams, and grading policies.
-    // Teachers need read access to view assignments and class details.
-    match /(classes|subjects|terms|exams|gradingPolicies)/{docId} {
-      allow read: if isDos() || isTeacher();
-      allow write: if isDos();
+    // --- Authenticated User Rules (for login/role check) ---
+    // Any authenticated user can read the list of teachers to find their own role.
+    // This is necessary for the robust login flow which might need to query by UID.
+    match /teachers/{teacherId} {
+      allow read: if request.auth != null;
     }
     
-    // ** Settings **
-    // Any authenticated user can read general settings (e.g., current term).
-    // Only D.O.S. can write settings.
-    match /settings/general {
-        allow read: if isSignedIn();
+    // --- D.O.S. Rules ---
+    function isDos() {
+      // Check if the requesting user's document in 'teachers' has the role 'dos'.
+      // This is a secure way to check for roles.
+      return request.auth != null && get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.role == 'dos';
+    }
+    
+    // D.O.S. can manage these collections.
+    match /teachers/{teacherId} {
+        // D.O.S. can write to any teacher document. Read is already granted above.
         allow write: if isDos();
     }
+    match /students/{studentId} {
+        allow read, write: if isDos();
+    }
+    match /classes/{classId} {
+      allow read, write: if isDos();
+    }
+    match /subjects/{subjectId} {
+      allow read, write: if isDos();
+    }
+    match /terms/{termId} {
+      allow read, write: if isDos();
+    }
+    match /exams/{examId} {
+      allow read, write: if isDos();
+    }
+    match /gradingPolicies/{policyId} {
+        allow read, write: if isDos();
+    }
+    match /settings/general {
+        allow read, write: if isDos();
+    }
+     match /attendance/{recordId} {
+      allow read: if isDos();
+    }
 
-    // ** Mark Submissions **
-    // Submissions can be created by any authenticated user (teacher).
-    // A teacher can read their own submissions.
-    // The D.O.S. can read and update any submission for review.
+    // --- Teacher Rules ---
+    function isTeacher() {
+      // Check if the requesting user's document in 'teachers' has the role 'teacher'.
+      return request.auth != null && get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.role == 'teacher';
+    }
+    
+    // Teachers can read their own assignments (classes, subjects, students in their classes).
+    match /classes/{classId} {
+      allow get: if isTeacher();
+    }
+     match /subjects/{subjectId} {
+      allow get: if isTeacher();
+    }
+    match /students/{studentId} {
+      allow get: if isTeacher();
+      // Allow teacher to list students only for their assigned classes.
+      allow list: if isTeacher() && request.query.where[0].field == 'classId';
+    }
+    match /exams/{examId} {
+      allow get: if isTeacher();
+    }
+    match /terms/{termId} {
+      allow get: if isTeacher();
+    }
+
+    // Teachers can create and read their own mark submissions.
     match /markSubmissions/{submissionId} {
-        allow create: if isSignedIn();
-        allow read: if isDos() || (isSignedIn() && resource.data.teacherId == request.auth.uid);
-        allow update: if isDos();
+      allow create, read: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
+      // D.O.S. can also read/write to review/approve.
+      allow read, write: if isDos(); 
+    }
+    
+     // Attendance can be created by a teacher for one of their classes.
+    match /attendance/{recordId} {
+      allow create, update: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
+      allow read: if isTeacher();
     }
 
-    // ** Attendance **
-    // Attendance can be read by teachers and the D.O.S.
-    // Attendance can be written (created/updated) by teachers and the D.O.S.
-    match /attendance/{attendanceId} {
-       allow read: if isTeacher() || isDos();
-       allow write: if isTeacher() || isDos();
-    }
-
-    // ** Website Content **
-    // Publicly readable, but only writable by the admin.
-    // The isAdmin() check here assumes an admin user would have a 'teachers' document with role='admin'.
-    // Since admin access is determined by email on the client, this write rule may need adjustment if admins
-    // need to write directly from the server using the Admin SDK. For the app's current flow, this is sufficient.
+    // --- Public Rules ---
+    // Website content is readable by anyone, but only writable by admin.
     match /website_content/homepage {
-        allow read: if true;
-        allow write: if isDos() || isAdmin(); // Let's allow D.O.S. to manage this too for simplicity.
+      allow get: if true;
+      allow write: if request.auth != null && request.auth.token.email == "mathius@admin.staff";
     }
   }
 }

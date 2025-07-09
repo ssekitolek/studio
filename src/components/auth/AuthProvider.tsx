@@ -3,7 +3,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, limit } from "firebase/firestore";
 import { auth, db } from '@/lib/firebase';
 
 const ADMIN_EMAIL = "mathius@admin.staff";
@@ -22,6 +22,7 @@ async function determineUserRole(user: User): Promise<string | null> {
   }
 
   try {
+    // Attempt 1: Fast lookup by document ID. Works for new users created with setDoc(doc(db, "teachers", uid)).
     const teacherRef = doc(db, "teachers", user.uid);
     const teacherSnap = await getDoc(teacherRef);
 
@@ -29,16 +30,31 @@ async function determineUserRole(user: User): Promise<string | null> {
       const teacherData = teacherSnap.data();
       const role = teacherData.role;
       if (role === 'dos' || role === 'teacher') {
-        console.log(`[AuthProvider] Role for UID ${user.uid} found: ${role}`);
+        console.log(`[AuthProvider] Role for UID ${user.uid} found via direct doc ID lookup: ${role}`);
         return role;
-      } else {
-        console.warn(`[AuthProvider] User document found for ${user.uid}, but role is missing or invalid: '${role}'`);
-        return null;
       }
-    } else {
-      console.warn(`[AuthProvider] No teacher document found for UID ${user.uid}. This user has no role in the system.`);
-      return null;
     }
+    
+    // Attempt 2: Fallback query. This is crucial for older users created with addDoc() 
+    // where the document ID is auto-generated and the auth UID is a field inside the document.
+    console.log(`[AuthProvider] Direct lookup failed for ${user.uid}. Attempting query fallback on 'uid' field.`);
+    const teachersCol = collection(db, "teachers");
+    const q = query(teachersCol, where("uid", "==", user.uid), limit(1));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const teacherData = userDoc.data();
+        const role = teacherData.role;
+        if (role === 'dos' || role === 'teacher') {
+            console.log(`[AuthProvider] Role for UID ${user.uid} found via query fallback: ${role}`);
+            return role;
+        }
+    }
+
+    console.warn(`[AuthProvider] No teacher document found for UID ${user.uid} via direct lookup or query. This user has no role in the system.`);
+    return null;
+
   } catch (error) {
     console.error(`[AuthProvider] Firestore error checking role for UID ${user.uid}:`, error);
     return null;
