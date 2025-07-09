@@ -19,6 +19,7 @@ import Link from "next/link";
 import { StatCard } from "@/components/shared/StatCard";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { isInvalidId } from "@/lib/utils";
 
 
 export default function ClassManagementPage() {
@@ -31,10 +32,9 @@ export default function ClassManagementPage() {
 
   useEffect(() => {
     const teacherIdFromUrl = searchParams?.get("teacherId");
-    const teacherNameFromUrl = searchParams?.get("teacherName");
 
-    if (!teacherIdFromUrl) {
-      const msg = "Teacher ID missing from URL. Please login again to view your classes.";
+    if (isInvalidId(teacherIdFromUrl)) {
+      const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login again to view your classes.`;
       toast({ title: "Access Denied", description: msg, variant: "destructive" });
       setPageError(msg);
       setIsLoading(false);
@@ -65,7 +65,7 @@ export default function ClassManagementPage() {
         setIsLoading(false);
       }
     }
-    fetchData(teacherIdFromUrl);
+    fetchData(teacherIdFromUrl!);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 

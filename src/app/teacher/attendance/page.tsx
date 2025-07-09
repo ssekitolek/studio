@@ -24,6 +24,7 @@ import { ToastAction } from "@/components/ui/toast";
 
 import { getClassesForTeacher, getStudentsForClass, saveAttendance } from "@/lib/actions/teacher-actions";
 import type { ClassInfo, Student, StudentAttendanceInput } from "@/lib/types";
+import { isInvalidId } from "@/lib/utils";
 
 const studentAttendanceSchema = z.object({
   studentId: z.string(),
@@ -63,8 +64,8 @@ export default function TakeAttendancePage() {
 
   useEffect(() => {
     const teacherIdFromUrl = searchParams.get("teacherId");
-    if (!teacherIdFromUrl) {
-      setPageError("Teacher ID missing from URL. Please login again.");
+    if (isInvalidId(teacherIdFromUrl)) {
+      setPageError(`Teacher ID is invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login again.`);
       setIsLoading(false);
       return;
     }
@@ -72,7 +73,7 @@ export default function TakeAttendancePage() {
 
     async function fetchClasses() {
       try {
-        const teacherClasses = await getClassesForTeacher(teacherIdFromUrl);
+        const teacherClasses = await getClassesForTeacher(teacherIdFromUrl!);
         setClasses(teacherClasses);
         if (teacherClasses.length === 0) {
           setPageError("You are not assigned as a Class Teacher for any class.");

@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { LogOut, Settings, UserCircle } from "lucide-react";
+import { isInvalidId } from "@/lib/utils";
 
 interface AppHeaderProps {
   userName?: string; 
@@ -37,17 +38,20 @@ export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teache
       .toUpperCase() || (userRole === "Teacher" ? "T" : "A");
   };
 
-  const validTeacherIdForLink = teacherId && teacherId.toLowerCase() !== "undefined" && teacherId.trim() !== "" ? teacherId : undefined;
+  const isTeacherIdValid = !isInvalidId(teacherId);
+  const isTeacherNameValid = !isInvalidId(teacherNameParam);
+
+  const validTeacherIdForLink = isTeacherIdValid ? teacherId : undefined;
   let validTeacherNameForLink: string | undefined;
 
-  if (teacherNameParam && teacherNameParam.toLowerCase() !== "undefined" && teacherNameParam.trim() !== "") {
+  if (isTeacherNameValid) {
     validTeacherNameForLink = teacherNameParam;
   } else if (displayUserName && displayUserName !== "Teacher" && displayUserName !== "Admin") {
     validTeacherNameForLink = displayUserName;
   } else {
     validTeacherNameForLink = userRole === "Teacher" ? "Teacher" : undefined;
   }
-
+  
   let dashboardLink = "/";
   if (userRole === "D.O.S.") {
       dashboardLink = "/dos/dashboard";
@@ -100,7 +104,7 @@ export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teache
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild disabled={userRole === "Teacher" && (!validTeacherIdForLink || !validTeacherNameForLink)}>
+          <DropdownMenuItem asChild disabled={userRole === "Teacher" && (!validTeacherIdForLink)}>
             <Link href={settingsOrProfileLink}>
               {userRole === "D.O.S." || userRole === "Admin" ? <Settings className="mr-2 h-4 w-4" /> : <UserCircle className="mr-2 h-4 w-4" />}
               <span>{userRole === "Teacher" ? "My Profile" : "Settings"}</span>

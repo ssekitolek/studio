@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -17,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { LayoutDashboard, BookOpenCheck, History, LogOut, GanttChartSquare, UserCircle, ClipboardList, ClipboardCheck } from "lucide-react";
+import { isInvalidId } from "@/lib/utils";
 
 interface TeacherSidebarProps {
   teacherIdParam?: string; // Prop from layout, used as fallback or for SSR
@@ -47,66 +49,65 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
     currentTeacherName = teacherNameParam;
   }
 
-  const validTeacherId = currentTeacherId && currentTeacherId.toLowerCase() !== "undefined" && currentTeacherId.trim() !== "" && currentTeacherId !== "undefined" ? currentTeacherId : undefined;
-  const validDecodedTeacherName = currentTeacherName && currentTeacherName.toLowerCase() !== "undefined" && currentTeacherName.trim() !== "" && currentTeacherName !== "undefined" ? currentTeacherName : "Teacher";
+  const isTeacherIdValid = !isInvalidId(currentTeacherId);
 
-  const encodedTeacherId = validTeacherId ? encodeURIComponent(validTeacherId) : '';
-  const encodedTeacherName = encodeURIComponent(validDecodedTeacherName);
+  const encodedTeacherId = isTeacherIdValid ? encodeURIComponent(currentTeacherId!) : '';
+  const encodedTeacherName = encodeURIComponent(currentTeacherName);
 
   const navItems = [
     {
-      href: validTeacherId ? `/teacher/dashboard?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
+      href: isTeacherIdValid ? `/teacher/dashboard?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
       label: "Dashboard",
       icon: LayoutDashboard,
-      tooltip: validTeacherId ? "View your dashboard" : "Dashboard (Login Required)",
-      disabled: !validTeacherId,
+      tooltip: isTeacherIdValid ? "View your dashboard" : "Dashboard (Login Required)",
+      disabled: !isTeacherIdValid,
     },
     {
-      href: validTeacherId ? `/teacher/class-management?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
+      href: isTeacherIdValid ? `/teacher/class-management?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
       label: "Class Management",
       icon: ClipboardList,
-      tooltip: validTeacherId ? "Manage your assigned classes" : "Class Management (Login Required)",
-      disabled: !validTeacherId,
+      tooltip: isTeacherIdValid ? "Manage your assigned classes" : "Class Management (Login Required)",
+      disabled: !isTeacherIdValid,
     },
      {
-      href: validTeacherId ? `/teacher/attendance?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
+      href: isTeacherIdValid ? `/teacher/attendance?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
       label: "Take Attendance",
       icon: ClipboardCheck,
-      tooltip: validTeacherId ? "Take daily attendance" : "Take Attendance (Login Required)",
-      disabled: !validTeacherId,
+      tooltip: isTeacherIdValid ? "Take daily attendance" : "Take Attendance (Login Required)",
+      disabled: !isTeacherIdValid,
     },
     {
-      href: validTeacherId ? `/teacher/attendance/history?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
+      href: isTeacherIdValid ? `/teacher/attendance/history?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
       label: "Attendance History",
       icon: History,
-      tooltip: validTeacherId ? "View attendance history" : "Attendance History (Login Required)",
-      disabled: !validTeacherId,
+      tooltip: isTeacherIdValid ? "View attendance history" : "Attendance History (Login Required)",
+      disabled: !isTeacherIdValid,
     },
     {
-      href: validTeacherId ? `/teacher/marks/submit?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
+      href: isTeacherIdValid ? `/teacher/marks/submit?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
       label: "Submit Marks",
       icon: BookOpenCheck,
-      tooltip: validTeacherId ? "Submit student marks" : "Submit Marks (Login Required)",
-      disabled: !validTeacherId,
+      tooltip: isTeacherIdValid ? "Submit student marks" : "Submit Marks (Login Required)",
+      disabled: !isTeacherIdValid,
     },
     {
-      href: validTeacherId ? `/teacher/marks/history?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
+      href: isTeacherIdValid ? `/teacher/marks/history?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
       label: "View Submissions",
       icon: History,
-      tooltip: validTeacherId ? "View past mark submissions" : "View Submissions (Login Required)",
-      disabled: !validTeacherId,
+      tooltip: isTeacherIdValid ? "View past mark submissions" : "View Submissions (Login Required)",
+      disabled: !isTeacherIdValid,
     },
     {
-      href: validTeacherId ? `/teacher/profile?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
+      href: isTeacherIdValid ? `/teacher/profile?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
       label: "My Profile",
       icon: UserCircle,
-      tooltip: validTeacherId ? "View your profile" : "My Profile (Login Required)",
-      disabled: !validTeacherId,
+      tooltip: isTeacherIdValid ? "View your profile" : "My Profile (Login Required)",
+      disabled: !isTeacherIdValid,
     },
   ];
 
   const isItemActive = (href: string) => {
-    if (!validTeacherId && href.startsWith("/teacher/")) {
+    if (!isTeacherIdValid && href.startsWith("/teacher/")) {
       return false;
     }
     const baseHref = href.split('?')[0];
@@ -124,7 +125,7 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
     <Sidebar collapsible="icon" side="left" variant="sidebar" className="border-r">
       <SidebarHeader className="flex items-center justify-between p-2 h-16">
         {state === 'expanded' && (
-          <Link href={validTeacherId ? `/teacher/dashboard?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "/login/teacher"} className="ml-2">
+          <Link href={isTeacherIdValid ? `/teacher/dashboard?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "/login/teacher"} className="ml-2">
             <span className="text-lg font-headline font-semibold text-sidebar-foreground">
               St. Mbaaga's <span className="text-xs text-sidebar-foreground/70">Teacher</span>
             </span>

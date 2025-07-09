@@ -21,6 +21,7 @@ import { StatCard } from "@/components/shared/StatCard";
 
 import { getClassesForTeacher, getStudentsForClass, getAttendanceHistory } from "@/lib/actions/teacher-actions";
 import type { ClassInfo, Student, AttendanceHistoryData } from "@/lib/types";
+import { isInvalidId } from "@/lib/utils";
 
 export default function AttendanceHistoryPage() {
   const { toast } = useToast();
@@ -49,8 +50,8 @@ export default function AttendanceHistoryPage() {
   // Initial data loading for filters
   useEffect(() => {
     const teacherId = searchParams.get("teacherId");
-    if (!teacherId) {
-      setPageError("Teacher ID missing. Cannot load data.");
+    if (isInvalidId(teacherId)) {
+      setPageError(`Teacher ID invalid or missing from URL (received: '${teacherId}'). Cannot load data.`);
       setIsFetchingData(false);
       setIsLoading(false);
       return;
