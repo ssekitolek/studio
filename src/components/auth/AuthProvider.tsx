@@ -3,7 +3,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, collection, query, where, getDocs, limit } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from '@/lib/firebase';
 
 const ADMIN_EMAIL = "mathius@admin.staff";
@@ -11,8 +11,7 @@ const ADMIN_EMAIL = "mathius@admin.staff";
 async function determineUserRole(user: User): Promise<string | null> {
   console.log(`[AuthProvider] Determining role for user: ${user.uid} (${user.email})`);
   
-  // 1. Admin check (highest priority)
-  if (user.email && user.email === ADMIN_EMAIL) {
+  if (user.email === ADMIN_EMAIL) {
     console.log(`[AuthProvider] User ${user.uid} identified as ADMIN by email.`);
     return 'admin';
   }
@@ -23,39 +22,23 @@ async function determineUserRole(user: User): Promise<string | null> {
   }
 
   try {
-    // 2. Primary check: Firestore document ID matches Auth UID. This is the ideal state.
-    const teacherRefByUid = doc(db, "teachers", user.uid);
-    const teacherSnapByUid = await getDoc(teacherRefByUid);
+    const teacherRef = doc(db, "teachers", user.uid);
+    const teacherSnap = await getDoc(teacherRef);
 
-    if (teacherSnapByUid.exists()) {
-      const teacherData = teacherSnapByUid.data();
+    if (teacherSnap.exists()) {
+      const teacherData = teacherSnap.data();
       const role = teacherData.role;
       if (role === 'dos' || role === 'teacher') {
-        console.log(`[AuthProvider] Role for UID ${user.uid} found via direct UID document lookup: ${role}`);
+        console.log(`[AuthProvider] Role for UID ${user.uid} found: ${role}`);
         return role;
+      } else {
+        console.warn(`[AuthProvider] User document found for ${user.uid}, but role is missing or invalid: '${role}'`);
+        return null;
       }
+    } else {
+      console.warn(`[AuthProvider] No teacher document found for UID ${user.uid}. This user has no role in the system.`);
+      return null;
     }
-
-    // 3. Fallback check: If no doc by UID, query by email. This handles legacy or inconsistently created users.
-    console.log(`[AuthProvider] No teacher document found for UID ${user.uid}. Attempting fallback query by email: ${user.email}`);
-    const teachersCol = collection(db, "teachers");
-    const q = query(teachersCol, where("email", "==", user.email), limit(1));
-    const teacherSnapByEmail = await getDocs(q);
-
-    if (!teacherSnapByEmail.empty) {
-      const teacherDoc = teacherSnapByEmail.docs[0];
-      const teacherData = teacherDoc.data();
-      const role = teacherData.role;
-      if (role === 'dos' || role === 'teacher') {
-        console.log(`[AuthProvider] Role for UID ${user.uid} found via EMAIL fallback lookup (Doc ID: ${teacherDoc.id}): ${role}`);
-        return role;
-      }
-    }
-    
-    // 4. If all checks fail, the user has no role defined in the system.
-    console.error(`[AuthProvider] CRITICAL: Authenticated user ${user.uid} (${user.email}) has no corresponding document in 'teachers' collection by UID or email with a valid role.`);
-    return null;
-
   } catch (error) {
     console.error(`[AuthProvider] Firestore error checking role for UID ${user.uid}:`, error);
     return null;
