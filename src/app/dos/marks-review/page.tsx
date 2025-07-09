@@ -439,27 +439,25 @@ export default function MarksReviewPage() {
               </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
-                {isAiConfigured && (
-                  <Button onClick={handleRunAnomalyCheck} variant="outline" disabled={isActionDisabled || currentMarks.length === 0}>
-                    {isProcessingAnomalyCheck ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
-                    Run AI Anomaly Check
-                  </Button>
-                )}
-                <Select onValueChange={(value: 'csv' | 'xlsx' | 'pdf') => handleDownload(value)} disabled={isDownloading || !marksPayload?.submissionId || currentMarks.length === 0}>
-                    <SelectTrigger className="w-auto" disabled={isDownloading || !marksPayload?.submissionId || currentMarks.length === 0}>
-                        <SelectValue placeholder={isDownloading ? "Downloading..." : "Download As"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="csv">CSV</SelectItem>
-                        <SelectItem value="xlsx">Excel (XLSX)</SelectItem>
-                        <SelectItem value="pdf">PDF Document</SelectItem>
-                    </SelectContent>
-                </Select>
-                {!isSubmissionFinalized && currentMarks.length > 0 && (
-                  <Button variant="outline" onClick={() => setIsEditingMarks(s => !s)} disabled={isActionDisabled}>
-                    <Edit2 className="mr-2 h-4 w-4" /> {isEditingMarks ? "Cancel Edit" : "Edit Marks"}
-                  </Button>
-                )}
+              <Button onClick={handleRunAnomalyCheck} variant="outline" disabled={isActionDisabled || currentMarks.length === 0}>
+                {isProcessingAnomalyCheck ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
+                Run AI Anomaly Check
+              </Button>
+              <Select onValueChange={(value: 'csv' | 'xlsx' | 'pdf') => handleDownload(value)} disabled={isDownloading || !marksPayload?.submissionId || currentMarks.length === 0}>
+                  <SelectTrigger className="w-auto" disabled={isDownloading || !marksPayload?.submissionId || currentMarks.length === 0}>
+                      <SelectValue placeholder={isDownloading ? "Downloading..." : "Download As"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="csv">CSV</SelectItem>
+                      <SelectItem value="xlsx">Excel (XLSX)</SelectItem>
+                      <SelectItem value="pdf">PDF Document</SelectItem>
+                  </SelectContent>
+              </Select>
+              {!isSubmissionFinalized && currentMarks.length > 0 && (
+                <Button variant="outline" onClick={() => setIsEditingMarks(s => !s)} disabled={isActionDisabled}>
+                  <Edit2 className="mr-2 h-4 w-4" /> {isEditingMarks ? "Cancel Edit" : "Edit Marks"}
+                </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent>
