@@ -1393,17 +1393,33 @@ export async function downloadSingleMarkSubmission(
   }
 }
 
-export async function getAssessmentAnalysisData(classId: string, subjectId: string, examId: string): Promise<{ success: boolean; message: string; data?: AssessmentAnalysisData }> {
+export async function getAssessmentAnalysisData(classId: string, subjectId: string, examId: string, stream?: string): Promise<{ success: boolean; message: string; data?: AssessmentAnalysisData }> {
   const marksPayload = await getMarksForReview(classId, subjectId, examId);
 
   if (!marksPayload.submissionId || marksPayload.marks.length === 0) {
     return { success: false, message: "No submitted marks found for the selected assessment to analyze." };
   }
+  
+  let marksToAnalyze = marksPayload.marks;
 
-  const scores = marksPayload.marks.map(m => m.grade).filter((g): g is number => g !== null && g !== undefined);
+  if (stream) {
+    console.log(`[getAssessmentAnalysisData] Filtering analysis for stream: "${stream}"`);
+    const allStudents = await getStudents();
+    const studentsInStream = new Set(allStudents
+      .filter(s => s.classId === classId && s.stream === stream)
+      .map(s => s.studentIdNumber));
+    
+    marksToAnalyze = marksPayload.marks.filter(mark => studentsInStream.has(mark.studentId));
+    
+    if (marksToAnalyze.length === 0) {
+      return { success: false, message: `No marks found for the selected stream "${stream}".` };
+    }
+  }
+
+  const scores = marksToAnalyze.map(m => m.grade).filter((g): g is number => g !== null && g !== undefined);
   
   if (scores.length === 0) {
-      return { success: false, message: "No valid scores available for analysis."};
+      return { success: false, message: "No valid scores available for analysis in the selected scope."};
   }
 
   // Get grading scale
@@ -1419,7 +1435,7 @@ export async function getAssessmentAnalysisData(classId: string, subjectId: stri
       gradingScale = settings.defaultGradingScale || [];
   }
 
-  const marksWithGrades = marksPayload.marks.map(m => ({
+  const marksWithGrades = marksToAnalyze.map(m => ({
     studentId: m.studentId,
     studentName: m.studentName,
     score: m.grade,
@@ -1495,7 +1511,6 @@ export async function getAssessmentAnalysisData(classId: string, subjectId: stri
 
   return { success: true, message: "Analysis complete.", data: analysisData };
 }
-
 
 // Data fetch functions used across the D.O.S. portal
 export async function getTeachers(): Promise<Teacher[]> {
