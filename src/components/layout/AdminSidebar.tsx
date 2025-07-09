@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Sidebar,
   SidebarHeader,
@@ -18,6 +18,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { LayoutDashboard, LogOut, GanttChartSquare, Settings } from "lucide-react";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
 
 const adminNavItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, tooltip: "Website Content Management" },
@@ -25,7 +27,16 @@ const adminNavItems = [
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { state } = useSidebar();
+
+  const handleLogout = async () => {
+    if (auth) {
+        await signOut(auth);
+    }
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/');
+  };
 
   const isItemActive = (href: string) => {
     return pathname === href;
@@ -68,12 +79,10 @@ export function AdminSidebar() {
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter className="p-2">
-        <Link href="/">
-          <SidebarMenuButton tooltip="Log Out" className="justify-start">
-            <LogOut className="h-5 w-5" />
-            <span className="group-data-[state=collapsed]:hidden">Log Out</span>
-          </SidebarMenuButton>
-        </Link>
+        <SidebarMenuButton tooltip="Log Out" className="justify-start" onClick={handleLogout}>
+          <LogOut className="h-5 w-5" />
+          <span className="group-data-[state=collapsed]:hidden">Log Out</span>
+        </SidebarMenuButton>
       </SidebarFooter>
     </Sidebar>
   );

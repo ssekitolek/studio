@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation"; 
+import { usePathname } from "next/navigation"; 
 import {
   Sidebar,
   SidebarHeader,
@@ -18,114 +18,46 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { LayoutDashboard, BookOpenCheck, History, LogOut, GanttChartSquare, UserCircle, ClipboardList, ClipboardCheck } from "lucide-react";
-import { isInvalidId } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
 
-interface TeacherSidebarProps {
-  teacherIdParam?: string; // Prop from layout, used as fallback or for SSR
-  teacherNameParam?: string; // Prop from layout
-}
+const navItems = [
+    { href: "/teacher/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/teacher/class-management", label: "Class Management", icon: ClipboardList },
+    { href: "/teacher/attendance", label: "Take Attendance", icon: ClipboardCheck },
+    { href: "/teacher/attendance/history", label: "Attendance History", icon: History },
+    { href: "/teacher/marks/submit", label: "Submit Marks", icon: BookOpenCheck },
+    { href: "/teacher/marks/history", label: "View Submissions", icon: History },
+    { href: "/teacher/profile", label: "My Profile", icon: UserCircle },
+];
 
-export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSidebarProps) {
+export function TeacherSidebar() {
   const pathname = usePathname();
-  const searchParamsHook = useSearchParams(); 
+  const router = useRouter();
   const { state } = useSidebar();
 
-  // Get dynamic params from URL using the hook, more reliable for client-side updates
-  const teacherIdFromUrl = searchParamsHook?.get("teacherId");
-  const teacherNameFromUrlRaw = searchParamsHook?.get("teacherName");
-
-  // Prioritize URL params from hook, fallback to props (e.g., for SSR or if hook not ready/URL has no params yet)
-  const currentTeacherId = teacherIdFromUrl || teacherIdParam;
-  let currentTeacherName = "Teacher"; // Default
-
-  if (teacherNameFromUrlRaw) {
-    try {
-        currentTeacherName = decodeURIComponent(teacherNameFromUrlRaw);
-    } catch (e) {
-        console.warn("Failed to decode teacherNameFromUrlRaw from URL in Sidebar, using fallback/prop.");
-        currentTeacherName = teacherNameParam || "Teacher";
+  const handleLogout = async () => {
+    if (auth) {
+        await signOut(auth);
     }
-  } else if (teacherNameParam) {
-    currentTeacherName = teacherNameParam;
-  }
-
-  const isTeacherIdValid = !isInvalidId(currentTeacherId);
-
-  const encodedTeacherId = isTeacherIdValid ? encodeURIComponent(currentTeacherId!) : '';
-  const encodedTeacherName = encodeURIComponent(currentTeacherName);
-
-  const navItems = [
-    {
-      href: isTeacherIdValid ? `/teacher/dashboard?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
-      label: "Dashboard",
-      icon: LayoutDashboard,
-      tooltip: isTeacherIdValid ? "View your dashboard" : "Dashboard (Login Required)",
-      disabled: !isTeacherIdValid,
-    },
-    {
-      href: isTeacherIdValid ? `/teacher/class-management?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
-      label: "Class Management",
-      icon: ClipboardList,
-      tooltip: isTeacherIdValid ? "Manage your assigned classes" : "Class Management (Login Required)",
-      disabled: !isTeacherIdValid,
-    },
-     {
-      href: isTeacherIdValid ? `/teacher/attendance?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
-      label: "Take Attendance",
-      icon: ClipboardCheck,
-      tooltip: isTeacherIdValid ? "Take daily attendance" : "Take Attendance (Login Required)",
-      disabled: !isTeacherIdValid,
-    },
-    {
-      href: isTeacherIdValid ? `/teacher/attendance/history?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
-      label: "Attendance History",
-      icon: History,
-      tooltip: isTeacherIdValid ? "View attendance history" : "Attendance History (Login Required)",
-      disabled: !isTeacherIdValid,
-    },
-    {
-      href: isTeacherIdValid ? `/teacher/marks/submit?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
-      label: "Submit Marks",
-      icon: BookOpenCheck,
-      tooltip: isTeacherIdValid ? "Submit student marks" : "Submit Marks (Login Required)",
-      disabled: !isTeacherIdValid,
-    },
-    {
-      href: isTeacherIdValid ? `/teacher/marks/history?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
-      label: "View Submissions",
-      icon: History,
-      tooltip: isTeacherIdValid ? "View past mark submissions" : "View Submissions (Login Required)",
-      disabled: !isTeacherIdValid,
-    },
-    {
-      href: isTeacherIdValid ? `/teacher/profile?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "#",
-      label: "My Profile",
-      icon: UserCircle,
-      tooltip: isTeacherIdValid ? "View your profile" : "My Profile (Login Required)",
-      disabled: !isTeacherIdValid,
-    },
-  ];
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/');
+  };
 
   const isItemActive = (href: string) => {
-    if (!isTeacherIdValid && href.startsWith("/teacher/")) {
-      return false;
-    }
-    const baseHref = href.split('?')[0];
-
     // Exact match for dashboard and take attendance to avoid overlap with history
-    if (baseHref === "/teacher/dashboard" || baseHref === "/teacher/attendance") {
-      return pathname === baseHref;
+    if (href === "/teacher/dashboard" || href === "/teacher/attendance") {
+      return pathname === href;
     }
-    
-    // For all other pages, a prefix match is fine.
-    return pathname.startsWith(baseHref);
+    return pathname.startsWith(href);
   };
 
   return (
     <Sidebar collapsible="icon" side="left" variant="sidebar" className="border-r">
       <SidebarHeader className="flex items-center justify-between p-2 h-16">
         {state === 'expanded' && (
-          <Link href={isTeacherIdValid ? `/teacher/dashboard?teacherId=${encodedTeacherId}&teacherName=${encodedTeacherName}` : "/login/teacher"} className="ml-2">
+          <Link href="/teacher/dashboard" className="ml-2">
             <span className="text-lg font-headline font-semibold text-sidebar-foreground">
               St. Mbaaga's <span className="text-xs text-sidebar-foreground/70">Teacher</span>
             </span>
@@ -145,20 +77,14 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
           <SidebarMenu className="px-2 py-2 space-y-1">
             {navItems.map((item, index) => (
               <SidebarMenuItem key={index}>
-                <Link href={item.disabled ? "#" : item.href} legacyBehavior={false}>
+                <Link href={item.href}>
                   <SidebarMenuButton
-                    asChild={false} 
-                    isActive={!item.disabled && isItemActive(item.href)}
-                    tooltip={item.tooltip}
+                    isActive={isItemActive(item.href)}
+                    tooltip={item.label}
                     className="justify-start"
-                    disabled={item.disabled}
-                    aria-disabled={item.disabled}
-                    onClick={(e) => { if (item.disabled) e.preventDefault(); }}
                   >
-                    <>
-                      <item.icon className="h-5 w-5" />
-                      {state === 'expanded' && <span>{item.label}</span>}
-                    </>
+                    <item.icon className="h-5 w-5" />
+                    {state === 'expanded' && <span>{item.label}</span>}
                   </SidebarMenuButton>
                 </Link>
               </SidebarMenuItem>
@@ -168,14 +94,10 @@ export function TeacherSidebar({ teacherIdParam, teacherNameParam }: TeacherSide
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter className="p-2">
-        <Link href="/" legacyBehavior={false}>
-            <SidebarMenuButton tooltip="Log Out" className="justify-start" asChild={false}>
-              <>
-                <LogOut className="h-5 w-5" />
-                {state === 'expanded' && <span>Log Out</span>}
-              </>
-            </SidebarMenuButton>
-        </Link>
+        <SidebarMenuButton tooltip="Log Out" className="justify-start" onClick={handleLogout}>
+          <LogOut className="h-5 w-5" />
+          {state === 'expanded' && <span>Log Out</span>}
+        </SidebarMenuButton>
       </SidebarFooter>
     </Sidebar>
   );

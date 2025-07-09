@@ -1,168 +1,48 @@
 
-"use client";
+"use server";
 
-import { useEffect, useState } from "react";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { LayoutDashboard, BookOpenCheck, CalendarClock, Bell, ListChecks, AlertCircle, AlertTriangle, Info, Loader2, BarChart3, BookCopy, CheckSquare } from "lucide-react";
+import { LayoutDashboard, BookOpenCheck, CalendarClock, Bell, ListChecks, AlertCircle, AlertTriangle, Info, BarChart3, BookCopy, CheckSquare } from "lucide-react";
 import Image from "next/image";
 import { getTeacherDashboardData } from "@/lib/actions/teacher-actions";
 import type { TeacherDashboardData, TeacherNotification, TeacherStats } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle as UIAlertTitle } from "@/components/ui/alert";
 import { StatCard } from "@/components/shared/StatCard";
-import { useSearchParams } from "next/navigation";
-import { useToast } from "@/hooks/use-toast";
+import { adminAuth } from "@/lib/firebase-admin";
 
-export const dynamic = 'force-dynamic';
-
-const DEFAULT_FALLBACK_TEACHER_NAME = "Teacher"; 
-
-export default function TeacherDashboardPage() {
-  const searchParams = useSearchParams(); 
-  const { toast } = useToast();
-  
-  const initialDefaultStats: TeacherStats = {
-    assignedClassesCount: 0,
-    subjectsTaughtCount: 0,
-    recentSubmissionsCount: 0,
-  };
-
-  const initialDashboardData: TeacherDashboardData = {
-    assignments: [],
-    notifications: [],
-    teacherName: undefined, 
-    resourcesText: "Loading resources...",
-    stats: initialDefaultStats,
-  };
-
-  const [dashboardData, setDashboardData] = useState<TeacherDashboardData>(initialDashboardData);
-  const [isLoading, setIsLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
-  const [currentTeacherName, setCurrentTeacherName] = useState<string>(DEFAULT_FALLBACK_TEACHER_NAME);
-
-  useEffect(() => {
-    if (!searchParams) {
-      setIsLoading(false);
-      setFetchError("Could not access URL parameters. Please try reloading or logging in again.");
-      toast({ title: "Error", description: "URL parameters unavailable.", variant: "destructive" });
-      return;
-    }
-
-    const idFromParams = searchParams.get("teacherId");
-    let nameFromUrl = searchParams.get("teacherName");
-
-    if (nameFromUrl) {
-      try {
-        nameFromUrl = decodeURIComponent(nameFromUrl);
-      } catch (e) {
-        console.warn("Failed to decode teacherName from URL, using fallback.");
-        nameFromUrl = DEFAULT_FALLBACK_TEACHER_NAME;
-      }
-    } else {
-      nameFromUrl = DEFAULT_FALLBACK_TEACHER_NAME;
-    }
-    
-    setCurrentTeacherName(nameFromUrl); 
-
-    if (!idFromParams || idFromParams.trim() === "" || idFromParams.toLowerCase() === "undefined" || idFromParams === "undefined") {
-      const errorMessage = `Teacher ID is invalid or missing from URL (received: '${idFromParams}'). Dashboard cannot be loaded.`;
-      setIsLoading(false);
-      setFetchError(errorMessage);
-      toast({ title: "Access Denied", description: errorMessage, variant: "destructive" });
-      setDashboardData(prev => ({
-          ...prev,
-          notifications: [{id: 'error_invalid_id_param_dash', message: `${errorMessage} Please try logging in again.`, type: 'warning'}],
-          resourcesText: "Could not load resources due to invalid ID.",
-          stats: initialDefaultStats,
-          teacherName: nameFromUrl,
-      }));
-      setCurrentTeacherId(null);
-      return;
-    }
-    
-    setCurrentTeacherId(idFromParams); 
-    setIsLoading(true);
-    setFetchError(null); 
-
-    async function loadDataInternal(validTeacherId: string) {
-      console.log(`[TeacherDashboardPage] Attempting to load data for teacherId: ${validTeacherId}`);
-      try {
-        const data = await getTeacherDashboardData(validTeacherId);
-        console.log("[TeacherDashboardPage] Received data from getTeacherDashboardData:", JSON.stringify(data, null, 2));
-        setDashboardData(data);
-        if (data.teacherName) { 
-          setCurrentTeacherName(data.teacherName);
-        }
-        
-        if (!data.teacherName && !data.notifications.some(n => n.id.startsWith('error_') || n.id.startsWith('system_settings_') || n.id.startsWith('current_term_'))) {
-           const newError = `Your teacher record could not be loaded (ID used: ${validTeacherId}). Please contact administration.`;
-           setFetchError(prev => prev ? `${prev} ${newError}` : newError);
-           if (!data.notifications.some(n => n.id === 'error_missing_teacher_name_from_data_dash')) {
-             setDashboardData(prev => ({...prev, notifications: [...prev.notifications, {id: 'error_missing_teacher_name_from_data_dash', message: newError, type: 'warning'}]}));
-           }
-        } else if (data.notifications.some(n => n.id === 'error_teacher_not_found')) {
-            const existingError = data.notifications.find(n => n.id === 'error_teacher_not_found')?.message || `Teacher record not found for ID: ${validTeacherId}.`;
-            setFetchError(existingError);
-        }
-
-      } catch (error) {
-         const errorMessageText = error instanceof Error ? error.message : "An unknown error occurred.";
-         console.error("[TeacherDashboardPage] Error in loadDataInternal:", error);
-         setFetchError(errorMessageText);
-         toast({ title: "Dashboard Load Failed", description: errorMessageText, variant: "destructive"});
-         setDashboardData({ 
-             assignments: [],
-             notifications: [{id: 'critical_fetch_error_page_dash', message: `Failed to load dashboard: ${errorMessageText}`, type: 'warning'}],
-             teacherName: nameFromUrl, 
-             resourcesText: "Could not load resources due to an error.",
-             stats: initialDefaultStats,
-         });
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadDataInternal(idFromParams);
-
-  }, [searchParams, toast]); 
-
-
-  const displayTeacherName = dashboardData.teacherName || currentTeacherName;
-  const { assignments, notifications, resourcesText, stats } = dashboardData;
-
-  const validEncodedTeacherId = currentTeacherId ? encodeURIComponent(currentTeacherId) : '';
-  const validEncodedTeacherName = encodeURIComponent(displayTeacherName);
-
-  if (isLoading && !currentTeacherId && !fetchError) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-150px)]">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-lg text-muted-foreground">Initializing...</p>
-      </div>
-    );
+async function getCurrentUser() {
+  const sessionCookie = cookies().get("__session")?.value;
+  if (!sessionCookie) {
+    return null;
   }
-  
-  if (isLoading && currentTeacherId && !fetchError) { 
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-150px)]">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-lg text-muted-foreground">Loading Dashboard for {displayTeacherName}...</p>
-      </div>
-    );
+  try {
+    const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true);
+    return decodedClaims;
+  } catch (error) {
+    return null;
   }
-  
+}
+
+export default async function TeacherDashboardPage() {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login/teacher');
+  }
+
+  const dashboardData = await getTeacherDashboardData(user.uid);
+  const { assignments, notifications, teacherName, resourcesText, stats } = dashboardData;
+  const displayTeacherName = teacherName || user.name || user.email || "Teacher";
+
   const dashboardStats = [
     { title: "Assigned Classes", value: stats.assignedClassesCount, icon: BookCopy, description: "Unique classes you manage." },
     { title: "Subjects Taught", value: stats.subjectsTaughtCount, icon: ListChecks, description: "Unique subjects you teach." },
-    { title: "Recent Submissions", value: currentTeacherId && !fetchError && stats.recentSubmissionsCount !== undefined ? stats.recentSubmissionsCount : 'N/A', icon: CheckSquare, description: "Marks submitted in last 7 days." },
+    { title: "Recent Submissions", value: stats.recentSubmissionsCount ?? 'N/A', icon: CheckSquare, description: "Marks submitted in last 7 days." },
   ];
-
-  const marksSubmissionLink = currentTeacherId 
-    ? `/teacher/marks/submit?teacherId=${validEncodedTeacherId}&teacherName=${validEncodedTeacherName}`
-    : "#"; 
 
   return (
     <div className="space-y-8">
@@ -210,18 +90,6 @@ export default function TeacherDashboardPage() {
         </Alert>
       ))}
 
-      {fetchError && !notifications.some(n => n.message.includes(fetchError)) && (
-         <Alert variant="destructive" className="shadow-md">
-            <AlertTriangle className="h-4 w-4" />
-            <UIAlertTitle>Dashboard Loading Issue</UIAlertTitle>
-            <AlertDescription>
-                {fetchError} Some information may be missing or outdated. 
-                {(!currentTeacherId) && <span> Please try <Link href="/login/teacher" className="underline">logging in</Link> again.</span>}
-            </AlertDescription>
-        </Alert>
-      )}
-
-
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle className="font-headline text-xl text-primary flex items-center">
@@ -232,9 +100,9 @@ export default function TeacherDashboardPage() {
           {dashboardStats.map((stat) => (
             <StatCard
               key={stat.title}
-              title={stat.title}
               value={stat.value}
               icon={stat.icon}
+              title={stat.title}
               description={stat.description}
               className="shadow-sm hover:shadow-md transition-shadow border"
             />
@@ -251,7 +119,7 @@ export default function TeacherDashboardPage() {
             <CardDescription>Your current teaching assignments and upcoming deadlines for the active term. Assessments that are pending D.O.S. review or approved will not appear here.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {currentTeacherId && !fetchError && assignments && assignments.length > 0 ? (
+            {assignments && assignments.length > 0 ? (
               assignments.map((item) => (
                 <Card key={item.id} className="bg-secondary/50 p-4 rounded-lg">
                   <div className="flex justify-between items-center">
@@ -262,8 +130,8 @@ export default function TeacherDashboardPage() {
                         Next Deadline: {item.nextDeadlineInfo || "Not set"}
                       </p>
                     </div>
-                    <Button variant="outline" size="sm" asChild disabled={!currentTeacherId || !marksSubmissionLink || marksSubmissionLink === "#"}>
-                      <Link href={marksSubmissionLink}>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href="/teacher/marks/submit">
                         <BookOpenCheck className="mr-2 h-4 w-4" /> Enter Marks
                       </Link>
                     </Button>
@@ -273,14 +141,8 @@ export default function TeacherDashboardPage() {
             ) : (
               <div className="text-center py-6 text-muted-foreground">
                 <Info className="mx-auto h-8 w-8 mb-2" />
-                 {currentTeacherId && !fetchError && !isLoading ? (
-                  <>
-                    <p>No classes or subjects are currently assigned to you for assessment submission in the active term.</p>
-                    <p className="text-xs mt-1">This could be due to missing D.O.S. configurations (e.g., current term not set, or no exams for current term), or all your assigned marks have been submitted and are pending/approved. Check "View Submissions" for details on past submissions.</p>
-                  </>
-                 ) : (
-                    !isLoading && <p>Cannot load assignments as Teacher ID is not available or an error occurred.</p>
-                 )}
+                 <p>No classes or subjects are currently assigned to you for assessment submission in the active term.</p>
+                 <p className="text-xs mt-1">This could be due to missing D.O.S. configurations (e.g., current term not set, or no exams for current term), or all your assigned marks have been submitted and are pending/approved. Check "View Submissions" for details on past submissions.</p>
               </div>
             )}
           </CardContent>
@@ -294,7 +156,7 @@ export default function TeacherDashboardPage() {
             <CardDescription>Important updates and reminders from the D.O.S office.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 max-h-96 overflow-y-auto">
-            {currentTeacherId && !fetchError && notifications && notifications.filter(n => n.id === 'dos_announcement').length > 0 ? (
+            {notifications && notifications.filter(n => n.id === 'dos_announcement').length > 0 ? (
               notifications.filter(n => n.id === 'dos_announcement').map((notification) => (
                 <div
                   key={`${notification.id}-dos`}
@@ -328,7 +190,7 @@ export default function TeacherDashboardPage() {
             ) : (
                 <div className="text-center py-6 text-muted-foreground">
                     <Info className="mx-auto h-8 w-8 mb-2" />
-                    <p>{currentTeacherId && !fetchError ? "No D.O.S. announcements at this time." : "Announcements cannot be loaded as Teacher ID is not available or an error occurred."}</p>
+                    <p>No D.O.S. announcements at this time.</p>
                 </div>
             )}
           </CardContent>
@@ -346,8 +208,8 @@ export default function TeacherDashboardPage() {
                   {paragraph}
                 </p>
               ))}
-              <Button variant="default" className="mt-4" asChild disabled={!currentTeacherId || !marksSubmissionLink || marksSubmissionLink === "#"}>
-                 <Link href={marksSubmissionLink}>
+              <Button variant="default" className="mt-4" asChild>
+                 <Link href="/teacher/marks/submit">
                   <BookOpenCheck className="mr-2 h-4 w-4" /> Go to Marks Submission
                 </Link>
               </Button>

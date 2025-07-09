@@ -39,9 +39,9 @@ export default async function MarketingLayout({
                  <div className="md:col-span-2">
                     <h5 className="font-semibold uppercase tracking-wider text-sm">Portals</h5>
                     <ul className="mt-4 space-y-2 text-sm">
-                        <li><Link href="/login/teacher" className="hover:text-accent">Teacher Login</Link></li>
-                        <li><Link href="/login/dos" className="hover:text-accent">D.O.S. Login</Link></li>
-                        <li><Link href="/login/admin" className="hover:text-accent">Admin Login</Link></li>
+                        <li><Link href="/login/teacher" className="hover:text-accent">Teacher Portal</Link></li>
+                        <li><Link href="/login/dos" className="hover:text-accent">D.O.S. Portal</Link></li>
+                        <li><Link href="/login/admin" className="hover:text-accent">Admin Portal</Link></li>
                     </ul>
                 </div>
                 <div className="md:col-span-4">

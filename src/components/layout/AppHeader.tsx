@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,65 +14,65 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { LogOut, Settings, UserCircle } from "lucide-react";
-import { isInvalidId } from "@/lib/utils";
+import { LogOut, Settings, UserCircle, UserCog, ShieldCheck } from "lucide-react";
+import { getAuth, signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 interface AppHeaderProps {
-  userName?: string; 
+  userName?: string;
+  userEmail?: string; 
   userRole: "D.O.S." | "Teacher" | "Admin";
   userAvatarUrl?: string;
-  teacherId?: string; 
-  teacherNameParam?: string; 
 }
 
-export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teacherNameParam }: AppHeaderProps) {
-  const displayUserName = userName || (userRole === "Teacher" ? (teacherNameParam || "Teacher") : "Admin");
-  
-  const getInitials = (name: string) => {
+export function AppHeader({ userName, userEmail, userRole, userAvatarUrl }: AppHeaderProps) {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    if (auth) {
+        await signOut(auth);
+    }
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/');
+  };
+
+  const getInitials = (name: string | undefined) => {
     if (!name || name.trim() === "") {
-      return userRole === "Teacher" ? "T" : "A";
+        if(userRole === 'Teacher') return 'TE';
+        if(userRole === 'D.O.S.') return 'DO';
+        if(userRole === 'Admin') return 'AD';
+        return 'U';
     }
     return name
       .split(" ")
       .map((n) => n[0])
       .join("")
-      .toUpperCase() || (userRole === "Teacher" ? "T" : "A");
+      .toUpperCase();
   };
-
-  const isTeacherIdValid = !isInvalidId(teacherId);
-  const isTeacherNameValid = !isInvalidId(teacherNameParam);
-
-  const validTeacherIdForLink = isTeacherIdValid ? teacherId : undefined;
-  let validTeacherNameForLink: string | undefined;
-
-  if (isTeacherNameValid) {
-    validTeacherNameForLink = teacherNameParam;
-  } else if (displayUserName && displayUserName !== "Teacher" && displayUserName !== "Admin") {
-    validTeacherNameForLink = displayUserName;
-  } else {
-    validTeacherNameForLink = userRole === "Teacher" ? "Teacher" : undefined;
-  }
   
-  let dashboardLink = "/";
-  if (userRole === "D.O.S.") {
-      dashboardLink = "/dos/dashboard";
-  } else if (userRole === "Admin") {
-      dashboardLink = "/admin/dashboard";
-  } else if (userRole === "Teacher") {
-      dashboardLink = (validTeacherIdForLink && validTeacherNameForLink)
-        ? `/teacher/dashboard?teacherId=${encodeURIComponent(validTeacherIdForLink)}&teacherName=${encodeURIComponent(validTeacherNameForLink)}`
-        : "/login/teacher";
-  }
-  
+  const displayUserName = userName || userEmail || "User";
+  const displayUserEmail = userEmail || "No email available";
+
   let settingsOrProfileLink = "/";
-   if (userRole === "D.O.S.") {
-      settingsOrProfileLink = "/dos/settings/general";
-  } else if (userRole === "Admin") {
-      settingsOrProfileLink = "/admin/dashboard"; // Admin dashboard is the settings page for now
-  } else if (userRole === "Teacher") {
-      settingsOrProfileLink = (validTeacherIdForLink && validTeacherNameForLink)
-        ? `/teacher/profile?teacherId=${encodeURIComponent(validTeacherIdForLink)}&teacherName=${encodeURIComponent(validTeacherNameForLink)}`
-        : "/login/teacher";
+  let dashboardLink = "/";
+  let Icon = UserCircle;
+
+  switch(userRole) {
+    case 'Teacher':
+        settingsOrProfileLink = "/teacher/profile";
+        dashboardLink = "/teacher/dashboard";
+        Icon = UserCircle;
+        break;
+    case 'D.O.S.':
+        settingsOrProfileLink = "/dos/settings/general";
+        dashboardLink = "/dos/dashboard";
+        Icon = UserCog;
+        break;
+    case 'Admin':
+        settingsOrProfileLink = "/admin/dashboard";
+        dashboardLink = "/admin/dashboard";
+        Icon = ShieldCheck;
+        break;
   }
   
 
@@ -90,7 +91,7 @@ export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teache
           <Button variant="ghost" className="relative h-10 w-10 rounded-full">
             <Avatar className="h-10 w-10">
               <AvatarImage src={userAvatarUrl || `https://placehold.co/100x100.png`} alt={displayUserName} data-ai-hint="profile person" />
-              <AvatarFallback>{getInitials(displayUserName)}</AvatarFallback>
+              <AvatarFallback>{getInitials(userName)}</AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
@@ -99,23 +100,21 @@ export function AppHeader({ userName, userRole, userAvatarUrl, teacherId, teache
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-medium leading-none">{displayUserName}</p>
               <p className="text-xs leading-none text-muted-foreground">
-                {userRole}
+                {userRole} | {displayUserEmail}
               </p>
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild disabled={userRole === "Teacher" && (!validTeacherIdForLink)}>
+          <DropdownMenuItem asChild>
             <Link href={settingsOrProfileLink}>
-              {userRole === "D.O.S." || userRole === "Admin" ? <Settings className="mr-2 h-4 w-4" /> : <UserCircle className="mr-2 h-4 w-4" />}
+              <Icon className="mr-2 h-4 w-4" />
               <span>{userRole === "Teacher" ? "My Profile" : "Settings"}</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link href="/"> {/* Always logout to main landing page */}
+          <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
               <LogOut className="mr-2 h-4 w-4" />
               <span>Log out</span>
-            </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

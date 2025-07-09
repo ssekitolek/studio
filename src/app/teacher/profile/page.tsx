@@ -10,11 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { UserCircle, Loader2, AlertTriangle, KeyRound, Save } from "lucide-react";
-import { getTeacherProfileData, changeTeacherPassword } from "@/lib/actions/teacher-actions";
-import { useSearchParams } from "next/navigation";
-import { Alert, AlertDescription, AlertTitle as UIAlertTitle } from "@/components/ui/alert";
-import Link from "next/link";
+import { UserCircle, Loader2, KeyRound, Save } from "lucide-react";
+import { getAuth, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 
 
@@ -35,13 +33,9 @@ const changePasswordSchema = z.object({
 type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
 
 export default function TeacherProfilePage() {
-  const searchParams = useSearchParams();
   const { toast } = useToast();
-
   const [profile, setProfile] = useState<TeacherProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
-  const [pageError, setPageError] = useState<string | null>(null);
-  const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
   const [isPasswordPending, startPasswordTransition] = useTransition();
 
   const passwordForm = useForm<ChangePasswordFormValues>({
@@ -52,68 +46,53 @@ export default function TeacherProfilePage() {
       confirmNewPassword: "",
     },
   });
-
+  
   useEffect(() => {
-    if (!searchParams) {
-        setPageError("Could not access URL parameters. Please try reloading or logging in again.");
+    if (auth) {
+        const unsubscribe = auth.onAuthStateChanged(user => {
+            if (user) {
+                setProfile({
+                    name: user.displayName || user.email || 'Teacher',
+                    email: user.email || 'No email associated'
+                });
+            } else {
+                setProfile(null);
+            }
+            setIsLoadingProfile(false);
+        });
+        return () => unsubscribe();
+    } else {
         setIsLoadingProfile(false);
-        toast({ title: "Error", description: "URL parameters unavailable.", variant: "destructive" });
-        return;
     }
-
-    const teacherIdFromUrl = searchParams.get("teacherId");
-
-    if (!teacherIdFromUrl || teacherIdFromUrl.trim() === "" || teacherIdFromUrl.toLowerCase() === "undefined") {
-      const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Cannot load profile. Please login again.`;
-      toast({ title: "Access Denied", description: msg, variant: "destructive" });
-      setPageError(msg);
-      setCurrentTeacherId(null);
-      setIsLoadingProfile(false); 
-      return;
-    }
-
-    setCurrentTeacherId(teacherIdFromUrl);
-    setPageError(null); 
-    setIsLoadingProfile(true);
-
-    async function fetchData(validTeacherId: string) {
-      try {
-        const data = await getTeacherProfileData(validTeacherId);
-        if (data) {
-          setProfile(data);
-        } else {
-          const notFoundMsg = `Failed to load profile data or profile not found for ID: ${validTeacherId}. Please contact administration if this persists.`;
-          setPageError(notFoundMsg);
-          toast({ title: "Profile Not Found", description: notFoundMsg, variant: "destructive" });
-        }
-      } catch (e) {
-        const errorMsg = e instanceof Error ? e.message : "An unexpected error occurred.";
-        setPageError(errorMsg);
-        toast({ title: "Error Loading Profile", description: errorMsg, variant: "destructive" });
-      } finally {
-        setIsLoadingProfile(false);
-      }
-    }
-    fetchData(teacherIdFromUrl);
-  }, [searchParams, toast]); 
+  }, []);
 
   const onPasswordSubmit = (data: ChangePasswordFormValues) => {
-    if (!currentTeacherId) {
-      toast({ title: "Error", description: "Teacher ID not available. Cannot change password.", variant: "destructive" });
-      return;
-    }
     startPasswordTransition(async () => {
-      const result = await changeTeacherPassword(currentTeacherId, data.currentPassword, data.newPassword);
-      if (result.success) {
-        toast({ title: "Success", description: result.message });
-        passwordForm.reset();
-      } else {
-        toast({ title: "Error", description: result.message, variant: "destructive" });
-      }
+        if (!auth || !auth.currentUser) {
+            toast({ title: "Error", description: "Not logged in. Cannot change password.", variant: "destructive" });
+            return;
+        }
+
+        const user = auth.currentUser;
+        const credential = EmailAuthProvider.credential(user.email!, data.currentPassword);
+        
+        try {
+            await reauthenticateWithCredential(user, credential);
+            await updatePassword(user, data.newPassword);
+            toast({ title: "Success", description: "Password updated successfully." });
+            passwordForm.reset();
+        } catch (error: any) {
+            let message = "An error occurred while changing your password.";
+            if(error.code === 'auth/wrong-password') {
+                message = "The current password you entered is incorrect.";
+            }
+            console.error("Password change error:", error);
+            toast({ title: "Error", description: message, variant: "destructive" });
+        }
     });
   };
 
-  if (isLoadingProfile && currentTeacherId) { 
+  if (isLoadingProfile) { 
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -121,62 +100,6 @@ export default function TeacherProfilePage() {
       </div>
     );
   }
-
-  if (pageError) {
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          title="My Profile"
-          description="View your personal information."
-          icon={UserCircle}
-        />
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <UIAlertTitle>Error Loading Profile</UIAlertTitle>
-          <AlertDescription>
-            {pageError}
-            {(!currentTeacherId) && <span> You can try to <Link href="/login/teacher" className="underline">login again</Link>.</span>}
-            If the issue persists, contact administration.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  if (!profile && !isLoadingProfile && currentTeacherId) { 
-     return (
-      <div className="space-y-6">
-        <PageHeader
-          title="My Profile"
-          description="View your personal information."
-          icon={UserCircle}
-        />
-        <Card className="shadow-md">
-          <CardContent className="py-8 text-center text-muted-foreground">
-            Profile data could not be loaded for Teacher ID: {currentTeacherId}. Please contact D.O.S. if you believe this is an error.
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-  
-  if (!currentTeacherId && !isLoadingProfile && !pageError) { 
-     return (
-      <div className="space-y-6">
-        <PageHeader
-          title="My Profile"
-          description="View your personal information."
-          icon={UserCircle}
-        />
-        <Card className="shadow-md">
-          <CardContent className="py-8 text-center text-muted-foreground">
-             Teacher ID not found. Please <Link href="/login/teacher" className="underline">login</Link> to view your profile.
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
 
   return (
     <div className="space-y-6">

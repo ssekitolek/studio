@@ -1,6 +1,7 @@
 
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
+import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 
@@ -44,6 +45,7 @@ if (firebaseConfigValues.projectId && placeholderProjectIds.includes(firebaseCon
 
 
 let app: FirebaseApp | null = null;
+let auth: Auth | null = null;
 let db: Firestore | null = null;
 let storage: FirebaseStorage | null = null;
 
@@ -59,27 +61,29 @@ if (!isConfigurationValid) {
       app = getApp();
       console.log("Using existing Firebase app.");
     }
+    auth = getAuth(app);
     db = getFirestore(app);
     storage = getStorage(app);
-    console.log(`Firestore (db) and Storage (storage) instances obtained. Project ID: ${app.options.projectId}`);
+    console.log(`Auth, Firestore (db), and Storage (storage) instances obtained. Project ID: ${app.options.projectId}`);
   } catch (error) {
-    const initErrorMsg = `Firebase SDK Initialization Error: ${error instanceof Error ? error.message : String(error)}. This occurred even with seemingly valid config. Firestore (db) will be NULL. Config used: ${JSON.stringify(firebaseConfigValues)}`;
+    const initErrorMsg = `Firebase SDK Initialization Error: ${error instanceof Error ? error.message : String(error)}. This occurred even with seemingly valid config. All services will be NULL. Config used: ${JSON.stringify(firebaseConfigValues)}`;
     console.error(`SERVER_SDK_INIT_ERROR: ${initErrorMsg}`);
-    app = null; 
+    app = null;
+    auth = null; 
     db = null;
     storage = null;
   }
 }
 
-if (db === null || storage === null) {
-    if (isConfigurationValid) { // If config was thought to be valid, but db is still null
-        console.error("POST_INIT_CHECK_FAIL: Firestore 'db' or 'storage' instance is unexpectedly null after initialization attempt, despite configuration appearing valid. This indicates a deeper issue with Firebase SDK or setup, or an unhandled error during getFirestore()/getStorage().");
+if (auth === null || db === null || storage === null) {
+    if (isConfigurationValid) { // If config was thought to be valid, but services are still null
+        console.error("POST_INIT_CHECK_FAIL: One or more Firebase services (Auth, Firestore, Storage) are unexpectedly null after initialization attempt, despite configuration appearing valid. This indicates a deeper issue with Firebase SDK or setup, or an unhandled error during service initialization.");
     } else { // If config was invalid, this is expected
-        console.warn("POST_INIT_CHECK_INFO: Firestore 'db' or 'storage' instance is null due to prior configuration errors. This is expected. Firebase operations will fail.");
+        console.warn("POST_INIT_CHECK_INFO: One or more Firebase services are null due to prior configuration errors. This is expected. Firebase operations will fail.");
     }
 } else {
-    console.info(`Firebase and Firestore (db) initialized successfully for project: ${firebaseConfigValues.projectId}.`);
-    console.info("APP_INFO: For full functionality, ensure your Firestore database contains the 'markSubmissions' collection and a 'settings' collection with a 'general' document, and other necessary collections like 'teachers', 'students', 'classes', 'subjects', 'terms', 'exams', 'gradingPolicies'.");
+    console.info(`Firebase services initialized successfully for project: ${firebaseConfigValues.projectId}.`);
+    console.info("APP_INFO: For full functionality, ensure your Firebase database contains the required collections (e.g., 'teachers', 'students') and your Firebase Authentication has users created for each role.");
 }
 
-export { app, db, storage };
+export { app, auth, db, storage };

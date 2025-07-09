@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -9,13 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LogIn, UserCog, AlertTriangle, Loader2 } from "lucide-react";
 import Link from "next/link";
-
-const DOS_EMAIL = "root@adminmathius.staff";
-const DOS_PASSWORD = "mathius256";
+import { auth } from "@/lib/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 export default function DosLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState("root@adminmathius.staff");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -25,16 +25,46 @@ export default function DosLoginPage() {
     setError(null);
     setIsLoading(true);
 
-    // Simulate network delay for user experience
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    if (email === DOS_EMAIL && password === DOS_PASSWORD) {
-      // In a real app, you'd set a session cookie or token here
-      router.push("/dos/dashboard");
-    } else {
-      setError("Invalid email or password.");
+    if (!auth) {
+        setError("Authentication service is not available. Please contact support.");
+        setIsLoading(false);
+        return;
     }
-    setIsLoading(false);
+
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const idToken = await userCredential.user.getIdToken();
+      
+      await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+      });
+      
+      router.push("/dos/dashboard");
+
+    } catch (err: any) {
+      let friendlyMessage = "An unexpected error occurred.";
+      if (err.code) {
+        switch (err.code) {
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+          case 'auth/invalid-credential':
+            friendlyMessage = "Invalid D.O.S. credentials. Please try again.";
+            break;
+          case 'auth/invalid-email':
+            friendlyMessage = "Please enter a valid email address.";
+            break;
+          default:
+            friendlyMessage = "Login failed. Please try again later.";
+            break;
+        }
+      }
+      setError(friendlyMessage);
+      console.error("D.O.S. Login error:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -9,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LogIn, User, AlertTriangle, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { loginTeacherByEmailPassword } from "@/lib/actions/teacher-actions";
+import { auth } from "@/lib/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 export default function TeacherLoginPage() {
   const router = useRouter();
@@ -23,33 +25,43 @@ export default function TeacherLoginPage() {
     setError(null);
     setIsLoading(true);
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError("Invalid email format.");
-      setIsLoading(false);
-      return;
-    }
-    if (password.length < 6) { 
-      setError("Password must be at least 6 characters long.");
-      setIsLoading(false);
-      return;
+    if (!auth) {
+        setError("Authentication service is not available. Please contact support.");
+        setIsLoading(false);
+        return;
     }
 
     try {
-      const result = await loginTeacherByEmailPassword(email, password);
-      if (result.success && result.teacher) {
-        if (result.teacher.id && result.teacher.name) {
-          const teacherIdParam = encodeURIComponent(result.teacher.id);
-          const teacherNameParam = encodeURIComponent(result.teacher.name);
-          router.push(`/teacher/dashboard?teacherId=${teacherIdParam}&teacherName=${teacherNameParam}`);
-        } else {
-          setError("Login successful, but critical teacher information is missing. Please contact support.");
-          console.error("Login success but missing teacher.id or teacher.name:", result.teacher);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const idToken = await userCredential.user.getIdToken();
+
+      // Create session cookie via API route
+      await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+      });
+      
+      router.push("/teacher/dashboard");
+
+    } catch (err: any) {
+      let friendlyMessage = "An unexpected error occurred.";
+      if (err.code) {
+        switch (err.code) {
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+          case 'auth/invalid-credential':
+            friendlyMessage = "Invalid email or password. Please try again.";
+            break;
+          case 'auth/invalid-email':
+            friendlyMessage = "Please enter a valid email address.";
+            break;
+          default:
+            friendlyMessage = "Login failed. Please try again later.";
+            break;
         }
-      } else {
-        setError(result.message || "Invalid email or password");
       }
-    } catch (err) {
-      setError("Connection failed - try again. If the issue persists, contact support.");
+      setError(friendlyMessage);
       console.error("Login submit error:", err);
     } finally {
       setIsLoading(false);

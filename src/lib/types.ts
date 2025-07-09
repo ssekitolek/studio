@@ -2,10 +2,11 @@
 import type { Timestamp } from "firebase/firestore";
 
 export interface Teacher {
-  id: string;
+  id: string; // This is the Firestore document ID
+  uid: string; // This is the Firebase Auth User ID
   name: string;
   email: string;
-  password?: string;
+  password?: string; // This should only be used for creation, not stored long-term
   subjectsAssigned: Array<{ classId: string; subjectId: string; examIds:string[] }>;
 }
 
@@ -25,7 +26,7 @@ export interface ClassInfo {
   name: string;
   level: string;
   streams?: string[];
-  classTeacherId?: string;
+  classTeacherId?: string; // Firestore document ID of the teacher
   subjects: Subject[]; // Array of Subject objects, not just IDs
 }
 
@@ -64,7 +65,7 @@ export interface AssessmentContext {
     examId: string; // Firestore document ID for the exam
     classId: string; // Firestore document ID for the class
     subjectId: string; // Firestore document ID for the subject
-    teacherId: string; // Firestore document ID for the teacher
+    teacherId: string; // Firebase Auth UID of the teacher
     maxMarks: number;
     submissionDeadline?: string; // ISO string date
     // Human-readable names
@@ -151,7 +152,7 @@ export interface TeacherDashboardData {
 
 // For Firestore structure of markSubmissions
 export interface MarkSubmissionFirestoreRecord {
-  teacherId: string;
+  teacherId: string; // Firebase Auth UID of the teacher
   assessmentId: string; // Composite key: examDocumentId_classDocumentId_subjectDocumentId
   assessmentName: string; // Derived human-readable: Class Name - Subject Name - Exam Name
   dateSubmitted: Timestamp; // Firestore Timestamp
@@ -189,7 +190,7 @@ export interface MarksForReviewPayload {
     marks: MarksForReviewEntry[];
     dosStatus?: MarkSubmissionFirestoreRecord['dosStatus'];
     dosRejectReason?: string;
-    teacherId?: string;
+    teacherId?: string; // Firebase Auth UID
     teacherName?: string;
 }
 
@@ -262,10 +263,11 @@ export interface ClassManagementStudent {
   studentIdNumber: string;
   firstName: string;
   lastName: string;
+  stream?: string;
 }
 
 export interface StudentAttendanceInput {
-    teacherId: string;
+    teacherId: string; // Firebase Auth UID
     classId: string;
     date: string; // YYYY-MM-DD
     records: Array<{

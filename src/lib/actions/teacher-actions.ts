@@ -1,5 +1,4 @@
 
-
 "use server";
 
 import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation, Exam as ExamTypeFirebase, TeacherStats, MarkSubmissionFirestoreRecord, SubmissionHistoryDisplayItem, ClassInfo, Subject as SubjectType, ClassTeacherData, ClassManagementStudent, GradingScaleItem, ClassAssessment, StudentClassMark, AttendanceData, StudentAttendanceInput, DailyAttendanceRecord, AttendanceHistoryData } from "@/lib/types";
@@ -98,59 +97,6 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{ 
 }
 
 
-export async function loginTeacherByEmailPassword(email: string, passwordToVerify: string): Promise<{ success: boolean; message: string; teacher?: { id: string; name: string; email: string; } }> {
-  console.log(`[loginTeacherByEmailPassword] Attempting login for email: ${email}`);
-  if (!db) {
-    console.error("[loginTeacherByEmailPassword] CRITICAL_ERROR_DB_NULL: Firestore db object is null.");
-    return { success: false, message: "Authentication service is currently unavailable. Please try again later." };
-  }
-  try {
-    const teachersRef = collection(db, "teachers");
-    const q = query(teachersRef, where("email", "==", email), limit(1));
-    const querySnapshot = await getDocs(q);
-
-    if (querySnapshot.empty) {
-      console.log(`[loginTeacherByEmailPassword] No teacher found with email: ${email}`);
-      return { success: false, message: "Invalid email or password." };
-    }
-
-    const teacherDoc = querySnapshot.docs[0];
-    const teacherData = teacherDoc.data() as TeacherType;
-    console.log(`[loginTeacherByEmailPassword] Teacher document found for email: ${email}, ID: ${teacherDoc.id}, Name: ${teacherData.name}`);
-
-
-    if (!teacherData.password) {
-        console.warn(`[loginTeacherByEmailPassword] Password not set for teacher ID: ${teacherDoc.id}`);
-        return { success: false, message: "Password not set for this account. Please contact D.O.S." };
-    }
-    if (!teacherDoc.id || !teacherData.name || !teacherData.email) {
-        console.error(`[loginTeacherByEmailPassword] Teacher account data incomplete for ID: ${teacherDoc.id}. Name: ${teacherData.name}, Email: ${teacherData.email}`);
-        return { success: false, message: "Teacher account data is incomplete. Cannot log in." };
-    }
-
-    if (teacherData.password === passwordToVerify) {
-      console.log(`[loginTeacherByEmailPassword] Login successful for teacher ID: ${teacherDoc.id}`);
-      return {
-        success: true,
-        message: "Login successful.",
-        teacher: {
-          id: teacherDoc.id,
-          name: teacherData.name,
-          email: teacherData.email,
-        }
-      };
-    } else {
-      console.warn(`[loginTeacherByEmailPassword] Password mismatch for teacher ID: ${teacherDoc.id}`);
-      return { success: false, message: "Invalid email or password." };
-    }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "An unknown internal server error occurred.";
-    console.error(`[loginTeacherByEmailPassword] Error during login for email ${email}:`, error);
-    return { success: false, message: `Login failed due to a server error: ${errorMessage}. Please try again or contact support if the issue persists.` };
-  }
-}
-
-
 export async function submitMarks(teacherId: string, data: MarksSubmissionData): Promise<{ success: boolean; message: string; anomalies?: GradeAnomalyDetectionOutput }> {
   console.log(`[Teacher Action - submitMarks] START - Teacher ID: "${teacherId}", Form Assessment ID (Composite): "${data.assessmentId}"`);
   
@@ -241,7 +187,7 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
     return { success: false, message: `Failed to save submission to database: ${errorMessage}` };
   }
 
-  const teacherInfo = await getTeacherByIdFromDOS(teacherId);
+  const teacherInfo = await getTeacherByUid(teacherId);
   const teacherNameParam = teacherInfo?.name ? encodeURIComponent(teacherInfo.name) : "Teacher";
 
   const teacherPathsToRevalidate = [
@@ -490,7 +436,7 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
     return responsibilitiesMap;
   }
 
-  const teacherDocument = await getTeacherByIdFromDOS(teacherId);
+  const teacherDocument = await getTeacherByUid(teacherId);
   if (!teacherDocument) {
     console.warn(`[getTeacherAssessmentResponsibilities] Teacher not found for ID: "${teacherId}". Returning empty map.`);
     return responsibilitiesMap;
@@ -540,7 +486,7 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
   });
   
   allClasses.forEach(classObj => {
-    if (classObj.classTeacherId === teacherId && Array.isArray(classObj.subjects)) {
+    if (classObj.classTeacherId === teacherDocument.id) {
       classObj.subjects.forEach(subjectObj => {
         examsForCurrentTerm.forEach(examObj => { 
           const isRelevantForClassTeacher =
@@ -587,7 +533,7 @@ async function getTeacherCurrentAssignments(teacherId: string): Promise<{ assign
         return { assignedClasses: [], assignedSubjects: [] };
     }
 
-    const teacherDoc = await getTeacherByIdFromDOS(teacherId);
+    const teacherDoc = await getTeacherByUid(teacherId);
     if (!teacherDoc) {
         return { assignedClasses: [], assignedSubjects: [] };
     }
@@ -599,7 +545,7 @@ async function getTeacherCurrentAssignments(teacherId: string): Promise<{ assign
 
     // 1. Check for Class Teacher role
     allClasses.forEach(classObj => {
-        if (classObj.classTeacherId === teacherId) {
+        if (classObj.classTeacherId === teacherDoc.id) {
             if (!assignedClassesMap.has(classObj.id)) {
                 assignedClassesMap.set(classObj.id, classObj);
             }
@@ -630,6 +576,17 @@ async function getTeacherCurrentAssignments(teacherId: string): Promise<{ assign
         assignedClasses: Array.from(assignedClassesMap.values()),
         assignedSubjects: Array.from(assignedSubjectsMap.values())
     };
+}
+
+export async function getTeacherByUid(uid: string): Promise<TeacherType | null> {
+    if (!db) return null;
+    const q = query(collection(db, "teachers"), where("uid", "==", uid), limit(1));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) {
+        return null;
+    }
+    const doc = snapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as TeacherType;
 }
 
 
@@ -667,7 +624,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
 
   try {
     console.log(`[LOG_TDD] Attempting to fetch teacher document for ID: "${teacherId}"`);
-    const teacherDocument = await getTeacherByIdFromDOS(teacherId);
+    const teacherDocument = await getTeacherByUid(teacherId);
 
     if (!teacherDocument) {
       console.warn(`[LOG_TDD] Teacher document not found for ID: "${teacherId}".`);
@@ -877,7 +834,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     console.error(`[LOG_TDD] CRITICAL ERROR processing dashboard for teacherId ${teacherId}:`, errorMessage, error);
     let teacherNameOnError: string | undefined = undefined;
     try {
-      const existingTeacherDoc = await getTeacherByIdFromDOS(teacherId);
+      const existingTeacherDoc = await getTeacherByUid(teacherId);
       teacherNameOnError = existingTeacherDoc?.name;
     } catch (nestedError) {
       console.error(`[LOG_TDD] Nested error fetching teacher name during error handling for teacherId ${teacherId}:`, nestedError);
@@ -904,7 +861,7 @@ export async function getTeacherProfileData(teacherId: string): Promise<{ name?:
     return null;
   }
   try {
-    const teacher = await getTeacherByIdFromDOS(teacherId);
+    const teacher = await getTeacherByUid(teacherId);
     if (teacher) {
       return { name: teacher.name, email: teacher.email };
     }
@@ -928,33 +885,11 @@ export async function changeTeacherPassword(
     return { success: false, message: "Teacher ID, current password, and new password are required." };
   }
 
-  try {
-    const teacherRef = doc(db, "teachers", teacherId);
-    const teacherSnap = await getDoc(teacherRef);
-
-    if (!teacherSnap.exists()) {
-      return { success: false, message: "Teacher account not found." };
-    }
-
-    const teacherData = teacherSnap.data() as TeacherType;
-
-    if (!teacherData.password) {
-        return { success: false, message: "Current password not set for this account. Cannot change password." };
-    }
-
-    if (teacherData.password !== currentPassword) {
-      return { success: false, message: "Current password incorrect." };
-    }
-
-    await updateDoc(teacherRef, { password: newPassword });
-    revalidatePath(`/teacher/profile?teacherId=${encodeURIComponent(teacherId)}`);
-    return { success: true, message: "Password changed successfully." };
-
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-    console.error(`Error changing password for teacher ${teacherId}:`, error);
-    return { success: false, message: `Failed to change password: ${errorMessage}` };
-  }
+  // This action can't be implemented securely without Firebase Admin SDK to re-authenticate.
+  // The correct flow is handled on the client with Firebase Auth SDK's reauthenticateWithCredential.
+  // For now, this server action is deprecated and will return an error.
+  console.error("DEPRECATED ACTION: changeTeacherPassword should not be used. Password changes must be handled on the client with Firebase Auth SDK.");
+  return { success: false, message: "This function is disabled for security reasons. Password changes should be handled differently."};
 }
 
 async function getTodaysAttendanceForClass(classId: string): Promise<AttendanceData | null> {
@@ -1026,8 +961,10 @@ export async function getClassTeacherManagementData(teacherId: string): Promise<
             getGeneralSettings(),
             getGradingPolicies()
         ]);
+        
+        const teacherDoc = await getTeacherByUid(teacherId);
 
-        const teacherClasses = allClasses.filter(c => c.classTeacherId === teacherId);
+        const teacherClasses = allClasses.filter(c => c.classTeacherId === teacherDoc?.id);
 
         if (teacherClasses.length === 0) {
             return [];
@@ -1128,7 +1065,9 @@ export async function getClassTeacherManagementData(teacherId: string): Promise<
 export async function getClassesForTeacher(teacherId: string): Promise<ClassInfo[]> {
     if (!db) return [];
     const allClasses = await getClasses();
-    return allClasses.filter(c => c.classTeacherId === teacherId);
+    const teacher = await getTeacherByUid(teacherId);
+    if (!teacher) return [];
+    return allClasses.filter(c => c.classTeacherId === teacher.id);
 }
 
 export async function getStudentsForClass(classId: string, stream?: string): Promise<Student[]> {

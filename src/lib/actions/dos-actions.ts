@@ -6,36 +6,49 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference, runTransaction, writeBatch, Timestamp, orderBy, setDoc } from "firebase/firestore";
 import * as XLSX from 'xlsx';
+import { adminAuth } from '@/lib/firebase-admin';
 
 
 // --- Teacher Management ---
-export async function createTeacher(teacherData: Omit<Teacher, 'id' | 'subjectsAssigned'> & { password?: string }): Promise<{ success: boolean; message: string; teacher?: Teacher }> {
+export async function createTeacher(teacherData: Omit<Teacher, 'id' | 'subjectsAssigned' | 'uid'> & { password?: string }): Promise<{ success: boolean; message: string; teacher?: Teacher }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
+  if (!teacherData.password || teacherData.password.length < 6) {
+    return { success: false, message: "Password is required and must be at least 6 characters."};
+  }
   try {
-    const teachersRef = collection(db, "teachers");
-    const q = query(teachersRef, where("email", "==", teacherData.email), limit(1));
-    const querySnapshot = await getDocs(q);
-
-    if (!querySnapshot.empty) {
-      return { success: false, message: `Teacher with email ${teacherData.email} already exists.` };
-    }
-
-    const teacherPayload: Omit<Teacher, 'id'> = {
-      name: teacherData.name,
+    // 1. Create user in Firebase Auth
+    const userRecord = await adminAuth.createUser({
       email: teacherData.email,
       password: teacherData.password,
+      displayName: teacherData.name,
+      emailVerified: true, // Assuming D.O.S. is creating trusted users
+    });
+
+    // 2. Create teacher document in Firestore with the Auth UID
+    const teacherPayload: Omit<Teacher, 'id' | 'password'> = {
+      uid: userRecord.uid,
+      name: teacherData.name,
+      email: teacherData.email,
       subjectsAssigned: [], // Initialize with empty array
     };
+    
+    // We explicitly set the document ID to be the same as the Auth UID for easy lookup
+    const teacherRef = doc(db, "teachers", userRecord.uid);
+    await setDoc(teacherRef, teacherPayload);
 
-    const docRef = await addDoc(collection(db, "teachers"), teacherPayload);
-    const newTeacher: Teacher = { id: docRef.id, ...teacherPayload };
+    const newTeacher: Teacher = { id: userRecord.uid, ...teacherPayload };
     revalidatePath("/dos/teachers");
-    return { success: true, message: "Teacher created successfully.", teacher: newTeacher };
-  } catch (error) {
+    return { success: true, message: "Teacher created successfully in Auth and Firestore.", teacher: newTeacher };
+  } catch (error: any) {
     console.error("Error in createTeacher:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+    let errorMessage = "An unexpected error occurred.";
+    if (error.code === 'auth/email-already-exists') {
+        errorMessage = `An account with email ${teacherData.email} already exists in Firebase Authentication.`;
+    } else if (error instanceof Error) {
+        errorMessage = error.message;
+    }
     return { success: false, message: `Failed to create teacher: ${errorMessage}` };
   }
 }
@@ -52,9 +65,9 @@ export async function getTeacherById(teacherId: string): Promise<Teacher | null>
       const data = teacherSnap.data();
       return {
         id: teacherSnap.id,
+        uid: data.uid,
         name: data.name,
         email: data.email,
-        password: data.password, // Be cautious about exposing password hashes if they are ever stored
         subjectsAssigned: data.subjectsAssigned || [],
       } as Teacher;
     }
@@ -65,49 +78,32 @@ export async function getTeacherById(teacherId: string): Promise<Teacher | null>
   }
 }
 
-export async function updateTeacher(teacherId: string, teacherData: Partial<Omit<Teacher, 'id'>>): Promise<{ success: boolean; message: string; teacher?: Teacher }> {
+export async function updateTeacher(teacherId: string, teacherData: Partial<Omit<Teacher, 'id' | 'subjectsAssigned'>>): Promise<{ success: boolean; message: string; teacher?: Teacher }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
     const teacherRef = doc(db, "teachers", teacherId);
-
-    const updatePayload: { [key: string]: any } = {};
-
-    if (teacherData.name !== undefined) {
-      updatePayload.name = teacherData.name;
-    }
-    if (teacherData.email !== undefined) {
-      updatePayload.email = teacherData.email;
-    }
-    if (teacherData.password && teacherData.password.trim() !== "") {
-      updatePayload.password = teacherData.password;
-    }
-    if (teacherData.subjectsAssigned !== undefined) {
-      if (Array.isArray(teacherData.subjectsAssigned)) {
-        updatePayload.subjectsAssigned = teacherData.subjectsAssigned.filter(
-          (assignment: any) =>
-            assignment &&
-            typeof assignment.classId === 'string' &&
-            typeof assignment.subjectId === 'string' &&
-            Array.isArray(assignment.examIds) &&
-            assignment.examIds.every((id: any) => typeof id === 'string')
-        ).map((assignment: any) => ({
-            classId: assignment.classId,
-            subjectId: assignment.subjectId,
-            examIds: assignment.examIds
-        }));
-      } else {
-        console.warn(`updateTeacher: subjectsAssigned for teacher ${teacherId} was provided but not as a valid array. Ignoring subjectsAssigned update.`);
-      }
+    
+    // Update Firestore document
+    const firestoreUpdatePayload: { [key: string]: any } = {};
+    if (teacherData.name !== undefined) firestoreUpdatePayload.name = teacherData.name;
+    if (teacherData.email !== undefined) firestoreUpdatePayload.email = teacherData.email;
+    
+    if(Object.keys(firestoreUpdatePayload).length > 0) {
+        await updateDoc(teacherRef, firestoreUpdatePayload);
     }
 
-    if (Object.keys(updatePayload).length === 0) {
-      const currentTeacher = await getTeacherById(teacherId);
-      return { success: true, message: "No changes provided to update teacher.", teacher: currentTeacher ?? undefined };
+    // Update Firebase Auth user
+    const authUpdatePayload: { displayName?: string; email?: string; password?: string } = {};
+    if (teacherData.name) authUpdatePayload.displayName = teacherData.name;
+    if (teacherData.email) authUpdatePayload.email = teacherData.email;
+    if (teacherData.password) authUpdatePayload.password = teacherData.password;
+    
+    if(Object.keys(authUpdatePayload).length > 0) {
+        await adminAuth.updateUser(teacherId, authUpdatePayload);
     }
-
-    await updateDoc(teacherRef, updatePayload);
+    
     revalidatePath(`/dos/teachers`);
     revalidatePath(`/dos/teachers/${teacherId}/edit`);
     const updatedTeacher = await getTeacherById(teacherId);
@@ -124,18 +120,27 @@ export async function deleteTeacher(teacherId: string): Promise<{ success: boole
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
+    const batch = writeBatch(db);
+
+    // Unassign as class teacher
     const classesQuery = query(collection(db, "classes"), where("classTeacherId", "==", teacherId));
     const classesSnapshot = await getDocs(classesQuery);
-    const batch = writeBatch(db);
     classesSnapshot.forEach(classDoc => {
       batch.update(classDoc.ref, { classTeacherId: null });
     });
+
+    // Delete Firestore document
+    const teacherRef = doc(db, "teachers", teacherId);
+    batch.delete(teacherRef);
+
     await batch.commit();
 
-    await deleteDoc(doc(db, "teachers", teacherId));
+    // Delete from Firebase Auth
+    await adminAuth.deleteUser(teacherId);
+
     revalidatePath("/dos/teachers");
     revalidatePath("/dos/classes");
-    return { success: true, message: "Teacher deleted successfully and unassigned from classes." };
+    return { success: true, message: "Teacher deleted successfully from Auth and Firestore." };
   } catch (error) {
     console.error(`Error in deleteTeacher for ${teacherId}:`, error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
@@ -144,7 +149,7 @@ export async function deleteTeacher(teacherId: string): Promise<{ success: boole
 }
 
 export async function updateTeacherAssignments(
-  teacherId: string,
+  teacherId: string, // This is the Auth UID and Firestore Doc ID
   data: {
     classTeacherForClassIds: string[];
     specificSubjectAssignments: Array<{ classId: string; subjectId: string; examIds: string[] }>;
@@ -177,20 +182,25 @@ export async function updateTeacherAssignments(
       }
 
       transaction.update(teacherRef, { subjectsAssigned: validSpecificAssignments });
+      
+      const teacherDoc = await getTeacherById(teacherId);
 
       const classesQuery = query(collection(db, "classes"));
       const classesSnapshot = await getDocs(classesQuery);
 
       classesSnapshot.forEach(classDoc => {
         const classRef = doc(db, "classes", classDoc.id);
-        const currentClassTeacher = classDoc.data().classTeacherId;
+        const currentClassTeacherId = classDoc.data().classTeacherId;
 
+        // If this class is in the list to be assigned to the current teacher
         if (data.classTeacherForClassIds.includes(classDoc.id)) {
-          if (currentClassTeacher !== teacherId) {
-            transaction.update(classRef, { classTeacherId: teacherId });
+          // And it's not already assigned to them, update it.
+          if (currentClassTeacherId !== teacherDoc?.id) {
+            transaction.update(classRef, { classTeacherId: teacherDoc?.id });
           }
-        } else {
-          if (currentClassTeacher === teacherId) {
+        } else { // If this class is NOT in the list
+          // And it IS currently assigned to this teacher, unassign it.
+          if (currentClassTeacherId === teacherDoc?.id) {
             transaction.update(classRef, { classTeacherId: null });
           }
         }
@@ -1221,11 +1231,9 @@ export async function approveMarkSubmission(submissionId: string): Promise<{ suc
         if (submissionSnap.exists()) {
             const teacherId = submissionSnap.data().teacherId;
             if (teacherId) {
-                const teacherInfo = await getTeacherById(teacherId);
-                const teacherNameParam = teacherInfo?.name ? encodeURIComponent(teacherInfo.name) : "Teacher";
-                revalidatePath(`/teacher/marks/history?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
-                revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
-                revalidatePath(`/teacher/dashboard?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
+                revalidatePath(`/teacher/marks/history`);
+                revalidatePath(`/teacher/marks/submit`);
+                revalidatePath(`/teacher/dashboard`);
             }
         }
         return { success: true, message: "Submission approved." };
@@ -1250,11 +1258,9 @@ export async function rejectMarkSubmission(submissionId: string, reason: string)
         if (submissionSnap.exists()) {
             const teacherId = submissionSnap.data().teacherId;
              if (teacherId) {
-                const teacherInfo = await getTeacherById(teacherId);
-                const teacherNameParam = teacherInfo?.name ? encodeURIComponent(teacherInfo.name) : "Teacher";
-                revalidatePath(`/teacher/marks/history?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
-                revalidatePath(`/teacher/marks/submit?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
-                revalidatePath(`/teacher/dashboard?teacherId=${teacherId}&teacherName=${teacherNameParam}`);
+                revalidatePath(`/teacher/marks/history`);
+                revalidatePath(`/teacher/marks/submit`);
+                revalidatePath(`/teacher/dashboard`);
             }
         }
         return { success: true, message: "Submission rejected with reason." };
@@ -1531,9 +1537,9 @@ export async function getTeachers(): Promise<Teacher[]> {
       const data = docSnap.data();
       return {
         id: docSnap.id,
+        uid: data.uid,
         name: data.name,
         email: data.email,
-        password: data.password,
         subjectsAssigned: data.subjectsAssigned || []
       } as Teacher;
     });

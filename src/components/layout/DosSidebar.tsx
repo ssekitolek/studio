@@ -1,8 +1,9 @@
+
 "use client";
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Sidebar,
   SidebarHeader,
@@ -38,6 +39,8 @@ import {
   FileUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
 
 const dosNavItems = [
   { href: "/dos/dashboard", label: "Dashboard", icon: LayoutDashboard, tooltip: "Dashboard" },
@@ -69,7 +72,16 @@ const dosNavItems = [
 
 export function DosSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { state } = useSidebar();
+
+  const handleLogout = async () => {
+    if (auth) {
+        await signOut(auth);
+    }
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/');
+  };
 
   const isItemActive = (href: string) => {
     if (href === "/dos/dashboard") {
@@ -160,12 +172,10 @@ export function DosSidebar() {
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter className="p-2">
-        <Link href="/">
-          <SidebarMenuButton tooltip="Log Out" className="justify-start">
-            <LogOut className="h-5 w-5" />
-            <span className="group-data-[state=collapsed]:hidden">Log Out</span>
-          </SidebarMenuButton>
-        </Link>
+        <SidebarMenuButton tooltip="Log Out" className="justify-start" onClick={handleLogout}>
+          <LogOut className="h-5 w-5" />
+          <span className="group-data-[state=collapsed]:hidden">Log Out</span>
+        </SidebarMenuButton>
       </SidebarFooter>
     </Sidebar>
   );

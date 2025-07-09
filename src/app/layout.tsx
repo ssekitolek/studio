@@ -4,7 +4,6 @@ import { PT_Sans, Space_Grotesk } from 'next/font/google';
 import '@/app/globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
-// Corrected fonts based on user PRD
 const ptSans = PT_Sans({
   subsets: ['latin'],
   display: 'swap',
@@ -18,15 +17,21 @@ const spaceGrotesk = Space_Grotesk({
   variable: '--font-headline',
 });
 
-const faviconUrl = "https://i.imgur.com/lZDibio.png?v=9";
+const faviconUrl = "https://i.imgur.com/lZDibio.png?v=11";
 
 export const metadata: Metadata = {
   title: "St. Mbaaga's College Naddangira",
   description: 'Online student marks portal',
   icons: {
-    icon: faviconUrl,
-    shortcut: faviconUrl,
-    apple: faviconUrl,
+    icon: [
+      { url: faviconUrl, type: 'image/png' },
+      { url: faviconUrl, sizes: '32x32', type: 'image/png' },
+      { url: faviconUrl, sizes: '16x16', type: 'image/png' },
+    ],
+    shortcut: [faviconUrl],
+    apple: [
+      { url: faviconUrl, sizes: '180x180' },
+    ],
   },
 };
 

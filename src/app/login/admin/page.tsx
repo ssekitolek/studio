@@ -10,13 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LogIn, ShieldCheck, AlertTriangle, Loader2 } from "lucide-react";
 import Link from "next/link";
-
-const ADMIN_EMAIL = "mathius@admin.staff";
-const ADMIN_PASSWORD = "mathius256";
+import { auth } from "@/lib/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState("mathius@admin.staff");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -25,15 +24,47 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
-
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      router.push("/admin/dashboard");
-    } else {
-      setError("Invalid email or password.");
+    
+    if (!auth) {
+        setError("Authentication service is not available. Please contact support.");
+        setIsLoading(false);
+        return;
     }
-    setIsLoading(false);
+
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const idToken = await userCredential.user.getIdToken();
+      
+      await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+      });
+      
+      router.push("/admin/dashboard");
+
+    } catch (err: any) {
+      let friendlyMessage = "An unexpected error occurred.";
+       if (err.code) {
+        switch (err.code) {
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+          case 'auth/invalid-credential':
+            friendlyMessage = "Invalid admin credentials. Please try again.";
+            break;
+          case 'auth/invalid-email':
+            friendlyMessage = "Please enter a valid email address.";
+            break;
+          default:
+            friendlyMessage = "Login failed. Please try again later.";
+            break;
+        }
+      }
+      setError(friendlyMessage);
+      console.error("Admin Login error:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

@@ -1,16 +1,45 @@
 
-import { Suspense } from "react";
-import { Loader2 } from "lucide-react";
-import { TeacherLayoutClient } from "./TeacherLayoutClient";
+"use server";
 
-export const dynamic = 'force-dynamic';
+import { cookies } from "next/headers";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { TeacherSidebar } from "@/components/layout/TeacherSidebar";
+import { AppHeader } from "@/components/layout/AppHeader";
+import { adminAuth } from "@/lib/firebase-admin";
 
-export default function TeacherLayout({ children }: { children: React.ReactNode }) {
+async function getUser() {
+  const sessionCookie = cookies().get("__session")?.value;
+  if (!sessionCookie) {
+    return null;
+  }
+  try {
+    const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true);
+    return decodedClaims;
+  } catch (error) {
+    return null;
+  }
+}
+
+export default async function TeacherLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const user = await getUser();
+
   return (
-    <Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}>
-      <TeacherLayoutClient>
-        {children}
-      </TeacherLayoutClient>
-    </Suspense>
+    <SidebarProvider defaultOpen={true}>
+      <TeacherSidebar />
+      <SidebarInset className="flex flex-col min-h-screen">
+        <AppHeader
+          userName={user?.name || user?.email}
+          userEmail={user?.email}
+          userRole="Teacher"
+        />
+        <main className="flex-1 p-4 md:p-6 lg:p-8 bg-background">
+          {children}
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

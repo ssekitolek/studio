@@ -118,11 +118,11 @@ export function MarketingHeader({ content }: MarketingHeaderProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Login as</DropdownMenuLabel>
+              <DropdownMenuLabel>Login Portals</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild><Link href="/login/teacher">Teacher</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link href="/login/dos">D.O.S.</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link href="/login/admin">Website Admin</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href="/login/teacher">Teacher Portal</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href="/login/dos">D.O.S. Portal</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href="/login/admin">Admin Portal</Link></DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -158,9 +158,9 @@ export function MarketingHeader({ content }: MarketingHeaderProps) {
                         <AccordionTrigger className="text-base py-3">Portals</AccordionTrigger>
                         <AccordionContent className="pl-4">
                            <div className="flex flex-col gap-3">
-                                <Link href="/login/teacher" className="text-sm text-muted-foreground hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Teacher</Link>
-                                <Link href="/login/dos" className="text-sm text-muted-foreground hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>D.O.S.</Link>
-                                <Link href="/login/admin" className="text-sm text-muted-foreground hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Website Admin</Link>
+                                <Link href="/login/teacher" className="text-sm text-muted-foreground hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Teacher Portal</Link>
+                                <Link href="/login/dos" className="text-sm text-muted-foreground hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>D.O.S. Portal</Link>
+                                <Link href="/login/admin" className="text-sm text-muted-foreground hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>Admin Portal</Link>
                            </div>
                         </AccordionContent>
                     </AccordionItem>
