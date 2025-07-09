@@ -1,13 +1,48 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read/write access to all documents for any authenticated user.
-    // This is a secure default for apps where any logged-in user can see all data.
-    // For more granular control, you would add role-based checks here.
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    // Public read for website content, only admins can write
+    match /website_content/{document=**} {
+      allow read: if true;
+    }
+
+    // Allow any authenticated user to read data needed for the portals.
+    // Write access is handled by server actions, which have admin privileges and bypass these rules.
+    // This permissive read rule is necessary for the client-side logic to function without a billed account.
+    match /teachers/{document=**} {
+      allow read: if request.auth != null;
+    }
+    match /students/{document=**} {
+      allow read: if request.auth != null;
+    }
+     match /classes/{document=**} {
+      allow read: if request.auth != null;
+    }
+     match /subjects/{document=**} {
+      allow read: if request.auth != null;
+    }
+    match /terms/{document=**} {
+      allow read: if request.auth != null;
+    }
+    match /exams/{document=**} {
+      allow read: if request.auth != null;
+    }
+    match /markSubmissions/{document=**} {
+      allow read: if request.auth != null;
+    }
+    match /gradingPolicies/{document=**} {
+      allow read: if request.auth != null;
+    }
+     match /attendance/{document=**} {
+      allow read: if request.auth != null;
+    }
+    match /settings/{document=**} {
+      allow read: if request.auth != null;
+    }
+    
+    // Default deny all client-side writes.
+     match /{path=**} {
+      allow write: if false;
     }
   }
 }

@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
-import { getAndSyncUserRole } from '@/lib/actions/auth-actions';
+import { getClientUserRole } from '@/lib/actions/auth-actions';
 
 interface AuthContextType {
   user: User | null;
@@ -24,10 +24,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       if (user) {
         setUser(user);
-        // Always get the authoritative role from the server on login/refresh.
-        // This function also ensures the custom claim is up-to-date.
-        const serverRole = await getAndSyncUserRole(user.uid);
-        setRole(serverRole);
+        // This is now a client-side call to Firestore
+        const userRole = await getClientUserRole(user.uid, user.email);
+        setRole(userRole);
       } else {
         setUser(null);
         setRole(null);
