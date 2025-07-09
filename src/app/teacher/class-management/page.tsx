@@ -20,6 +20,7 @@ import { StatCard } from "@/components/shared/StatCard";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { isInvalidId } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 
 export default function ClassManagementPage() {
@@ -107,7 +108,7 @@ export default function ClassManagementPage() {
               <AccordionTrigger className="p-4 hover:no-underline">
                 <div className="flex flex-col text-left">
                     <h2 className="text-xl font-headline text-primary">{classInfo.name}</h2>
-                    <p className="text-sm text-muted-foreground">Level: {classInfo.level} {classInfo.stream || ''} | {students.length} Students</p>
+                    <p className="text-sm text-muted-foreground">{students.length} Students</p>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="p-4 pt-0">
@@ -183,12 +184,14 @@ export default function ClassManagementPage() {
                              {students.length > 0 ? (
                                 <div className="border rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
                                     <Table>
-                                        <TableHeader><TableRow><TableHead>Student ID</TableHead><TableHead>Full Name</TableHead></TableRow></TableHeader>
+                                        <TableHeader><TableRow><TableHead className="w-[50px]">No.</TableHead><TableHead>Student ID</TableHead><TableHead>Full Name</TableHead><TableHead>Stream</TableHead></TableRow></TableHeader>
                                         <TableBody>
-                                            {students.map((student) => (
+                                            {students.map((student, index) => (
                                             <TableRow key={student.id}>
+                                                <TableCell>{index + 1}</TableCell>
                                                 <TableCell><div className="flex items-center gap-2"><Hash className="h-4 w-4 text-muted-foreground"/>{student.studentIdNumber}</div></TableCell>
-                                                <TableCell className="font-medium"><div className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground"/>{student.firstName} {student.lastName}</div></TableCell>
+                                                <TableCell className="font-medium">{student.firstName} {student.lastName}</TableCell>
+                                                <TableCell>{student.stream ? <Badge variant="secondary">{student.stream}</Badge> : '-'}</TableCell>
                                             </TableRow>
                                             ))}
                                         </TableBody>

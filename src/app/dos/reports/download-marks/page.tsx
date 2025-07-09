@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
@@ -18,6 +19,8 @@ import { Badge } from "@/components/ui/badge";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+const WHOLE_CLASS_VALUE = "_ALL_";
+
 export default function DataAnalysisPage() {
   const { toast } = useToast();
   const [isLoadingInitialData, setIsLoadingInitialData] = useState(true);
@@ -27,10 +30,12 @@ export default function DataAnalysisPage() {
   const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [subjects, setSubjects] = useState<SubjectType[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
+  const [availableStreams, setAvailableStreams] = useState<string[]>([]);
   
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
   const [selectedExam, setSelectedExam] = useState("");
+  const [selectedStream, setSelectedStream] = useState<string>(WHOLE_CLASS_VALUE);
 
   const [analysisData, setAnalysisData] = useState<AssessmentAnalysisData | null>(null);
 
@@ -55,6 +60,12 @@ export default function DataAnalysisPage() {
     fetchData();
   }, [toast]);
 
+  useEffect(() => {
+    const classInfo = classes.find(c => c.id === selectedClass);
+    setAvailableStreams(classInfo?.streams || []);
+    setSelectedStream(WHOLE_CLASS_VALUE); // Reset stream selection when class changes
+  }, [selectedClass, classes]);
+
   const handleFetchAnalysis = () => {
     if (!selectedClass || !selectedSubject || !selectedExam) {
       toast({ title: "Selection Missing", description: "Please select class, subject, and exam.", variant: "destructive" });
@@ -62,7 +73,8 @@ export default function DataAnalysisPage() {
     }
     setAnalysisData(null);
     startAnalysisTransition(async () => {
-      const result = await getAssessmentAnalysisData(selectedClass, selectedSubject, selectedExam);
+      const streamToAnalyze = selectedStream === WHOLE_CLASS_VALUE ? undefined : selectedStream;
+      const result = await getAssessmentAnalysisData(selectedClass, selectedSubject, selectedExam, streamToAnalyze);
       if (result.success && result.data) {
         setAnalysisData(result.data);
       } else {
@@ -90,7 +102,8 @@ export default function DataAnalysisPage() {
 
             doc.setFontSize(14);
             doc.setFont("helvetica", "normal");
-            doc.text(data.assessmentName, doc.internal.pageSize.getWidth() / 2, 30, { align: "center" });
+            const streamName = selectedStream === WHOLE_CLASS_VALUE ? "" : ` - Stream: ${selectedStream}`;
+            doc.text(`${data.assessmentName}${streamName}`, doc.internal.pageSize.getWidth() / 2, 30, { align: "center" });
 
             let currentY = 45;
 
@@ -194,10 +207,17 @@ export default function DataAnalysisPage() {
           <CardTitle className="font-headline text-xl text-primary">Selection Criteria</CardTitle>
           <CardDescription>Select the specific class, subject, and exam to analyze.</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Select value={selectedClass} onValueChange={setSelectedClass} disabled={isLoadingInitialData}>
             <SelectTrigger><SelectValue placeholder={isLoadingInitialData ? "Loading..." : "Select Class"} /></SelectTrigger>
             <SelectContent>{classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={selectedStream} onValueChange={setSelectedStream} disabled={!selectedClass || availableStreams.length === 0}>
+            <SelectTrigger><SelectValue placeholder={availableStreams.length > 0 ? "Select Stream" : "No Streams"} /></SelectTrigger>
+            <SelectContent>
+                <SelectItem value={WHOLE_CLASS_VALUE}>Whole Class</SelectItem>
+                {availableStreams.map(stream => <SelectItem key={stream} value={stream}>{stream}</SelectItem>)}
+            </SelectContent>
           </Select>
           <Select value={selectedSubject} onValueChange={setSelectedSubject} disabled={isLoadingInitialData}>
             <SelectTrigger><SelectValue placeholder={isLoadingInitialData ? "Loading..." : "Select Subject"} /></SelectTrigger>
@@ -232,7 +252,10 @@ export default function DataAnalysisPage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="font-headline text-xl text-primary">Analysis for: {analysisData.assessmentName}</CardTitle>
-                <CardDescription>Found {analysisData.marks.length} mark(s) for this assessment.</CardDescription>
+                <CardDescription>
+                    Found {analysisData.marks.length} mark(s) for this assessment. 
+                    {selectedStream !== WHOLE_CLASS_VALUE && <Badge variant="secondary" className="ml-2">Stream: {selectedStream}</Badge>}
+                </CardDescription>
               </div>
                <Button onClick={handleDownload} disabled={isDownloading}>
                 {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}

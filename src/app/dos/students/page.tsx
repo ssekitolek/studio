@@ -13,6 +13,7 @@ import { getStudents, getClasses } from "@/lib/actions/dos-actions";
 import type { Student, ClassInfo } from "@/lib/types";
 import { DeleteAllStudentsConfirmationDialog } from "@/components/dialogs/DeleteAllStudentsConfirmationDialog";
 import { DeleteClassStudentsConfirmationDialog } from "@/components/dialogs/DeleteClassStudentsConfirmationDialog";
+import { Badge } from "@/components/ui/badge";
 
 export default function ManageStudentsPage() {
   const [students, setStudents] = React.useState<Student[]>([]);
@@ -78,15 +79,18 @@ export default function ManageStudentsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[50px]">No.</TableHead>
                     <TableHead>Student ID</TableHead>
                     <TableHead>Full Name</TableHead>
                     <TableHead>Class</TableHead>
+                    <TableHead>Stream</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {students.map((student) => (
+                  {students.map((student, index) => (
                     <TableRow key={student.id}>
+                      <TableCell>{index + 1}</TableCell>
                       <TableCell>
                           <div className="flex items-center gap-1">
                               <Hash className="h-4 w-4 text-muted-foreground"/>
@@ -97,8 +101,11 @@ export default function ManageStudentsPage() {
                       <TableCell>
                           <div className="flex items-center gap-1">
                              <UsersRound className="h-4 w-4 text-muted-foreground"/>
-                             {getClassName(student.classId)} {student.stream && `(${student.stream})`}
+                             {getClassName(student.classId)}
                           </div>
+                      </TableCell>
+                      <TableCell>
+                        {student.stream ? <Badge variant="secondary">{student.stream}</Badge> : <span className="text-muted-foreground">-</span>}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
@@ -130,7 +137,14 @@ export default function ManageStudentsPage() {
                 </TableBody>
               </Table>
             ) : (
-              <p className="text-center text-muted-foreground py-8">No students found. Register a new student to get started.</p>
+              <div className="text-center text-muted-foreground py-8 space-y-4">
+                <p>No students found. Register a new student or import them in bulk to get started.</p>
+                <Button variant="outline" asChild>
+                    <Link href="/dos/students/bulk-import">
+                        <FileUp className="mr-2 h-4 w-4" /> Bulk Import Students
+                    </Link>
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
