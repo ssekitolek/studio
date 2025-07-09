@@ -7,12 +7,12 @@ import { getStorage, type FirebaseStorage } from "firebase/storage";
 // Your web app's Firebase configuration is now hardcoded here
 // to ensure it is available in the browser environment.
 const firebaseConfig = {
-  apiKey: "AIzaSyAfdM4Rp7ciXyqStD-YWHB5inE01HqofTo",
-  authDomain: "gradecentral-obel2.firebaseapp.com",
-  projectId: "gradecentral-obel2",
-  storageBucket: "gradecentral-obel2.appspot.com",
-  messagingSenderId: "412269537227",
-  appId: "1:412269537227:web:f07191757d4ce902a4384e"
+  apiKey: "AIzaSyASlqu0spRbYI3FglqZKJF8lplFvpr5cR0",
+  authDomain: "smack-marks-portal.firebaseapp.com",
+  projectId: "smack-marks-portal",
+  storageBucket: "smack-marks-portal.appspot.com",
+  messagingSenderId: "424036907971",
+  appId: "1:424036907971:web:e32094cee5841f25125b76"
 };
 
 // Initialize Firebase
