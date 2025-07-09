@@ -24,14 +24,23 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ status: 'success' });
-  } catch (error: any) {
-    const errorMessage = error.message || 'An unknown error occurred during session creation.';
-    // Log the detailed error object for server-side debugging
-    try {
-        console.error('Session login error:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-    } catch (e) {
-        console.error('Session login error (unserializable):', error);
+  } catch (error) {
+    console.error("--- DETAILED SESSION LOGIN ERROR ---");
+    console.error("Error Object:", error);
+    if (error && typeof error === 'object') {
+      console.error("Error Code:", (error as any).code);
+      console.error("Error Message:", (error as any).message);
+      console.error("Error Stack:", (error as any).stack);
+      console.error("Full Object Keys:", Object.keys(error));
+      try {
+        console.error("Stringified Error:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+      } catch (e) {
+        console.error("Could not stringify the error object:", e);
+      }
     }
+    console.error("--- END DETAILED SESSION LOGIN ERROR ---");
+    
+    const errorMessage = (error instanceof Error) ? error.message : 'An unknown error occurred during session creation.';
     return NextResponse.json({ error: `Failed to create session: ${errorMessage}` }, { status: 401 });
   }
 }
