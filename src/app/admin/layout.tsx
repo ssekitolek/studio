@@ -15,7 +15,7 @@ export default function AdminLayout({
   const { user } = useAuth();
 
   return (
-    <ProtectedRoute>
+    <ProtectedRoute requiredRole="admin">
         <SidebarProvider defaultOpen={true}>
           <AdminSidebar />
           <SidebarInset className="flex flex-col min-h-screen">

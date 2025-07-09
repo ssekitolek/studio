@@ -18,9 +18,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { createTeacher, updateTeacher } from "@/lib/actions/dos-actions";
-import { Loader2, Save, UserPlus, Edit3, KeyRound } from "lucide-react";
+import { Loader2, Save, UserPlus, Edit3 } from "lucide-react";
 import type { Teacher } from "@/lib/types";
 import { useRouter } from "next/navigation";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Base schema for common fields
 const teacherBaseSchema = z.object({
@@ -30,6 +31,7 @@ const teacherBaseSchema = z.object({
   email: z.string().email({
     message: "Please enter a valid email address.",
   }),
+  role: z.enum(['teacher', 'dos'], { required_error: "Role is required."}),
 });
 
 // Schema for creating a teacher (password required)
@@ -65,6 +67,7 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
       name: initialData?.name || "",
       email: initialData?.email || "",
       password: "", // Always start with empty password field in form
+      role: initialData?.role || "teacher",
     },
   });
 
@@ -74,6 +77,7 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
         name: initialData.name,
         email: initialData.email,
         password: "", // Password field is for setting/changing, not displaying
+        role: initialData.role || "teacher",
       });
     }
   }, [initialData, form]);
@@ -82,9 +86,10 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
     startTransition(async () => {
       try {
         let result;
-        const teacherPayload: Partial<Teacher> & { name: string; email: string; password?: string } = {
+        const teacherPayload: Partial<Teacher> & { name: string; email: string; password?: string, role: 'teacher' | 'dos' } = {
           name: data.name,
           email: data.email,
+          role: data.role as 'teacher' | 'dos',
         };
 
         // Only include password if it's provided (and not an empty string from the form)
@@ -93,11 +98,10 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
         }
         
         if (isEditMode) {
-          // In edit mode, updateTeacher expects Partial<Omit<Teacher, 'id' | 'subjectsAssigned'>>
-          // We ensure teacherPayload fits this structure.
           const updatePayload: Partial<Omit<Teacher, 'id' | 'subjectsAssigned'>> = {
             name: teacherPayload.name,
             email: teacherPayload.email,
+            role: teacherPayload.role,
           };
           if (teacherPayload.password) {
             updatePayload.password = teacherPayload.password;
@@ -121,7 +125,6 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
         } else {
           // Create mode, password is required by schema if createTeacherFormSchema is used
           if (!teacherPayload.password) {
-             // This case should ideally be caught by Zod, but as a safeguard:
             toast({ title: "Password Required", description: "Password is required to create a new teacher.", variant: "destructive"});
             return;
           }
@@ -131,7 +134,7 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
               title: "Teacher Created",
               description: `Teacher "${result.teacher.name}" has been successfully added.`,
             });
-            form.reset({ name: "", email: "", password: "" });
+            form.reset({ name: "", email: "", password: "", role: "teacher" });
             if (onSuccess) onSuccess();
             else router.push("/dos/teachers");
           } else {
@@ -183,6 +186,30 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
               </FormControl>
               <FormDescription>
                 The teacher&apos;s email address for communication and login.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="role"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Role</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a role" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="teacher">Teacher</SelectItem>
+                  <SelectItem value="dos">D.O.S.</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormDescription>
+                Assign the user's role. The 'Admin' role must be set separately for security.
               </FormDescription>
               <FormMessage />
             </FormItem>

@@ -6,6 +6,7 @@ export interface Teacher {
   uid: string; // This is the Firebase Auth User ID
   name: string;
   email: string;
+  role?: 'admin' | 'dos' | 'teacher';
   password?: string; // This should only be used for creation, not stored long-term
   subjectsAssigned: Array<{ classId: string; subjectId: string; examIds:string[] }>;
 }

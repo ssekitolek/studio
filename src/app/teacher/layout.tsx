@@ -15,7 +15,7 @@ export default function TeacherLayout({
   const { user } = useAuth();
 
   return (
-    <ProtectedRoute>
+    <ProtectedRoute requiredRole="teacher">
       <SidebarProvider defaultOpen={true}>
         <TeacherSidebar />
         <SidebarInset className="flex flex-col min-h-screen">

@@ -15,7 +15,7 @@ export default function DosLayout({
   const { user } = useAuth();
 
   return (
-    <ProtectedRoute>
+    <ProtectedRoute requiredRole="dos">
       <SidebarProvider defaultOpen={true}>
         <DosSidebar />
         <SidebarInset className="flex flex-col min-h-screen">
