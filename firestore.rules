@@ -1,74 +1,32 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if a user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    // Helper function to get the user's role from their own teacher document
-    // This assumes the document ID is the user's UID.
-    function getUserRole(userId) {
-      let docPath = /databases/$(database)/documents/teachers/$(userId);
-      // Check if the document exists before trying to access its data
-      if (exists(docPath)) {
-        return get(docPath).data.role;
-      }
-      return null; // Return null if the document doesn't exist
-    }
-
-    // Default deny all reads and writes to prevent accidental exposure
+    
+    // By default, deny all reads and writes to all documents.
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Allow public read for website content, but only admin can write
+    // Allow a logged-in user to read a document from the 'teachers' collection
+    // if the document's 'uid' field matches their own authentication UID.
+    // This rule securely enables the application to check a user's role upon login.
+    match /teachers/{teacherId} {
+      allow read: if request.auth.uid != null && resource.data.uid == request.auth.uid;
+    }
+
+    // Rules for website_content: allow anyone to read, only admins to write.
+    function isAdmin() {
+      // In a real app, this would check a custom claim or an admin list.
+      // For this app, the admin logic is handled in the application code.
+      // This rule is a placeholder; actual content updates are done via a trusted server environment.
+      return request.auth != null; // Simplified for this context
+    }
+    
     match /website_content/{contentId} {
       allow read: if true;
-      allow write: if isAuthenticated() && request.auth.email == 'mathius@admin.staff';
-    }
-
-    match /teachers/{teacherId} {
-      // Allow a user to query the teachers collection.
-      // The client-side query MUST restrict this to where('uid', '==', request.auth.uid)
-      // to prevent listing all users. This is a secure pattern.
-      allow list: if isAuthenticated();
-
-      // Allow a user to directly get their own teacher document, either if the
-      // document ID matches their UID, or the 'uid' field inside the document matches.
-      // This supports both new and legacy user creation patterns.
-      allow get: if isAuthenticated() && (request.auth.uid == teacherId || request.auth.uid == resource.data.uid);
-
-      // A D.O.S. can create, update, or delete teacher records.
-      // The D.O.S. role is checked from their own user document.
-      allow write: if isAuthenticated() && getUserRole(request.auth.uid) == 'dos';
-    }
-
-    // Generic rule for D.O.S. management of other collections
-    function isDos() {
-      return isAuthenticated() && getUserRole(request.auth.uid) == 'dos';
-    }
-
-    match /classes/{classId} { allow read, write: if isDos(); }
-    match /subjects/{subjectId} { allow read, write: if isDos(); }
-    match /terms/{termId} { allow read, write: if isDos(); }
-    match /exams/{examId} { allow read, write: if isDos(); }
-    match /settings/{settingId} { allow read, write: if isDos(); }
-    match /students/{studentId} { allow read, write: if isDos(); }
-
-    match /attendance/{recordId} {
-      // Any authenticated user can read/write attendance.
-      // This could be tightened to only assigned teachers if needed.
-      allow read, write: if isAuthenticated();
-    }
-
-    match /markSubmissions/{submissionId} {
-      // Any authenticated user can create submissions. The app logic should restrict this to teachers.
-      allow create: if isAuthenticated();
-      // Only D.O.S. can read or update submissions.
-      allow read, update: if isDos();
+      allow write: if false; // All writes should go through the trusted server action
     }
   }
 }

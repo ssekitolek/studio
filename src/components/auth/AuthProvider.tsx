@@ -22,44 +22,50 @@ async function determineUserRole(user: User): Promise<string | null> {
   }
 
   try {
-    // --- Method 1: Direct Document ID Lookup (for new users) ---
-    console.log(`[AuthProvider] Attempting Method 1: Direct lookup for doc ID "${user.uid}"...`);
-    const teacherRef = doc(db, "teachers", user.uid);
-    const teacherSnap = await getDoc(teacherRef);
+    // PREFERRED METHOD: Direct lookup on doc ID. This is fast and works for all new users.
+    const directDocRef = doc(db, "teachers", user.uid);
+    console.log(`[AuthProvider] Attempting direct lookup on doc ID: "${user.uid}"`);
+    const directDocSnap = await getDoc(directDocRef);
 
-    if (teacherSnap.exists()) {
-      const teacherData = teacherSnap.data();
+    if (directDocSnap.exists()) {
+      const teacherData = directDocSnap.data();
       const role = teacherData.role;
       if (role === 'dos' || role === 'teacher') {
-        console.log(`[AuthProvider] SUCCESS (Method: Direct): Role for UID ${user.uid} is "${role}".`);
+        console.log(`[AuthProvider] SUCCESS (Direct Lookup): Role for UID ${user.uid} is "${role}".`);
         return role;
       }
     }
-    console.log(`[AuthProvider] INFO (Method: Direct): No document found with ID matching user's UID. This is expected for older accounts.`);
-
-    // --- Method 2: Fallback Query (for old users created with auto-ID) ---
-    console.log(`[AuthProvider] Attempting Method 2: Fallback query where 'uid' field == "${user.uid}"...`);
-    const teachersCol = collection(db, "teachers");
-    const q = query(teachersCol, where("uid", "==", user.uid), limit(1));
+    console.log(`[AuthProvider] Direct lookup failed or role was invalid. Trying fallback query.`);
+    
+    // FALLBACK METHOD: Query for the user's UID in the 'uid' field. This works for older users.
+    const teachersColRef = collection(db, "teachers");
+    const q = query(teachersColRef, where("uid", "==", user.uid), limit(1));
+    console.log(`[AuthProvider] Attempting fallback query where 'uid' field == "${user.uid}"`);
     const querySnapshot = await getDocs(q);
 
     if (!querySnapshot.empty) {
-        const userDoc = querySnapshot.docs[0];
-        const teacherData = userDoc.data();
-        const role = teacherData.role;
-        if (role === 'dos' || role === 'teacher') {
-            console.log(`[AuthProvider] SUCCESS (Method: Fallback): Role for UID ${user.uid} is "${role}" (found in doc ID ${userDoc.id}).`);
-            return role;
+      const userDoc = querySnapshot.docs[0];
+      const teacherData = userDoc.data();
+      const role = teacherData.role;
+      if (role === 'dos' || role === 'teacher') {
+        console.log(`[AuthProvider] SUCCESS (Fallback Query): Role for UID ${user.uid} is "${role}" (found in doc ID ${userDoc.id}).`);
+        
+        // SELF-HEALING NOTICE: If the doc ID is different from the UID, we just log it. We don't write to avoid permissions issues.
+        if (userDoc.id !== user.uid) {
+            console.log(`[AuthProvider] Self-Healing Notice: User ${user.uid} has a legacy document structure (doc ID ${userDoc.id}). Login is successful.`);
         }
+        return role;
+
+      } else {
+        console.warn(`[AuthProvider] WARNING (Fallback Query): Document found for UID ${user.uid} but role is invalid: "${role}".`);
+      }
     }
-    console.log(`[AuthProvider] INFO (Method: Fallback): No document found with a 'uid' field matching the user's UID.`);
     
-    // --- Final Result: No Role Found ---
-    console.warn(`[AuthProvider] FAILED: No role found for UID ${user.uid} after checking all methods. User will be denied access to protected portals.`);
+    console.warn(`[AuthProvider] FAILED: No role document found for UID ${user.uid} after all checks.`);
     return null;
 
   } catch (error) {
-    console.error(`[AuthProvider] FATAL (Firestore Error): An error occurred during role lookup for UID ${user.uid}. This may be a permissions issue in your Firestore security rules.`, error);
+    console.error(`[AuthProvider] FATAL (Firestore Error): An error occurred during role lookup for UID ${user.uid}. This is likely a Firestore Security Rules issue.`, error);
     return null;
   }
 }
