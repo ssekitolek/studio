@@ -32,6 +32,71 @@ function calculateGrade(
   return 'Ungraded'; 
 }
 
+export async function getTeacherAssessments(teacherId: string): Promise<Array<{ id: string; name:string; maxMarks: number }>> {
+    console.log(`[getTeacherAssessments] START - Fetching pending assessments for teacherId: "${teacherId}"`);
+    if (!db) {
+        console.error("[getTeacherAssessments] CRITICAL_ERROR_DB_NULL: Firestore db object is null.");
+        return [];
+    }
+    if (!teacherId || teacherId.toLowerCase() === "undefined" || teacherId.trim() === "" || teacherId === "undefined") {
+        console.warn(`[getTeacherAssessments] INVALID_TEACHER_ID: Received "${teacherId}". Returning empty array.`);
+        return [];
+    }
+    try {
+        const responsibilitiesMap = await getTeacherAssessmentResponsibilities(teacherId);
+        if (responsibilitiesMap.size === 0) {
+            console.log(`[getTeacherAssessments] No assessment responsibilities found for teacherId: ${teacherId}.`);
+            return [];
+        }
+
+        const potentialAssessmentIds = Array.from(responsibilitiesMap.keys());
+        const submittedAssessmentIds = new Set<string>();
+
+        // Firestore 'in' queries are limited to 30 items per query. Chunking is necessary.
+        const chunkSize = 30;
+        for (let i = 0; i < potentialAssessmentIds.length; i += chunkSize) {
+            const chunk = potentialAssessmentIds.slice(i, i + chunkSize);
+            const submissionsQuery = query(
+                collection(db, "markSubmissions"),
+                where("teacherId", "==", teacherId),
+                where("assessmentId", "in", chunk)
+            );
+            const submissionsSnapshot = await getDocs(submissionsQuery);
+            submissionsSnapshot.forEach(doc => {
+                const data = doc.data() as MarkSubmissionFirestoreRecord;
+                // We only care about submissions that are NOT rejected. A rejected submission should reappear for submission.
+                if (data.dosStatus !== 'Rejected') {
+                    submittedAssessmentIds.add(data.assessmentId);
+                }
+            });
+        }
+        
+        console.log(`[getTeacherAssessments] Teacher ${teacherId} has ${responsibilitiesMap.size} total responsibilities and ${submittedAssessmentIds.size} non-rejected submissions.`);
+
+        const pendingAssessments: Array<{ id: string; name: string; maxMarks: number }> = [];
+        responsibilitiesMap.forEach((value, key) => {
+            if (!submittedAssessmentIds.has(key)) {
+                const { classObj, subjectObj, examObj } = value;
+                pendingAssessments.push({
+                    id: key, // Composite ID: examId_classId_subjectId
+                    name: `${classObj.name} - ${subjectObj.name} - ${examObj.name}`,
+                    maxMarks: examObj.maxMarks
+                });
+            }
+        });
+        
+        console.log(`[getTeacherAssessments] END - Found ${pendingAssessments.length} pending assessments for teacherId: ${teacherId}`);
+        // Sort for consistent display
+        pendingAssessments.sort((a, b) => a.name.localeCompare(b.name));
+        
+        return pendingAssessments;
+
+    } catch (error) {
+        console.error(`[getTeacherAssessments] CRITICAL ERROR for teacherId ${teacherId}:`, error);
+        return [];
+    }
+}
+
 
 export async function loginTeacherByEmailPassword(email: string, passwordToVerify: string): Promise<{ success: boolean; message: string; teacher?: { id: string; name: string; email: string; } }> {
   console.log(`[loginTeacherByEmailPassword] Attempting login for email: ${email}`);
