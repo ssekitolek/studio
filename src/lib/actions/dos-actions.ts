@@ -6,14 +6,24 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference, runTransaction, writeBatch, Timestamp, orderBy, setDoc } from "firebase/firestore";
 import * as XLSX from 'xlsx';
-import { createTeacher, updateTeacher, deleteTeacher } from './dos-admin-actions'; // Import from new file
-
 
 // --- Teacher Management ---
-// Functions requiring firebase-admin (create, update, delete) have been moved to dos-admin-actions.ts
-// This file now only contains read operations for teachers to avoid unnecessary admin SDK initialization.
-// We keep the exports here for component compatibility.
-export { createTeacher, updateTeacher, deleteTeacher };
+export async function createTeacher(teacherData: Omit<Teacher, 'id'>): Promise<{ success: boolean; message: string; teacher?: Teacher }> {
+  // This function now needs to be handled differently, as Admin SDK is removed from this action file.
+  // For now, it will return an error. A proper implementation would require a separate, secure environment.
+  console.error("createTeacher called from a non-admin environment. This operation is not secure and has been disabled.");
+  return { success: false, message: "Teacher creation is not available from this endpoint." };
+}
+
+export async function updateTeacher(teacherId: string, teacherData: Partial<Omit<Teacher, 'id'>>): Promise<{ success: boolean; message: string; teacher?: Teacher }> {
+   console.error("updateTeacher called from a non-admin environment. This operation is not secure and has been disabled.");
+   return { success: false, message: "Teacher updates are not available from this endpoint." };
+}
+
+export async function deleteTeacher(teacherId: string): Promise<{ success: boolean; message: string }> {
+   console.error("deleteTeacher called from a non-admin environment. This operation is not secure and has been disabled.");
+   return { success: false, message: "Teacher deletion is not available from this endpoint." };
+}
 
 
 export async function getTeacherById(teacherId: string): Promise<Teacher | null> {

@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { deleteTeacher } from "@/lib/actions/dos-admin-actions";
+import { deleteTeacher } from "@/lib/actions/dos-actions";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Trash2, AlertTriangle } from "lucide-react";
 
