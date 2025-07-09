@@ -6,13 +6,19 @@ import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 // Your web app's Firebase configuration is read from environment variables
 const firebaseConfig = {
-  apiKey: "AIzaSyAfdM4Rp7ciXyqStD-YWHB5inE01HqofTo",
-  authDomain: "gradecentral-obel2.firebaseapp.com",
-  projectId: "gradecentral-obel2",
-  storageBucket: "gradecentral-obel2.appspot.com",
-  messagingSenderId: "412269537227",
-  appId: "1:412269537227:web:f07191757d4ce902a4384e"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
+
+// Check that all variables are present
+const firebaseConfigIsValid = Object.values(firebaseConfig).every(
+    value => value && typeof value === "string" && value.length > 0
+);
+
 
 // Initialize Firebase
 let app: FirebaseApp;
@@ -20,22 +26,18 @@ let auth: Auth;
 let db: Firestore;
 let storage: FirebaseStorage;
 
-try {
-  if (!getApps().length) {
-    app = initializeApp(firebaseConfig);
-  } else {
-    app = getApp();
-  }
-  
-  auth = getAuth(app);
-  db = getFirestore(app);
-  storage = getStorage(app);
-
-  console.log("Firebase initialized successfully with direct configuration.");
-
-} catch (error) {
-    console.error("Firebase SDK Initialization Error:", error);
-    // Fallback to null services on error
+if (firebaseConfigIsValid) {
+    if (!getApps().length) {
+      app = initializeApp(firebaseConfig);
+    } else {
+      app = getApp();
+    }
+    auth = getAuth(app);
+    db = getFirestore(app);
+    storage = getStorage(app);
+    console.log("Firebase initialized successfully from environment variables.");
+} else {
+    console.error("Firebase configuration from environment variables is invalid or incomplete. Please check your .env file.");
     // @ts-ignore
     app = null;
     // @ts-ignore
@@ -45,6 +47,5 @@ try {
     // @ts-ignore
     storage = null;
 }
-
 
 export { app, auth, db, storage };
