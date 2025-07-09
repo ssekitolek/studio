@@ -34,7 +34,6 @@ export function AdminSidebar() {
     if (auth) {
         await signOut(auth);
     }
-    await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/');
   };
 

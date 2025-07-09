@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { PT_Sans, Space_Grotesk } from 'next/font/google';
 import '@/app/globals.css';
 import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from '@/components/auth/AuthProvider';
 
 const ptSans = PT_Sans({
   subsets: ['latin'],
@@ -44,7 +45,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${ptSans.variable} ${spaceGrotesk.variable}`} suppressHydrationWarning>
       <body className="font-body antialiased">
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
         <Toaster />
       </body>
     </html>

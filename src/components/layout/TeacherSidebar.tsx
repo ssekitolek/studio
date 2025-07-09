@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation"; 
+import { usePathname, useRouter } from "next/navigation"; 
 import {
   Sidebar,
   SidebarHeader,
@@ -18,7 +18,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { LayoutDashboard, BookOpenCheck, History, LogOut, GanttChartSquare, UserCircle, ClipboardList, ClipboardCheck } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 
@@ -41,7 +40,6 @@ export function TeacherSidebar() {
     if (auth) {
         await signOut(auth);
     }
-    await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/');
   };
 

@@ -26,32 +26,13 @@ export default function TeacherLoginPage() {
     setIsLoading(true);
 
     if (!auth) {
-        setError("Authentication service is not available. Please check your Firebase configuration in the .env file.");
+        setError("Authentication service is not available. Please check your Firebase configuration.");
         setIsLoading(false);
         return;
     }
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const idToken = await userCredential.user.getIdToken();
-
-      const response = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ idToken }),
-      });
-
-      if (!response.ok) {
-        let errorText = `Server responded with status: ${response.status}`;
-        try {
-          const errorData = await response.json();
-          errorText = errorData.error || `Failed to create session. Server response: ${JSON.stringify(errorData)}`;
-        } catch (jsonError) {
-          console.error("Could not parse server error response as JSON.", jsonError);
-        }
-        throw new Error(errorText);
-      }
-      
+      await signInWithEmailAndPassword(auth, email, password);
       router.push("/teacher/dashboard");
 
     } catch (err: any) {
@@ -73,6 +54,7 @@ export default function TeacherLoginPage() {
             friendlyMessage = "Login method not enabled. Please enable Email/Password sign-in in your Firebase console's Authentication settings.";
             break;
            case 'auth/invalid-api-key':
+           case 'auth/api-key-not-valid':
             friendlyMessage = "Connection to authentication service failed due to an invalid configuration. Please ensure all NEXT_PUBLIC_FIREBASE_ environment variables are correct.";
             break;
           default:
