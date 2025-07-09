@@ -39,13 +39,18 @@ export async function getAndSyncUserRole(uid: string): Promise<string | null> {
 
       if (userDocSnap.exists()) {
         const userData = userDocSnap.data();
-        console.log(`[AuthAction] Found Firestore doc for ${uid} with role: ${userData.role}`);
-        // Ensure the role from Firestore is either 'dos' or 'teacher'
-        if (userData.role === 'dos' || userData.role === 'teacher') {
-            role = userData.role;
+        
+        // This logic is now more robust. It ensures that if a user exists in the 
+        // 'teachers' collection, they get a valid role.
+        if (userData.role === 'dos') {
+            role = 'dos';
         } else {
-            console.warn(`[AuthAction] User ${uid} has an invalid role in Firestore: '${userData.role}'`);
+            // Default to 'teacher' if the role is missing, undefined, or explicitly 'teacher'.
+            // This ensures existing users (created before the role field was added) can log in.
+            role = 'teacher';
         }
+        console.log(`[AuthAction] Determined role for ${uid} as: ${role}`);
+
       } else {
           console.log(`[AuthAction] No Firestore document found for user ${uid} in 'teachers' collection.`);
       }

@@ -31,6 +31,7 @@ export async function createTeacher(teacherData: Omit<Teacher, 'id' | 'subjectsA
       uid: userRecord.uid,
       name: teacherData.name,
       email: teacherData.email,
+      role: teacherData.role, // <-- FIX: Ensure role is saved
       subjectsAssigned: [], // Initialize with empty array
     };
     
@@ -68,6 +69,7 @@ export async function getTeacherById(teacherId: string): Promise<Teacher | null>
         uid: data.uid,
         name: data.name,
         email: data.email,
+        role: data.role, // <-- FIX: Return role
         subjectsAssigned: data.subjectsAssigned || [],
       } as Teacher;
     }
@@ -90,6 +92,7 @@ export async function updateTeacher(teacherId: string, teacherData: Partial<Omit
     const firestoreUpdatePayload: { [key: string]: any } = {};
     if (teacherData.name !== undefined) firestoreUpdatePayload.name = teacherData.name;
     if (teacherData.email !== undefined) firestoreUpdatePayload.email = teacherData.email;
+    if (teacherData.role !== undefined) firestoreUpdatePayload.role = teacherData.role; // <-- FIX: Update role
     
     if(Object.keys(firestoreUpdatePayload).length > 0) {
         await updateDoc(teacherRef, firestoreUpdatePayload);
@@ -1541,6 +1544,7 @@ export async function getTeachers(): Promise<Teacher[]> {
         uid: data.uid,
         name: data.name,
         email: data.email,
+        role: data.role, // <-- FIX: Return role
         subjectsAssigned: data.subjectsAssigned || []
       } as Teacher;
     });

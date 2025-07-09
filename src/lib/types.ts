@@ -2,12 +2,12 @@
 import type { Timestamp } from "firebase/firestore";
 
 export interface Teacher {
-  id: string; // This is the Firestore document ID
+  id: string; // This is the Firestore document ID, which should be the same as the UID
   uid: string; // This is the Firebase Auth User ID
   name: string;
   email: string;
-  role?: 'admin' | 'dos' | 'teacher';
-  password?: string; // This should only be used for creation, not stored long-term
+  role: 'admin' | 'dos' | 'teacher';
+  password?: string; // This should only be used for creation/update, not stored in Firestore
   subjectsAssigned: Array<{ classId: string; subjectId: string; examIds:string[] }>;
 }
 
