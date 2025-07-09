@@ -1,78 +1,30 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions
-    function isDosOrAdmin(userId) {
-      let role = get(/databases/$(database)/documents/teachers/$(userId)).data.role;
-      return role == 'dos' || role == 'admin';
-    }
-
-    function isAdmin(userId) {
-      let role = get(/databases/$(database)/documents/teachers/$(userId)).data.role;
-      return role == 'admin';
-    }
     
-    function isTeacherOrAbove(userId) {
-       let role = get(/databases/$(database)/documents/teachers/$(userId)).data.role;
-      return role in ['teacher', 'dos', 'admin'];
-    }
-
-    // Teachers collection:
-    // - Authenticated users can read their own record (for role checking).
-    // - DOS/Admin can read all teacher records.
-    // - DOS/Admin can create/update teachers.
-    // - Only Admin should delete teachers (safer).
-    match /teachers/{userId} {
-      allow read: if request.auth != null && (request.auth.uid == userId || isDosOrAdmin(request.auth.uid));
-      allow create, update: if request.auth != null && isDosOrAdmin(request.auth.uid);
-      allow delete: if request.auth != null && isAdmin(request.auth.uid);
-    }
-    
-    // Website Content: Publicly readable, only admin can write.
-    match /website_content/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null && isAdmin(request.auth.uid);
-    }
-    
-    // Students, Classes, Subjects, Terms, Exams, Grading Policies:
-    // - DOS/Admin can create, update, delete.
-    // - All authenticated teachers/dos/admins can read.
-    match /{collectionName}/{docId}
-      where collectionName in ['students', 'classes', 'subjects', 'terms', 'exams', 'gradingPolicies'] {
-        allow read: if request.auth != null && isTeacherOrAbove(request.auth.uid);
-        allow write: if request.auth != null && isDosOrAdmin(request.auth.uid);
-    }
-    
-    // Mark Submissions:
-    // - Teachers can create new submissions.
-    // - Teachers can only read their own submissions.
-    // - DOS/Admin can read all submissions.
-    // - DOS/Admin can update submissions (approve/reject).
-    match /markSubmissions/{submissionId} {
-        allow read: if request.auth != null && (isDosOrAdmin(request.auth.uid) || resource.data.teacherId == request.auth.uid);
-        allow create: if request.auth != null && request.resource.data.teacherId == request.auth.uid;
-        allow update: if request.auth != null && isDosOrAdmin(request.auth.uid);
-        allow delete: if false; // Disallow deletion for data integrity
-    }
-
-    // Attendance records
-    match /attendance/{recordId} {
-        allow read, create, update: if request.auth != null && isTeacherOrAbove(request.auth.uid);
-        allow delete: if false;
-    }
-
-    // Settings
-    match /settings/general {
-       allow read: if request.auth != null && isTeacherOrAbove(request.auth.uid);
-       allow write: if request.auth != null && isDosOrAdmin(request.auth.uid);
-    }
-    
-     // Default deny all other access
+    // Default deny all access on the client side.
+    // Server Actions using the Admin SDK will bypass these rules.
     match /{document=**} {
       allow read, write: if false;
     }
+
+    // Allow public read access for website content.
+    // Writes are handled by server actions.
+    match /website_content/{docId} {
+      allow read: if true;
+      allow write: if false; 
+    }
+    
+    // This is the critical rule for our authentication system.
+    // It allows a logged-in user to read ONLY their own document
+    // from the 'teachers' collection to determine their role.
+    match /teachers/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // All other client-side operations (e.g., writing to 'students' or 'classes')
+    // are blocked by the default deny rule. They must be performed
+    // by trusted Server Actions.
   }
 }

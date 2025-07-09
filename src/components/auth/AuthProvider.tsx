@@ -2,9 +2,45 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
-import { getClientUserRole } from '@/lib/actions/auth-actions';
+
+// --- Logic from auth-actions.ts has been moved directly into this component for reliability ---
+const ADMIN_EMAIL = "mathius@admin.staff";
+
+async function determineUserRole(user: User): Promise<string | null> {
+  // 1. Check for Admin role by the hardcoded email. This is the fastest and most reliable check.
+  if (user.email && user.email === ADMIN_EMAIL) {
+    console.log(`[AuthProvider] User ${user.uid} identified as ADMIN via email.`);
+    return 'admin';
+  }
+
+  // 2. If not admin, check Firestore for a 'teacher' or 'dos' role.
+  try {
+    // The document ID in the 'teachers' collection IS the user's UID.
+    const teacherRef = doc(db, "teachers", user.uid);
+    const teacherSnap = await getDoc(teacherRef);
+
+    if (teacherSnap.exists()) {
+      const teacherData = teacherSnap.data();
+      // Securely default to 'teacher' if the role field is missing or invalid.
+      const role = teacherData.role === 'dos' ? 'dos' : 'teacher';
+      console.log(`[AuthProvider] Role for UID ${user.uid} found in Firestore: ${role}`);
+      return role;
+    } else {
+      // This is expected for the admin user, but a problem for any other user.
+      console.warn(`[AuthProvider] No Firestore document found for teacher with UID: ${user.uid}. Cannot determine role from database.`);
+      return null;
+    }
+  } catch (error) {
+    // This catch block will trigger if Firestore rules deny the read.
+    console.error(`[AuthProvider] CRITICAL ERROR checking role for UID ${user.uid}:`, error);
+    return null;
+  }
+}
+// --- End of moved logic ---
+
 
 interface AuthContextType {
   user: User | null;
@@ -24,8 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       if (user) {
         setUser(user);
-        // This is now a client-side call to Firestore
-        const userRole = await getClientUserRole(user.uid, user.email);
+        const userRole = await determineUserRole(user);
         setRole(userRole);
       } else {
         setUser(null);
