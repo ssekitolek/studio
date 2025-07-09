@@ -3,26 +3,27 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, collection, query, where, limit } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, limit, getDocs } from "firebase/firestore";
 import { auth, db } from '@/lib/firebase';
 
 const ADMIN_EMAIL = "mathius@admin.staff";
 
 async function determineUserRole(user: User): Promise<string | null> {
-  console.log(`[AuthProvider] Determining role for user: ${user.uid} (${user.email})`);
-  
+  console.log(`[AuthProvider] Role check initiated for user: ${user.uid} (${user.email})`);
+
   if (user.email === ADMIN_EMAIL) {
-    console.log(`[AuthProvider] User ${user.uid} identified as ADMIN by email.`);
+    console.log(`[AuthProvider] SUCCESS (Method: Email): User ${user.uid} is ADMIN.`);
     return 'admin';
   }
 
   if (!db) {
-    console.error("[AuthProvider] Firestore DB is not initialized. Cannot determine role.");
+    console.error("[AuthProvider] FATAL: Firestore DB is not initialized. Cannot determine role.");
     return null;
   }
 
   try {
-    // Attempt 1: Fast lookup by document ID. Works for new users created with setDoc(doc(db, "teachers", uid)).
+    // --- Method 1: Direct Document ID Lookup (for new users) ---
+    console.log(`[AuthProvider] Attempting Method 1: Direct lookup for doc ID "${user.uid}"...`);
     const teacherRef = doc(db, "teachers", user.uid);
     const teacherSnap = await getDoc(teacherRef);
 
@@ -30,33 +31,35 @@ async function determineUserRole(user: User): Promise<string | null> {
       const teacherData = teacherSnap.data();
       const role = teacherData.role;
       if (role === 'dos' || role === 'teacher') {
-        console.log(`[AuthProvider] Role for UID ${user.uid} found via direct doc ID lookup: ${role}`);
+        console.log(`[AuthProvider] SUCCESS (Method: Direct): Role for UID ${user.uid} is "${role}".`);
         return role;
       }
     }
-    
-    // Attempt 2: Fallback query. This is crucial for older users created with addDoc() 
-    // where the document ID is auto-generated and the auth UID is a field inside the document.
-    console.log(`[AuthProvider] Direct lookup failed for ${user.uid}. Attempting query fallback on 'uid' field.`);
+    console.log(`[AuthProvider] INFO (Method: Direct): No document found with ID matching user's UID. This is expected for older accounts.`);
+
+    // --- Method 2: Fallback Query (for old users created with auto-ID) ---
+    console.log(`[AuthProvider] Attempting Method 2: Fallback query where 'uid' field == "${user.uid}"...`);
     const teachersCol = collection(db, "teachers");
     const q = query(teachersCol, where("uid", "==", user.uid), limit(1));
     const querySnapshot = await getDocs(q);
-    
+
     if (!querySnapshot.empty) {
         const userDoc = querySnapshot.docs[0];
         const teacherData = userDoc.data();
         const role = teacherData.role;
         if (role === 'dos' || role === 'teacher') {
-            console.log(`[AuthProvider] Role for UID ${user.uid} found via query fallback: ${role}`);
+            console.log(`[AuthProvider] SUCCESS (Method: Fallback): Role for UID ${user.uid} is "${role}" (found in doc ID ${userDoc.id}).`);
             return role;
         }
     }
-
-    console.warn(`[AuthProvider] No teacher document found for UID ${user.uid} via direct lookup or query. This user has no role in the system.`);
+    console.log(`[AuthProvider] INFO (Method: Fallback): No document found with a 'uid' field matching the user's UID.`);
+    
+    // --- Final Result: No Role Found ---
+    console.warn(`[AuthProvider] FAILED: No role found for UID ${user.uid} after checking all methods. User will be denied access to protected portals.`);
     return null;
 
   } catch (error) {
-    console.error(`[AuthProvider] Firestore error checking role for UID ${user.uid}:`, error);
+    console.error(`[AuthProvider] FATAL (Firestore Error): An error occurred during role lookup for UID ${user.uid}. This may be a permissions issue in your Firestore security rules.`, error);
     return null;
   }
 }

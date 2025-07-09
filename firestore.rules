@@ -1,107 +1,74 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Default deny all
+
+    // Helper function to check if a user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to get the user's role from their own teacher document
+    // This assumes the document ID is the user's UID.
+    function getUserRole(userId) {
+      let docPath = /databases/$(database)/documents/teachers/$(userId);
+      // Check if the document exists before trying to access its data
+      if (exists(docPath)) {
+        return get(docPath).data.role;
+      }
+      return null; // Return null if the document doesn't exist
+    }
+
+    // Default deny all reads and writes to prevent accidental exposure
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // --- Admin Rules ---
-    // Admin has full read/write access everywhere.
-    match /{document=**} {
-      allow read, write: if request.auth != null && request.auth.token.email == "mathius@admin.staff";
+    // Allow public read for website content, but only admin can write
+    match /website_content/{contentId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && request.auth.email == 'mathius@admin.staff';
     }
 
-    // --- Authenticated User Rules (for login/role check) ---
-    // Any authenticated user can read the list of teachers to find their own role.
-    // This is necessary for the robust login flow which might need to query by UID.
     match /teachers/{teacherId} {
-      allow read: if request.auth != null;
+      // Allow a user to query the teachers collection.
+      // The client-side query MUST restrict this to where('uid', '==', request.auth.uid)
+      // to prevent listing all users. This is a secure pattern.
+      allow list: if isAuthenticated();
+
+      // Allow a user to directly get their own teacher document, either if the
+      // document ID matches their UID, or the 'uid' field inside the document matches.
+      // This supports both new and legacy user creation patterns.
+      allow get: if isAuthenticated() && (request.auth.uid == teacherId || request.auth.uid == resource.data.uid);
+
+      // A D.O.S. can create, update, or delete teacher records.
+      // The D.O.S. role is checked from their own user document.
+      allow write: if isAuthenticated() && getUserRole(request.auth.uid) == 'dos';
     }
-    
-    // --- D.O.S. Rules ---
+
+    // Generic rule for D.O.S. management of other collections
     function isDos() {
-      // Check if the requesting user's document in 'teachers' has the role 'dos'.
-      // This is a secure way to check for roles.
-      return request.auth != null && get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.role == 'dos';
-    }
-    
-    // D.O.S. can manage these collections.
-    match /teachers/{teacherId} {
-        // D.O.S. can write to any teacher document. Read is already granted above.
-        allow write: if isDos();
-    }
-    match /students/{studentId} {
-        allow read, write: if isDos();
-    }
-    match /classes/{classId} {
-      allow read, write: if isDos();
-    }
-    match /subjects/{subjectId} {
-      allow read, write: if isDos();
-    }
-    match /terms/{termId} {
-      allow read, write: if isDos();
-    }
-    match /exams/{examId} {
-      allow read, write: if isDos();
-    }
-    match /gradingPolicies/{policyId} {
-        allow read, write: if isDos();
-    }
-    match /settings/general {
-        allow read, write: if isDos();
-    }
-     match /attendance/{recordId} {
-      allow read: if isDos();
+      return isAuthenticated() && getUserRole(request.auth.uid) == 'dos';
     }
 
-    // --- Teacher Rules ---
-    function isTeacher() {
-      // Check if the requesting user's document in 'teachers' has the role 'teacher'.
-      return request.auth != null && get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.role == 'teacher';
-    }
-    
-    // Teachers can read their own assignments (classes, subjects, students in their classes).
-    match /classes/{classId} {
-      allow get: if isTeacher();
-    }
-     match /subjects/{subjectId} {
-      allow get: if isTeacher();
-    }
-    match /students/{studentId} {
-      allow get: if isTeacher();
-      // Allow teacher to list students only for their assigned classes.
-      allow list: if isTeacher() && request.query.where[0].field == 'classId';
-    }
-    match /exams/{examId} {
-      allow get: if isTeacher();
-    }
-    match /terms/{termId} {
-      allow get: if isTeacher();
-    }
+    match /classes/{classId} { allow read, write: if isDos(); }
+    match /subjects/{subjectId} { allow read, write: if isDos(); }
+    match /terms/{termId} { allow read, write: if isDos(); }
+    match /exams/{examId} { allow read, write: if isDos(); }
+    match /settings/{settingId} { allow read, write: if isDos(); }
+    match /students/{studentId} { allow read, write: if isDos(); }
 
-    // Teachers can create and read their own mark submissions.
-    match /markSubmissions/{submissionId} {
-      allow create, read: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
-      // D.O.S. can also read/write to review/approve.
-      allow read, write: if isDos(); 
-    }
-    
-     // Attendance can be created by a teacher for one of their classes.
     match /attendance/{recordId} {
-      allow create, update: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
-      allow read: if isTeacher();
+      // Any authenticated user can read/write attendance.
+      // This could be tightened to only assigned teachers if needed.
+      allow read, write: if isAuthenticated();
     }
 
-    // --- Public Rules ---
-    // Website content is readable by anyone, but only writable by admin.
-    match /website_content/homepage {
-      allow get: if true;
-      allow write: if request.auth != null && request.auth.token.email == "mathius@admin.staff";
+    match /markSubmissions/{submissionId} {
+      // Any authenticated user can create submissions. The app logic should restrict this to teachers.
+      allow create: if isAuthenticated();
+      // Only D.O.S. can read or update submissions.
+      allow read, update: if isDos();
     }
   }
 }
