@@ -1,0 +1,29 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Website content is public.
+    match /website_content/{docId} {
+      allow read: if true;
+      allow write: if false; // Writes must be from server action.
+    }
+
+    // Teachers collection MUST be readable by any authenticated user for the
+    // login/role-check process to work. This is safe because the application
+    // logic only ever fetches the current user's role.
+    match /teachers/{userId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Writes must be from server action.
+    }
+    
+    // For all other collections, default to denying client access.
+    // All data access should go through trusted server-side actions,
+    // which use Admin privileges and bypass these rules. This is a
+    // secure-by-default posture.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -25,9 +25,11 @@ export async function createTeacher(teacherData: Omit<Teacher, 'id' | 'subjectsA
       displayName: teacherData.name,
       emailVerified: true, // Assuming D.O.S. is creating trusted users
     });
+    
+    // Set custom claims for the new user for modern, fast role checking
+    await adminAuth.setCustomUserClaims(userRecord.uid, { role: teacherData.role });
 
     // 2. Create teacher document in Firestore with the Auth UID
-    // The 'uid' field is now redundant if the doc ID is the UID, but we keep it for query compatibility.
     const teacherPayload: Omit<Teacher, 'id' | 'password'> = {
       uid: userRecord.uid,
       name: teacherData.name,
@@ -36,7 +38,6 @@ export async function createTeacher(teacherData: Omit<Teacher, 'id' | 'subjectsA
       subjectsAssigned: [], // Initialize with empty array
     };
     
-    // We explicitly set the document ID to be the same as the Auth UID for easy lookup
     const teacherRef = doc(db, "teachers", userRecord.uid);
     await setDoc(teacherRef, teacherPayload);
 
@@ -107,6 +108,11 @@ export async function updateTeacher(teacherId: string, teacherData: Partial<Omit
     
     if(Object.keys(authUpdatePayload).length > 0) {
         await adminAuth.updateUser(teacherId, authUpdatePayload);
+    }
+
+    // Update custom claims if role has changed
+    if (teacherData.role) {
+      await adminAuth.setCustomUserClaims(teacherId, { role: teacherData.role });
     }
     
     revalidatePath(`/dos/teachers`);
