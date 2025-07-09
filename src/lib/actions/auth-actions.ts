@@ -15,47 +15,60 @@ const ADMIN_EMAIL = "mathius@admin.staff";
  */
 export async function getAndSyncUserRole(uid: string): Promise<string | null> {
   if (!uid) {
+    console.warn("[AuthAction] getAndSyncUserRole called with invalid UID.");
     return null;
   }
 
   try {
-    // Get user details from Firebase Auth to check email and existing claims
+    console.log(`[AuthAction] Checking role for UID: ${uid}`);
     const userRecord = await adminAuth.getUser(uid);
     const currentUserClaims = userRecord.customClaims;
     let role: string | null = null;
+    
+    const userEmail = userRecord.email?.trim();
 
     // 1. Check for Admin role by email
-    if (userRecord.email === ADMIN_EMAIL) {
+    if (userEmail && userEmail === ADMIN_EMAIL) {
+      console.log(`[AuthAction] User ${uid} identified as ADMIN via email.`);
       role = 'admin';
     } else {
       // 2. If not admin, check for Teacher/D.O.S. role in Firestore
+      console.log(`[AuthAction] User ${uid} is not admin, checking Firestore 'teachers' collection.`);
       const userDocRef = doc(db, "teachers", uid);
       const userDocSnap = await getDoc(userDocRef);
 
       if (userDocSnap.exists()) {
         const userData = userDocSnap.data();
+        console.log(`[AuthAction] Found Firestore doc for ${uid} with role: ${userData.role}`);
         // Ensure the role from Firestore is either 'dos' or 'teacher'
         if (userData.role === 'dos' || userData.role === 'teacher') {
             role = userData.role;
+        } else {
+            console.warn(`[AuthAction] User ${uid} has an invalid role in Firestore: '${userData.role}'`);
         }
+      } else {
+          console.log(`[AuthAction] No Firestore document found for user ${uid} in 'teachers' collection.`);
       }
     }
 
     // 3. Sync the determined role to custom claims if it's different
     if (role) {
-      if (!currentUserClaims || currentUserClaims.role !== role) {
-        console.log(`Syncing role for UID ${uid}. Old role: ${currentUserClaims?.role}, New role: ${role}`);
+      if (currentUserClaims?.role !== role) {
+        console.log(`[AuthAction] Syncing role for UID ${uid}. Old role: ${currentUserClaims?.role}, New role: ${role}`);
         await adminAuth.setCustomUserClaims(uid, { ...currentUserClaims, role });
+      } else {
+         console.log(`[AuthAction] Role for UID ${uid} is already synced as '${role}'. No update needed.`);
       }
+      console.log(`[AuthAction] Returning role '${role}' for UID ${uid}.`);
       return role;
     }
     
     // If no role was determined, return null
-    console.warn(`No valid role ('admin', 'dos', 'teacher') found for user ${uid} (${userRecord.email}).`);
+    console.warn(`[AuthAction] No valid role ('admin', 'dos', 'teacher') found for user ${uid} (${userRecord.email}). Returning null.`);
     return null;
 
   } catch (error) {
-    console.error(`Error getting/syncing role for UID ${uid}:`, error);
+    console.error(`[AuthAction] CRITICAL ERROR in getAndSyncUserRole for UID ${uid}:`, error);
     return null;
   }
 }

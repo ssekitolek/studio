@@ -1,4 +1,3 @@
-
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
@@ -22,18 +21,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setLoading(true);
       if (user) {
         setUser(user);
-        const tokenResult = await user.getIdTokenResult(true);
-        const claimsRole = tokenResult.claims.role as string | undefined;
-
-        if (claimsRole) {
-          setRole(claimsRole);
-        } else {
-          // If no claim, try to sync from Firestore. This is a self-healing mechanism.
-          const firestoreRole = await getAndSyncUserRole(user.uid);
-          setRole(firestoreRole);
-        }
+        // Always get the authoritative role from the server on login/refresh.
+        // This function also ensures the custom claim is up-to-date.
+        const serverRole = await getAndSyncUserRole(user.uid);
+        setRole(serverRole);
       } else {
         setUser(null);
         setRole(null);
