@@ -71,6 +71,7 @@ export async function getTeacherById(teacherId: string): Promise<Teacher | null>
         subjectsAssigned: data.subjectsAssigned || [],
       } as Teacher;
     }
+    console.warn(`[getTeacherById] Teacher document not found for ID: ${teacherId}`);
     return null;
   } catch (error) {
     console.error(`Error fetching teacher ${teacherId}:`, error);
