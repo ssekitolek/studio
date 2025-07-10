@@ -30,7 +30,9 @@ export default function TeacherAssignmentsPage() {
         getTeachers(),
         getClasses(),
       ]);
-      setAllTeachers(teachersData);
+      // Filter out any user with the 'dos' role
+      const filteredTeachers = teachersData.filter(t => t.role !== 'dos');
+      setAllTeachers(filteredTeachers);
       setAllClasses(classesData);
     } catch (error) {
       toast({ title: "Error", description: "Failed to load initial data for assignments.", variant: "destructive" });
