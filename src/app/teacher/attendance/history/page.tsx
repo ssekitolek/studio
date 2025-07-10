@@ -2,9 +2,8 @@
 "use client";
 
 import { useState, useEffect, useTransition, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import Link from "next/link";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -21,11 +20,10 @@ import { StatCard } from "@/components/shared/StatCard";
 
 import { getClassesForTeacher, getStudentsForClass, getAttendanceHistory } from "@/lib/actions/teacher-actions";
 import type { ClassInfo, Student, AttendanceHistoryData } from "@/lib/types";
-import { isInvalidId } from "@/lib/utils";
 
 export default function AttendanceHistoryPage() {
   const { toast } = useToast();
-  const searchParams = useSearchParams();
+  const { user, loading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [isFetchingData, setIsFetchingData] = useState(true);
   const [isTransitioning, startTransition] = useTransition();
@@ -37,7 +35,6 @@ export default function AttendanceHistoryPage() {
   
   // UI State
   const [pageError, setPageError] = useState<string | null>(null);
-  const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
 
   // Filter state
   const [selectedClassId, setSelectedClassId] = useState<string>("");
@@ -49,19 +46,19 @@ export default function AttendanceHistoryPage() {
 
   // Initial data loading for filters
   useEffect(() => {
-    const teacherId = searchParams.get("teacherId");
-    if (isInvalidId(teacherId)) {
-      setPageError(`Teacher ID invalid or missing from URL (received: '${teacherId}'). Cannot load data.`);
+    if (authLoading) return; // Wait for auth state to be determined
+
+    if (!user) {
+      setPageError("You must be logged in to view this page.");
       setIsFetchingData(false);
       setIsLoading(false);
       return;
     }
-    setCurrentTeacherId(teacherId);
 
     async function loadInitialData() {
       setIsFetchingData(true);
       try {
-        const teacherClasses = await getClassesForTeacher(teacherId!);
+        const teacherClasses = await getClassesForTeacher(user!.uid);
         setClasses(teacherClasses);
         if (teacherClasses.length > 0) {
           setSelectedClassId(teacherClasses[0].id);
@@ -76,7 +73,7 @@ export default function AttendanceHistoryPage() {
       }
     }
     loadInitialData();
-  }, [searchParams]);
+  }, [user, authLoading]);
 
   // Load students when a class is selected
   useEffect(() => {
@@ -196,7 +193,7 @@ export default function AttendanceHistoryPage() {
   };
 
 
-  if (isFetchingData) {
+  if (isFetchingData || authLoading) {
     return <div className="flex justify-center items-center p-8"><Loader2 className="animate-spin h-8 w-8 text-primary" /><p className="ml-2">Loading initial data...</p></div>
   }
 

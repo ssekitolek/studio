@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -17,27 +17,21 @@ import type { ClassTeacherData } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { StatCard } from "@/components/shared/StatCard";
-import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { isInvalidId } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-
 
 export default function ClassManagementPage() {
   const { toast } = useToast();
-  const searchParams = useSearchParams();
-
+  const { user, loading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [managementData, setManagementData] = useState<ClassTeacherData[]>([]);
   const [pageError, setPageError] = useState<string | null>(null);
 
   useEffect(() => {
-    const teacherIdFromUrl = searchParams?.get("teacherId");
+    if (authLoading) return; // Wait for auth state to be determined
 
-    if (isInvalidId(teacherIdFromUrl)) {
-      const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login again to view your classes.`;
-      toast({ title: "Access Denied", description: msg, variant: "destructive" });
-      setPageError(msg);
+    if (!user) {
+      setPageError("You must be logged in to view this page.");
       setIsLoading(false);
       return;
     }
@@ -66,9 +60,9 @@ export default function ClassManagementPage() {
         setIsLoading(false);
       }
     }
-    fetchData(teacherIdFromUrl!);
+    fetchData(user.uid);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [user, authLoading]);
 
   if (pageError) {
     return (
@@ -85,7 +79,7 @@ export default function ClassManagementPage() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || authLoading) {
     return (
       <div className="space-y-6">
         <PageHeader title="Class Management" description="View and manage the classes you are responsible for." icon={ClipboardList} />
@@ -212,7 +206,7 @@ export default function ClassManagementPage() {
                             <CardDescription>A summary of student attendance for today.</CardDescription>
                           </div>
                           <Button asChild>
-                            <Link href={`/teacher/attendance?teacherId=${searchParams.get('teacherId')}&teacherName=${searchParams.get('teacherName')}`}>
+                            <Link href={`/teacher/attendance`}>
                               <ClipboardCheck className="mr-2"/> Take or Update Attendance
                             </Link>
                           </Button>

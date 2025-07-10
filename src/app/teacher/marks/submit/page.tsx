@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -17,7 +17,7 @@ import { BookOpenCheck, Loader2, AlertTriangle, CheckCircle, ShieldAlert, FileWa
 import { getTeacherAssessments, getStudentsForAssessment, submitMarks } from "@/lib/actions/teacher-actions";
 import type { Student, AnomalyExplanation } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { useSearchParams } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
 
 const markSchema = z.object({
@@ -46,8 +46,7 @@ const ALL_STREAMS_VALUE = "_ALL_";
 
 export default function SubmitMarksPage() {
   const { toast } = useToast();
-  const searchParams = useSearchParams();
-
+  const { user, loading: authLoading } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [isLoadingAssessments, setIsLoadingAssessments] = useState(true);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
@@ -56,7 +55,6 @@ export default function SubmitMarksPage() {
   const [anomalies, setAnomalies] = useState<AnomalyExplanation[]>([]);
   const [showAnomalyWarning, setShowAnomalyWarning] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
-  const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
   const [availableStreams, setAvailableStreams] = useState<string[]>([]);
   const [selectedStream, setSelectedStream] = useState<string>(ALL_STREAMS_VALUE);
 
@@ -73,35 +71,22 @@ export default function SubmitMarksPage() {
   });
 
   useEffect(() => {
-    if (!searchParams) {
-        setPageError("Could not access URL parameters. Please try reloading or logging in again.");
-        setIsLoadingAssessments(false);
-        toast({ title: "Error", description: "URL parameters unavailable.", variant: "destructive" });
-        return;
-    }
+    if (authLoading) return; // Wait for auth state to be determined
 
-    const teacherIdFromUrl = searchParams.get("teacherId");
-
-    if (!teacherIdFromUrl || teacherIdFromUrl.trim() === "" || teacherIdFromUrl.toLowerCase() === "undefined" || teacherIdFromUrl === "undefined") {
-      const msg = `Teacher ID invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login again to submit marks.`;
-      toast({ title: "Access Denied", description: msg, variant: "destructive" });
-      setPageError(msg);
-      setCurrentTeacherId(null);
+    if (!user) {
+      setPageError("You must be logged in to view this page.");
       setIsLoadingAssessments(false);
       return;
     }
 
-    setCurrentTeacherId(teacherIdFromUrl);
-    setPageError(null); // Clear previous errors if ID is now valid
+    setPageError(null); 
 
-    async function fetchAssessments(validTeacherId: string) {
+    async function fetchAssessments(teacherId: string) {
       setIsLoadingAssessments(true);
       try {
-        console.log(`[SubmitMarksPage] Fetching assessments for teacherId: ${validTeacherId}`);
-        const assessmentData = await getTeacherAssessments(validTeacherId);
-        console.log(`[SubmitMarksPage] Received ${assessmentData.length} assessments:`, assessmentData);
+        const assessmentData = await getTeacherAssessments(teacherId);
         setAssessments(assessmentData);
-        if (assessmentData.length === 0 && !pageError) { 
+        if (assessmentData.length === 0) { 
             toast({
                 title: "No Assessments Available",
                 description: "No pending assessments found for your assignments in the current term. This could be due to system settings (like current term) not being configured by the D.O.S., or all marks have been submitted and are pending/approved. Please check 'View Submissions' or contact administration if this is unexpected.",
@@ -113,22 +98,21 @@ export default function SubmitMarksPage() {
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
         toast({ title: "Error Loading Assessments", description: errorMessage, variant: "destructive" });
         setPageError(`Failed to load assessments: ${errorMessage}`);
-        console.error(`[SubmitMarksPage] Error fetching assessments for teacherId ${validTeacherId}:`, error);
       } finally {
         setIsLoadingAssessments(false);
       }
     }
-    fetchAssessments(teacherIdFromUrl);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, toast]);
+    fetchAssessments(user.uid);
+  }, [user, authLoading, toast]);
 
   useEffect(() => {
     async function fetchStudentsForSelectedAssessment() {
-      if (form.getValues("assessmentId") && currentTeacherId) {
+      const assessmentId = form.getValues("assessmentId");
+      if (assessmentId) {
         setIsLoadingStudents(true);
         const streamToFetch = selectedStream === ALL_STREAMS_VALUE ? undefined : selectedStream;
         try {
-          const students: Student[] = await getStudentsForAssessment(form.getValues("assessmentId"), streamToFetch);
+          const students: Student[] = await getStudentsForAssessment(assessmentId, streamToFetch);
           const marksData = students.map(student => ({
             studentId: student.studentIdNumber,
             studentName: `${student.firstName} ${student.lastName}`,
@@ -148,7 +132,7 @@ export default function SubmitMarksPage() {
       }
     }
     fetchStudentsForSelectedAssessment();
-  }, [form.getValues("assessmentId"), selectedStream, currentTeacherId, replace, toast]);
+  }, [form.getValues("assessmentId"), selectedStream, replace, toast]);
 
   const handleAssessmentChange = async (assessmentId: string) => {
     form.setValue("assessmentId", assessmentId);
@@ -160,11 +144,9 @@ export default function SubmitMarksPage() {
 
     if (assessmentId) {
       const classId = assessmentId.split('_')[1];
-      // This is brittle. A better way would be to fetch class info.
-      // For now, let's assume we can't easily get streams without another action.
       // This part is difficult without changing the shape of getTeacherAssessments.
-      // Let's defer stream population for now and focus on filtering.
-      setAvailableStreams([]); // This needs a proper implementation.
+      // For now, stream filtering will rely on refetching students.
+      setAvailableStreams([]); 
       setSelectedStream(ALL_STREAMS_VALUE);
     } else {
       replace([]);
@@ -176,7 +158,7 @@ export default function SubmitMarksPage() {
         toast({ title: "Error", description: "No assessment selected.", variant: "destructive"});
         return;
     }
-    if (!currentTeacherId) {
+    if (!user) {
         toast({ title: "Authentication Error", description: "Teacher ID is missing or invalid. Please re-login.", variant: "destructive" });
         setPageError("Teacher ID is missing. Please login again.");
         return;
@@ -186,7 +168,6 @@ export default function SubmitMarksPage() {
         studentId: m.studentId,
         score: m.score
     }));
-
 
     if (marksToSubmit.length === 0) {
         toast({ title: "No marks entered", description: "Please enter marks for at least one student.", variant: "destructive"});
@@ -215,12 +196,10 @@ export default function SubmitMarksPage() {
 
     startTransition(async () => {
       try {
-        console.log(`[SubmitMarksPage] Submitting marks for teacherId: ${currentTeacherId}, assessmentId (composite): ${data.assessmentId}`);
-        const result = await submitMarks(currentTeacherId, {
+        const result = await submitMarks(user.uid, {
           assessmentId: data.assessmentId,
           marks: marksToSubmit as Array<{ studentId: string; score: number | null }>,
         });
-        console.log(`[SubmitMarksPage] Submission result for assessmentId ${data.assessmentId}:`, result);
 
         if (result.success) {
           if (result.anomalies?.hasAnomalies) {
@@ -243,15 +222,13 @@ export default function SubmitMarksPage() {
             setAnomalies([]);
             setShowAnomalyWarning(false);
             
-            if(currentTeacherId) {
+            if(user) {
                 setIsLoadingAssessments(true);
-                console.log(`[SubmitMarksPage] Re-fetching assessments for teacherId: ${currentTeacherId} after successful submission.`);
-                const updatedAssessments = await getTeacherAssessments(currentTeacherId);
+                const updatedAssessments = await getTeacherAssessments(user.uid);
                 setAssessments(updatedAssessments);
                 setSelectedAssessment(null); 
                 form.reset({ assessmentId: "", marks: [] }); 
                 setIsLoadingAssessments(false);
-                console.log(`[SubmitMarksPage] Updated assessments list has ${updatedAssessments.length} items.`);
                 if (updatedAssessments.length === 0) {
                     toast({ title: "All Assessments Submitted", description: "No more pending assessments for this term.", variant: "default"});
                 }
@@ -263,7 +240,6 @@ export default function SubmitMarksPage() {
       } catch (error) {
         const e = error as Error;
         toast({ title: "Submission Failed", description: e.message || "An unexpected error occurred.", variant: "destructive" });
-        console.error(`[SubmitMarksPage] Error during submission:`, error);
       }
     });
   };
@@ -315,11 +291,11 @@ export default function SubmitMarksPage() {
                       <Select
                           onValueChange={(value) => handleAssessmentChange(value)}
                           value={field.value}
-                          disabled={isLoadingAssessments || !currentTeacherId}
+                          disabled={isLoadingAssessments || !user}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder={!currentTeacherId ? "Teacher ID missing" : isLoadingAssessments ? "Loading assessments..." : "Select an assessment"} />
+                            <SelectValue placeholder={!user ? "Teacher ID missing" : isLoadingAssessments ? "Loading assessments..." : "Select an assessment"} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -454,7 +430,7 @@ export default function SubmitMarksPage() {
             <div className="flex justify-end">
               <Button
                 type="submit"
-                disabled={isPending || isLoadingStudents || isLoadingAssessments || !currentTeacherId}
+                disabled={isPending || isLoadingStudents || isLoadingAssessments || !user}
                 size="lg"
               >
                 {isPending ? (

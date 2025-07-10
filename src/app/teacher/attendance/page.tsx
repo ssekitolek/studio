@@ -5,7 +5,7 @@ import { useState, useEffect, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useSearchParams } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -23,8 +23,7 @@ import { ClipboardCheck, Loader2, AlertTriangle, Check, UserCheck, History } fro
 import { ToastAction } from "@/components/ui/toast";
 
 import { getClassesForTeacher, getStudentsForClass, saveAttendance } from "@/lib/actions/teacher-actions";
-import type { ClassInfo, Student, StudentAttendanceInput } from "@/lib/types";
-import { isInvalidId } from "@/lib/utils";
+import type { ClassInfo, Student } from "@/lib/types";
 
 const studentAttendanceSchema = z.object({
   studentId: z.string(),
@@ -43,14 +42,12 @@ const ALL_STREAMS_VALUE = "_ALL_";
 
 export default function TakeAttendancePage() {
   const { toast } = useToast();
-  const searchParams = useSearchParams();
-
+  const { user, loading: authLoading } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState(true);
   const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [pageError, setPageError] = useState<string | null>(null);
-  const [currentTeacherId, setCurrentTeacherId] = useState<string | null>(null);
   const [availableStreams, setAvailableStreams] = useState<string[]>([]);
   const [selectedStream, setSelectedStream] = useState<string>(ALL_STREAMS_VALUE);
 
@@ -73,17 +70,17 @@ export default function TakeAttendancePage() {
   }, [selectedClassId, classes]);
 
   useEffect(() => {
-    const teacherIdFromUrl = searchParams.get("teacherId");
-    if (isInvalidId(teacherIdFromUrl)) {
-      setPageError(`Teacher ID is invalid or missing from URL (received: '${teacherIdFromUrl}'). Please login again.`);
+    if (authLoading) return; // Wait for auth state to be determined
+
+    if (!user) {
+      setPageError("You must be logged in to view this page.");
       setIsLoading(false);
       return;
     }
-    setCurrentTeacherId(teacherIdFromUrl);
 
     async function fetchClasses() {
       try {
-        const teacherClasses = await getClassesForTeacher(teacherIdFromUrl!);
+        const teacherClasses = await getClassesForTeacher(user!.uid);
         setClasses(teacherClasses);
         if (teacherClasses.length === 0) {
           setPageError("You are not assigned as a Class Teacher for any class.");
@@ -95,7 +92,7 @@ export default function TakeAttendancePage() {
       }
     }
     fetchClasses();
-  }, [searchParams]);
+  }, [user, authLoading]);
 
   useEffect(() => {
     async function fetchStudents() {
@@ -128,19 +125,15 @@ export default function TakeAttendancePage() {
     setValue("students", updatedStudents, { shouldDirty: true });
   }
 
-  const attendanceHistoryLink = currentTeacherId 
-    ? `/teacher/attendance/history?teacherId=${encodeURIComponent(currentTeacherId)}&teacherName=${encodeURIComponent(searchParams.get("teacherName") || "Teacher")}`
-    : "#";
-
   const onSubmit = (data: AttendanceFormValues) => {
-    if (!currentTeacherId) {
+    if (!user) {
       toast({ title: "Error", description: "Teacher ID not found.", variant: "destructive" });
       return;
     }
 
     startTransition(async () => {
       const result = await saveAttendance({
-        teacherId: currentTeacherId,
+        teacherId: user.uid,
         classId: data.classId,
         date: data.date.toISOString().split('T')[0], // YYYY-MM-DD
         records: data.students,
@@ -152,7 +145,7 @@ export default function TakeAttendancePage() {
             description: `Attendance for ${format(data.date, "PPP")} has been saved.`,
             action: (
               <ToastAction altText="View History" asChild>
-                <Link href={attendanceHistoryLink}>View History</Link>
+                <Link href="/teacher/attendance/history">View History</Link>
               </ToastAction>
             ),
         });
@@ -161,6 +154,17 @@ export default function TakeAttendancePage() {
       }
     });
   };
+
+  if (authLoading || isLoading) {
+     return (
+      <div className="space-y-6">
+        <PageHeader title="Take Attendance" description="Record daily student attendance." icon={ClipboardCheck} />
+        <div className="flex justify-center items-center h-48">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
 
   if (pageError) {
     return (
@@ -182,8 +186,8 @@ export default function TakeAttendancePage() {
         description="Record daily student attendance for your classes." 
         icon={ClipboardCheck} 
         actionButton={
-            <Button variant="outline" asChild disabled={!currentTeacherId}>
-                <Link href={attendanceHistoryLink}>
+            <Button variant="outline" asChild>
+                <Link href="/teacher/attendance/history">
                     <History className="mr-2 h-4 w-4" /> View History
                 </Link>
             </Button>
