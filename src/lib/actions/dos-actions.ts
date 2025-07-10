@@ -141,7 +141,7 @@ export async function updateTeacherAssignments(
   teacherId: string, // This is the Auth UID and Firestore Doc ID
   data: {
     classTeacherForClassIds: string[];
-    specificSubjectAssignments: Array<{ classId: string; subjectId: string; examIds: string[] }>;
+    specificSubjectAssignments: Array<{ subjectId: string; classIds: string[] }>;
   }
 ): Promise<{ success: boolean; message: string }> {
   if (!db) {
@@ -149,18 +149,15 @@ export async function updateTeacherAssignments(
   }
 
   const validSpecificAssignments = Array.isArray(data.specificSubjectAssignments)
-  ? data.specificSubjectAssignments.filter(
-      (assignment) =>
-        assignment &&
-        typeof assignment.classId === 'string' &&
-        assignment.classId.trim() !== '' &&
-        typeof assignment.subjectId === 'string' &&
-        assignment.subjectId.trim() !== '' &&
-        Array.isArray(assignment.examIds) &&
-        assignment.examIds.every(id => typeof id === 'string' && id.trim() !== '') &&
-        assignment.examIds.length > 0
-    ).map(a => ({ classId: a.classId, subjectId: a.subjectId, examIds: a.examIds }))
-  : [];
+    ? data.specificSubjectAssignments.filter(
+        (assignment) =>
+          assignment &&
+          typeof assignment.subjectId === 'string' &&
+          assignment.subjectId.trim() !== '' &&
+          Array.isArray(assignment.classIds) &&
+          assignment.classIds.every(id => typeof id === 'string' && id.trim() !== '')
+      ).map(a => ({ subjectId: a.subjectId, classIds: a.classIds }))
+    : [];
 
   try {
     await runTransaction(db, async (transaction) => {
@@ -172,8 +169,6 @@ export async function updateTeacherAssignments(
 
       transaction.update(teacherRef, { subjectsAssigned: validSpecificAssignments });
       
-      const teacherDoc = await getTeacherById(teacherId);
-
       const classesQuery = query(collection(db, "classes"));
       const classesSnapshot = await getDocs(classesQuery);
 
@@ -184,12 +179,12 @@ export async function updateTeacherAssignments(
         // If this class is in the list to be assigned to the current teacher
         if (data.classTeacherForClassIds.includes(classDoc.id)) {
           // And it's not already assigned to them, update it.
-          if (currentClassTeacherId !== teacherDoc?.id) {
-            transaction.update(classRef, { classTeacherId: teacherDoc?.id });
+          if (currentClassTeacherId !== teacherId) {
+            transaction.update(classRef, { classTeacherId: teacherId });
           }
         } else { // If this class is NOT in the list
           // And it IS currently assigned to this teacher, unassign it.
-          if (currentClassTeacherId === teacherDoc?.id) {
+          if (currentClassTeacherId === teacherId) {
             transaction.update(classRef, { classTeacherId: null });
           }
         }
@@ -850,29 +845,9 @@ export async function deleteExam(examId: string): Promise<{ success: boolean; me
       });
     }
 
-    // Remove this examId from any Teacher's subjectsAssigned.examIds array
-    const teachersRef = collection(db, "teachers");
-    const teachersSnapshot = await getDocs(teachersRef);
-    teachersSnapshot.forEach(teacherDoc => {
-      const teacherData = teacherDoc.data() as Teacher;
-      if (teacherData.subjectsAssigned && teacherData.subjectsAssigned.length > 0) {
-        let wasModified = false;
-        const newSubjectsAssigned = teacherData.subjectsAssigned.map(assignment => {
-          if (assignment.examIds && assignment.examIds.includes(examId)) {
-            wasModified = true;
-            return {
-              ...assignment,
-              examIds: assignment.examIds.filter(id => id !== examId)
-            };
-          }
-          return assignment;
-        }).filter(assignment => assignment.examIds.length > 0); 
-
-        if (wasModified) {
-          batch.update(teacherDoc.ref, { subjectsAssigned: newSubjectsAssigned });
-        }
-      }
-    });
+    // This logic is now obsolete due to the new assignment model.
+    // Kept empty to avoid breaking the call signature if needed elsewhere, but can be removed.
+    // await updateDoc for teachers is not needed here anymore.
 
     // Finally, delete the exam itself
     const examRef = doc(db, "exams", examId);

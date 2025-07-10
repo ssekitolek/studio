@@ -8,7 +8,7 @@ export interface Teacher {
   email: string;
   role: 'admin' | 'dos' | 'teacher';
   password?: string; // This should only be used for creation/update, not stored in Firestore
-  subjectsAssigned: Array<{ classId: string; subjectId: string; examIds:string[] }>;
+  subjectsAssigned: Array<{ subjectId: string; classIds: string[] }>;
 }
 
 export interface Student {
@@ -52,9 +52,10 @@ export interface Exam {
   examDate?: string; // Should be ISO string date e.g., "YYYY-MM-DD"
   maxMarks: number;
   description?: string;
-  classId?: string; // Firestore document ID of the class
+  // An exam can be for a specific subject, but not necessarily a specific class or teacher
   subjectId?: string; // Firestore document ID of the subject
-  teacherId?: string; // Firestore document ID of the teacher
+  classId?: string; // Optional: To narrow down exam to one class
+  teacherId?: string; // Optional: To narrow down exam to one teacher
   stream?: string;
   marksSubmissionDeadline?: string; // Should be ISO string date e.g., "YYYY-MM-DD"
   gradingPolicyId?: string; // The ID of the assigned GradingPolicy
@@ -122,7 +123,7 @@ export interface GradingPolicy {
 
 // For Teacher Dashboard - list of assessments they need to act on
 export interface TeacherDashboardAssignment {
-  id: string; // Composite ID: examDocId_classDocId_subjectDocId
+  id: string; // Composite ID for a specific task, e.g., examId_classId
   className: string;
   subjectName: string;
   examName: string;

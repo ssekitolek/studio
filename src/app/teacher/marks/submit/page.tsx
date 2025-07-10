@@ -14,8 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BookOpenCheck, Loader2, AlertTriangle, CheckCircle, ShieldAlert, FileWarning } from "lucide-react";
-import { getTeacherAssessments, getStudentsForAssessment, submitMarks } from "@/lib/actions/teacher-actions";
-import type { Student, AnomalyExplanation } from "@/lib/types";
+import { getTeacherAssessments, getStudentsForClass, submitMarks, getClassesForTeacher } from "@/lib/actions/teacher-actions";
+import type { Student, AnomalyExplanation, ClassInfo } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
@@ -31,15 +31,17 @@ const markSchema = z.object({
 
 const marksSubmissionSchema = z.object({
   assessmentId: z.string().min(1, "Please select an assessment."),
+  classId: z.string().min(1, "Please select a class for this submission."),
   marks: z.array(markSchema),
 });
 
 type MarksSubmissionFormValues = z.infer<typeof marksSubmissionSchema>;
 
 interface AssessmentOption {
-  id: string; // Composite ID: examDocId_classDocId_subjectDocId
-  name: string; // Human-readable name: Class Name - Subject Name - Exam Name
+  id: string; // Just examDocId
+  name: string; // Human-readable name: Exam Name
   maxMarks: number;
+  subjectId: string;
 }
 
 const ALL_STREAMS_VALUE = "_ALL_";
@@ -52,6 +54,7 @@ export default function SubmitMarksPage() {
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [assessments, setAssessments] = useState<AssessmentOption[]>([]);
   const [selectedAssessment, setSelectedAssessment] = useState<AssessmentOption | null>(null);
+  const [availableClasses, setAvailableClasses] = useState<ClassInfo[]>([]);
   const [anomalies, setAnomalies] = useState<AnomalyExplanation[]>([]);
   const [showAnomalyWarning, setShowAnomalyWarning] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
@@ -62,6 +65,7 @@ export default function SubmitMarksPage() {
     resolver: zodResolver(marksSubmissionSchema),
     defaultValues: {
       assessmentId: "",
+      classId: "",
       marks: [],
     },
   });
@@ -70,29 +74,29 @@ export default function SubmitMarksPage() {
     name: "marks",
   });
 
-  useEffect(() => {
-    if (authLoading) return; // Wait for auth state to be determined
+  const selectedClassId = form.watch("classId");
 
+  useEffect(() => {
+    if (authLoading) return;
     if (!user) {
       setPageError("You must be logged in to view this page.");
       setIsLoadingAssessments(false);
       return;
     }
-
-    setPageError(null); 
+    setPageError(null);
 
     async function fetchAssessments(teacherId: string) {
       setIsLoadingAssessments(true);
       try {
         const assessmentData = await getTeacherAssessments(teacherId);
         setAssessments(assessmentData);
-        if (assessmentData.length === 0) { 
-            toast({
-                title: "No Assessments Available",
-                description: "No pending assessments found for your assignments in the current term. This could be due to system settings (like current term) not being configured by the D.O.S., or all marks have been submitted and are pending/approved. Please check 'View Submissions' or contact administration if this is unexpected.",
-                variant: "default",
-                duration: 10000,
-            });
+        if (assessmentData.length === 0) {
+          toast({
+            title: "No Assessments Available",
+            description: "No pending assessments found for your assignments in the current term.",
+            variant: "default",
+            duration: 10000,
+          });
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
@@ -104,15 +108,45 @@ export default function SubmitMarksPage() {
     }
     fetchAssessments(user.uid);
   }, [user, authLoading, toast]);
+  
+  const handleAssessmentChange = async (assessmentId: string) => {
+    form.reset({ assessmentId, classId: "", marks: [] });
+    const assessment = assessments.find(a => a.id === assessmentId);
+    setSelectedAssessment(assessment || null);
+    setAnomalies([]);
+    setShowAnomalyWarning(false);
+    
+    if (assessment && user) {
+        const teacher = await getTeacherById(user.uid);
+        if(teacher && teacher.subjectsAssigned) {
+            const subjectAssignment = teacher.subjectsAssigned.find(sa => sa.subjectId === assessment.subjectId);
+            if(subjectAssignment) {
+                const allTeacherClasses = await getClassesForTeacher(user.uid, true); // Get all classes, even if not Class Teacher
+                const classesForThisSubject = allTeacherClasses.filter(cls => subjectAssignment.classIds.includes(cls.id));
+                setAvailableClasses(classesForThisSubject);
+            } else {
+                 setAvailableClasses([]);
+            }
+        }
+    } else {
+        setAvailableClasses([]);
+    }
+  };
 
   useEffect(() => {
-    async function fetchStudentsForSelectedAssessment() {
-      const assessmentId = form.getValues("assessmentId");
-      if (assessmentId) {
+    const classInfo = availableClasses.find(c => c.id === selectedClassId);
+    setAvailableStreams(classInfo?.streams || []);
+    setSelectedStream(ALL_STREAMS_VALUE);
+  }, [selectedClassId, availableClasses]);
+
+
+  useEffect(() => {
+    async function fetchStudentsForSelectedClass() {
+      if (selectedClassId) {
         setIsLoadingStudents(true);
         const streamToFetch = selectedStream === ALL_STREAMS_VALUE ? undefined : selectedStream;
         try {
-          const students: Student[] = await getStudentsForAssessment(assessmentId, streamToFetch);
+          const students: Student[] = await getStudentsForClass(selectedClassId, streamToFetch);
           const marksData = students.map(student => ({
             studentId: student.studentIdNumber,
             studentName: `${student.firstName} ${student.lastName}`,
@@ -120,7 +154,7 @@ export default function SubmitMarksPage() {
           }));
           replace(marksData);
           if (students.length === 0) {
-            toast({ title: "No Students Found", description: "No students found for the selected assessment and stream.", variant: "default" });
+            toast({ title: "No Students Found", description: "No students found for the selected class and stream.", variant: "default" });
           }
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : "Unknown error";
@@ -129,29 +163,21 @@ export default function SubmitMarksPage() {
         } finally {
           setIsLoadingStudents(false);
         }
+      } else {
+        replace([]);
       }
     }
-    fetchStudentsForSelectedAssessment();
-  }, [form.getValues("assessmentId"), selectedStream, replace, toast]);
+    fetchStudentsForSelectedClass();
+  }, [selectedClassId, selectedStream, replace, toast]);
+  
+  // Helper function to get teacher document by UID
+  async function getTeacherById(uid: string) {
+    if (!db) return null;
+    const teacherRef = doc(db, "teachers", uid);
+    const teacherSnap = await getDoc(teacherRef);
+    return teacherSnap.exists() ? (teacherSnap.data() as Teacher) : null;
+  }
 
-  const handleAssessmentChange = async (assessmentId: string) => {
-    form.setValue("assessmentId", assessmentId);
-    const assessment = assessments.find(a => a.id === assessmentId);
-    setSelectedAssessment(assessment || null);
-    setAnomalies([]);
-    setShowAnomalyWarning(false);
-    replace([]); // Clear previous students
-
-    if (assessmentId) {
-      const classId = assessmentId.split('_')[1];
-      // This part is difficult without changing the shape of getTeacherAssessments.
-      // For now, stream filtering will rely on refetching students.
-      setAvailableStreams([]); 
-      setSelectedStream(ALL_STREAMS_VALUE);
-    } else {
-      replace([]);
-    }
-  };
 
   const onSubmit = async (data: MarksSubmissionFormValues) => {
     if (!selectedAssessment) {
@@ -159,8 +185,7 @@ export default function SubmitMarksPage() {
         return;
     }
     if (!user) {
-        toast({ title: "Authentication Error", description: "Teacher ID is missing or invalid. Please re-login.", variant: "destructive" });
-        setPageError("Teacher ID is missing. Please login again.");
+        toast({ title: "Authentication Error", description: "Teacher ID is missing. Please re-login.", variant: "destructive" });
         return;
     }
 
@@ -190,14 +215,15 @@ export default function SubmitMarksPage() {
     });
 
     if (invalidScoreFound) {
-      toast({ title: "Invalid Scores", description: "Some scores are outside the valid range. Please correct them.", variant: "destructive" });
+      toast({ title: "Invalid Scores", description: "Some scores are outside the valid range.", variant: "destructive" });
       return;
     }
 
     startTransition(async () => {
       try {
+        const compositeId = `${data.assessmentId}_${data.classId}_${selectedAssessment.subjectId}`;
         const result = await submitMarks(user.uid, {
-          assessmentId: data.assessmentId,
+          assessmentId: compositeId,
           marks: marksToSubmit as Array<{ studentId: string; score: number | null }>,
         });
 
@@ -205,7 +231,7 @@ export default function SubmitMarksPage() {
           if (result.anomalies?.hasAnomalies) {
             toast({
                 title: "Marks Submitted with Warnings",
-                description: "Potential anomalies were detected and have been flagged for D.O.S. review. Your marks have been recorded.",
+                description: "Potential anomalies detected. These have been flagged for D.O.S. review.",
                 variant: "default",
                 action: <ShieldAlert className="text-yellow-500" />,
                 duration: 10000,
@@ -215,25 +241,22 @@ export default function SubmitMarksPage() {
           } else {
             toast({
                 title: "Marks Submitted Successfully!",
-                description: "The D.O.S. has received them and they are pending review.",
+                description: "The D.O.S. has received them for review.",
                 variant: "default",
                 action: <CheckCircle className="text-green-500" />,
             });
             setAnomalies([]);
             setShowAnomalyWarning(false);
-            
-            if(user) {
+          }
+           if(user) {
                 setIsLoadingAssessments(true);
                 const updatedAssessments = await getTeacherAssessments(user.uid);
                 setAssessments(updatedAssessments);
                 setSelectedAssessment(null); 
-                form.reset({ assessmentId: "", marks: [] }); 
+                form.reset({ assessmentId: "", classId: "", marks: [] }); 
+                setAvailableClasses([]);
                 setIsLoadingAssessments(false);
-                if (updatedAssessments.length === 0) {
-                    toast({ title: "All Assessments Submitted", description: "No more pending assessments for this term.", variant: "default"});
-                }
             }
-          }
         } else {
           toast({ title: "Error", description: result.message, variant: "destructive" });
         }
@@ -249,36 +272,24 @@ export default function SubmitMarksPage() {
   if (pageError) {
     return (
       <div className="space-y-6">
-        <PageHeader
-            title="Submit Marks"
-            description="Error accessing this page."
-            icon={BookOpenCheck}
-        />
+        <PageHeader title="Submit Marks" description="Error accessing this page." icon={BookOpenCheck} />
         <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Access Error</AlertTitle>
-            <AlertDescription>
-                {pageError} You can try to <Link href="/login/teacher" className="underline">login again</Link>.
-                If the issue persists, contact administration.
-            </AlertDescription>
+            <AlertDescription>{pageError}</AlertDescription>
         </Alert>
       </div>
     );
   }
 
-
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Submit Marks"
-        description="Enter student marks for the selected assessment."
-        icon={BookOpenCheck}
-      />
+      <PageHeader title="Submit Marks" description="Enter student marks for the selected assessment." icon={BookOpenCheck} />
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Card className="shadow-md">
             <CardHeader>
-              <CardTitle className="font-headline text-xl text-primary">Select Assessment</CardTitle>
+              <CardTitle className="font-headline text-xl text-primary">Select Assessment & Class</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -295,58 +306,58 @@ export default function SubmitMarksPage() {
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder={!user ? "Teacher ID missing" : isLoadingAssessments ? "Loading assessments..." : "Select an assessment"} />
+                            <SelectValue placeholder={!user ? "Teacher ID missing" : isLoadingAssessments ? "Loading..." : "Select an assessment"} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {isLoadingAssessments ? (
-                              <div className="p-4 text-sm text-muted-foreground flex items-center justify-center">
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin"/> Loading...
-                              </div>
-                          ) : assessments.length > 0 ? (
-                              assessments.map(assessment => (
+                           {assessments.map(assessment => (
                               <SelectItem key={assessment.id} value={assessment.id}>
                                   {assessment.name} (Out of {assessment.maxMarks})
                               </SelectItem>
-                              ))
-                          ) : (
-                              <div className="p-4 text-sm text-muted-foreground text-center">
-                                  No pending assessments available. This might be due to missing D.O.S. configurations (e.g., current term), or all marks are submitted and are pending/approved.
-                                  <br />
-                                  Please check "View Submissions" or contact administration if this is unexpected.
-                              </div>
-                          )}
+                            ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <FormItem>
-                  <FormLabel>Stream (Optional)</FormLabel>
-                  <Select
-                    value={selectedStream}
-                    onValueChange={setSelectedStream}
-                    disabled={!selectedAssessment}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Streams" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={ALL_STREAMS_VALUE}>All Streams</SelectItem>
-                      {/* This needs to be populated based on the class from assessmentId */}
-                    </SelectContent>
-                  </Select>
-                </FormItem>
+                 <FormField
+                  control={form.control}
+                  name="classId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Class</FormLabel>
+                      <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          disabled={!selectedAssessment || availableClasses.length === 0}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={!selectedAssessment ? "Select assessment first" : "Select class"} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                           {availableClasses.map(cls => (
+                              <SelectItem key={cls.id} value={cls.id}>
+                                  {cls.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </CardContent>
           </Card>
 
-          {selectedAssessment && (
+          {selectedClassId && (
             <Card className="shadow-md">
               <CardHeader>
-                <CardTitle className="font-headline text-xl text-primary">Enter Marks for {selectedAssessment.name}</CardTitle>
-                <CardDescription>Maximum possible score is {selectedAssessment.maxMarks}. Leave blank if no mark is awarded.</CardDescription>
+                <CardTitle className="font-headline text-xl text-primary">Enter Marks for {availableClasses.find(c=>c.id === selectedClassId)?.name}</CardTitle>
+                <CardDescription>Maximum possible score is {selectedAssessment?.maxMarks}. Leave blank if no mark is awarded.</CardDescription>
               </CardHeader>
               <CardContent>
                 {isLoadingStudents ? (
@@ -402,7 +413,7 @@ export default function SubmitMarksPage() {
                     </Table>
                   </div>
                 ) : (
-                  <p className="text-center text-muted-foreground py-8">No students found for this assessment, or assessment not selected/valid.</p>
+                  <p className="text-center text-muted-foreground py-8">No students found for this class.</p>
                 )}
               </CardContent>
             </Card>
@@ -421,23 +432,14 @@ export default function SubmitMarksPage() {
                     </li>
                   ))}
                 </ul>
-                <p className="mt-2">Your marks have been submitted with these warnings. You can correct the marks and resubmit, or the D.O.S. will review them as is.</p>
               </AlertDescription>
             </Alert>
           )}
 
-          {selectedAssessment && fields.length > 0 && (
+          {selectedClassId && fields.length > 0 && (
             <div className="flex justify-end">
-              <Button
-                type="submit"
-                disabled={isPending || isLoadingStudents || isLoadingAssessments || !user}
-                size="lg"
-              >
-                {isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                )}
+              <Button type="submit" disabled={isPending || isLoadingStudents} size="lg">
+                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
                 Submit Marks
               </Button>
             </div>

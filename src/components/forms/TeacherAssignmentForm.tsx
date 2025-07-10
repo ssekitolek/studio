@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
@@ -17,21 +17,23 @@ import {
 } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
-import { updateTeacherAssignments, getExams, getTeachers } from "@/lib/actions/dos-actions";
-import type { Teacher, ClassInfo, Exam as ExamType } from "@/lib/types";
+import { updateTeacherAssignments, getSubjects, getTeachers } from "@/lib/actions/dos-actions";
+import type { Teacher, ClassInfo, Subject as SubjectType } from "@/lib/types";
 import { Loader2, Save, Users, BookOpen } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const specificSubjectAssignmentSchema = z.object({
-  classId: z.string(),
+const subjectAssignmentSchema = z.object({
   subjectId: z.string(),
-  examIds: z.array(z.string()),
+  classIds: z.array(z.string()),
 });
 
 const teacherAssignmentFormSchema = z.object({
-  classTeacherForClassIds: z.array(z.string()),
-  specificSubjectAssignments: z.array(specificSubjectAssignmentSchema),
+  classTeacherForClassIds: z.array(z.string()).optional(),
+  subjectsAssigned: z.array(subjectAssignmentSchema),
 });
 
 type TeacherAssignmentFormValues = z.infer<typeof teacherAssignmentFormSchema>;
@@ -49,7 +51,7 @@ export function TeacherAssignmentForm({
 }: TeacherAssignmentFormProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = React.useTransition();
-  const [allExams, setAllExams] = React.useState<ExamType[]>([]);
+  const [allSubjects, setAllSubjects] = React.useState<SubjectType[]>([]);
   const [allTeachers, setAllTeachers] = React.useState<Teacher[]>([]);
   const [isLoadingData, setIsLoadingData] = React.useState(true);
 
@@ -57,19 +59,19 @@ export function TeacherAssignmentForm({
     resolver: zodResolver(teacherAssignmentFormSchema),
     defaultValues: {
       classTeacherForClassIds: [],
-      specificSubjectAssignments: [],
+      subjectsAssigned: [],
     },
   });
-  
+
   React.useEffect(() => {
     async function fetchData() {
       setIsLoadingData(true);
       try {
-        const [examsData, teachersData] = await Promise.all([getExams(), getTeachers()]);
-        setAllExams(examsData);
+        const [subjectsData, teachersData] = await Promise.all([getSubjects(), getTeachers()]);
+        setAllSubjects(subjectsData);
         setAllTeachers(teachersData);
       } catch (error) {
-        toast({ title: "Error", description: "Failed to load supporting data (exams, teachers).", variant: "destructive" });
+        toast({ title: "Error", description: "Failed to load subjects.", variant: "destructive" });
       } finally {
         setIsLoadingData(false);
       }
@@ -78,68 +80,32 @@ export function TeacherAssignmentForm({
   }, [toast]);
 
   React.useEffect(() => {
-    form.reset({
-      classTeacherForClassIds: allClasses
-        .filter((cls) => cls.classTeacherId === teacher.id)
-        .map((cls) => cls.id),
-      specificSubjectAssignments: teacher.subjectsAssigned?.map(sa => ({
-        classId: sa.classId,
-        subjectId: sa.subjectId,
-        examIds: Array.isArray(sa.examIds) ? sa.examIds : [] 
-      })) || [],
-    });
-  }, [teacher, allClasses, form]);
-
-
-  const { control, watch, setValue } = form;
-  const specificSubjectAssignments = watch("specificSubjectAssignments");
-
-  const handleSpecificAssignmentChange = (
-    classId: string,
-    subjectId: string,
-    examId: string,
-    checked: boolean
-  ) => {
-    const currentAssignments = (specificSubjectAssignments || []).map(a => ({
-      ...a,
-      examIds: Array.isArray(a.examIds) ? [...a.examIds] : [],
-    }));
-
-    let existingAssignmentEntry = currentAssignments.find(
-      (a) => a.classId === classId && a.subjectId === subjectId
-    );
-
-    if (checked) {
-      if (existingAssignmentEntry) {
-        if (!existingAssignmentEntry.examIds.includes(examId)) {
-          existingAssignmentEntry.examIds.push(examId);
-        }
-      } else {
-        currentAssignments.push({ classId, subjectId, examIds: [examId] });
-      }
-    } else {
-      if (existingAssignmentEntry) {
-        existingAssignmentEntry.examIds = existingAssignmentEntry.examIds.filter(
-          (id) => id !== examId
-        );
-      }
+    if (!isLoadingData) {
+      form.reset({
+        classTeacherForClassIds: allClasses
+          .filter((cls) => cls.classTeacherId === teacher.id)
+          .map((cls) => cls.id),
+        subjectsAssigned: teacher.subjectsAssigned || [],
+      });
     }
-    setValue("specificSubjectAssignments", currentAssignments, { shouldValidate: true, shouldDirty: true });
-  };
+  }, [teacher, allClasses, form, isLoadingData]);
 
+  const { control, setValue, getValues } = form;
+
+  const { fields, append, remove, update } = useFieldArray({
+    control,
+    name: "subjectsAssigned",
+  });
+
+  const assignedSubjectIds = new Set(fields.map(field => field.subjectId));
 
   const onSubmit = (data: TeacherAssignmentFormValues) => {
     startTransition(async () => {
       try {
-        const filteredSpecificAssignments = data.specificSubjectAssignments.filter(
-          assignment => assignment.examIds && assignment.examIds.length > 0
-        );
-        const dataToSubmit = {
-            ...data,
-            specificSubjectAssignments: filteredSpecificAssignments,
-        };
-
-        const result = await updateTeacherAssignments(teacher.id, dataToSubmit);
+        const result = await updateTeacherAssignments(teacher.id, {
+            classTeacherForClassIds: data.classTeacherForClassIds || [],
+            specificSubjectAssignments: data.subjectsAssigned
+        });
         if (result.success) {
           toast({ title: "Success", description: result.message });
           if (onSuccess) onSuccess();
@@ -155,12 +121,11 @@ export function TeacherAssignmentForm({
       }
     });
   };
-  
+
   const getTeacherName = (teacherId?: string) => {
     if (!teacherId) return 'Unknown Teacher';
     return allTeachers.find(t => t.id === teacherId)?.name || 'Unknown Teacher';
-  }
-
+  };
 
   return (
     <Form {...form}>
@@ -178,9 +143,9 @@ export function TeacherAssignmentForm({
               render={() => (
                 <FormItem className="p-4 border rounded-lg bg-secondary/30">
                   <div className="mb-4">
-                    <FormLabel className="text-lg font-semibold flex items-center gap-2"><Users/> Class Teacher Role</FormLabel>
+                    <FormLabel className="text-lg font-semibold flex items-center gap-2"><Users/> Class Teacher Role (Optional)</FormLabel>
                     <FormDescription>
-                      Assign {teacher.name} as the main Class Teacher. This role grants oversight over the class. It unassigns any previous teacher from this role for the selected class.
+                      Assign {teacher.name} as the main Class Teacher. This grants oversight and will unassign any previous teacher from this role for the selected class.
                     </FormDescription>
                   </div>
                   <div className="space-y-2">
@@ -197,20 +162,16 @@ export function TeacherAssignmentForm({
                                 onCheckedChange={(checked) => {
                                   return checked
                                     ? field.onChange([...(field.value || []), cls.id])
-                                    : field.onChange(
-                                        (field.value || []).filter((id) => id !== cls.id)
-                                      );
+                                    : field.onChange((field.value || []).filter((id) => id !== cls.id));
                                 }}
                               />
                             </FormControl>
                             <FormLabel className="font-normal flex-1">
                               {cls.name}
                               {cls.classTeacherId && cls.classTeacherId !== teacher.id && (
-                                <span className="text-xs text-muted-foreground ml-2">
-                                  (Currently: {getTeacherName(cls.classTeacherId)})
-                                </span>
+                                <span className="text-xs text-muted-foreground ml-2">(Currently: {getTeacherName(cls.classTeacherId)})</span>
                               )}
-                               {cls.classTeacherId && cls.classTeacherId === teacher.id && (
+                              {cls.classTeacherId && cls.classTeacherId === teacher.id && (
                                 <span className="text-xs text-green-600 ml-2">(Currently assigned)</span>
                               )}
                             </FormLabel>
@@ -225,75 +186,121 @@ export function TeacherAssignmentForm({
             />
 
             <FormItem className="p-4 border rounded-lg bg-secondary/30">
-                <div className="mb-4">
-                <FormLabel className="text-lg font-semibold flex items-center gap-2"><BookOpen /> Specific Subject & Exam Assignments</FormLabel>
+              <div className="mb-4">
+                <FormLabel className="text-lg font-semibold flex items-center gap-2"><BookOpen /> Subject Teaching Assignments</FormLabel>
                 <FormDescription>
-                    Assign {teacher.name} to teach specific subjects and be responsible for their exams within classes. This is for assignments not covered by the Class Teacher role.
+                  Assign subjects to {teacher.name} and specify which classes they teach for each subject.
                 </FormDescription>
-                </div>
-                <Accordion type="multiple" className="w-full">
-                {allClasses.map((cls) => (
-                    <AccordionItem value={cls.id} key={cls.id} className="bg-background border rounded-md mb-2 px-3">
-                    <AccordionTrigger>
-                        {cls.name}
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-2 pb-0">
-                        {cls.subjects.length > 0 ? (
-                        <div className="space-y-2">
-                            {cls.subjects.map((subject) => {
-                            const currentAssignmentForSubject = specificSubjectAssignments?.find(
-                                (a) => a.classId === cls.id && a.subjectId === subject.id
-                            );
-                            return (
-                                <div key={`${cls.id}-${subject.id}`} className="py-2 border-t last:border-b-0">
-                                    <p className="font-medium text-sm mb-2 text-primary/80">{subject.name} {subject.code && `(${subject.code})`}</p>
-                                    {isLoadingData ? <p className="text-xs text-muted-foreground">Loading exams...</p> : allExams.length > 0 ? (
-                                        <div className="space-y-1 pl-3">
-                                        {allExams.map((exam) => (
-                                            <FormItem key={exam.id} className="flex flex-row items-center space-x-2 space-y-0">
-                                                <FormControl>
-                                                <Checkbox
-                                                    checked={(currentAssignmentForSubject?.examIds || []).includes(exam.id)}
-                                                    onCheckedChange={(checked) => {
-                                                        handleSpecificAssignmentChange(
-                                                            cls.id,
-                                                            subject.id,
-                                                            exam.id,
-                                                            Boolean(checked)
-                                                        );
-                                                    }}
-                                                />
-                                                </FormControl>
-                                                <FormLabel className="text-xs font-normal">
-                                                    {exam.name}
-                                                </FormLabel>
-                                            </FormItem>
-                                        ))}
-                                        </div>
-                                    ) : <p className="text-xs text-muted-foreground italic">No exam types defined.</p>}
+              </div>
+              <div className="space-y-4">
+                 {fields.map((field, index) => {
+                     const subject = allSubjects.find(s => s.id === field.subjectId);
+                     return (
+                        <Card key={field.id} className="p-4">
+                           <div className="flex justify-between items-start">
+                                <div>
+                                    <h4 className="font-semibold">{subject?.name || 'Unknown Subject'}</h4>
+                                    <p className="text-xs text-muted-foreground">{subject?.code}</p>
                                 </div>
-                            );
-                            })}
-                        </div>
-                        ) : (
-                        <p className="text-sm text-muted-foreground italic px-4 py-2">No subjects assigned to this class. Edit the class to add subjects.</p>
-                        )}
-                    </AccordionContent>
-                    </AccordionItem>
-                ))}
-                </Accordion>
-                <FormMessage />
+                                <Button type="button" variant="ghost" size="sm" onClick={() => remove(index)}>Remove</Button>
+                           </div>
+                           <FormField
+                                control={control}
+                                name={`subjectsAssigned.${index}.classIds`}
+                                render={({ field: classField }) => (
+                                    <FormItem className="mt-2">
+                                        <FormLabel>Classes Taught</FormLabel>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    className={cn(
+                                                    "w-full justify-between",
+                                                    !classField.value?.length && "text-muted-foreground"
+                                                    )}
+                                                >
+                                                    {classField.value?.length > 0 ? `${classField.value.length} class(es) selected` : "Select classes"}
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[300px] p-0">
+                                                <Command>
+                                                <CommandInput placeholder="Search classes..." />
+                                                <CommandList>
+                                                    <CommandEmpty>No classes found.</CommandEmpty>
+                                                    <CommandGroup>
+                                                    {allClasses.map((cls) => (
+                                                        <CommandItem
+                                                            value={cls.name}
+                                                            key={cls.id}
+                                                            onSelect={() => {
+                                                                const currentValue = classField.value || [];
+                                                                const isSelected = currentValue.includes(cls.id);
+                                                                const newValue = isSelected
+                                                                    ? currentValue.filter(id => id !== cls.id)
+                                                                    : [...currentValue, cls.id];
+                                                                classField.onChange(newValue);
+                                                            }}
+                                                            >
+                                                            <Check
+                                                                className={cn(
+                                                                "mr-2 h-4 w-4",
+                                                                (classField.value || []).includes(cls.id) ? "opacity-100" : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {cls.name}
+                                                        </CommandItem>
+                                                    ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </Card>
+                     )
+                 })}
+                 <Popover>
+                    <PopoverTrigger asChild>
+                        <Button type="button" variant="outline" disabled={isLoadingData || allSubjects.length === assignedSubjectIds.size}>Add Subject Assignment</Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0">
+                         <Command>
+                            <CommandInput placeholder="Search subjects..." />
+                            <CommandList>
+                                <CommandEmpty>No subjects found.</CommandEmpty>
+                                <CommandGroup>
+                                    {allSubjects.filter(s => !assignedSubjectIds.has(s.id)).map((subject) => (
+                                        <CommandItem
+                                            key={subject.id}
+                                            value={subject.name}
+                                            onSelect={() => {
+                                                append({ subjectId: subject.id, classIds: [] });
+                                            }}
+                                        >
+                                            {subject.name}
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </CommandList>
+                         </Command>
+                    </PopoverContent>
+                 </Popover>
+              </div>
+              <FormMessage />
             </FormItem>
           </CardContent>
         </Card>
 
         <div className="flex justify-end">
           <Button type="submit" disabled={isPending || isLoadingData} size="lg">
-            {isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="mr-2 h-4 w-4" />
-            )}
+            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             Save Assignments
           </Button>
         </div>
