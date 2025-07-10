@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -9,16 +9,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { BookUser, UserPlus, MoreHorizontal, Edit3, Trash2, Mail, Loader2 } from "lucide-react";
-import { getTeachers, getClasses, getSubjects } from "@/lib/actions/dos-actions";
+import { getTeachers, getClasses, getSubjects, deleteTeacherDoc } from "@/lib/actions/dos-actions";
+import { deleteTeacherWithRole } from "@/lib/actions/dos-admin-actions";
 import type { Teacher, ClassInfo, Subject as SubjectType } from "@/lib/types";
-import { DeleteTeacherConfirmationDialog } from "@/components/dialogs/DeleteTeacherConfirmationDialog";
+import { useToast } from "@/hooks/use-toast";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { AlertTriangle } from "lucide-react";
 
-interface DisplayedAssignment {
-  classId: string;
-  subjectId: string;
-  className: string;
-  subjectName: string;
-}
 
 export default function ManageTeachersPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -26,6 +23,8 @@ export default function ManageTeachersPage() {
   const [subjects, setSubjects] = useState<SubjectType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
+  const [isDeleting, startDeleteTransition] = useTransition();
+  const { toast } = useToast();
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -40,6 +39,7 @@ export default function ManageTeachersPage() {
       setSubjects(subjectsData);
     } catch (error) {
       console.error("Failed to fetch page data", error);
+      toast({ title: "Error", description: "Failed to load page data.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -47,21 +47,59 @@ export default function ManageTeachersPage() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getSubjectName = (subjectId: string): string => subjects.find(s => s.id === subjectId)?.name || subjectId;
   const getClassName = (classId: string): string => classes.find(c => c.id === classId)?.name || classId;
 
-  const getDisplayedAssignmentsForTeacher = (teacher: Teacher): DisplayedAssignment[] => {
-    const assignmentsMap = new Map<string, DisplayedAssignment>();
+  const handleConfirmDelete = () => {
+    if (!teacherToDelete) return;
+
+    startDeleteTransition(async () => {
+      // Step 1: Delete from Firebase Auth
+      const authResult = await deleteTeacherWithRole(teacherToDelete.uid);
+      if (!authResult.success) {
+        toast({
+          title: "Authentication Deletion Failed",
+          description: authResult.message,
+          variant: "destructive",
+        });
+        setTeacherToDelete(null);
+        return;
+      }
+      
+      // Step 2: Delete from Firestore Database
+      const dbResult = await deleteTeacherDoc(teacherToDelete.id);
+      if (!dbResult.success) {
+         toast({
+          title: "Database Deletion Failed",
+          description: `${authResult.message}. The user was deleted from Auth, but their record in the database failed to delete. Please contact support. Error: ${dbResult.message}`,
+          variant: "destructive",
+        });
+        setTeacherToDelete(null);
+        await fetchData(); // Refresh list even on partial success
+        return;
+      }
+
+      toast({
+        title: "Teacher Deleted",
+        description: `Teacher "${teacherToDelete.name}" was successfully deleted.`,
+      });
+
+      setTeacherToDelete(null);
+      await fetchData(); // Refresh the list
+    });
+  };
+
+  const getDisplayedAssignmentsForTeacher = (teacher: Teacher): {className: string, subjectName: string}[] => {
+    const assignmentsMap = new Map<string, {className: string, subjectName: string}>();
 
     if (teacher.subjectsAssigned) {
       teacher.subjectsAssigned.forEach(assignment => {
         const key = `${assignment.classId}-${assignment.subjectId}`;
         if (!assignmentsMap.has(key)) {
           assignmentsMap.set(key, {
-            classId: assignment.classId,
-            subjectId: assignment.subjectId,
             className: getClassName(assignment.classId),
             subjectName: getSubjectName(assignment.subjectId),
           });
@@ -75,8 +113,6 @@ export default function ManageTeachersPage() {
           const key = `${classItem.id}-${subject.id}`;
           if (!assignmentsMap.has(key)) {
             assignmentsMap.set(key, {
-              classId: classItem.id,
-              subjectId: subject.id,
               className: classItem.name,
               subjectName: subject.name,
             });
@@ -85,11 +121,6 @@ export default function ManageTeachersPage() {
       }
     });
     return Array.from(assignmentsMap.values());
-  };
-
-  const handleSuccessfulDelete = () => {
-    fetchData(); // Re-fetch all data to ensure list is up-to-date
-    setTeacherToDelete(null); // Close the dialog
   };
 
   return (
@@ -143,8 +174,8 @@ export default function ManageTeachersPage() {
                         <TableCell>
                           {displayedAssignments.length > 0 ? (
                             <ul className="list-disc list-inside text-sm">
-                              {displayedAssignments.slice(0, 3).map(assignment => (
-                                <li key={`${assignment.classId}-${assignment.subjectId}`}>
+                              {displayedAssignments.slice(0, 3).map((assignment, idx) => (
+                                <li key={idx}>
                                   {assignment.subjectName} ({assignment.className})
                                 </li>
                               ))}
@@ -188,18 +219,36 @@ export default function ManageTeachersPage() {
           </CardContent>
         </Card>
       </div>
+      
       {teacherToDelete && (
-         <DeleteTeacherConfirmationDialog
-            teacherId={teacherToDelete.id}
-            teacherName={teacherToDelete.name}
-            open={!!teacherToDelete}
-            onOpenChange={(open) => {
-                if (!open) {
-                    setTeacherToDelete(null);
-                }
-            }}
-            onSuccess={handleSuccessfulDelete}
-        />
+        <AlertDialog open={!!teacherToDelete} onOpenChange={() => setTeacherToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center">
+                <AlertTriangle className="h-5 w-5 mr-2 text-destructive" />
+                Are you sure?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the teacher record for <strong>{teacherToDelete.name}</strong> from both the database and the authentication system.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDeleting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 h-4 w-4" />
+                )}
+                Delete Teacher
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </>
   );
