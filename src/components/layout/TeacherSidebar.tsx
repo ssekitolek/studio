@@ -37,8 +37,6 @@ export function TeacherSidebar() {
   const router = useRouter();
   const { state } = useSidebar();
   const { user } = useAuth(); // Get the authenticated user
-  const teacherId = user?.uid;
-  const teacherName = user?.displayName || user?.email;
 
   const handleLogout = async () => {
     if (auth) {
@@ -56,10 +54,11 @@ export function TeacherSidebar() {
   };
   
   const constructUrl = (baseHref: string) => {
-    if (!teacherId) return baseHref;
+    if (!user?.uid) return baseHref;
     const params = new URLSearchParams();
-    params.append('teacherId', teacherId);
-    if(teacherName) {
+    params.append('teacherId', user.uid);
+    const teacherName = user.displayName || user.email;
+    if (teacherName) {
       params.append('teacherName', teacherName);
     }
     return `${baseHref}?${params.toString()}`;
