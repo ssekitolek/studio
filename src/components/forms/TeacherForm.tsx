@@ -209,7 +209,7 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
                 </SelectContent>
               </Select>
               <FormDescription>
-                Assign the user's role. The 'Admin' role must be set separately for security.
+                Assign the user's role.
               </FormDescription>
               <FormMessage />
             </FormItem>
