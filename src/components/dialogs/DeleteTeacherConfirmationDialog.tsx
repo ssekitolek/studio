@@ -23,6 +23,7 @@ interface DeleteTeacherConfirmationDialogProps {
   teacherName: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
 }
 
 export function DeleteTeacherConfirmationDialog({
@@ -30,6 +31,7 @@ export function DeleteTeacherConfirmationDialog({
   teacherName,
   open,
   onOpenChange,
+  onSuccess,
 }: DeleteTeacherConfirmationDialogProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -44,8 +46,7 @@ export function DeleteTeacherConfirmationDialog({
           description: `Teacher "${teacherName}" has been successfully deleted.`,
         });
         onOpenChange(false);
-        router.push("/dos/teachers");
-        router.refresh();
+        onSuccess(); // Callback to tell the parent page to refresh its data
       } else {
         toast({
           title: "Error Deleting Teacher",
