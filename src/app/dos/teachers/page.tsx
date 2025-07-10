@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ export default function ManageTeachersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = async () => {
     setIsLoading(true);
     try {
       const [teachersData, classesData, subjectsData] = await Promise.all([
@@ -43,11 +43,11 @@ export default function ManageTeachersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, []);
 
   const getSubjectName = (subjectId: string): string => subjects.find(s => s.id === subjectId)?.name || subjectId;
   const getClassName = (classId: string): string => classes.find(c => c.id === classId)?.name || classId;
@@ -89,6 +89,7 @@ export default function ManageTeachersPage() {
 
   const handleSuccessfulDelete = () => {
     fetchData(); // Re-fetch all data to ensure list is up-to-date
+    setTeacherToDelete(null); // Close the dialog
   };
 
   return (
