@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { deleteTeacher } from "@/lib/actions/dos-actions";
+import { deleteTeacherWithRole } from "@/lib/actions/dos-admin-actions";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Trash2, AlertTriangle } from "lucide-react";
 
@@ -37,7 +37,7 @@ export function DeleteTeacherConfirmationDialog({
 
   const handleDelete = async () => {
     startTransition(async () => {
-      const result = await deleteTeacher(teacherId);
+      const result = await deleteTeacherWithRole(teacherId);
       if (result.success) {
         toast({
           title: "Teacher Deleted",

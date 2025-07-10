@@ -7,23 +7,11 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference, runTransaction, writeBatch, Timestamp, orderBy, setDoc } from "firebase/firestore";
 import * as XLSX from 'xlsx';
-import { createTeacherWithRole, updateTeacherWithRole, deleteTeacherWithRole } from './dos-admin-actions';
 
+// This file contains actions safe to be bundled with client components.
+// For actions requiring Firebase Admin SDK (like user creation), see dos-admin-actions.ts
 
-// --- Teacher Management ---
-export async function createTeacher(teacherData: Omit<Teacher, 'id'>): Promise<{ success: boolean; message: string; teacher?: Teacher }> {
-  return createTeacherWithRole(teacherData);
-}
-
-export async function updateTeacher(teacherId: string, teacherData: Partial<Omit<Teacher, 'id'>>): Promise<{ success: boolean; message: string; teacher?: Partial<Teacher> }> {
-   return updateTeacherWithRole(teacherId, teacherData);
-}
-
-export async function deleteTeacher(teacherId: string): Promise<{ success: boolean; message: string }> {
-   return deleteTeacherWithRole(teacherId);
-}
-
-
+// --- Teacher Management (Read operations) ---
 export async function getTeacherById(teacherId: string): Promise<Teacher | null> {
   if (!db) {
     console.error("Firestore is not initialized. Check Firebase configuration.");

@@ -79,4 +79,3 @@ export async function deleteTeacherWithRole(teacherId: string): Promise<{ succes
     return { success: false, message: error.message || 'An unexpected error occurred.' };
   }
 }
-

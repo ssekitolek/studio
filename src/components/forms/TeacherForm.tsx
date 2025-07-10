@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { createTeacher, updateTeacher } from "@/lib/actions/dos-actions";
+import { createTeacherWithRole, updateTeacherWithRole } from "@/lib/actions/dos-admin-actions";
 import { Loader2, Save, UserPlus, Edit3 } from "lucide-react";
 import type { Teacher } from "@/lib/types";
 import { useRouter } from "next/navigation";
@@ -107,7 +107,7 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
             updatePayload.password = teacherPayload.password;
           }
 
-          result = await updateTeacher(teacherId!, updatePayload);
+          result = await updateTeacherWithRole(teacherId!, updatePayload);
           if (result.success && result.teacher) {
             toast({
               title: "Teacher Updated",
@@ -128,7 +128,7 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
             toast({ title: "Password Required", description: "Password is required to create a new teacher.", variant: "destructive"});
             return;
           }
-          result = await createTeacher(teacherPayload as Omit<Teacher, 'id' | 'subjectsAssigned'> & {password: string});
+          result = await createTeacherWithRole(teacherPayload as Omit<Teacher, 'id' | 'subjectsAssigned'> & {password: string});
           if (result.success && result.teacher) {
             toast({
               title: "Teacher Created",
