@@ -68,7 +68,8 @@ export async function updateTeacherWithRole(teacherId: string, teacherData: Part
   }
 }
 
-export async function deleteTeacher(teacherId: string, teacherEmail: string, teacherPass: string): Promise<{ success: boolean; message: string }> {
+
+export async function deleteTeacherWithRole(teacherId: string, teacherEmail: string, teacherPass: string): Promise<{ success: boolean; message: string }> {
   // This is a workaround due to lack of admin SDK. It's not ideal for production.
   // It requires re-authenticating as the user to delete them.
   if (!auth || !db) return { success: false, message: "Firebase not initialized" };
