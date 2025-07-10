@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { LayoutDashboard, Users, BookUser, ClipboardList, Settings2, CalendarCheck2, AlertTriangle, UserPlus, PlusCircle, FileWarning, Loader2 } from "lucide-react";
-import Image from "next/image";
 import { getTeachers, getStudents, getClasses, getSubjects, getExams, getGeneralSettings, getTerms } from "@/lib/actions/dos-actions";
 import type { Term, GeneralSettings, Teacher, Student, ClassInfo, Subject as SubjectType, Exam } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from "@/components/ui/alert";
@@ -236,7 +235,7 @@ export default function DosDashboardPage() {
                 </p>
             </div>
             <div className="md:w-1/3 flex justify-center items-center">
-                 <Image src="https://placehold.co/600x400.png" alt="Educational illustration" width={250} height={167} className="rounded-lg" data-ai-hint="education school" />
+                 <div data-ai-hint="education school" className="w-[250px] h-[167px] bg-muted rounded-lg"/>
             </div>
         </CardContent>
       </Card>
