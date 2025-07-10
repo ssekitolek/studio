@@ -1,6 +1,7 @@
 
 import { initializeApp, getApps, cert, App } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
 
 const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
@@ -23,6 +24,7 @@ if (!getApps().length) {
   app = getApps()[0];
 }
 
-const db = getFirestore(app);
+const dbAdmin = getFirestore(app);
+const authAdmin = getAuth(app);
 
-export { app, db };
+export { app as adminApp, dbAdmin, authAdmin };
