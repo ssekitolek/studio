@@ -40,22 +40,6 @@ export async function getTeacherById(teacherId: string): Promise<Teacher | null>
   }
 }
 
-export async function deleteTeacherDoc(teacherId: string): Promise<{ success: boolean; message: string }> {
-  if (!db) {
-    return { success: false, message: "Firestore is not initialized." };
-  }
-  try {
-    await deleteDoc(doc(db, "teachers", teacherId));
-    revalidatePath("/dos/teachers");
-    return { success: true, message: "Teacher database record deleted successfully." };
-  } catch (error) {
-    console.error(`Error in deleteTeacherDoc for ${teacherId}:`, error);
-    const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
-    return { success: false, message: `Failed to delete teacher from database: ${errorMessage}` };
-  }
-}
-
-
 export async function updateTeacherAssignments(
   teacherId: string, // This is the Auth UID and Firestore Doc ID
   data: {
