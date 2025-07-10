@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation"; 
+import { useAuth } from "@/components/auth/AuthProvider";
 import {
   Sidebar,
   SidebarHeader,
@@ -35,6 +36,9 @@ export function TeacherSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { state } = useSidebar();
+  const { user } = useAuth(); // Get the authenticated user
+  const teacherId = user?.uid;
+  const teacherName = user?.displayName || user?.email;
 
   const handleLogout = async () => {
     if (auth) {
@@ -50,12 +54,22 @@ export function TeacherSidebar() {
     }
     return pathname.startsWith(href);
   };
+  
+  const constructUrl = (baseHref: string) => {
+    if (!teacherId) return baseHref;
+    const params = new URLSearchParams();
+    params.append('teacherId', teacherId);
+    if(teacherName) {
+      params.append('teacherName', teacherName);
+    }
+    return `${baseHref}?${params.toString()}`;
+  }
 
   return (
     <Sidebar collapsible="icon" side="left" variant="sidebar" className="border-r">
       <SidebarHeader className="flex items-center justify-between p-2 h-16">
         {state === 'expanded' && (
-          <Link href="/teacher/dashboard" className="ml-2">
+          <Link href={constructUrl("/teacher/dashboard")} className="ml-2">
             <span className="text-lg font-headline font-semibold text-sidebar-foreground">
               St. Mbaaga's <span className="text-xs text-sidebar-foreground/70">Teacher</span>
             </span>
@@ -75,7 +89,7 @@ export function TeacherSidebar() {
           <SidebarMenu className="px-2 py-2 space-y-1">
             {navItems.map((item, index) => (
               <SidebarMenuItem key={index}>
-                <Link href={item.href}>
+                <Link href={constructUrl(item.href)} passHref>
                   <SidebarMenuButton
                     isActive={isItemActive(item.href)}
                     tooltip={item.label}
