@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { createTeacherWithRole, updateTeacherWithRole } from "@/lib/actions/dos-actions";
+import { createTeacherWithRole, updateTeacherWithRole } from "@/lib/actions/dos-admin-actions";
 import { Loader2, Save, UserPlus, Edit3 } from "lucide-react";
 import type { Teacher } from "@/lib/types";
 import { useRouter } from "next/navigation";
