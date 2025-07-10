@@ -65,6 +65,8 @@ export default function TeacherAssignmentsPage() {
 
   const handleFormSuccess = async () => {
     toast({ title: "Assignments Updated", description: "Teacher assignments have been successfully updated."});
+    // Refetch all data to get latest state of class teacher assignments
+    await fetchInitialData();
     if (selectedTeacherId) {
       setIsLoadingTeacherDetails(true);
       try {
