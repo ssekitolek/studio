@@ -11,7 +11,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LogIn, UserCog, AlertTriangle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { auth } from "@/lib/firebase";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+
+const DOS_EMAIL = "root@adminmathius.staff";
+const DOS_PASSWORD = "mathius256";
 
 export default function DosLoginPage() {
   const router = useRouter();
@@ -36,6 +39,25 @@ export default function DosLoginPage() {
       router.push("/dos/dashboard");
 
     } catch (err: any) {
+      // Special case: if the main D.O.S. account doesn't exist, create it.
+      if (err.code === 'auth/user-not-found' && email === DOS_EMAIL && password === DOS_PASSWORD) {
+        console.log("D.O.S. user not found, attempting to create it...");
+        try {
+          await createUserWithEmailAndPassword(auth, email, password);
+          console.log("D.O.S. user created in Auth. Retrying login...");
+          // After creation, retry sign-in which will then trigger the self-healing in AuthProvider
+          await signInWithEmailAndPassword(auth, email, password);
+          router.push("/dos/dashboard");
+          return; // Exit here on success
+        } catch (creationError: any) {
+           let creationErrorMessage = `Failed to auto-create D.O.S. account: ${creationError.message || 'Unknown error'}`;
+           setError(creationErrorMessage);
+           console.error("D.O.S. Creation error:", creationError);
+           setIsLoading(false);
+           return;
+        }
+      }
+
       let friendlyMessage = "An unexpected error occurred. Please try again later.";
        if (err.code) {
         switch (err.code) {

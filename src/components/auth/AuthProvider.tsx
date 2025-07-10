@@ -3,10 +3,12 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, collection, query, where, getDocs, limit } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, limit, setDoc } from "firebase/firestore";
 import { auth, db } from '@/lib/firebase';
+import { createTeacherWithRole } from '@/lib/actions/dos-admin-actions';
 
 const ADMIN_EMAIL = "mathius@admin.staff";
+const DOS_EMAIL = "root@adminmathius.staff";
 
 async function determineUserRole(user: User): Promise<string | null> {
   if (user.email === ADMIN_EMAIL) {
@@ -14,14 +16,47 @@ async function determineUserRole(user: User): Promise<string | null> {
     return 'admin';
   }
 
+  // Special handling for the main D.O.S. account to ensure it exists.
+  if (user.email === DOS_EMAIL) {
+    console.log(`[AuthProvider] Main D.O.S. email detected: ${user.email}. Verifying account...`);
+    const userDocRefById = doc(db, "teachers", user.uid);
+    const userDocSnapById = await getDoc(userDocRefById);
+
+    if (userDocSnapById.exists()) {
+      const userData = userDocSnapById.data();
+      if (userData.role === 'dos') {
+        console.log(`[AuthProvider] D.O.S. account verified for UID ${user.uid}. Role: 'dos'`);
+        return 'dos';
+      }
+    }
+    
+    // If we reach here, the user is authenticated but their Firestore record is missing or incorrect.
+    // Let's create it to ensure access. This is a self-healing mechanism for the main D.O.S.
+    console.warn(`[AuthProvider] D.O.S. record not found or role incorrect for UID ${user.uid}. Attempting to create/fix it.`);
+    try {
+        const dosPayload = {
+            uid: user.uid,
+            name: "Director of Studies",
+            email: DOS_EMAIL,
+            role: 'dos' as const,
+            subjectsAssigned: [],
+        };
+        await setDoc(userDocRefById, dosPayload);
+        console.log(`[AuthProvider] Successfully created/repaired D.O.S. record in Firestore for UID ${user.uid}.`);
+        return 'dos';
+    } catch(error) {
+        console.error(`[AuthProvider] CRITICAL ERROR: Failed to create D.O.S. Firestore record for UID ${user.uid}:`, error);
+        return null; // Deny access if we can't even fix the record.
+    }
+  }
+
+
   if (!db) {
     console.error("[AuthProvider] Firestore DB is not initialized. Cannot determine role.");
     return null;
   }
 
   try {
-    // Primary Method: Look for a document in 'teachers' collection with the user's UID as the ID.
-    // This is the standard for users created via the D.O.S. portal.
     const userDocRefById = doc(db, "teachers", user.uid);
     const userDocSnapById = await getDoc(userDocRefById);
 
@@ -33,8 +68,6 @@ async function determineUserRole(user: User): Promise<string | null> {
       }
     }
 
-    // Fallback Method: If no doc found by ID (for older/manually created users),
-    // query the 'teachers' collection for a document where the 'email' field matches.
     console.log(`[AuthProvider] No role found for UID ${user.uid} by ID. Falling back to email query for ${user.email}.`);
     const teachersRef = collection(db, "teachers");
     const q = query(teachersRef, where("email", "==", user.email), limit(1));
@@ -50,7 +83,7 @@ async function determineUserRole(user: User): Promise<string | null> {
     }
 
     console.warn(`[AuthProvider] No valid 'dos' or 'teacher' role found for user ${user.email} (UID: ${user.uid}) after all checks.`);
-    return null; // Explicitly return null if no role is found
+    return null; 
 
   } catch (error) {
     console.error(`[AuthProvider] Error determining user role for ${user.email}:`, error);
