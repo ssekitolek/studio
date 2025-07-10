@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { createTeacherWithRole, updateTeacherWithRole } from "@/lib/actions/dos-admin-actions";
+import { createTeacherWithRole, updateTeacherWithRole } from "@/lib/actions/dos-actions";
 import { Loader2, Save, UserPlus, Edit3 } from "lucide-react";
 import type { Teacher } from "@/lib/types";
 import { useRouter } from "next/navigation";
@@ -104,7 +105,8 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
             role: teacherPayload.role,
           };
           if (teacherPayload.password) {
-            updatePayload.password = teacherPayload.password;
+             toast({ title: "Password Update Not Supported", description: "Password updates must be done by the user themselves for security reasons.", variant: "destructive" });
+             return;
           }
 
           result = await updateTeacherWithRole(teacherId!, updatePayload);
@@ -128,7 +130,7 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
             toast({ title: "Password Required", description: "Password is required to create a new teacher.", variant: "destructive"});
             return;
           }
-          result = await createTeacherWithRole(teacherPayload as Omit<Teacher, 'id' | 'subjectsAssigned'> & {password: string});
+          result = await createTeacherWithRole(teacherPayload as Omit<Teacher, 'id' | 'subjectsAssigned' | 'uid'> & {password: string});
           if (result.success && result.teacher) {
             toast({
               title: "Teacher Created",
@@ -225,7 +227,7 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
                 <Input type="password" placeholder="Enter password (min. 6 characters)" {...field} />
               </FormControl>
               <FormDescription>
-                {isEditMode ? "Enter a new password to change it, or leave blank to keep the current one." : "Set the initial password for the teacher."}
+                {isEditMode ? "Password cannot be changed from this form for security." : "Set the initial password for the teacher."}
               </FormDescription>
               <FormMessage />
             </FormItem>

@@ -1,29 +1,90 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Website content is public.
-    match /website_content/{docId} {
-      allow read: if true;
-      allow write: if false; // Writes must be from server action.
+    // Helper function to check if a user is authenticated and has a specific role.
+    function isRole(role) {
+      return request.auth != null && request.auth.token.role == role;
     }
 
-    // Teachers collection MUST be readable by any authenticated user for the
-    // login/role-check process to work. This is safe because the application
-    // logic only ever fetches the current user's role.
-    match /teachers/{userId} {
-      allow read: if request.auth != null;
-      allow write: if false; // Writes must be from server action.
+    // Helper function to check if a user is authenticated.
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the user is the owner of the document.
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Teachers can be read by any authenticated user (e.g., to list them).
+    // Only the D.O.S. can create, update, or delete teachers.
+    match /teachers/{teacherId} {
+      allow read: if isSignedIn();
+      allow write: if isRole('dos');
+    }
+
+    // Students can be read by any authenticated user (e.g., for class lists).
+    // Only the D.O.S. can create, update, or delete students.
+    match /students/{studentId} {
+      allow read: if isSignedIn();
+      allow write: if isRole('dos');
+    }
+
+    // Classes, Subjects, Terms, Exams can be read by any authenticated user.
+    // They are managed (written) only by the D.O.S.
+    match /classes/{classId} {
+      allow read: if isSignedIn();
+      allow write: if isRole('dos');
+    }
+    match /subjects/{subjectId} {
+      allow read: if isSignedIn();
+      allow write: if isRole('dos');
+    }
+    match /terms/{termId} {
+      allow read: if isSignedIn();
+      allow write: if isRole('dos');
+    }
+    match /exams/{examId} {
+      allow read: if isSignedIn();
+      allow write: if isRole('dos');
     }
     
-    // For all other collections, default to denying client access.
-    // All data access should go through trusted server-side actions,
-    // which use Admin privileges and bypass these rules. This is a
-    // secure-by-default posture.
-    match /{document=**} {
-      allow read, write: if false;
+    // Grading policies can be read by any authenticated user.
+    // They are managed only by the D.O.S.
+    match /gradingPolicies/{policyId} {
+        allow read: if isSignedIn();
+        allow write: if isRole('dos');
+    }
+
+    // Mark submissions can be created by the teacher who owns the submission.
+    // They can be read by the teacher who submitted them or by the D.O.S.
+    // Only the D.O.S. can update a submission (e.g., to approve/reject).
+    match /markSubmissions/{submissionId} {
+      allow create: if isOwner(request.resource.data.teacherId);
+      allow read: if isOwner(resource.data.teacherId) || isRole('dos');
+      allow update: if isRole('dos');
+      allow delete: if false; // Deletions should be handled by a server function if needed.
+    }
+    
+    // Attendance can be created or updated by any signed-in user (teacher).
+    // Read access is also granted to any signed-in user.
+    match /attendance/{attendanceId} {
+        allow read, write: if isSignedIn();
+    }
+
+    // General settings are readable by any authenticated user (teacher needs them).
+    // Only the D.O.S. can change settings.
+    match /settings/general {
+      allow read: if isSignedIn();
+      allow write: if isRole('dos');
+    }
+
+    // Website content can only be read and written by the 'admin' role.
+    match /website_content/{contentId} {
+        allow read: if true; // Publicly readable
+        allow write: if isRole('admin');
     }
   }
 }

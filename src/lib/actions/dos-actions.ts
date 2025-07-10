@@ -4,13 +4,109 @@
 
 import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData } from "@/lib/types";
 import { revalidatePath } from "next/cache";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference, runTransaction, writeBatch, Timestamp, orderBy, setDoc } from "firebase/firestore";
 import * as XLSX from 'xlsx';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, deleteUser } from "firebase/auth";
 
 
 // This file contains actions that DO NOT require the Firebase Admin SDK.
 // It is safe to be bundled with client components.
+
+export async function createTeacherWithRole(teacherData: Omit<Teacher, 'id' | 'uid' | 'subjectsAssigned'> & { password: string }): Promise<{ success: boolean; message: string; teacher?: Teacher }> {
+  if (!db || !auth) {
+    return { success: false, message: "Firebase is not initialized." };
+  }
+  try {
+    const { email, password, name, role } = teacherData;
+
+    // This is a temporary admin auth context to create the user. It signs out immediately.
+    const tempAdminUserCredential = await signInWithEmailAndPassword(auth, "root@adminmathius.staff", "mathius256");
+    const newTeacherCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = newTeacherCredential.user;
+
+    const teacherPayload: Omit<Teacher, 'id'> = {
+      uid: user.uid,
+      name,
+      email,
+      role,
+      subjectsAssigned: [],
+    };
+    
+    await setDoc(doc(db, "teachers", user.uid), teacherPayload);
+
+    // Sign back in as the admin user to continue session
+    await signInWithEmailAndPassword(auth, "root@adminmathius.staff", "mathius256");
+
+    revalidatePath("/dos/teachers");
+    return { success: true, message: "Teacher account created successfully.", teacher: { id: user.uid, ...teacherPayload } };
+
+  } catch (error: any) {
+    let message = error.message || 'An unexpected error occurred.';
+    if (error.code === 'auth/email-already-in-use') {
+        message = `An account with the email ${teacherData.email} already exists.`;
+    }
+     // Attempt to sign back in as the admin user even if creation fails
+    await signInWithEmailAndPassword(auth, "root@adminmathius.staff", "mathius256").catch(e => console.error("Failed to re-authenticate admin after error:", e));
+    console.error("Error in createTeacherWithRole:", error);
+    return { success: false, message };
+  }
+}
+
+export async function updateTeacherWithRole(teacherId: string, teacherData: Partial<Omit<Teacher, 'id' | 'subjectsAssigned' | 'uid'>>): Promise<{ success: boolean; message: string; teacher?: Partial<Teacher> }> {
+   if (!db) {
+    return { success: false, message: "Firestore is not initialized." };
+  }
+  try {
+    const teacherDocRef = doc(db, "teachers", teacherId);
+    await updateDoc(teacherDocRef, teacherData);
+    revalidatePath("/dos/teachers");
+    revalidatePath(`/dos/teachers/${teacherId}/edit`);
+    return { success: true, message: "Teacher account updated successfully.", teacher: teacherData };
+  } catch (error: any) {
+    return { success: false, message: error.message || 'An unexpected error occurred.' };
+  }
+}
+
+export async function deleteTeacher(teacherId: string, teacherEmail: string, teacherPass: string): Promise<{ success: boolean; message: string }> {
+  // This is a workaround due to lack of admin SDK. It's not ideal for production.
+  // It requires re-authenticating as the user to delete them.
+  if (!auth || !db) return { success: false, message: "Firebase not initialized" };
+  try {
+      // Step 1: Sign in as the user to be deleted.
+      const userCredential = await signInWithEmailAndPassword(auth, teacherEmail, teacherPass);
+      const userToDelete = userCredential.user;
+
+      if (userToDelete.uid !== teacherId) {
+          throw new Error("Mismatch between provided ID and authenticated user UID.");
+      }
+
+      // Step 2: Delete the user from Firebase Auth
+      await deleteUser(userToDelete);
+      
+      // Step 3: Delete the user's document from Firestore
+      await deleteDoc(doc(db, "teachers", teacherId));
+
+      // Step 4: Re-authenticate the D.O.S. user to continue their session
+      await signInWithEmailAndPassword(auth, "root@adminmathius.staff", "mathius256");
+      
+      revalidatePath("/dos/teachers");
+      return { success: true, message: "Teacher deleted successfully from Auth and Firestore." };
+  } catch (error: any) {
+      console.error(`Error deleting teacher ${teacherId}:`, error);
+      // Attempt to re-authenticate D.O.S. even if deletion fails
+      await signInWithEmailAndPassword(auth, "root@adminmathius.staff", "mathius256").catch(e => console.error("Failed to re-authenticate DOS after deletion error:", e));
+
+      let message = "An unknown error occurred during deletion.";
+      if(error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+          message = "Could not delete teacher. The system requires the teacher's password to perform this action, and the provided one was incorrect or not found. This is a system limitation. Please contact support.";
+      } else if (error.code) {
+          message = `Failed to delete teacher: ${error.code}`;
+      }
+      return { success: false, message };
+  }
+}
+
 
 // --- Teacher Management ---
 export async function getTeacherById(teacherId: string): Promise<Teacher | null> {

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useTransition } from "react";
@@ -9,12 +10,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { BookUser, UserPlus, MoreHorizontal, Edit3, Trash2, Mail, Loader2 } from "lucide-react";
-import { getTeachers, getClasses, getSubjects } from "@/lib/actions/dos-actions";
-import { deleteTeacherDoc, deleteTeacherWithRole } from "@/lib/actions/dos-admin-actions";
+import { getTeachers, getClasses, getSubjects, deleteTeacher } from "@/lib/actions/dos-actions";
 import type { Teacher, ClassInfo, Subject as SubjectType } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 
 export default function ManageTeachersPage() {
@@ -23,6 +25,7 @@ export default function ManageTeachersPage() {
   const [subjects, setSubjects] = useState<SubjectType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
+  const [password, setPassword] = useState("");
   const [isDeleting, startDeleteTransition] = useTransition();
   const { toast } = useToast();
 
@@ -56,38 +59,29 @@ export default function ManageTeachersPage() {
   const handleConfirmDelete = () => {
     if (!teacherToDelete) return;
 
-    startDeleteTransition(async () => {
-      // Step 1: Delete from Firebase Auth
-      const authResult = await deleteTeacherWithRole(teacherToDelete.uid);
-      if (!authResult.success) {
-        toast({
-          title: "Authentication Deletion Failed",
-          description: authResult.message,
-          variant: "destructive",
-        });
-        setTeacherToDelete(null);
+    if(!password) {
+        toast({ title: "Password required", description: "This system requires the teacher's password for deletion.", variant: "destructive" });
         return;
-      }
-      
-      // Step 2: Delete from Firestore Database
-      const dbResult = await deleteTeacherDoc(teacherToDelete.id);
-      if (!dbResult.success) {
-         toast({
-          title: "Database Deletion Failed",
-          description: `${authResult.message}. The user was deleted from Auth, but their record in the database failed to delete. Please contact support. Error: ${dbResult.message}`,
-          variant: "destructive",
-        });
-        setTeacherToDelete(null);
-        await fetchData(); // Refresh list even on partial success
-        return;
-      }
+    }
 
-      toast({
-        title: "Teacher Deleted",
-        description: `Teacher "${teacherToDelete.name}" was successfully deleted.`,
-      });
+    startDeleteTransition(async () => {
+      const result = await deleteTeacher(teacherToDelete.id, teacherToDelete.email, password);
+
+      if (!result.success) {
+        toast({
+          title: "Deletion Failed",
+          description: result.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Teacher Deleted",
+          description: `Teacher "${teacherToDelete.name}" was successfully deleted.`,
+        });
+      }
 
       setTeacherToDelete(null);
+      setPassword("");
       await fetchData(); // Refresh the list
     });
   };
@@ -221,7 +215,7 @@ export default function ManageTeachersPage() {
       </div>
       
       {teacherToDelete && (
-        <AlertDialog open={!!teacherToDelete} onOpenChange={() => setTeacherToDelete(null)}>
+        <AlertDialog open={!!teacherToDelete} onOpenChange={(open) => { if(!open) { setTeacherToDelete(null); setPassword(""); } }}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center">
@@ -230,13 +224,18 @@ export default function ManageTeachersPage() {
               </AlertDialogTitle>
               <AlertDialogDescription>
                 This action cannot be undone. This will permanently delete the teacher record for <strong>{teacherToDelete.name}</strong> from both the database and the authentication system.
+                <div className="mt-4">
+                    <Label htmlFor="password">Teacher's Password</Label>
+                    <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter teacher's password to confirm"/>
+                    <p className="text-xs text-muted-foreground mt-1">Due to system limitations, the teacher's current password is required to complete this action.</p>
+                </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleConfirmDelete}
-                disabled={isDeleting}
+                disabled={isDeleting || !password}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 {isDeleting ? (
