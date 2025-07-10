@@ -427,40 +427,24 @@ export async function deleteStudentsByClass(classId: string): Promise<{ success:
 
 // --- Class & Subject Management ---
 export async function createClass(
-  classData: Omit<ClassInfo, 'id' | 'subjects'> & { subjectIds: string[], streams: string[] }
+  classData: Omit<ClassInfo, 'id'>
 ): Promise<{ success: boolean; message: string; classInfo?: ClassInfo }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
-    const { subjectIds, ...restOfClassData } = classData;
-    const subjectReferences: DocumentReference[] = subjectIds.map(id => doc(db, "subjects", id));
-
     const classDataToSave = {
-      ...restOfClassData,
-      classTeacherId: restOfClassData.classTeacherId || null,
-      streams: restOfClassData.streams || [],
-      subjectReferences: subjectReferences
+      ...classData,
+      streams: classData.streams || [],
+      classTeacherId: null, // Teacher is assigned separately
     };
 
     const docRef = await addDoc(collection(db, "classes"), classDataToSave);
-
-    const subjects: Subject[] = [];
-    for (const subjectId of subjectIds) {
-        const subjectDocRef = doc(db, "subjects", subjectId);
-        const subjectDocSnap = await getDoc(subjectDocRef);
-        if (subjectDocSnap.exists()) {
-            subjects.push({ id: subjectDocSnap.id, ...subjectDocSnap.data() } as Subject);
-        } else {
-            subjects.push({ id: subjectId, name: `Unknown Subject (${subjectId})` });
-        }
-    }
+    
     const newClass: ClassInfo = {
-        ...restOfClassData,
-        id: docRef.id,
-        subjects,
-        streams: classDataToSave.streams,
-        classTeacherId: classDataToSave.classTeacherId === null ? undefined : classDataToSave.classTeacherId,
+      ...classDataToSave,
+      id: docRef.id,
+      classTeacherId: undefined, // Ensure it aligns with the type
     };
 
     revalidatePath("/dos/classes");
@@ -487,37 +471,12 @@ export async function getClassById(classId: string): Promise<ClassInfo | null> {
     }
 
     const classData = classSnap.data();
-    let subjectsArray: Subject[] = [];
-
-    if (classData.subjectReferences && Array.isArray(classData.subjectReferences)) {
-      for (const subjectRef of classData.subjectReferences) {
-        if (subjectRef && typeof subjectRef.id === 'string') {
-          try {
-            const subjectDocSnap = await getDoc(doc(db, "subjects", subjectRef.id));
-            if (subjectDocSnap.exists()) {
-              const subjData = subjectDocSnap.data();
-              subjectsArray.push({
-                id: subjectDocSnap.id,
-                name: subjData.name,
-                code: subjData.code === null ? undefined : subjData.code
-              } as Subject);
-            } else {
-              subjectsArray.push({ id: subjectRef.id, name: `Unknown Subject (${subjectRef.id})` });
-            }
-          } catch (e) {
-            console.error(`Error fetching subject ${subjectRef.id} for class ${classSnap.id}:`, e);
-            subjectsArray.push({ id: subjectRef.id, name: `Error Subject (${subjectRef.id})` });
-          }
-        }
-      }
-    }
     return {
       id: classSnap.id,
       name: classData.name || "Unnamed Class",
       level: classData.level || "Unknown Level",
       streams: classData.streams || [],
       classTeacherId: classData.classTeacherId === null ? undefined : classData.classTeacherId,
-      subjects: subjectsArray
     } as ClassInfo;
   } catch (error) {
     console.error(`Error fetching class ${classId}:`, error);
@@ -525,22 +484,13 @@ export async function getClassById(classId: string): Promise<ClassInfo | null> {
   }
 }
 
-export async function updateClass(classId: string, classData: Partial<Omit<ClassInfo, 'id' | 'subjects'>> & { subjectIds?: string[], streams?: string[] }): Promise<{ success: boolean; message: string }> {
+export async function updateClass(classId: string, classData: Partial<Omit<ClassInfo, 'id'>>): Promise<{ success: boolean; message: string }> {
   if (!db) {
     return { success: false, message: "Firestore is not initialized. Check Firebase configuration." };
   }
   try {
     const classRef = doc(db, "classes", classId);
-    const { subjectIds, streams, ...restOfClassData } = classData;
-    let dataToUpdate: any = { ...restOfClassData };
-
-    if (subjectIds) {
-      dataToUpdate.subjectReferences = subjectIds.map(id => doc(db, "subjects", id));
-    }
-    if (streams) {
-      dataToUpdate.streams = streams;
-    }
-    dataToUpdate.classTeacherId = dataToUpdate.classTeacherId || null;
+    let dataToUpdate: any = { ...classData };
 
     await updateDoc(classRef, dataToUpdate);
     revalidatePath("/dos/classes");
@@ -624,25 +574,23 @@ export async function deleteSubject(subjectId: string): Promise<{ success: boole
     return { success: false, message: "Firestore is not initialized." };
   }
   try {
-    // Dependency check: Check if the subject is assigned to any class
-    const subjectRefToDelete = doc(db, "subjects", subjectId);
-    const classesRef = collection(db, "classes");
-    const q = query(classesRef, where("subjectReferences", "array-contains", subjectRefToDelete));
-    const querySnapshot = await getDocs(q);
-
-    if (!querySnapshot.empty) {
-      const classNames = querySnapshot.docs.map(d => d.data().name).join(', ');
-      return { 
-        success: false, 
-        message: `Cannot delete subject. It is currently assigned to the following class(es): ${classNames}. Please unassign it first.` 
-      };
+    const teachersRef = collection(db, "teachers");
+    const snapshot = await getDocs(teachersRef);
+    for (const doc of snapshot.docs) {
+      const teacher = doc.data() as Teacher;
+      if (teacher.subjectsAssigned && teacher.subjectsAssigned.some(a => a.subjectId === subjectId)) {
+        const teacherName = teacher.name || `Teacher ID ${doc.id}`;
+        return {
+          success: false,
+          message: `Cannot delete subject. It is assigned to ${teacherName}. Please update teacher assignments first.`,
+        };
+      }
     }
-
-    // TODO: Consider checking if this subject is used in any 'exams' or 'markSubmissions'
+    
     console.warn(`[deleteSubject] Deleting subject ${subjectId}. Further dependency checks (e.g., exams, mark submissions) are not yet implemented.`);
-
-    await deleteDoc(subjectRefToDelete);
-    revalidatePath("/dos/classes"); // Revalidate page showing subjects
+    await deleteDoc(doc(db, "subjects", subjectId));
+    revalidatePath("/dos/classes");
+    revalidatePath("/dos/teachers/assignments");
     return { success: true, message: "Subject deleted successfully." };
   } catch (error) {
     console.error(`Error deleting subject ${subjectId}:`, error);
@@ -1551,42 +1499,17 @@ export async function getClasses(): Promise<ClassInfo[]> {
     try {
         const classesCol = collection(db, "classes");
         const classSnapshot = await getDocs(classesCol);
-        const classesListPromises = classSnapshot.docs.map(async (classDoc) => {
+        const classesList = classSnapshot.docs.map(classDoc => {
             const classData = classDoc.data();
-            let subjectsArray: Subject[] = [];
-
-            if (classData.subjectReferences && Array.isArray(classData.subjectReferences)) {
-                for (const subjectRef of classData.subjectReferences) {
-                    if (subjectRef && typeof subjectRef.id === 'string') {
-                        try {
-                            const subjectDocSnap = await getDoc(doc(db, "subjects", subjectRef.id));
-                            if (subjectDocSnap.exists()) {
-                                const subjData = subjectDocSnap.data();
-                                subjectsArray.push({
-                                    id: subjectDocSnap.id,
-                                    name: subjData.name,
-                                    code: subjData.code === null ? undefined : subjData.code
-                                } as Subject);
-                            } else {
-                                subjectsArray.push({ id: subjectRef.id, name: `Unknown Subject (${subjectRef.id})` });
-                            }
-                        } catch (e) {
-                             console.error(`Error fetching subject ${subjectRef.id} for class ${classDoc.id}:`, e);
-                             subjectsArray.push({ id: subjectRef.id, name: `Error Subject (${subjectRef.id})` });
-                        }
-                    }
-                }
-            }
             return {
                 id: classDoc.id,
                 name: classData.name || "Unnamed Class",
                 level: classData.level || "Unknown Level",
                 streams: classData.streams || [],
                 classTeacherId: classData.classTeacherId === null ? undefined : classData.classTeacherId,
-                subjects: subjectsArray
             } as ClassInfo;
         });
-        return Promise.all(classesListPromises);
+        return Promise.all(classesList);
     } catch (error) {
         console.error("Error fetching classes:", error);
         return [];

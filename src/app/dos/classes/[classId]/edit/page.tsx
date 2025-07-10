@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Edit3, ArrowLeft, AlertTriangle } from "lucide-react";
 import { ClassForm } from "@/components/forms/ClassForm"; 
 import { getClassById } from "@/lib/actions/dos-actions";
-import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from "@/components/ui/alert"; // Renamed AlertTitle to avoid conflict with CardTitle
+import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from "@/components/ui/alert";
 
 export default async function EditClassPage({ params }: { params: { classId: string } }) {
   const classData = await getClassById(params.classId);
@@ -42,7 +42,7 @@ export default async function EditClassPage({ params }: { params: { classId: str
     <div className="space-y-6">
       <PageHeader
         title={`Edit Class: ${classData.name}`}
-        description="Modify the details of the selected class."
+        description="Modify the details of the selected class. Teacher and subject assignments are managed on the Teacher Assignments page."
         icon={Edit3}
         actionButton={
           <Button variant="outline" asChild>

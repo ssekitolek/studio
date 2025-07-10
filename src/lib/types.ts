@@ -28,7 +28,6 @@ export interface ClassInfo {
   level: string;
   streams?: string[];
   classTeacherId?: string; // Firestore document ID of the teacher
-  subjects: Subject[]; // Array of Subject objects, not just IDs
 }
 
 export interface Subject {
