@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { createTeacherWithRole, updateTeacherWithRole } from "@/lib/actions/dos-actions";
+import { createTeacherWithRole, updateTeacherWithRole } from "@/lib/actions/dos-admin-actions";
 import { Loader2, Save, UserPlus, Edit3 } from "lucide-react";
 import type { Teacher } from "@/lib/types";
 import { useRouter } from "next/navigation";
@@ -99,11 +99,12 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
         }
         
         if (isEditMode) {
-          const updatePayload: Partial<Omit<Teacher, 'id' | 'subjectsAssigned'>> = {
+          const updatePayload: Partial<Omit<Teacher, 'id' | 'subjectsAssigned' | 'uid' | 'password'>> = {
             name: teacherPayload.name,
             email: teacherPayload.email,
             role: teacherPayload.role,
           };
+          
           if (teacherPayload.password) {
              toast({ title: "Password Update Not Supported", description: "Password updates must be done by the user themselves for security reasons.", variant: "destructive" });
              return;
@@ -184,10 +185,10 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
             <FormItem>
               <FormLabel>Email Address</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="e.g., john.doe@example.com" {...field} />
+                <Input type="email" placeholder="e.g., john.doe@example.com" {...field} disabled={isEditMode}/>
               </FormControl>
               <FormDescription>
-                The teacher&apos;s email address for communication and login.
+                {isEditMode ? "Email cannot be changed after creation." : "The teacher's email address for communication and login."}
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -224,7 +225,7 @@ export function TeacherForm({ initialData, teacherId, onSuccess }: TeacherFormPr
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="Enter password (min. 6 characters)" {...field} />
+                <Input type="password" placeholder="Enter password (min. 6 characters)" {...field} disabled={isEditMode} />
               </FormControl>
               <FormDescription>
                 {isEditMode ? "Password cannot be changed from this form for security." : "Set the initial password for the teacher."}

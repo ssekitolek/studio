@@ -1,4 +1,5 @@
 
+
 "use server";
 
 import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation, Exam as ExamTypeFirebase, TeacherStats, MarkSubmissionFirestoreRecord, SubmissionHistoryDisplayItem, ClassInfo, Subject as SubjectType, ClassTeacherData, ClassManagementStudent, GradingScaleItem, ClassAssessment, StudentClassMark, AttendanceData, StudentAttendanceInput, DailyAttendanceRecord, AttendanceHistoryData } from "@/lib/types";
@@ -580,13 +581,18 @@ async function getTeacherCurrentAssignments(teacherId: string): Promise<{ assign
 
 export async function getTeacherByUid(uid: string): Promise<TeacherType | null> {
     if (!db) return null;
-    const q = query(collection(db, "teachers"), where("uid", "==", uid), limit(1));
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) {
+    const teacherRef = doc(db, "teachers", uid);
+    const teacherSnap = await getDoc(teacherRef);
+    if (!teacherSnap.exists()) {
+        console.warn(`[getTeacherByUid] Teacher document not found for UID: ${uid}`);
         return null;
     }
-    const doc = snapshot.docs[0];
-    return { id: doc.id, ...doc.data() } as TeacherType;
+    const data = teacherSnap.data();
+    return {
+        id: teacherSnap.id,
+        uid: uid,
+        ...data,
+    } as TeacherType;
 }
 
 

@@ -10,7 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { BookUser, UserPlus, MoreHorizontal, Edit3, Trash2, Mail, Loader2 } from "lucide-react";
-import { getTeachers, getClasses, getSubjects, deleteTeacher } from "@/lib/actions/dos-actions";
+import { getTeachers, getClasses, getSubjects } from "@/lib/actions/dos-actions";
+import { deleteTeacherWithRole } from "@/lib/actions/dos-admin-actions";
 import type { Teacher, ClassInfo, Subject as SubjectType } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -37,7 +38,9 @@ export default function ManageTeachersPage() {
         getClasses(),
         getSubjects(),
       ]);
-      setTeachers(teachersData);
+      // Filter out the D.O.S. from the list of manageable teachers
+      const filteredTeachers = teachersData.filter(t => t.role !== 'dos');
+      setTeachers(filteredTeachers);
       setClasses(classesData);
       setSubjects(subjectsData);
     } catch (error) {
@@ -65,7 +68,7 @@ export default function ManageTeachersPage() {
     }
 
     startDeleteTransition(async () => {
-      const result = await deleteTeacher(teacherToDelete.id, teacherToDelete.email, password);
+      const result = await deleteTeacherWithRole(teacherToDelete.uid, teacherToDelete.email, password);
 
       if (!result.success) {
         toast({
