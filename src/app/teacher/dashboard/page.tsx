@@ -167,13 +167,13 @@ export default function TeacherDashboardPage() {
             <CardDescription>Important updates and reminders from the D.O.S office.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-             <div className="mb-4">
+             <div className="flex justify-center items-center mb-4">
                 <Image
                     src={resourcesImageUrl || "https://placehold.co/600x400.png"}
                     alt="Teacher Resources"
-                    width={600}
-                    height={400}
-                    className="object-cover rounded-lg w-full h-auto"
+                    width={250}
+                    height={167}
+                    className="rounded-lg object-cover"
                     data-ai-hint="teacher classroom"
                 />
              </div>
