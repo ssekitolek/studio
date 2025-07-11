@@ -1,3 +1,7 @@
+// This is set here as per explicit user instruction.
+// The recommended practice is to use a .env file.
+process.env.NEXT_PUBLIC_GOOGLE_API_KEY = "AIzaSyBgfyihL-nscgamTVLNwwOqVTkIM2yEY5s";
+
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
