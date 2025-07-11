@@ -197,6 +197,10 @@ export interface MarksForReviewPayload {
     dosRejectReason?: string;
     teacherId?: string; // Firebase Auth UID
     teacherName?: string;
+    // New fields to hold the resolved objects
+    exam?: Exam | null;
+    subject?: Subject | null;
+    class?: ClassInfo | null;
 }
 
 

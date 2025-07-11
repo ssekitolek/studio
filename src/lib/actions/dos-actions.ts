@@ -1033,7 +1033,7 @@ export async function getMarksForReview(
   examId: string,
   stream?: string
 ): Promise<MarksForReviewPayload> {
-  const defaultPayload: MarksForReviewPayload = { submissionId: null, assessmentName: null, marks: [], dosStatus: undefined, dosRejectReason: undefined };
+  const defaultPayload: MarksForReviewPayload = { submissionId: null, assessmentName: null, marks: [] };
   if (!db) {
     console.error("[DOS Action - getMarksForReview] CRITICAL_ERROR_DB_NULL: Firestore db object is null.");
     return defaultPayload;
@@ -1066,8 +1066,14 @@ export async function getMarksForReview(
       console.log(`[DOS Action - getMarksForReview] Submission found (ID: ${latestSubmissionDoc.id}) but contains no marks.`);
       return { ...defaultPayload, submissionId: latestSubmissionDoc.id, assessmentName: assessmentName, dosStatus: submissionData.dosStatus, dosRejectReason: submissionData.dosRejectReason };
     }
-
-    const allStudents = await getStudents();
+    
+    // Fetch all entities needed for payload
+    const [exam, subject, cls, allStudents] = await Promise.all([
+      getExamById(examId),
+      getSubjectById(subjectId),
+      getClassById(classId),
+      getStudents()
+    ]);
     const studentsMap = new Map(allStudents.map(s => [s.studentIdNumber, s]));
 
     let marksToProcess = submissionData.submittedMarks;
@@ -1112,7 +1118,10 @@ export async function getMarksForReview(
         dosStatus: submissionData.dosStatus,
         dosRejectReason: submissionData.dosRejectReason,
         teacherId: submissionData.teacherId,
-        teacherName: teacherName
+        teacherName: teacherName,
+        exam,
+        subject,
+        class: cls,
     };
 
   } catch (error: any) {

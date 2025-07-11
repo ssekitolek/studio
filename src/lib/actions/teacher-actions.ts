@@ -118,9 +118,10 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
   const assessmentDetails = await getAssessmentDetails(data.assessmentId);
   console.log(`[Teacher Action - submitMarks] Fetched assessment details (for assessmentName & AI check): ${JSON.stringify(assessmentDetails)}`);
   
-  if (assessmentDetails.name.startsWith("Error:")) { 
-     console.error(`[Teacher Action - submitMarks] ABORTING_SUBMISSION due to error in getAssessmentDetails: ${assessmentDetails.name}. Marks not saved.`);
-     return { success: false, message: `Failed to retrieve assessment details: ${assessmentDetails.name}. Marks not saved.` };
+  if (!assessmentDetails.exam || !assessmentDetails.subject || !assessmentDetails.class) { 
+     const errorMessage = `Failed to retrieve full assessment details. Exam: ${!!assessmentDetails.exam}, Subject: ${!!assessmentDetails.subject}, Class: ${!!assessmentDetails.class}.`;
+     console.error(`[Teacher Action - submitMarks] ABORTING_SUBMISSION due to incomplete details: ${errorMessage}. Marks not saved.`);
+     return { success: false, message: `${errorMessage} Marks not saved.` };
   }
 
   const gradeEntries: GradeEntry[] = data.marks.map(mark => ({
@@ -132,23 +133,19 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
   
   const submittedGradeEntries = gradeEntries.filter(g => g.grade !== null);
   if (submittedGradeEntries.length > 0) {
-    if (!assessmentDetails.subjectName || !assessmentDetails.examName || assessmentDetails.subjectName.startsWith("Unknown") || assessmentDetails.examName.startsWith("Unknown") || assessmentDetails.subjectName.startsWith("Error:") || assessmentDetails.examName.startsWith("Error:")) {
-        console.warn(`[Teacher Action - submitMarks] SKIPPING_AI_CHECK for composite assessmentId ${data.assessmentId}: Could not retrieve valid subject or exam names. Subject: "${assessmentDetails.subjectName}", Exam: "${assessmentDetails.examName}".`);
-    } else {
-        const anomalyInput: GradeAnomalyDetectionInput = {
-          subject: assessmentDetails.subjectName,
-          exam: assessmentDetails.examName,
-          grades: gradeEntries,
-          historicalAverage: assessmentDetails.historicalAverage,
-        };
-        try {
-            console.log(`[Teacher Action - submitMarks] Calling gradeAnomalyDetection for composite assessmentId ${data.assessmentId} with input:`, JSON.stringify(anomalyInput));
-            anomalyResult = await gradeAnomalyDetection(anomalyInput);
-            console.log(`[Teacher Action - submitMarks] Anomaly detection result for composite assessmentId ${data.assessmentId}:`, JSON.stringify(anomalyResult));
-        } catch (error) {
-            console.error(`[Teacher Action - submitMarks] AI_ANOMALY_DETECTION_ERROR for composite assessmentId ${data.assessmentId}:`, error);
-            anomalyResult = { hasAnomalies: true, anomalies: [{studentId: "SYSTEM_ERROR", explanation: `Anomaly check failed: ${error instanceof Error ? error.message : String(error)}`}] };
-        }
+    const anomalyInput: GradeAnomalyDetectionInput = {
+      subject: assessmentDetails.subject.name,
+      exam: assessmentDetails.exam.name,
+      grades: gradeEntries,
+      historicalAverage: undefined, // historicalAverage is not implemented yet
+    };
+    try {
+        console.log(`[Teacher Action - submitMarks] Calling gradeAnomalyDetection for composite assessmentId ${data.assessmentId} with input:`, JSON.stringify(anomalyInput));
+        anomalyResult = await gradeAnomalyDetection(anomalyInput);
+        console.log(`[Teacher Action - submitMarks] Anomaly detection result for composite assessmentId ${data.assessmentId}:`, JSON.stringify(anomalyResult));
+    } catch (error) {
+        console.error(`[Teacher Action - submitMarks] AI_ANOMALY_DETECTION_ERROR for composite assessmentId ${data.assessmentId}:`, error);
+        anomalyResult = { hasAnomalies: true, anomalies: [{studentId: "SYSTEM_ERROR", explanation: `Anomaly check failed: ${error instanceof Error ? error.message : String(error)}`}] };
     }
   } else {
      console.log(`[Teacher Action - submitMarks] NO_GRADE_ENTRIES for composite assessmentId ${data.assessmentId}: No actual marks entered to process for anomaly detection.`);
@@ -166,7 +163,7 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
   const submissionPayload: MarkSubmissionFirestoreRecord = {
     teacherId, 
     assessmentId: data.assessmentId, 
-    assessmentName: assessmentDetails.name, 
+    assessmentName: `${assessmentDetails.class.name} - ${assessmentDetails.subject.name} - ${assessmentDetails.exam.name}`, 
     dateSubmitted: Timestamp.now(),
     studentCount,
     averageScore,
@@ -206,22 +203,23 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
 }
 
 
-async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName: string; examName: string; name: string; maxMarks: number; historicalAverage?: number }> {
+interface AssessmentDetailsResult {
+    exam: ExamTypeFirebase | null;
+    subject: SubjectType | null;
+    class: ClassInfo | null;
+}
+
+async function getAssessmentDetails(assessmentId: string): Promise<AssessmentDetailsResult> {
     console.log(`[getAssessmentDetails] Called for assessmentId (Composite): "${assessmentId}"`);
     if (!db) {
       console.error("[getAssessmentDetails] CRITICAL_ERROR_DB_NULL: Firestore db object is null. Returning error details.");
-      return { subjectName: "Error: DB_NULL", examName: "Error: DB_NULL", name: "Error: DB_NULL: Firestore not initialized", maxMarks: 0 };
+      return { exam: null, subject: null, class: null };
     }
     
-    if (typeof getDoc !== 'function') {
-        console.error("[getAssessmentDetails] CRITICAL_RUNTIME_ERROR: getDoc function IS UNDEFINED at point of use! Firebase SDK might not be loaded correctly or import is missing/corrupted.");
-        return { subjectName: "Error: SDK_ERR", examName: "Error: SDK_ERR", name: "Error: SDK_ERR: getDoc is not defined", maxMarks: 0 };
-    }
-
     const parts = assessmentId.split('_');
     if (parts.length !== 3) {
-        console.warn(`[getAssessmentDetails] Invalid assessmentId format: ${assessmentId}. Expected examDocId_classDocId_subjectDocId. Returning error details.`);
-        return { subjectName: "Error: Invalid ID Format", examName: "Error: Invalid ID Format", name: "Error: Invalid Assessment ID Format", maxMarks: 100 };
+        console.warn(`[getAssessmentDetails] Invalid assessmentId format: ${assessmentId}. Expected examDocId_classDocId_subjectDocId.`);
+        return { exam: null, subject: null, class: null };
     }
     const [examId, classId, subjectId] = parts; 
     console.log(`[getAssessmentDetails] Parsed Document IDs - Exam: ${examId}, Class: ${classId}, Subject: ${subjectId} from composite ID ${assessmentId}`);
@@ -242,43 +240,11 @@ async function getAssessmentDetails(assessmentId: string): Promise<{ subjectName
         const subject = subjectDocSnap.exists() ? { id: subjectDocSnap.id, ...subjectDocSnap.data() } as SubjectType : null;
         const cls = classDocSnap.exists() ? { id: classDocSnap.id, ...classDocSnap.data() } as ClassInfo : null;
 
-        let errorMessages: string[] = [];
-        if (!exam) {
-            console.warn(`[getAssessmentDetails] Exam document not found for ID: ${examId} (from composite ${assessmentId})`);
-            errorMessages.push(`Exam (ID ${examId}) not found.`);
-        }
-        if (!subject) {
-            console.warn(`[getAssessmentDetails] Subject document not found for ID: ${subjectId} (from composite ${assessmentId})`);
-            errorMessages.push(`Subject (ID ${subjectId}) not found.`);
-        }
-        if (!cls) {
-            console.warn(`[getAssessmentDetails] Class document not found for ID: ${classId} (from composite ${assessmentId})`);
-            errorMessages.push(`Class (ID ${classId}) not found.`);
-        }
-
-        if (errorMessages.length > 0) {
-             const combinedError = `Error: MissingData for composite ${assessmentId}: ${errorMessages.join('; ')}`;
-             console.error(`[getAssessmentDetails] ${combinedError}`);
-             return { subjectName: "Error: MissingData", examName: "Error: MissingData", name: combinedError, maxMarks: 0 };
-        }
-
-        const assessmentName = `${cls?.name || `Unknown Class (${classId})`} - ${subject?.name || `Unknown Subject (${subjectId})`} - ${exam?.name || `Unknown Exam (${examId})`}`;
-        const historicalAverage = undefined; 
-
-        const result = {
-            subjectName: subject?.name || `Unknown Subject (${subjectId})`, 
-            examName: exam?.name || `Unknown Exam (${examId})`,       
-            name: assessmentName,
-            maxMarks: exam?.maxMarks || 100,
-            historicalAverage: historicalAverage,
-        };
-        console.log(`[getAssessmentDetails] Successfully resolved assessment details for composite ${assessmentId}: ${JSON.stringify(result)}`);
-        return result;
+        return { exam, subject, class: cls };
 
     } catch (e) {
         console.error(`[getAssessmentDetails] Firestore error during getDoc operations for composite assessmentId ${assessmentId}:`, e);
-        const errorMsg = e instanceof Error ? e.message : String(e);
-        return { subjectName: "Error: FirestoreRead", examName: "Error: FirestoreRead", name: `Error: FirestoreRead for composite ${assessmentId}: ${errorMsg}`, maxMarks: 0 };
+        return { exam: null, subject: null, class: null };
     }
 }
 
@@ -534,28 +500,11 @@ async function getTeacherCurrentAssignments(teacherId: string): Promise<{ assign
     ]);
 
     // 1. Check for Class Teacher role
-    const allTeachersDocs = await getDocs(collection(db, "teachers"));
-    const allTeachers = allTeachersDocs.docs.map(d => d.data() as TeacherType);
-
     allClasses.forEach((classObj) => {
         if (classObj.classTeacherId === teacherDoc.id) {
             if (!assignedClassesMap.has(classObj.id)) {
                 assignedClassesMap.set(classObj.id, classObj);
             }
-            // A class teacher is implicitly associated with all subjects taught in their class
-            // Find all subjects taught in this class by ANY teacher
-            allTeachers.forEach(tData => {
-                if(tData.subjectsAssigned){
-                    tData.subjectsAssigned.forEach(sa => {
-                        if(sa.classIds.includes(classObj.id)){
-                            const subject = allSubjects.find(s => s.id === sa.subjectId);
-                            if(subject && !assignedSubjectsMap.has(subject.id)){
-                                assignedSubjectsMap.set(subject.id, subject);
-                            }
-                        }
-                    });
-                }
-            });
         }
     });
 

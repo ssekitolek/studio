@@ -134,23 +134,15 @@ export default function MarksReviewPage() {
       return;
     }
 
-    if (!marksPayload?.submissionId || marksPayload.marks.length === 0) {
-      toast({ title: "Cannot Run Check", description: "Load marks first before running the AI check.", variant: "destructive" });
+    if (!marksPayload?.submissionId || !marksPayload.exam || !marksPayload.subject || marksPayload.marks.length === 0) {
+      toast({ title: "Cannot Run Check", description: "Load marks first and ensure exam/subject details are present before running the AI check.", variant: "destructive" });
       return;
-    }
-
-    const currentSubjectObj = subjects.find(s => s.id === selectedSubject);
-    const currentExamObj = exams.find(e => e.id === selectedExam);
-
-    if (!currentSubjectObj || !currentExamObj) {
-        toast({ title: "Error", description: "Could not find subject or exam details for the check.", variant: "destructive" });
-        return;
     }
 
     const gradeEntries: GenkitGradeEntry[] = marksPayload.marks.map(m => ({ studentId: m.studentId, grade: m.grade }));
     const anomalyInput: GradeAnomalyDetectionInput = {
-      subject: currentSubjectObj.name,
-      exam: currentExamObj.name,
+      subject: marksPayload.subject.name,
+      exam: marksPayload.exam.name,
       grades: gradeEntries,
       historicalAverage: historicalAverage,
     };
@@ -222,8 +214,12 @@ export default function MarksReviewPage() {
     }
 
     startDownloadTransition(async () => {
-        const currentExam = exams.find(e => e.id === selectedExam);
-        const maxMarks = currentExam?.maxMarks || 100;
+        const currentExam = marksPayload.exam;
+        if (!currentExam) {
+             toast({ title: "Error", description: "Cannot download, exam details are missing from the submission.", variant: "destructive" });
+             return;
+        }
+        const maxMarks = currentExam.maxMarks;
 
         let gradingScale: GradingScaleItem[] = [];
         if (currentExam?.gradingPolicyId && gradingPolicies) {
@@ -350,8 +346,12 @@ export default function MarksReviewPage() {
   const handleSaveEditedMarks = () => {
     if (!marksPayload?.submissionId || !editableMarks) return;
     
-    const currentExamDetails = exams.find(e => e.id === selectedExam);
-    const maxMarksForCurrentExam = currentExamDetails?.maxMarks || 100;
+    const currentExamDetails = marksPayload.exam;
+    if (!currentExamDetails) {
+        toast({ title: "Error", description: "Cannot save, exam details are missing.", variant: "destructive" });
+        return;
+    }
+    const maxMarksForCurrentExam = currentExamDetails.maxMarks;
 
     const invalidScores = editableMarks.filter(mark => mark.grade !== null && (mark.grade < 0 || mark.grade > maxMarksForCurrentExam));
     if (invalidScores.length > 0) {
@@ -493,7 +493,7 @@ export default function MarksReviewPage() {
                             onChange={(e) => handleEditMarkChange(mark.studentId, e.target.value)}
                             className="max-w-[100px] ml-auto text-right"
                             min="0"
-                            max={exams.find(e => e.id === selectedExam)?.maxMarks || 100}
+                            max={marksPayload.exam?.maxMarks || 100}
                             disabled={isUpdatingMarks}
                             />
                         ) : (
