@@ -534,16 +534,17 @@ async function getTeacherCurrentAssignments(teacherId: string): Promise<{ assign
     ]);
 
     // 1. Check for Class Teacher role
-    allClasses.forEach(async (classObj) => {
+    const allTeachersDocs = await getDocs(collection(db, "teachers"));
+    const allTeachers = allTeachersDocs.docs.map(d => d.data() as TeacherType);
+
+    allClasses.forEach((classObj) => {
         if (classObj.classTeacherId === teacherDoc.id) {
             if (!assignedClassesMap.has(classObj.id)) {
                 assignedClassesMap.set(classObj.id, classObj);
             }
             // A class teacher is implicitly associated with all subjects taught in their class
             // Find all subjects taught in this class by ANY teacher
-            const allTeachers = await getDocs(collection(db, "teachers"));
-            allTeachers.forEach(tDoc => {
-                const tData = tDoc.data() as TeacherType;
+            allTeachers.forEach(tData => {
                 if(tData.subjectsAssigned){
                     tData.subjectsAssigned.forEach(sa => {
                         if(sa.classIds.includes(classObj.id)){
@@ -655,6 +656,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
 
     const notifications: TeacherNotification[] = [];
     const resourcesText = actualGeneralSettings.teacherDashboardResourcesText || defaultResponse.resourcesText;
+    const resourcesImageUrl = actualGeneralSettings.teacherDashboardResourcesImageUrl;
 
     if (gsIsDefault) {
         notifications.push({
@@ -838,7 +840,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
 
 
     console.log(`[LOG_TDD] ACTION END for teacherId: "${teacherId}". Returning data.`);
-    return { assignments: dashboardAssignments, notifications, teacherName, resourcesText, stats };
+    return { assignments: dashboardAssignments, notifications, teacherName, resourcesText, resourcesImageUrl, stats };
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while processing dashboard data.";

@@ -1,4 +1,5 @@
 
+
 import type { Timestamp } from "firebase/firestore";
 
 export interface Teacher {
@@ -105,6 +106,7 @@ export interface GeneralSettings {
     dosGlobalAnnouncementType?: 'info' | 'warning';
     dosGlobalAnnouncementImageUrl?: string;
     teacherDashboardResourcesText?: string;
+    teacherDashboardResourcesImageUrl?: string;
 }
 
 export interface GradingScaleItem {
@@ -148,6 +150,7 @@ export interface TeacherDashboardData {
   notifications: TeacherNotification[];
   teacherName?: string;
   resourcesText?: string;
+  resourcesImageUrl?: string;
   stats: TeacherStats;
 }
 

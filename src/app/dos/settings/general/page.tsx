@@ -17,6 +17,7 @@ import { Settings2, Save, Loader2, Scale } from "lucide-react";
 import { getGeneralSettings, updateGeneralSettings, getTerms } from "@/lib/actions/dos-actions";
 import type { GeneralSettings, Term, GradingScaleItem } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
+import { ImageUploadInput } from "@/components/shared/ImageUploadInput";
 
 // Create a simple DatePicker if not already available
 const SimpleDatePicker = ({ value, onChange }: { value?: string, onChange: (date?: string) => void }) => {
@@ -42,6 +43,7 @@ const generalSettingsSchema = z.object({
   dosGlobalAnnouncementType: z.enum(["info", "warning", ""]).optional(),
   dosGlobalAnnouncementImageUrl: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
   teacherDashboardResourcesText: z.string().optional(),
+  teacherDashboardResourcesImageUrl: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
 });
 
 type GeneralSettingsFormValues = z.infer<typeof generalSettingsSchema>;
@@ -63,6 +65,7 @@ export default function GeneralSettingsPage() {
       dosGlobalAnnouncementType: "",
       dosGlobalAnnouncementImageUrl: "",
       teacherDashboardResourcesText: "",
+      teacherDashboardResourcesImageUrl: "",
     },
   });
 
@@ -79,6 +82,7 @@ export default function GeneralSettingsPage() {
           dosGlobalAnnouncementType: settings.dosGlobalAnnouncementType || "",
           dosGlobalAnnouncementImageUrl: settings.dosGlobalAnnouncementImageUrl || "",
           teacherDashboardResourcesText: settings.teacherDashboardResourcesText || "",
+          teacherDashboardResourcesImageUrl: settings.teacherDashboardResourcesImageUrl || "",
         });
         setDefaultGradingScale(settings.defaultGradingScale || []);
         setTerms(termsData);
@@ -99,6 +103,7 @@ export default function GeneralSettingsPage() {
           dosGlobalAnnouncementType: data.dosGlobalAnnouncementType === "" ? undefined : data.dosGlobalAnnouncementType,
           teacherDashboardResourcesText: data.teacherDashboardResourcesText || undefined,
           dosGlobalAnnouncementImageUrl: data.dosGlobalAnnouncementImageUrl || undefined,
+          teacherDashboardResourcesImageUrl: data.teacherDashboardResourcesImageUrl || undefined,
         };
         const result = await updateGeneralSettings(settingsToSave); 
         if (result.success) {
@@ -178,8 +183,8 @@ export default function GeneralSettingsPage() {
 
           <Card className="shadow-md">
             <CardHeader>
-              <CardTitle className="font-headline text-xl text-primary">D.O.S. Announcements</CardTitle>
-              <CardDescription>Set a global announcement for teachers.</CardDescription>
+              <CardTitle className="font-headline text-xl text-primary">D.O.S. & Teacher Dashboard Content</CardTitle>
+              <CardDescription>Customize content displayed on teacher dashboards.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <FormField
@@ -187,7 +192,7 @@ export default function GeneralSettingsPage() {
                 name="dosGlobalAnnouncementText"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Announcement Text (Optional)</FormLabel>
+                    <FormLabel>D.O.S. Announcement Text (Optional)</FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="Enter announcement here..."
@@ -257,6 +262,7 @@ export default function GeneralSettingsPage() {
                   </FormItem>
                 )}
               />
+              <ImageUploadInput fieldName="teacherDashboardResourcesImageUrl" label="Teacher Dashboard Image URL (Optional)" />
             </CardContent>
           </Card>
           

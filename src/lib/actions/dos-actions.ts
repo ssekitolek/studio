@@ -981,7 +981,7 @@ export async function updateGeneralSettings(settings: Partial<GeneralSettings>):
             const value = settings[typedKey];
 
             // For fields that can be cleared, store null instead of empty string/undefined
-            if (['currentTermId', 'globalMarksSubmissionDeadline', 'dosGlobalAnnouncementText', 'dosGlobalAnnouncementType', 'teacherDashboardResourcesText', 'dosGlobalAnnouncementImageUrl'].includes(typedKey)) {
+            if (['currentTermId', 'globalMarksSubmissionDeadline', 'dosGlobalAnnouncementText', 'dosGlobalAnnouncementType', 'teacherDashboardResourcesText', 'dosGlobalAnnouncementImageUrl', 'teacherDashboardResourcesImageUrl'].includes(typedKey)) {
                 settingsToSave[typedKey] = value || null;
             } else if (typedKey === 'defaultGradingScale') { // Handle grading scale separately
                 settingsToSave[typedKey] = Array.isArray(value) ? value : [];
@@ -1592,6 +1592,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
         dosGlobalAnnouncementType: "warning",
         dosGlobalAnnouncementImageUrl: undefined,
         teacherDashboardResourcesText: "Error: Resources text could not be loaded. DB uninitialized.",
+        teacherDashboardResourcesImageUrl: undefined,
         isDefaultTemplate: true,
     };
   }
@@ -1612,6 +1613,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
                 dosGlobalAnnouncementType: data.dosGlobalAnnouncementType === null ? undefined : data.dosGlobalAnnouncementType,
                 dosGlobalAnnouncementImageUrl: data.dosGlobalAnnouncementImageUrl === null ? undefined : data.dosGlobalAnnouncementImageUrl,
                 teacherDashboardResourcesText: data.teacherDashboardResourcesText === null ? undefined : data.teacherDashboardResourcesText,
+                teacherDashboardResourcesImageUrl: data.teacherDashboardResourcesImageUrl === null ? undefined : data.teacherDashboardResourcesImageUrl,
                 isDefaultTemplate: false,
             } as GeneralSettings & { isDefaultTemplate: boolean };
         }
@@ -1625,6 +1627,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
             dosGlobalAnnouncementType: "info",
             dosGlobalAnnouncementImageUrl: undefined,
             teacherDashboardResourcesText: "Access your teaching schedule, submit student marks, and view historical submission data using the sidebar navigation. Stay updated with notifications from the D.O.S. and ensure timely submission of grades. If you encounter any issues, please contact the administration.",
+            teacherDashboardResourcesImageUrl: "https://placehold.co/600x400.png",
             isDefaultTemplate: true,
         };
         await setDoc(settingsRef, {
@@ -1636,6 +1639,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
             dosGlobalAnnouncementType: defaultSettings.dosGlobalAnnouncementType || null,
             dosGlobalAnnouncementImageUrl: defaultSettings.dosGlobalAnnouncementImageUrl || null,
             teacherDashboardResourcesText: defaultSettings.teacherDashboardResourcesText || null,
+            teacherDashboardResourcesImageUrl: defaultSettings.teacherDashboardResourcesImageUrl || null,
         });
         revalidatePath("/dos/settings/general");
         return defaultSettings;
@@ -1650,6 +1654,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
             dosGlobalAnnouncementType: "warning",
             dosGlobalAnnouncementImageUrl: undefined,
             teacherDashboardResourcesText: "Could not load teacher resources text due to a server error. Please contact support.",
+            teacherDashboardResourcesImageUrl: undefined,
             isDefaultTemplate: true,
         };
     }

@@ -45,7 +45,7 @@ export default function TeacherDashboardPage() {
     );
   }
 
-  const { assignments, notifications, teacherName, resourcesText, stats } = dashboardData;
+  const { assignments, notifications, teacherName, resourcesText, stats, resourcesImageUrl } = dashboardData;
   const displayTeacherName = teacherName || user?.displayName || user?.email || "Teacher";
 
   const dashboardStats = [
@@ -225,7 +225,7 @@ export default function TeacherDashboardPage() {
               </Button>
             </div>
             <div className="md:w-1/3 flex justify-center items-center">
-                 <Image src="https://placehold.co/600x400.png" alt="Teacher at desk" width={250} height={167} className="rounded-lg" data-ai-hint="teacher classroom"/>
+                 <Image src={resourcesImageUrl || "https://placehold.co/600x400.png"} alt="Teacher at desk" width={250} height={167} className="rounded-lg" data-ai-hint="teacher classroom"/>
             </div>
         </CardContent>
       </Card>
