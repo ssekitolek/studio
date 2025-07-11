@@ -12,13 +12,14 @@ import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 // Your web app's Firebase configuration is now hardcoded here
 // to ensure it is available in the browser environment.
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyASlqu0spRbYI3FglqZKJF8lplFvpr5cR0",
   authDomain: "smack-marks-portal.firebaseapp.com",
   projectId: "smack-marks-portal",
   storageBucket: "smack-marks-portal.appspot.com",
   messagingSenderId: "424036907971",
-  appId: "1:424036907971:web:e32094cee5841f25125b76"
+  appId: "1:424036907971:web:e32094cee5841f25125b76",
+  NEXT_PUBLIC_GOOGLE_API_KEY: "AIzaSyBgfyihL-nscgamTVLNwwOqVTkIM2yEY5s"
 };
 
 // Initialize Firebase
