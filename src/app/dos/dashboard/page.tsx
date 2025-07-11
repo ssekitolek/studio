@@ -11,6 +11,7 @@ import { LayoutDashboard, Users, BookUser, ClipboardList, Settings2, CalendarChe
 import { getTeachers, getStudents, getClasses, getSubjects, getExams, getGeneralSettings, getTerms } from "@/lib/actions/dos-actions";
 import type { Term, GeneralSettings, Teacher, Student, ClassInfo, Subject as SubjectType, Exam } from "@/lib/types";
 import { Alert, AlertDescription, AlertTitle as ShadcnAlertTitle } from "@/components/ui/alert";
+import Image from 'next/image';
 
 const quickActions = [
   { label: "Add New Teacher", href: "/dos/teachers/new", icon: UserPlus },
@@ -95,7 +96,9 @@ export default function DosDashboardPage() {
         globalMarksSubmissionDeadline: undefined,
         dosGlobalAnnouncementText: "Dashboard data could not be loaded due to an error.",
         dosGlobalAnnouncementType: "warning",
+        dosGlobalAnnouncementImageUrl: undefined,
         teacherDashboardResourcesText: "Resources could not be loaded due to an error.",
+        teacherDashboardResourcesImageUrl: undefined,
     };
   } else if (!currentGeneralSettings) {
       currentGeneralSettings = {
@@ -104,6 +107,8 @@ export default function DosDashboardPage() {
         dosGlobalAnnouncementText: "Failed to load system settings. Dashboard may be incomplete.",
         dosGlobalAnnouncementType: "warning",
         teacherDashboardResourcesText: "Failed to load resources text due to settings issue.",
+        dosGlobalAnnouncementImageUrl: undefined,
+        teacherDashboardResourcesImageUrl: undefined,
     };
   }
 
@@ -226,16 +231,14 @@ export default function DosDashboardPage() {
         </CardHeader>
         <CardContent className="flex flex-col md:flex-row items-center gap-6">
             <div className="md:w-2/3">
-                <p className="text-foreground/90 mb-4">
-                    This system empowers you to efficiently manage student grades, teacher assignments, and academic configurations.
-                    Utilize the sidebar to navigate through different management sections.
-                </p>
-                <p className="text-foreground/90">
-                    This dashboard provides a quick overview and access to essential functions. Ensure all data is up-to-date for smooth operations.
-                </p>
+              {(currentGeneralSettings?.dosGlobalAnnouncementText || "Welcome to the D.O.S. Dashboard. Use the sidebar to manage school data. You can edit this message in General Settings.").split('\n').map((paragraph, index) => (
+                  <p key={index} className="text-foreground/90 mb-2 last:mb-0">
+                      {paragraph}
+                  </p>
+              ))}
             </div>
             <div className="md:w-1/3 flex justify-center items-center">
-                 <div data-ai-hint="education school" className="w-[250px] h-[167px] bg-muted rounded-lg"/>
+                 <Image src={currentGeneralSettings?.dosGlobalAnnouncementImageUrl || "https://placehold.co/600x400.png"} alt="D.O.S. Dashboard Welcome Image" width={250} height={167} className="rounded-lg object-cover" data-ai-hint="education school"/>
             </div>
         </CardContent>
       </Card>

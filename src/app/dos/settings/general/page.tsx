@@ -183,86 +183,54 @@ export default function GeneralSettingsPage() {
 
           <Card className="shadow-md">
             <CardHeader>
-              <CardTitle className="font-headline text-xl text-primary">D.O.S. & Teacher Dashboard Content</CardTitle>
-              <CardDescription>Customize content displayed on teacher dashboards.</CardDescription>
+              <CardTitle className="font-headline text-xl text-primary">Dashboard Customization</CardTitle>
+              <CardDescription>Customize content displayed on D.O.S. and Teacher dashboards.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="dosGlobalAnnouncementText"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>D.O.S. Announcement Text (Optional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Enter announcement here..."
-                        className="resize-y min-h-[100px]"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>This message will be shown on the teacher dashboard.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="dosGlobalAnnouncementType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Announcement Type</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select announcement type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="info">Info</SelectItem>
-                        <SelectItem value="warning">Warning</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>Visual style for the announcement.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <FormField
-                control={form.control}
-                name="dosGlobalAnnouncementImageUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Announcement Image URL (Optional)</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="https://example.com/image.png"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>Paste a URL to an image to display with the announcement.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="teacherDashboardResourcesText"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Teacher Dashboard Resources Text (Optional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Enter text for the teacher resources section..."
-                        className="resize-y min-h-[120px]"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>This text will be shown in the 'Teacher Resources' card on the teacher dashboard.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <ImageUploadInput fieldName="teacherDashboardResourcesImageUrl" label="Teacher Dashboard Image URL (Optional)" />
+            <CardContent className="space-y-6">
+              <div className="p-4 border rounded-lg space-y-4">
+                 <h3 className="font-semibold text-muted-foreground">D.O.S. Dashboard Welcome Card</h3>
+                  <FormField
+                    control={form.control}
+                    name="dosGlobalAnnouncementText"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>D.O.S. Welcome Text (Optional)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Enter welcome message for D.O.S. dashboard..."
+                            className="resize-y min-h-[100px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                   <ImageUploadInput fieldName="dosGlobalAnnouncementImageUrl" label="D.O.S. Welcome Image URL (Optional)" />
+              </div>
+              <div className="p-4 border rounded-lg space-y-4">
+                  <h3 className="font-semibold text-muted-foreground">Teacher Dashboard Resources Card</h3>
+                  <FormField
+                    control={form.control}
+                    name="teacherDashboardResourcesText"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Teacher Resources Text (Optional)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Enter text for the teacher resources section..."
+                            className="resize-y min-h-[120px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>This text will be shown in the 'Teacher Resources' card on the teacher dashboard.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <ImageUploadInput fieldName="teacherDashboardResourcesImageUrl" label="Teacher Resources Image URL (Optional)" />
+              </div>
+
             </CardContent>
           </Card>
           
