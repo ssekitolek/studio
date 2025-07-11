@@ -102,9 +102,10 @@ export interface GeneralSettings {
     currentTermId?: string;
     markSubmissionTimeZone: string;
     globalMarksSubmissionDeadline?: string; // ISO string date
+    dosWelcomeText?: string;
+    dosWelcomeImageUrl?: string;
     dosGlobalAnnouncementText?: string;
     dosGlobalAnnouncementType?: 'info' | 'warning';
-    dosGlobalAnnouncementImageUrl?: string;
     teacherDashboardResourcesText?: string;
     teacherDashboardResourcesImageUrl?: string;
 }

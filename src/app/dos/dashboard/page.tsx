@@ -96,9 +96,7 @@ export default function DosDashboardPage() {
         globalMarksSubmissionDeadline: undefined,
         dosGlobalAnnouncementText: "Dashboard data could not be loaded due to an error.",
         dosGlobalAnnouncementType: "warning",
-        dosGlobalAnnouncementImageUrl: undefined,
         teacherDashboardResourcesText: "Resources could not be loaded due to an error.",
-        teacherDashboardResourcesImageUrl: undefined,
     };
   } else if (!currentGeneralSettings) {
       currentGeneralSettings = {
@@ -107,8 +105,6 @@ export default function DosDashboardPage() {
         dosGlobalAnnouncementText: "Failed to load system settings. Dashboard may be incomplete.",
         dosGlobalAnnouncementType: "warning",
         teacherDashboardResourcesText: "Failed to load resources text due to settings issue.",
-        dosGlobalAnnouncementImageUrl: undefined,
-        teacherDashboardResourcesImageUrl: undefined,
     };
   }
 
@@ -231,14 +227,14 @@ export default function DosDashboardPage() {
         </CardHeader>
         <CardContent className="flex flex-col md:flex-row items-center gap-6">
             <div className="md:w-2/3">
-              {(currentGeneralSettings?.dosGlobalAnnouncementText || "Welcome to the D.O.S. Dashboard. Use the sidebar to manage school data. You can edit this message in General Settings.").split('\n').map((paragraph, index) => (
+              {(currentGeneralSettings?.dosWelcomeText || "Welcome to the D.O.S. Dashboard. Use the sidebar to manage school data. You can edit this message in General Settings.").split('\n').map((paragraph, index) => (
                   <p key={index} className="text-foreground/90 mb-2 last:mb-0">
                       {paragraph}
                   </p>
               ))}
             </div>
             <div className="md:w-1/3 flex justify-center items-center">
-                 <Image src={currentGeneralSettings?.dosGlobalAnnouncementImageUrl || "https://placehold.co/600x400.png"} alt="D.O.S. Dashboard Welcome Image" width={250} height={167} className="rounded-lg object-cover" data-ai-hint="education school"/>
+                 <Image src={currentGeneralSettings?.dosWelcomeImageUrl || "https://placehold.co/600x400.png"} alt="D.O.S. Dashboard Welcome Image" width={250} height={167} className="rounded-lg object-cover" data-ai-hint="education school"/>
             </div>
         </CardContent>
       </Card>

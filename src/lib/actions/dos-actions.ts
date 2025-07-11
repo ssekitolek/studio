@@ -981,7 +981,7 @@ export async function updateGeneralSettings(settings: Partial<GeneralSettings>):
             const value = settings[typedKey];
 
             // For fields that can be cleared, store null instead of empty string/undefined
-            if (['currentTermId', 'globalMarksSubmissionDeadline', 'dosGlobalAnnouncementText', 'dosGlobalAnnouncementType', 'teacherDashboardResourcesText', 'dosGlobalAnnouncementImageUrl', 'teacherDashboardResourcesImageUrl'].includes(typedKey)) {
+            if (['currentTermId', 'globalMarksSubmissionDeadline', 'dosWelcomeText', 'dosWelcomeImageUrl', 'dosGlobalAnnouncementText', 'dosGlobalAnnouncementType', 'teacherDashboardResourcesText', 'teacherDashboardResourcesImageUrl'].includes(typedKey)) {
                 settingsToSave[typedKey] = value || null;
             } else if (typedKey === 'defaultGradingScale') { // Handle grading scale separately
                 settingsToSave[typedKey] = Array.isArray(value) ? value : [];
@@ -1588,9 +1588,10 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
         markSubmissionTimeZone: 'UTC',
         currentTermId: undefined,
         globalMarksSubmissionDeadline: undefined,
+        dosWelcomeText: "Error: Could not load welcome text.",
+        dosWelcomeImageUrl: undefined,
         dosGlobalAnnouncementText: "Error: System settings could not be loaded. DB uninitialized.",
         dosGlobalAnnouncementType: "warning",
-        dosGlobalAnnouncementImageUrl: undefined,
         teacherDashboardResourcesText: "Error: Resources text could not be loaded. DB uninitialized.",
         teacherDashboardResourcesImageUrl: undefined,
         isDefaultTemplate: true,
@@ -1609,9 +1610,10 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
                 defaultGradingScale,
                 markSubmissionTimeZone: data.markSubmissionTimeZone || 'UTC',
                 globalMarksSubmissionDeadline: data.globalMarksSubmissionDeadline === null ? undefined : data.globalMarksSubmissionDeadline,
+                dosWelcomeText: data.dosWelcomeText === null ? undefined : data.dosWelcomeText,
+                dosWelcomeImageUrl: data.dosWelcomeImageUrl === null ? undefined : data.dosWelcomeImageUrl,
                 dosGlobalAnnouncementText: data.dosGlobalAnnouncementText === null ? undefined : data.dosGlobalAnnouncementText,
                 dosGlobalAnnouncementType: data.dosGlobalAnnouncementType === null ? undefined : data.dosGlobalAnnouncementType,
-                dosGlobalAnnouncementImageUrl: data.dosGlobalAnnouncementImageUrl === null ? undefined : data.dosGlobalAnnouncementImageUrl,
                 teacherDashboardResourcesText: data.teacherDashboardResourcesText === null ? undefined : data.teacherDashboardResourcesText,
                 teacherDashboardResourcesImageUrl: data.teacherDashboardResourcesImageUrl === null ? undefined : data.teacherDashboardResourcesImageUrl,
                 isDefaultTemplate: false,
@@ -1623,23 +1625,17 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
             markSubmissionTimeZone: 'UTC',
             currentTermId: undefined,
             globalMarksSubmissionDeadline: undefined,
+            dosWelcomeText: "Welcome to the D.O.S. Dashboard! You can edit this message in General Settings.",
+            dosWelcomeImageUrl: "https://placehold.co/600x400.png",
             dosGlobalAnnouncementText: "Welcome to GradeCentral! Please configure system settings via the D.O.S. portal.",
             dosGlobalAnnouncementType: "info",
-            dosGlobalAnnouncementImageUrl: undefined,
             teacherDashboardResourcesText: "Access your teaching schedule, submit student marks, and view historical submission data using the sidebar navigation. Stay updated with notifications from the D.O.S. and ensure timely submission of grades. If you encounter any issues, please contact the administration.",
             teacherDashboardResourcesImageUrl: "https://placehold.co/600x400.png",
             isDefaultTemplate: true,
         };
         await setDoc(settingsRef, {
-            defaultGradingScale: defaultSettings.defaultGradingScale,
-            markSubmissionTimeZone: defaultSettings.markSubmissionTimeZone,
-            currentTermId: defaultSettings.currentTermId || null,
-            globalMarksSubmissionDeadline: defaultSettings.globalMarksSubmissionDeadline || null,
-            dosGlobalAnnouncementText: defaultSettings.dosGlobalAnnouncementText || null,
-            dosGlobalAnnouncementType: defaultSettings.dosGlobalAnnouncementType || null,
-            dosGlobalAnnouncementImageUrl: defaultSettings.dosGlobalAnnouncementImageUrl || null,
-            teacherDashboardResourcesText: defaultSettings.teacherDashboardResourcesText || null,
-            teacherDashboardResourcesImageUrl: defaultSettings.teacherDashboardResourcesImageUrl || null,
+            ...defaultSettings,
+            isDefaultTemplate: undefined, // Don't save this flag to Firestore
         });
         revalidatePath("/dos/settings/general");
         return defaultSettings;
@@ -1650,9 +1646,10 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
             markSubmissionTimeZone: 'UTC',
             currentTermId: undefined,
             globalMarksSubmissionDeadline: undefined,
+            dosWelcomeText: "Error fetching welcome text.",
+            dosWelcomeImageUrl: undefined,
             dosGlobalAnnouncementText: "Error fetching announcements due to a server error.",
             dosGlobalAnnouncementType: "warning",
-            dosGlobalAnnouncementImageUrl: undefined,
             teacherDashboardResourcesText: "Could not load teacher resources text due to a server error. Please contact support.",
             teacherDashboardResourcesImageUrl: undefined,
             isDefaultTemplate: true,

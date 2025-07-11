@@ -83,7 +83,8 @@ export default function TeacherDashboardPage() {
                     'text-blue-700 dark:text-blue-300'
                 }
             >
-                {notification.type === 'deadline' ? 'Upcoming Deadline' : 
+                {notification.id === 'dos_global_announcement' ? 'Global Announcement' :
+                 notification.type === 'deadline' ? 'Upcoming Deadline' : 
                  notification.id.startsWith('error_') || notification.id.startsWith('critical_') || notification.type === 'warning' ? 'Important Alert' : 
                  notification.id.startsWith('system_settings_') || notification.id.startsWith('current_term_') ? 'System Configuration Alert' :
                  'Notification'}
@@ -161,74 +162,27 @@ export default function TeacherDashboardPage() {
         <Card className="shadow-md hover:shadow-lg transition-shadow">
           <CardHeader>
             <CardTitle className="font-headline text-xl text-primary flex items-center">
-              <Bell className="mr-2 h-6 w-6" /> Notifications (D.O.S. Announcements)
+              <Bell className="mr-2 h-6 w-6" /> Teacher Resources
             </CardTitle>
             <CardDescription>Important updates and reminders from the D.O.S office.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 max-h-96 overflow-y-auto">
-            {notifications && notifications.filter(n => n.id === 'dos_announcement').length > 0 ? (
-              notifications.filter(n => n.id === 'dos_announcement').map((notification) => (
-                <div
-                  key={`${notification.id}-dos`}
-                  className={`flex flex-col items-start p-3 rounded-lg ${
-                    notification.type === 'warning' ? 'bg-destructive/10 text-destructive-foreground' : 
-                    'bg-blue-500/10 text-blue-700 dark:text-blue-300'
-                  }`}
-                >
-                  <div className="flex items-start w-full">
-                    {notification.type === 'warning' ? (
-                        <AlertTriangle className={`h-5 w-5 mr-3 mt-0.5 shrink-0 text-destructive`} />
-                    ) : (
-                        <Info className="h-5 w-5 text-blue-500 mr-3 mt-0.5 shrink-0" />
-                    )}
-                    <p className="text-sm flex-1">{notification.message || "No message content."}</p>
-                  </div>
-                  {notification.imageUrl && (
-                     <div className="pl-8 pt-2 w-full">
-                        <Image
-                          src={notification.imageUrl}
-                          alt="Announcement Image"
-                          width={400}
-                          height={250}
-                          className="mt-2 rounded-md object-cover w-full h-auto"
-                          data-ai-hint="announcement"
-                        />
-                     </div>
-                  )}
-                </div>
-              ))
-            ) : (
-                <div className="text-center py-6 text-muted-foreground">
-                    <Info className="mx-auto h-8 w-8 mb-2" />
-                    <p>No D.O.S. announcements at this time.</p>
-                </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-      
-      <Card className="shadow-md overflow-hidden">
-        <CardHeader>
-            <CardTitle className="font-headline text-xl text-primary">Teacher Resources</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col md:flex-row items-center gap-6">
-            <div className="md:w-2/3">
-              {(resourcesText || "No resources text available.").split('\n').map((paragraph, index) => (
-                <p key={index} className="text-foreground/90 mb-2 last:mb-0">
+          <CardContent className="space-y-3">
+             <div className="relative h-40 w-full mb-4">
+                 <Image src={resourcesImageUrl || "https://placehold.co/600x400.png"} alt="Teacher at desk" fill className="rounded-lg object-cover" data-ai-hint="teacher classroom"/>
+             </div>
+             {(resourcesText || "No resources text available.").split('\n').map((paragraph, index) => (
+                <p key={index} className="text-foreground/90 text-sm mb-2 last:mb-0">
                   {paragraph}
                 </p>
               ))}
-              <Button variant="default" className="mt-4" asChild>
+              <Button variant="default" className="mt-4 w-full" asChild>
                  <Link href="/teacher/marks/submit">
                   <BookOpenCheck className="mr-2 h-4 w-4" /> Go to Marks Submission
                 </Link>
               </Button>
-            </div>
-            <div className="md:w-1/3 flex justify-center items-center">
-                 <Image src={resourcesImageUrl || "https://placehold.co/600x400.png"} alt="Teacher at desk" width={250} height={167} className="rounded-lg" data-ai-hint="teacher classroom"/>
-            </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

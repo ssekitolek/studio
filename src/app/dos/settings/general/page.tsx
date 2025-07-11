@@ -13,7 +13,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Settings2, Save, Loader2, Scale } from "lucide-react";
+import { Settings2, Save, Loader2, Scale, Megaphone, Info } from "lucide-react";
 import { getGeneralSettings, updateGeneralSettings, getTerms } from "@/lib/actions/dos-actions";
 import type { GeneralSettings, Term, GradingScaleItem } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
@@ -34,14 +34,14 @@ const SimpleDatePicker = ({ value, onChange }: { value?: string, onChange: (date
 };
 
 
-// Schema no longer includes defaultGradingScale as it is not managed here
 const generalSettingsSchema = z.object({
   currentTermId: z.string().optional(),
   markSubmissionTimeZone: z.string().min(1, "Timezone is required."),
-  globalMarksSubmissionDeadline: z.string().optional(), 
+  globalMarksSubmissionDeadline: z.string().optional(),
+  dosWelcomeText: z.string().optional(),
+  dosWelcomeImageUrl: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
   dosGlobalAnnouncementText: z.string().optional(),
   dosGlobalAnnouncementType: z.enum(["info", "warning", ""]).optional(),
-  dosGlobalAnnouncementImageUrl: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
   teacherDashboardResourcesText: z.string().optional(),
   teacherDashboardResourcesImageUrl: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
 });
@@ -61,9 +61,10 @@ export default function GeneralSettingsPage() {
       currentTermId: "",
       markSubmissionTimeZone: "UTC",
       globalMarksSubmissionDeadline: undefined,
+      dosWelcomeText: "",
+      dosWelcomeImageUrl: "",
       dosGlobalAnnouncementText: "",
-      dosGlobalAnnouncementType: "",
-      dosGlobalAnnouncementImageUrl: "",
+      dosGlobalAnnouncementType: "info",
       teacherDashboardResourcesText: "",
       teacherDashboardResourcesImageUrl: "",
     },
@@ -78,9 +79,10 @@ export default function GeneralSettingsPage() {
           currentTermId: settings.currentTermId || "",
           markSubmissionTimeZone: settings.markSubmissionTimeZone || "UTC",
           globalMarksSubmissionDeadline: settings.globalMarksSubmissionDeadline || undefined,
+          dosWelcomeText: settings.dosWelcomeText || "",
+          dosWelcomeImageUrl: settings.dosWelcomeImageUrl || "",
           dosGlobalAnnouncementText: settings.dosGlobalAnnouncementText || "",
-          dosGlobalAnnouncementType: settings.dosGlobalAnnouncementType || "",
-          dosGlobalAnnouncementImageUrl: settings.dosGlobalAnnouncementImageUrl || "",
+          dosGlobalAnnouncementType: settings.dosGlobalAnnouncementType || "info",
           teacherDashboardResourcesText: settings.teacherDashboardResourcesText || "",
           teacherDashboardResourcesImageUrl: settings.teacherDashboardResourcesImageUrl || "",
         });
@@ -100,10 +102,7 @@ export default function GeneralSettingsPage() {
       try {
         const settingsToSave: Partial<GeneralSettings> = {
           ...data,
-          dosGlobalAnnouncementType: data.dosGlobalAnnouncementType === "" ? undefined : data.dosGlobalAnnouncementType,
-          teacherDashboardResourcesText: data.teacherDashboardResourcesText || undefined,
-          dosGlobalAnnouncementImageUrl: data.dosGlobalAnnouncementImageUrl || undefined,
-          teacherDashboardResourcesImageUrl: data.teacherDashboardResourcesImageUrl || undefined,
+          dosGlobalAnnouncementType: data.dosGlobalAnnouncementType === "" ? "info" : data.dosGlobalAnnouncementType,
         };
         const result = await updateGeneralSettings(settingsToSave); 
         if (result.success) {
@@ -191,13 +190,13 @@ export default function GeneralSettingsPage() {
                  <h3 className="font-semibold text-muted-foreground">D.O.S. Dashboard Welcome Card</h3>
                   <FormField
                     control={form.control}
-                    name="dosGlobalAnnouncementText"
+                    name="dosWelcomeText"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>D.O.S. Welcome Text (Optional)</FormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder="Enter welcome message for D.O.S. dashboard..."
+                            placeholder="Enter a persistent welcome message for the D.O.S. dashboard..."
                             className="resize-y min-h-[100px]"
                             {...field}
                           />
@@ -206,10 +205,47 @@ export default function GeneralSettingsPage() {
                       </FormItem>
                     )}
                   />
-                   <ImageUploadInput fieldName="dosGlobalAnnouncementImageUrl" label="D.O.S. Welcome Image URL (Optional)" />
+                   <ImageUploadInput fieldName="dosWelcomeImageUrl" label="D.O.S. Welcome Image URL (Optional)" />
               </div>
               <div className="p-4 border rounded-lg space-y-4">
-                  <h3 className="font-semibold text-muted-foreground">Teacher Dashboard Resources Card</h3>
+                  <h3 className="font-semibold text-muted-foreground flex items-center gap-2"><Megaphone /> Global Teacher Announcement</h3>
+                  <FormField
+                    control={form.control}
+                    name="dosGlobalAnnouncementText"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Teacher Announcement Text (Optional)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Enter a global announcement to show on teacher dashboards..."
+                            className="resize-y min-h-[100px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="dosGlobalAnnouncementType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Announcement Type</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                            <SelectContent>
+                                <SelectItem value="info">Info (Blue)</SelectItem>
+                                <SelectItem value="warning">Warning (Red)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+              </div>
+              <div className="p-4 border rounded-lg space-y-4">
+                  <h3 className="font-semibold text-muted-foreground flex items-center gap-2"><Info /> Teacher Dashboard Resources Card</h3>
                   <FormField
                     control={form.control}
                     name="teacherDashboardResourcesText"
