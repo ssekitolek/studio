@@ -88,35 +88,25 @@ export default function ManageTeachersPage() {
     });
   };
 
-  const getDisplayedAssignmentsForTeacher = (teacher: Teacher): {className: string, subjectName: string}[] => {
-    const assignmentsMap = new Map<string, {className: string, subjectName: string}>();
+  const getDisplayedAssignmentsForTeacher = (teacher: Teacher): string[] => {
+    const assignmentsList: string[] = [];
 
-    if (teacher.subjectsAssigned) {
-      teacher.subjectsAssigned.forEach(assignment => {
-        const key = `${assignment.classId}-${assignment.subjectId}`;
-        if (!assignmentsMap.has(key)) {
-          assignmentsMap.set(key, {
-            className: getClassName(assignment.classId),
-            subjectName: getSubjectName(assignment.subjectId),
-          });
-        }
-      });
+    // Check for Class Teacher role
+    const classTeacherOf = classes.filter(c => c.classTeacherId === teacher.id).map(c => c.name);
+    if(classTeacherOf.length > 0) {
+        assignmentsList.push(`Class Teacher of: ${classTeacherOf.join(', ')}`);
     }
 
-    classes.forEach(classItem => {
-      if (classItem.classTeacherId === teacher.id) {
-        classItem.subjects.forEach(subject => {
-          const key = `${classItem.id}-${subject.id}`;
-          if (!assignmentsMap.has(key)) {
-            assignmentsMap.set(key, {
-              className: classItem.name,
-              subjectName: subject.name,
-            });
-          }
+    // Check for specific subject assignments
+    if (teacher.subjectsAssigned && teacher.subjectsAssigned.length > 0) {
+        teacher.subjectsAssigned.forEach(assignment => {
+            const subjectName = getSubjectName(assignment.subjectId);
+            const classNames = assignment.classIds.map(getClassName).join(', ');
+            assignmentsList.push(`${subjectName} (${classNames})`);
         });
-      }
-    });
-    return Array.from(assignmentsMap.values());
+    }
+    
+    return assignmentsList;
   };
 
   return (
@@ -171,9 +161,7 @@ export default function ManageTeachersPage() {
                           {displayedAssignments.length > 0 ? (
                             <ul className="list-disc list-inside text-sm">
                               {displayedAssignments.slice(0, 3).map((assignment, idx) => (
-                                <li key={idx}>
-                                  {assignment.subjectName} ({assignment.className})
-                                </li>
+                                <li key={idx}>{assignment}</li>
                               ))}
                               {displayedAssignments.length > 3 && <li>...and {displayedAssignments.length - 3} more</li>}
                             </ul>
