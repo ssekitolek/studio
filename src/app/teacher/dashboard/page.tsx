@@ -167,8 +167,8 @@ export default function TeacherDashboardPage() {
             <CardDescription>Important updates and reminders from the D.O.S office.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-             <div className="relative h-40 w-full mb-4 rounded-lg overflow-hidden">
-                 <Image src={resourcesImageUrl || "https://placehold.co/600x400.png"} alt="Teacher at desk" fill className="object-cover" data-ai-hint="teacher classroom"/>
+             <div className="mb-4">
+                 <Image src={resourcesImageUrl || "https://placehold.co/600x400.png"} alt="Teacher at desk" width={600} height={400} className="rounded-lg object-cover w-full h-auto" data-ai-hint="teacher classroom"/>
              </div>
              {(resourcesText || "No resources text available.").split('\n').map((paragraph, index) => (
                 <p key={index} className="text-foreground/90 text-sm mb-2 last:mb-0">
