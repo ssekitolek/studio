@@ -107,7 +107,7 @@ export default function DosDashboardPage() {
     };
   }
 
-  const totalTeachers = teachers.length;
+  const totalTeachers = teachers.filter(t => t.role !== 'dos').length;
   const totalStudents = students.length;
   const totalClassesManaged = classes.length;
   const totalSubjectsCovered = subjectsData.length;
