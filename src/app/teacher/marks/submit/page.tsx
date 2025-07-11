@@ -15,10 +15,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BookOpenCheck, Loader2, AlertTriangle, CheckCircle, ShieldAlert, FileWarning } from "lucide-react";
 import { getTeacherAssessments, getStudentsForClass, submitMarks, getClassesForTeacher } from "@/lib/actions/teacher-actions";
-import type { Student, AnomalyExplanation, ClassInfo } from "@/lib/types";
+import type { Student, AnomalyExplanation, ClassInfo, Teacher } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
+import { db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+
 
 const markSchema = z.object({
   studentId: z.string(),
