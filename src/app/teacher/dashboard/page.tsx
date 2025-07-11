@@ -159,24 +159,14 @@ export default function TeacherDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-md hover:shadow-lg transition-shadow">
+        <Card className="shadow-md hover:shadow-lg transition-shadow overflow-hidden">
           <CardHeader>
             <CardTitle className="font-headline text-xl text-primary flex items-center">
               <Bell className="mr-2 h-6 w-6" /> Teacher Resources
             </CardTitle>
-            <CardDescription>Important updates and reminders from the D.O.S office.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-             <div className="flex justify-center items-center mb-4">
-                <Image
-                    src={resourcesImageUrl || "https://placehold.co/600x400.png"}
-                    alt="Teacher Resources"
-                    width={250}
-                    height={167}
-                    className="rounded-lg object-cover"
-                    data-ai-hint="teacher classroom"
-                />
-             </div>
+          <CardContent className="flex flex-col md:flex-row items-center gap-6">
+            <div className="md:w-2/3 space-y-3">
              {(resourcesText || "No resources text available.").split('\n').map((paragraph, index) => (
                 <p key={index} className="text-foreground/90 text-sm mb-2 last:mb-0">
                   {paragraph}
@@ -187,6 +177,17 @@ export default function TeacherDashboardPage() {
                   <BookOpenCheck className="mr-2 h-4 w-4" /> Go to Marks Submission
                 </Link>
               </Button>
+            </div>
+            <div className="md:w-1/3 flex justify-center items-center">
+                <Image
+                    src={resourcesImageUrl || "https://placehold.co/600x400.png"}
+                    alt="Teacher Resources"
+                    width={250}
+                    height={167}
+                    className="rounded-lg object-cover"
+                    data-ai-hint="teacher classroom"
+                />
+            </div>
           </CardContent>
         </Card>
       </div>
