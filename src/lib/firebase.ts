@@ -1,10 +1,7 @@
-
 // This is set here as per explicit user instruction.
 // The recommended practice is to use a .env file.
-const FALLBACK_API_KEY = "AIzaSyBgfyihL-nscgamTVLNwwOqVTkIM2yEY5s";
-
 if (!process.env.NEXT_PUBLIC_GOOGLE_API_KEY) {
-  process.env.NEXT_PUBLIC_GOOGLE_API_KEY = FALLBACK_API_KEY;
+  process.env.NEXT_PUBLIC_GOOGLE_API_KEY = "AIzaSyBgfyihL-nscgamTVLNwwOqVTkIM2yEY5s";
 }
 
 // src/lib/firebase.ts
