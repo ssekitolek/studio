@@ -463,7 +463,9 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
             const classObj = allClasses.find(c => c.id === classId);
             if(classObj) {
                 examsForCurrentTerm.forEach(examObj => {
-                    if(!examObj.subjectId || examObj.subjectId === subjectObj.id) {
+                    // An exam is relevant if it's general OR matches the subject
+                    const isRelevantExam = !examObj.subjectId || examObj.subjectId === subjectObj.id;
+                    if(isRelevantExam) {
                         const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`;
                         if (!responsibilitiesMap.has(key)) { 
                             responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
@@ -475,22 +477,34 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
     }
   });
   
+  // As a class teacher, you are responsible for any subject taught in your class.
   allClasses.forEach(classObj => {
     if (classObj.classTeacherId === teacherDocument.id) {
-      classObj.subjects.forEach(subjectObj => {
-        examsForCurrentTerm.forEach(examObj => { 
-          const isRelevantForClassTeacher =
-            (!examObj.classId || examObj.classId === classObj.id ) &&
-            (!examObj.subjectId || examObj.subjectId === subjectObj.id );
-
-          if (isRelevantForClassTeacher) {
-            const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`; 
-            if (!responsibilitiesMap.has(key)) { 
-              responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
+        // Find all subjects taught in this class by ANY teacher
+        const subjectsInClass = new Set<string>();
+        specificAssignments.forEach(sa => {
+            if (sa.classIds.includes(classObj.id)) {
+                subjectsInClass.add(sa.subjectId);
             }
-          }
         });
-      });
+
+        subjectsInClass.forEach(subjectId => {
+            const subjectObj = allSubjects.find(s => s.id === subjectId);
+            if (subjectObj) {
+                examsForCurrentTerm.forEach(examObj => { 
+                    const isRelevantForClassTeacher =
+                        (!examObj.classId || examObj.classId === classObj.id) &&
+                        (!examObj.subjectId || examObj.subjectId === subjectObj.id);
+
+                    if (isRelevantForClassTeacher) {
+                        const key = `${examObj.id}_${classObj.id}_${subjectObj.id}`; 
+                        if (!responsibilitiesMap.has(key)) { 
+                            responsibilitiesMap.set(key, { classObj, subjectObj, examObj });
+                        }
+                    }
+                });
+            }
+        });
     }
   });
   
@@ -520,15 +534,25 @@ async function getTeacherCurrentAssignments(teacherId: string): Promise<{ assign
     ]);
 
     // 1. Check for Class Teacher role
-    allClasses.forEach(classObj => {
+    allClasses.forEach(async (classObj) => {
         if (classObj.classTeacherId === teacherDoc.id) {
             if (!assignedClassesMap.has(classObj.id)) {
                 assignedClassesMap.set(classObj.id, classObj);
             }
-            classObj.subjects.forEach(subject => {
-                const fullSubject = allSubjects.find(s => s.id === subject.id);
-                if (fullSubject && !assignedSubjectsMap.has(fullSubject.id)) {
-                    assignedSubjectsMap.set(fullSubject.id, fullSubject);
+            // A class teacher is implicitly associated with all subjects taught in their class
+            // Find all subjects taught in this class by ANY teacher
+            const allTeachers = await getDocs(collection(db, "teachers"));
+            allTeachers.forEach(tDoc => {
+                const tData = tDoc.data() as TeacherType;
+                if(tData.subjectsAssigned){
+                    tData.subjectsAssigned.forEach(sa => {
+                        if(sa.classIds.includes(classObj.id)){
+                            const subject = allSubjects.find(s => s.id === sa.subjectId);
+                            if(subject && !assignedSubjectsMap.has(subject.id)){
+                                assignedSubjectsMap.set(subject.id, subject);
+                            }
+                        }
+                    });
                 }
             });
         }
@@ -545,7 +569,7 @@ async function getTeacherCurrentAssignments(teacherId: string): Promise<{ assign
                 assignment.classIds.forEach(classId => {
                      const classObj = allClasses.find(c => c.id === classId);
                      if (classObj && !assignedClassesMap.has(classObj.id)) {
-                        assignedClassesMap.set(classObj.id, classObj);
+                        assignedClassesMap.set(classId, classObj);
                     }
                 });
             }
@@ -939,17 +963,20 @@ export async function getClassTeacherManagementData(teacherId: string): Promise<
             allSubjects,
             allExams,
             generalSettings,
-            allGradingPolicies
+            allGradingPolicies,
+            allTeachersDocs
         ] = await Promise.all([
             getClasses(),
             getAllStudents(),
             getSubjects(),
             getAllExamsFromDOS(),
             getGeneralSettings(),
-            getGradingPolicies()
+            getGradingPolicies(),
+            getDocs(collection(db, "teachers")) // Fetch all teachers to determine subjects in a class
         ]);
         
         const teacherDoc = await getTeacherByUid(teacherId);
+        const allTeachers = allTeachersDocs.docs.map(d => d.data() as TeacherType);
 
         const teacherClasses = allClasses.filter(c => c.classTeacherId === teacherDoc?.id);
 
@@ -965,11 +992,26 @@ export async function getClassTeacherManagementData(teacherId: string): Promise<
                 .filter(s => s.classId === classInfo.id)
                 .map(s => ({ id: s.id, studentIdNumber: s.studentIdNumber, firstName: s.firstName, lastName: s.lastName, stream: s.stream }));
 
+            // Determine subjects taught in this class by ANY teacher
+            const subjectsInClass = new Map<string, SubjectType>();
+            allTeachers.forEach(teacher => {
+                if(teacher.subjectsAssigned){
+                    teacher.subjectsAssigned.forEach(sa => {
+                        if(sa.classIds.includes(classInfo.id)){
+                            const subject = allSubjects.find(s => s.id === sa.subjectId);
+                            if(subject && !subjectsInClass.has(subject.id)){
+                                subjectsInClass.set(subject.id, subject);
+                            }
+                        }
+                    });
+                }
+            });
+
             if(currentTermId){
                 const examsForCurrentTerm = allExams.filter(e => e.termId === currentTermId);
                 const assessmentIdsToFetch: string[] = [];
                 
-                classInfo.subjects.forEach(subject => {
+                subjectsInClass.forEach(subject => {
                     examsForCurrentTerm.forEach(exam => {
                         assessmentIdsToFetch.push(`${exam.id}_${classInfo.id}_${subject.id}`);
                     });
@@ -992,7 +1034,7 @@ export async function getClassTeacherManagementData(teacherId: string): Promise<
                     }
                 }
                 
-                classInfo.subjects.forEach(subject => {
+                subjectsInClass.forEach(subject => {
                     examsForCurrentTerm.forEach(exam => {
                         const assessmentId = `${exam.id}_${classInfo.id}_${subject.id}`;
                         const submission = submissionsByAssessmentId.get(assessmentId);
