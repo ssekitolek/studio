@@ -11,8 +11,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['var(--font-body)', 'sans-serif'], // Corrected font family
-        headline: ['var(--font-headline)', 'sans-serif'], // Corrected font family
+        body: ['var(--font-body)', 'sans-serif'],
+        headline: ['var(--font-headline)', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {
@@ -99,16 +99,16 @@ export default {
             transform: 'translateY(0)',
           },
         },
-        'ken-burns': {
-          '0%': { transform: 'scale(1) translateY(0)', 'transform-origin': 'center center' },
-          '100%': { transform: 'scale(1.1) translateY(-15px)', 'transform-origin': 'center center' },
+        'image-zoom': {
+          '0%': { transform: 'scale(1)' },
+          '100%': { transform: 'scale(1.15)' },
         },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'fade-in-up': 'fade-in-up 0.8s ease-in-out forwards',
-        'ken-burns': 'ken-burns 15s ease-in-out infinite alternate forwards',
+        'image-zoom': 'image-zoom 8s ease-in-out infinite alternate',
       },
     },
   },

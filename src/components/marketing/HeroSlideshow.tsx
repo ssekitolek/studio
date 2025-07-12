@@ -31,7 +31,7 @@ export function HeroSlideshow({ content }: HeroSlideshowProps) {
   }
 
   return (
-    <section className="relative h-[70vh] min-h-[500px] w-full overflow-hidden text-primary-foreground">
+    <section className="group relative h-[70vh] min-h-[500px] w-full overflow-hidden text-primary-foreground">
       {content.slides.map((slide, index) => (
         <Image
           key={index}
@@ -39,8 +39,8 @@ export function HeroSlideshow({ content }: HeroSlideshowProps) {
           alt={slide.title}
           fill
           className={cn(
-            'object-cover transition-opacity duration-[2000ms] ease-in-out',
-            index === currentIndex ? 'opacity-100 animate-ken-burns' : 'opacity-0'
+            'object-cover transition-opacity duration-[2000ms] ease-in-out group-hover:animate-image-zoom',
+            index === currentIndex ? 'opacity-100' : 'opacity-0'
           )}
           priority={index === 0}
           data-ai-hint="school students happy"
