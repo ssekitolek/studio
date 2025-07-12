@@ -16,6 +16,7 @@ const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-headline',
+  weight: ['400', '700'],
 });
 
 const faviconUrl = "https://i.imgur.com/lZDibio.png";
