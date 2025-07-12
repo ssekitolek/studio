@@ -23,7 +23,8 @@ export default async function SchoolHomePage() {
   const content = await getWebsiteContent();
   const { 
     heroSlideshowSection, 
-    whyUsSection, 
+    whyUsSection,
+    signatureProgramsSection,
     alumniSpotlightSection, 
     newsSection
   } = content;
@@ -48,9 +49,21 @@ export default async function SchoolHomePage() {
             </div>
           </div>
         </section>
+        
+        {/* Signature Programs Section */}
+        <section id="signature-programs" className="py-20 md:py-32 bg-background">
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="text-center max-w-3xl mx-auto mb-16 opacity-0 animate-fade-in-up" style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}>
+              <h2 className="text-4xl md:text-5xl font-headline font-bold text-primary">{signatureProgramsSection.heading}</h2>
+            </div>
+            <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '400ms', animationFillMode: 'forwards', animationDuration: '1s' }}>
+              <SignatureProgramsCarousel programs={signatureProgramsSection.programs} />
+            </div>
+          </div>
+        </section>
 
         {/* Alumni Spotlight Section */}
-        <section id="alumni-spotlight" className="py-20 md:py-32 bg-background">
+        <section id="alumni-spotlight" className="py-20 md:py-32 bg-secondary">
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center max-w-3xl mx-auto mb-16 opacity-0 animate-fade-in-up" style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}>
               <h2 className="text-4xl md:text-5xl font-headline font-bold text-primary">{alumniSpotlightSection.heading}</h2>
@@ -63,7 +76,7 @@ export default async function SchoolHomePage() {
         </section>
 
         {/* News Section */}
-        <section id="news" className="py-20 md:py-32 bg-secondary">
+        <section id="news" className="py-20 md:py-32 bg-background">
           <div className="container mx-auto px-4 md:px-6">
             <div className="flex flex-col md:flex-row justify-between items-center text-center md:text-left mb-16 opacity-0 animate-fade-in-up" style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}>
               <div className="max-w-xl">
