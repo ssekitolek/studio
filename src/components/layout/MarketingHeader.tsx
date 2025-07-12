@@ -29,7 +29,7 @@ const navConfig = [
     },
     { 
         title: "Academics",
-        href: "/#academics",
+        href: "/academics",
         items: [
             { title: "Academics Overview", href: "/academics" },
             { title: "Faculty", href: "/faculty" },
@@ -38,7 +38,7 @@ const navConfig = [
     },
     { 
         title: "Community",
-        href: "/#student-life",
+        href: "/student-life",
         items: [
             { title: "Student Life", href: "/student-life" },
             { title: "Clubs & Organizations", href: "/clubs" },
@@ -50,7 +50,7 @@ const navConfig = [
     },
     { 
         title: "Admissions",
-        href: "/#admissions",
+        href: "/admissions",
         items: [
             { title: "Admissions Process", href: "/admissions" },
             { title: "Tuition & Fees", href: "/tuition" },
