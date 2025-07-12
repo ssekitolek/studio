@@ -125,7 +125,7 @@ export function DosSidebar() {
                 return (
                   <React.Fragment key={index}>
                     {/* Expanded View: Section Header and indented Sub-Items */}
-                    <div className="group-data-[state=expanded]:hidden">
+                    <div className="group-data-[state=collapsed]:hidden">
                       <SidebarMenuItem className="mt-2">
                         <div className="h-auto p-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 pointer-events-none flex items-center gap-2">
                           <item.icon className="h-5 w-5 shrink-0" />
