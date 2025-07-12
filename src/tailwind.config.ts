@@ -1,3 +1,4 @@
+
 import type {Config} from 'tailwindcss';
 
 export default {
@@ -98,16 +99,16 @@ export default {
             transform: 'translateY(0)',
           },
         },
-        'image-zoom': {
-          '0%': { transform: 'scale(1)' },
-          '100%': { transform: 'scale(1.15)' },
+        'ken-burns': {
+          '0%': { transform: 'scale(1) translateY(0)', 'transform-origin': 'center center' },
+          '100%': { transform: 'scale(1.1) translateY(-15px)', 'transform-origin': 'center center' },
         },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'fade-in-up': 'fade-in-up 0.8s ease-in-out forwards',
-        'image-zoom': 'image-zoom 8s ease-in-out infinite alternate',
+        'ken-burns': 'ken-burns 15s ease-in-out infinite alternate forwards',
       },
     },
   },

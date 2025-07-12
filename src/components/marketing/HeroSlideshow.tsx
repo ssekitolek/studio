@@ -40,7 +40,7 @@ export function HeroSlideshow({ content }: HeroSlideshowProps) {
           fill
           className={cn(
             'object-cover transition-opacity duration-[2000ms] ease-in-out',
-            index === currentIndex ? 'opacity-100 animate-image-zoom' : 'opacity-0'
+            index === currentIndex ? 'opacity-100 animate-ken-burns' : 'opacity-0'
           )}
           priority={index === 0}
           data-ai-hint="school students happy"
