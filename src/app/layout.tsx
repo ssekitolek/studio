@@ -18,7 +18,7 @@ const spaceGrotesk = Space_Grotesk({
   variable: '--font-headline',
 });
 
-const faviconUrl = "https://i.imgur.com/lZDibio.png?v=11";
+const faviconUrl = "https://i.imgur.com/lZDibio.png";
 
 export const metadata: Metadata = {
   title: "St. Mbaaga's College Naddangira",
