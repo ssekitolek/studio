@@ -39,7 +39,7 @@ export function HeroSlideshow({ content }: HeroSlideshowProps) {
           alt={slide.title}
           fill
           className={cn(
-            'object-cover transition-opacity duration-[2000ms] ease-in-out group-hover:animate-image-zoom',
+            'object-cover transition-opacity duration-[2000ms] ease-in-out animate-image-zoom',
             index === currentIndex ? 'opacity-100' : 'opacity-0'
           )}
           priority={index === 0}
