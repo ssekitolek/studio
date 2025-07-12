@@ -23,7 +23,7 @@ export default async function SchoolHomePage() {
         {/* Why Us Section */}
         <section id="why-us" className="py-20 md:py-32 bg-secondary">
           <div className="container mx-auto px-4 md:px-6">
-            <div className="text-center max-w-3xl mx-auto mb-16">
+            <div className="text-center max-w-3xl mx-auto mb-16 animate-fade-in-up opacity-0" style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}>
               <h2 
                 className="text-4xl md:text-5xl font-headline font-bold text-primary"
               >
@@ -35,27 +35,31 @@ export default async function SchoolHomePage() {
                 {whyUsSection.description}
               </p>
             </div>
-            <WhyUsCarousel points={whyUsSection.points} />
+            <div className="animate-fade-in-up opacity-0" style={{ animationDelay: '400ms', animationFillMode: 'forwards' }}>
+              <WhyUsCarousel points={whyUsSection.points} />
+            </div>
           </div>
         </section>
 
         {/* Signature Programs Section */}
         <section id="programs" className="py-20 md:py-32 bg-background">
           <div className="container mx-auto px-4 md:px-6">
-            <div className="text-center max-w-3xl mx-auto mb-16">
+            <div className="text-center max-w-3xl mx-auto mb-16 animate-fade-in-up opacity-0" style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}>
               <h2 className="text-4xl md:text-5xl font-headline font-bold text-primary">{signatureProgramsSection.heading}</h2>
                <p className="mt-6 text-lg md:text-xl text-muted-foreground">
                 Discover specialized pathways designed to ignite passion and cultivate expertise in high-demand fields.
               </p>
             </div>
-            <SignatureProgramsCarousel programs={signatureProgramsSection.programs} />
+             <div className="animate-fade-in-up opacity-0" style={{ animationDelay: '400ms', animationFillMode: 'forwards' }}>
+                <SignatureProgramsCarousel programs={signatureProgramsSection.programs} />
+             </div>
           </div>
         </section>
 
         {/* Alumni Spotlight Section */}
         <section id="alumni-spotlight" className="py-20 md:py-32 bg-secondary">
             <div className="container mx-auto px-4 md:px-6">
-                <div className="text-center max-w-3xl mx-auto mb-16">
+                <div className="text-center max-w-3xl mx-auto mb-16 animate-fade-in-up opacity-0" style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}>
                     <h2 className="text-4xl md:text-5xl font-headline font-bold text-primary">
                         {alumniSpotlightSection.heading}
                     </h2>
@@ -63,14 +67,16 @@ export default async function SchoolHomePage() {
                         {alumniSpotlightSection.description}
                     </p>
                 </div>
-                <AlumniSpotlight content={alumniSpotlightSection} />
+                 <div className="animate-fade-in-up opacity-0" style={{ animationDelay: '400ms', animationFillMode: 'forwards' }}>
+                    <AlumniSpotlight content={alumniSpotlightSection} />
+                 </div>
             </div>
         </section>
 
         {/* News Section */}
         <section id="news" className="py-20 md:py-32 bg-background">
           <div className="container mx-auto px-4 md:px-6">
-            <div className="flex flex-col md:flex-row justify-between items-center text-center md:text-left mb-16">
+            <div className="flex flex-col md:flex-row justify-between items-center text-center md:text-left mb-16 animate-fade-in-up opacity-0" style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}>
                 <div className="max-w-xl">
                     <h2 className="text-4xl md:text-5xl font-headline font-bold text-primary">{newsSection.heading}</h2>
                      <p className="mt-4 text-lg text-muted-foreground">
@@ -81,7 +87,9 @@ export default async function SchoolHomePage() {
                     <Link href="/news">View All News <ArrowRight className="ml-2" /></Link>
                 </Button>
             </div>
-            <NewsCarousel posts={newsSection.posts} />
+             <div className="animate-fade-in-up opacity-0" style={{ animationDelay: '400ms', animationFillMode: 'forwards' }}>
+                <NewsCarousel posts={newsSection.posts} />
+             </div>
           </div>
         </section>
       </div>
