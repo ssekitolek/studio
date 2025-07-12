@@ -37,6 +37,7 @@ import {
   UserCheck,
   BarChart3,
   FileUp,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { auth } from "@/lib/firebase";
@@ -66,8 +67,16 @@ const dosNavItems = [
       { href: "/dos/settings/general", label: "General Settings", icon: Settings2, tooltip: "Manage General Settings" },
     ],
   },
-  { href: "/dos/marks-review", label: "Marks Review", icon: ShieldAlert, tooltip: "Review submitted marks and check for anomalies"},
-  { href: "/dos/reports/download-marks", label: "Data Analysis", icon: BarChart3, tooltip: "Analyze assessment data" },
+  {
+    label: "Reports & Review",
+    icon: BarChart3,
+    isSection: true,
+    subItems: [
+        { href: "/dos/marks-review", label: "Marks Review", icon: ShieldAlert, tooltip: "Review submitted marks and check for anomalies"},
+        { href: "/dos/reports/attendance-summary", label: "Attendance Summary", icon: ClipboardCheck, tooltip: "View student attendance summaries" },
+        { href: "/dos/reports/download-marks", label: "Data Analysis", icon: BarChart3, tooltip: "Analyze assessment data" },
+    ]
+  }
 ];
 
 export function DosSidebar() {
@@ -116,7 +125,7 @@ export function DosSidebar() {
                 return (
                   <React.Fragment key={index}>
                     {/* Expanded View: Section Header and indented Sub-Items */}
-                    <div className="group-data-[state=collapsed]:hidden">
+                    <div className="group-data-[state=expanded]:hidden">
                       <SidebarMenuItem className="mt-2">
                         <div className="h-auto p-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 pointer-events-none flex items-center gap-2">
                           <item.icon className="h-5 w-5 shrink-0" />

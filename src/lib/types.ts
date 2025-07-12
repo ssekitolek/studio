@@ -320,6 +320,23 @@ export interface AttendanceHistoryData {
     status: 'present' | 'absent' | 'late';
 }
 
+export interface StudentDetail {
+    id: string;
+    name: string;
+}
+
+export interface DOSAttendanceSummary {
+    present: number;
+    absent: number;
+    late: number;
+    totalStudents: number;
+    totalRecords: number;
+    teacherName: string;
+    lastUpdatedAt: string | null;
+    presentDetails: StudentDetail[];
+    absentDetails: StudentDetail[];
+    lateDetails: StudentDetail[];
+}
 
 // --- Website Content Management ---
 

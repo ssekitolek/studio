@@ -2,7 +2,7 @@
 
 "use server";
 
-import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData } from "@/lib/types";
+import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData, DailyAttendanceRecord, DOSAttendanceSummary, StudentDetail } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { db, auth } from "@/lib/firebase";
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference, runTransaction, writeBatch, Timestamp, orderBy, setDoc } from "firebase/firestore";
@@ -1664,4 +1664,83 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
             isDefaultTemplate: true,
         };
     }
+}
+
+export async function getAttendanceSummaryForDOS(classId: string, date: string): Promise<{ success: boolean; message: string; data?: DOSAttendanceSummary }> {
+  if (!db) {
+    return { success: false, message: "Database not initialized." };
+  }
+  if (!classId || !date) {
+    return { success: false, message: "Class ID and date are required." };
+  }
+
+  try {
+    const docId = `${classId}_${date}`;
+    const attendanceRef = doc(db, "attendance", docId);
+    const attendanceSnap = await getDoc(attendanceRef);
+
+    const allStudentsInClass = await getStudents().then(students => students.filter(s => s.classId === classId));
+
+    if (!attendanceSnap.exists()) {
+      return { 
+        success: true, 
+        message: "No attendance record found for this date.",
+        data: {
+          present: 0,
+          absent: 0,
+          late: 0,
+          totalStudents: allStudentsInClass.length,
+          totalRecords: 0,
+          teacherName: 'N/A',
+          lastUpdatedAt: null,
+          presentDetails: [],
+          absentDetails: [],
+          lateDetails: []
+        }
+      };
+    }
+
+    const record = attendanceSnap.data() as DailyAttendanceRecord;
+    const studentMap = new Map(allStudentsInClass.map(s => [s.id, s]));
+
+    const summary: DOSAttendanceSummary = {
+      present: 0,
+      absent: 0,
+      late: 0,
+      totalStudents: allStudentsInClass.length,
+      totalRecords: record.records.length,
+      teacherName: 'Unknown',
+      lastUpdatedAt: record.lastUpdatedAt.toDate().toISOString(),
+      presentDetails: [],
+      absentDetails: [],
+      lateDetails: []
+    };
+    
+    if(record.teacherId) {
+        const teacher = await getTeacherById(record.teacherId);
+        summary.teacherName = teacher?.name || 'Unknown Teacher';
+    }
+
+    record.records.forEach(r => {
+      const studentInfo = studentMap.get(r.studentId);
+      const studentDetail: StudentDetail = { id: r.studentId, name: studentInfo ? `${studentInfo.firstName} ${studentInfo.lastName}` : "Unknown Student" };
+      if (r.status === 'present') {
+        summary.present++;
+        summary.presentDetails.push(studentDetail);
+      } else if (r.status === 'absent') {
+        summary.absent++;
+        summary.absentDetails.push(studentDetail);
+      } else if (r.status === 'late') {
+        summary.late++;
+        summary.lateDetails.push(studentDetail);
+      }
+    });
+
+    return { success: true, message: "Summary fetched successfully.", data: summary };
+
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Unknown error.";
+    console.error(`Error fetching attendance summary for class ${classId} on ${date}:`, error);
+    return { success: false, message: `Failed to fetch attendance summary: ${msg}` };
+  }
 }
