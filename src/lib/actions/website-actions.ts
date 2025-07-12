@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { db } from "@/lib/firebase";
@@ -33,17 +34,20 @@ const defaultContent: WebsiteContent = {
       {
         icon: "BookOpen",
         title: "Rigorous Academics",
-        description: "Our curriculum challenges students to think critically, collaborate effectively, and solve complex problems."
+        description: "Our curriculum challenges students to think critically, collaborate effectively, and solve complex problems.",
+        imageUrl: "https://placehold.co/1200x800.png"
       },
       {
         icon: "Users",
         title: "Inclusive Community",
-        description: "We celebrate diversity and foster a sense of belonging where every student feels known, valued, and supported."
+        description: "We celebrate diversity and foster a sense of belonging where every student feels known, valued, and supported.",
+        imageUrl: "https://placehold.co/1200x800.png"
       },
       {
         icon: "Trophy",
         title: "Signature Programs",
-        description: "From STEM to the arts, our specialized programs provide students with opportunities to explore their passions."
+        description: "From STEM to the arts, our specialized programs provide students with opportunities to explore their passions.",
+        imageUrl: "https://placehold.co/1200x800.png"
       }
     ]
   },

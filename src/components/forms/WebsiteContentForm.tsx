@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -66,6 +67,7 @@ const whyUsSectionSchema = z.object({
         icon: z.string().min(1),
         title: z.string().min(1),
         description: z.string().min(1),
+        imageUrl: z.string().or(z.literal('')),
     })),
 });
 const signatureProgramsSectionSchema = z.object({
@@ -367,11 +369,12 @@ function WhyUsForm({ initialData }: { initialData: WebsiteContent['whyUsSection'
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField control={form.control} name="heading" render={({ field }) => ( <FormItem><FormLabel>Heading</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <ArrayEditor name="points" title="Point" control={form.control} defaultItem={{ icon: 'BookOpen', title: '', description: '' }} renderItem={(index) => (
+                <ArrayEditor name="points" title="Point" control={form.control} defaultItem={{ icon: 'BookOpen', title: '', description: '', imageUrl: '' }} renderItem={(index) => (
                     <>
                         <FormField control={form.control} name={`points.${index}.icon`} render={({ field }) => ( <FormItem><FormLabel>Icon Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                         <FormField control={form.control} name={`points.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                         <FormField control={form.control} name={`points.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <ImageUploadInput fieldName={`points.${index}.imageUrl`} label="Image URL"/>
                     </>
                 )}/>
                  <div className="flex justify-end">

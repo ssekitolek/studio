@@ -368,6 +368,7 @@ export interface WebsiteContent {
       icon: string;
       title: string;
       description: string;
+      imageUrl: string;
     }>;
   };
   signatureProgramsSection: {

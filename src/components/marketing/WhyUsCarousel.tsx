@@ -13,17 +13,12 @@ interface Point {
   icon: string;
   title: string;
   description: string;
+  imageUrl: string; // Added imageUrl property
 }
 
 interface WhyUsCarouselProps {
   points: Point[];
 }
-
-const placeholderImages = [
-    { src: "https://placehold.co/1200x800.png", hint: "academics book" },
-    { src: "https://placehold.co/1200x800.png", hint: "community students" },
-    { src: "https://placehold.co/1200x800.png", hint: "programs stem" }
-];
 
 export function WhyUsCarousel({ points }: WhyUsCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -55,6 +50,10 @@ export function WhyUsCarousel({ points }: WhyUsCarouselProps) {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex, activeInfoIndex]);
+
+  if (!points || points.length === 0) {
+    return null;
+  }
 
   const handlePrev = () => {
     setActiveInfoIndex(null);
@@ -90,14 +89,14 @@ export function WhyUsCarousel({ points }: WhyUsCarouselProps) {
              onClick={() => handleCardClick(index)}
           >
             <Image
-              src={placeholderImages[index % placeholderImages.length].src}
+              src={point.imageUrl || "https://placehold.co/1200x800.png"}
               alt={point.title}
               fill
               className={cn(
                 "object-cover cursor-pointer transition-transform duration-1000 ease-in-out",
                 currentIndex === index ? "scale-105" : "scale-100"
               )}
-              data-ai-hint={placeholderImages[index % placeholderImages.length].hint}
+              data-ai-hint={point.title.toLowerCase().split(' ')[0]} // Use first word of title as a hint
             />
 
             <div className={cn(
