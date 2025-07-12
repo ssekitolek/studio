@@ -29,6 +29,7 @@ const navConfig = [
     },
     { 
         title: "Academics",
+        href: "/#academics",
         items: [
             { title: "Academics Overview", href: "/academics" },
             { title: "Faculty", href: "/faculty" },
@@ -37,6 +38,7 @@ const navConfig = [
     },
     { 
         title: "Community",
+        href: "/#student-life",
         items: [
             { title: "Student Life", href: "/student-life" },
             { title: "Clubs & Organizations", href: "/clubs" },
@@ -48,6 +50,7 @@ const navConfig = [
     },
     { 
         title: "Admissions",
+        href: "/#admissions",
         items: [
             { title: "Admissions Process", href: "/admissions" },
             { title: "Tuition & Fees", href: "/tuition" },
@@ -93,18 +96,26 @@ export function MarketingHeader({ content }: MarketingHeaderProps) {
         </Link>
         <nav className="hidden md:flex items-center gap-1 text-sm font-medium">
           {navConfig.map((item) => (
-            <DropdownMenu key={item.title}>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="data-[state=open]:bg-destructive data-[state=open]:text-destructive-foreground">{item.title} <ChevronDown className="ml-1 h-4 w-4" /></Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                    {item.items.map((subItem) => (
-                        <DropdownMenuItem key={subItem.title} asChild>
-                            <Link href={subItem.href}>{subItem.title}</Link>
-                        </DropdownMenuItem>
-                    ))}
-                </DropdownMenuContent>
-            </DropdownMenu>
+            item.items ? (
+              <DropdownMenu key={item.title}>
+                  <DropdownMenuTrigger asChild>
+                    <Button asChild variant="ghost" className="data-[state=open]:bg-destructive data-[state=open]:text-destructive-foreground">
+                      <Link href={item.href || ''}>{item.title} <ChevronDown className="ml-1 h-4 w-4" /></Link>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                      {item.items.map((subItem) => (
+                          <DropdownMenuItem key={subItem.title} asChild>
+                              <Link href={subItem.href}>{subItem.title}</Link>
+                          </DropdownMenuItem>
+                      ))}
+                  </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+               <Button asChild variant="ghost">
+                  <Link href={item.href || ''}>{item.title}</Link>
+                </Button>
+            )
           ))}
         </nav>
         <div className='flex items-center gap-2'>
@@ -139,7 +150,9 @@ export function MarketingHeader({ content }: MarketingHeaderProps) {
                   <Accordion type="multiple" className="w-full">
                     {navConfig.map((item) => (
                       <AccordionItem value={item.title} key={item.title}>
-                        <AccordionTrigger className="text-base py-3">{item.title}</AccordionTrigger>
+                        <AccordionTrigger className="text-base py-3">
+                          <Link href={item.href || ''} onClick={() => {if(item.href) setIsMobileMenuOpen(false)}}>{item.title}</Link>
+                        </AccordionTrigger>
                         <AccordionContent className="pl-4">
                           <div className="flex flex-col gap-3">
                             {item.items.map((subItem) => (

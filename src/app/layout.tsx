@@ -43,7 +43,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${ptSans.variable} ${spaceGrotesk.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${ptSans.variable} ${spaceGrotesk.variable} scroll-smooth`} suppressHydrationWarning>
       <body className="font-body antialiased">
         <AuthProvider>
           {children}
