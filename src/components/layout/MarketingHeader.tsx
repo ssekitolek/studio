@@ -22,26 +22,35 @@ const navConfig = [
         title: "About",
         items: [
             { title: "Mission & Vision", href: "/mission-vision" },
-            { title: "History", href: "/history" },
+            { title: "Our History", href: "/history" },
             { title: "Our Campus", href: "/campus" },
+            { title: "Our Faculty", href: "/faculty" },
         ]
     },
     { 
         title: "Academics",
-        href: "/academics",
+        items: [
+             { title: "Academics Overview", href: "/academics" },
+             { title: "College Counseling", href: "/college-counseling" },
+        ]
     },
     { 
         title: "Community",
-        href: "/student-life",
         items: [
             { title: "Student Life", href: "/student-life" },
             { title: "School Houses", href: "/houses" },
+            { title: "Clubs & Organizations", href: "/clubs" },
             { title: "News & Events", href: "/news" },
+            { title: "Parent Association", href: "/parents" },
         ]
     },
     { 
         title: "Admissions",
-        href: "/admissions",
+        items: [
+            { title: "Admissions Process", href: "/admissions" },
+            { title: "Tuition & Fees", href: "/tuition" },
+            { title: "Visit Us", href: "/visit" },
+        ]
     }
 ];
 
@@ -86,7 +95,7 @@ export function MarketingHeader({ content }: MarketingHeaderProps) {
               <DropdownMenu key={item.title}>
                   <DropdownMenuTrigger asChild>
                     <Button asChild variant="ghost" className="data-[state=open]:bg-primary data-[state=open]:text-primary-foreground">
-                      <Link href={item.href || '#'}>{item.title} <ChevronDown className="ml-1 h-4 w-4" /></Link>
+                      <div className="flex items-center">{item.title} <ChevronDown className="ml-1 h-4 w-4" /></div>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
