@@ -14,7 +14,7 @@ interface Point {
   icon: string;
   title: string;
   description: string;
-  imageUrl: string; // Added imageUrl property
+  imageUrl: string;
 }
 
 interface WhyUsCarouselProps {
@@ -97,7 +97,7 @@ export function WhyUsCarousel({ points }: WhyUsCarouselProps) {
                 "object-cover cursor-pointer transition-transform duration-1000 ease-in-out",
                 currentIndex === index ? "scale-105" : "scale-100"
               )}
-              data-ai-hint={point.title.toLowerCase().split(' ')[0]} // Use first word of title as a hint
+              data-ai-hint={point.title.toLowerCase().split(' ')[0]}
             />
 
             <div className={cn(
@@ -109,7 +109,7 @@ export function WhyUsCarousel({ points }: WhyUsCarouselProps) {
                 <div 
                   className={cn(
                     "transition-all duration-700 ease-in-out", 
-                    activeInfoIndex === index ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+                    activeInfoIndex === index ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8 pointer-events-none"
                   )}
                 >
                     <h3 className="text-2xl md:text-4xl font-headline font-bold drop-shadow-lg">{point.title}</h3>
