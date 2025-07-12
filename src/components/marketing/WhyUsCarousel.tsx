@@ -8,6 +8,7 @@ import { ArrowLeft, ArrowRight, X, Info } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { WebsiteContent } from '@/lib/types';
+import { isValidUrl } from '@/lib/utils';
 
 interface Point {
   icon: string;
@@ -89,7 +90,7 @@ export function WhyUsCarousel({ points }: WhyUsCarouselProps) {
              onClick={() => handleCardClick(index)}
           >
             <Image
-              src={point.imageUrl || "https://placehold.co/1200x800.png"}
+              src={isValidUrl(point.imageUrl) ? point.imageUrl : "https://placehold.co/1200x800.png"}
               alt={point.title}
               fill
               className={cn(
