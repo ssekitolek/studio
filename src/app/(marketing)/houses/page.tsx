@@ -47,7 +47,7 @@ export default async function HousesPage() {
               <CardContent className="flex-grow text-center flex flex-col justify-between">
                 <p className="text-muted-foreground mb-4">{house.description}</p>
                 {house.name === "St. Mulumba" && (
-                  <Button asChild variant="default" className="mt-auto bg-accent hover:bg-accent/80">
+                  <Button asChild variant="destructive" className="mt-auto">
                     <Link href="/houses/st-mulumba">
                       View Achievements <ArrowRight className="ml-2 h-4 w-4"/>
                     </Link>
