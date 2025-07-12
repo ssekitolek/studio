@@ -24,38 +24,24 @@ const navConfig = [
             { title: "Mission & Vision", href: "/mission-vision" },
             { title: "History", href: "/history" },
             { title: "Our Campus", href: "/campus" },
-            { title: "Employment", href: "/employment" },
         ]
     },
     { 
         title: "Academics",
         href: "/academics",
-        items: [
-            { title: "Academics Overview", href: "/academics" },
-            { title: "Faculty", href: "/faculty" },
-            { title: "College Counseling", href: "/college-counseling" },
-        ]
     },
     { 
         title: "Community",
         href: "/student-life",
         items: [
             { title: "Student Life", href: "/student-life" },
-            { title: "Clubs & Organizations", href: "/clubs" },
             { title: "School Houses", href: "/houses" },
-            { title: "Parent Association", href: "/parents" },
-            { title: "Alumni", href: "/alumni" },
             { title: "News & Events", href: "/news" },
         ]
     },
     { 
         title: "Admissions",
         href: "/admissions",
-        items: [
-            { title: "Admissions Process", href: "/admissions" },
-            { title: "Tuition & Fees", href: "/tuition" },
-            { title: "Visit Us", href: "/visit" },
-        ]
     }
 ];
 
@@ -99,8 +85,8 @@ export function MarketingHeader({ content }: MarketingHeaderProps) {
             item.items ? (
               <DropdownMenu key={item.title}>
                   <DropdownMenuTrigger asChild>
-                    <Button asChild variant="ghost" className="data-[state=open]:bg-destructive data-[state=open]:text-destructive-foreground">
-                      <Link href={item.href || ''}>{item.title} <ChevronDown className="ml-1 h-4 w-4" /></Link>
+                    <Button asChild variant="ghost" className="data-[state=open]:bg-primary data-[state=open]:text-primary-foreground">
+                      <Link href={item.href || '#'}>{item.title} <ChevronDown className="ml-1 h-4 w-4" /></Link>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
@@ -113,7 +99,7 @@ export function MarketingHeader({ content }: MarketingHeaderProps) {
               </DropdownMenu>
             ) : (
                <Button asChild variant="ghost">
-                  <Link href={item.href || ''}>{item.title}</Link>
+                  <Link href={item.href || '#'}>{item.title}</Link>
                 </Button>
             )
           ))}
@@ -124,7 +110,7 @@ export function MarketingHeader({ content }: MarketingHeaderProps) {
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className='hidden md:inline-flex data-[state=open]:bg-destructive data-[state=open]:text-destructive-foreground'>
+              <Button variant="ghost" className='hidden md:inline-flex data-[state=open]:bg-primary data-[state=open]:text-primary-foreground'>
                 Portals <ChevronDown className="ml-1 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -149,23 +135,29 @@ export function MarketingHeader({ content }: MarketingHeaderProps) {
                 <nav className="flex flex-col gap-2 text-lg font-medium mt-16">
                   <Accordion type="multiple" className="w-full">
                     {navConfig.map((item) => (
-                      <AccordionItem value={item.title} key={item.title}>
-                        <AccordionTrigger className="text-base py-3">
-                          <Link href={item.href || ''} onClick={() => {if(item.href) setIsMobileMenuOpen(false)}}>{item.title}</Link>
-                        </AccordionTrigger>
-                        <AccordionContent className="pl-4">
-                          <div className="flex flex-col gap-3">
-                            {item.items.map((subItem) => (
-                              <Link key={subItem.title} href={subItem.href} className="text-sm text-muted-foreground hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>
-                                {subItem.title}
-                              </Link>
-                            ))}
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
+                       item.items ? (
+                        <AccordionItem value={item.title} key={item.title}>
+                            <AccordionTrigger className="text-base py-3">
+                                {item.title}
+                            </AccordionTrigger>
+                            <AccordionContent className="pl-4">
+                            <div className="flex flex-col gap-3">
+                                {item.items.map((subItem) => (
+                                <Link key={subItem.title} href={subItem.href} className="text-sm text-muted-foreground hover:text-primary" onClick={() => setIsMobileMenuOpen(false)}>
+                                    {subItem.title}
+                                </Link>
+                                ))}
+                            </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                       ) : (
+                        <Link key={item.title} href={item.href || '#'} className="flex w-full items-center justify-between text-base py-3 font-medium" onClick={() => setIsMobileMenuOpen(false)}>
+                          {item.title}
+                        </Link>
+                       )
                     ))}
                   </Accordion>
-                  <Link href="/contact" className="text-base py-3" onClick={() => setIsMobileMenuOpen(false)}>Contact</Link>
+                  <Link href="/contact" className="text-base py-3 font-medium" onClick={() => setIsMobileMenuOpen(false)}>Contact</Link>
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="portals">
                         <AccordionTrigger className="text-base py-3">Portals</AccordionTrigger>
