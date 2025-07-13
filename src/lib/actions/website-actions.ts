@@ -5,7 +5,7 @@
 import { db } from "@/lib/firebase";
 import type { WebsiteContent, SimplePageContent } from "@/lib/types";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_cache } from "next/cache";
 import { isValidUrl } from '@/lib/utils';
 
 const simplePageDefault = (title: string, contentTitle: string, hint: string): SimplePageContent => ({
@@ -188,52 +188,56 @@ const defaultContent: WebsiteContent = {
   visitPage: simplePageDefault("Visit Us", "Experience Our Community", "campus welcome")
 };
 
-export async function getWebsiteContent(): Promise<WebsiteContent> {
-  if (!db) {
-    console.error("Firestore not initialized. Returning default website content.");
-    return defaultContent;
-  }
-  try {
-    const contentRef = doc(db, "website_content", "homepage");
-    const contentSnap = await getDoc(contentRef);
-    if (contentSnap.exists()) {
-      const data = contentSnap.data();
-      // Deep merge to ensure all default fields are present
-      const mergedContent = {
-        ...defaultContent,
-        ...data,
-        heroSlideshowSection: { ...defaultContent.heroSlideshowSection, ...(data.heroSlideshowSection || {}) },
-        whyUsSection: { ...defaultContent.whyUsSection, ...(data.whyUsSection || {}) },
-        signatureProgramsSection: { ...defaultContent.signatureProgramsSection, ...(data.signatureProgramsSection || {}) },
-        newsSection: { ...defaultContent.newsSection, ...(data.newsSection || {}) },
-        alumniSpotlightSection: { ...defaultContent.alumniSpotlightSection, ...(data.alumniSpotlightSection || {}) },
-        academicsPage: { ...defaultContent.academicsPage, ...(data.academicsPage || {}) },
-        admissionsPage: { ...defaultContent.admissionsPage, ...(data.admissionsPage || {}) },
-        contactPage: { ...defaultContent.contactPage, ...(data.contactPage || {}) },
-        studentLifePage: { ...defaultContent.studentLifePage, ...(data.studentLifePage || {}) },
-        missionVisionPage: { ...defaultContent.missionVisionPage, ...(data.missionVisionPage || {}) },
-        housesPage: { ...defaultContent.housesPage, ...(data.housesPage || {}) },
-        alumniPage: { ...defaultContent.alumniPage, ...(data.alumniPage || {}) },
-        campusPage: { ...defaultContent.campusPage, ...(data.campusPage || {}) },
-        clubsPage: { ...defaultContent.clubsPage, ...(data.clubsPage || {}) },
-        collegeCounselingPage: { ...defaultContent.collegeCounselingPage, ...(data.collegeCounselingPage || {}) },
-        employmentPage: { ...defaultContent.employmentPage, ...(data.employmentPage || {}) },
-        facultyPage: { ...defaultContent.facultyPage, ...(data.facultyPage || {}) },
-        historyPage: { ...defaultContent.historyPage, ...(data.historyPage || {}) },
-        parentsPage: { ...defaultContent.parentsPage, ...(data.parentsPage || {}) },
-        tuitionPage: { ...defaultContent.tuitionPage, ...(data.tuitionPage || {}) },
-        visitPage: { ...defaultContent.visitPage, ...(data.visitPage || {}) },
-      };
-      return mergedContent;
-    } else {
-      await setDoc(contentRef, defaultContent);
+export const getWebsiteContent = unstable_cache(
+  async () => {
+    if (!db) {
+      console.error("Firestore not initialized. Returning default website content.");
       return defaultContent;
     }
-  } catch (error) {
-    console.error("Error fetching website content:", error);
-    return defaultContent;
-  }
-}
+    try {
+      const contentRef = doc(db, "website_content", "homepage");
+      const contentSnap = await getDoc(contentRef);
+      if (contentSnap.exists()) {
+        const data = contentSnap.data();
+        // Deep merge to ensure all default fields are present
+        const mergedContent = {
+          ...defaultContent,
+          ...data,
+          heroSlideshowSection: { ...defaultContent.heroSlideshowSection, ...(data.heroSlideshowSection || {}) },
+          whyUsSection: { ...defaultContent.whyUsSection, ...(data.whyUsSection || {}) },
+          signatureProgramsSection: { ...defaultContent.signatureProgramsSection, ...(data.signatureProgramsSection || {}) },
+          newsSection: { ...defaultContent.newsSection, ...(data.newsSection || {}) },
+          alumniSpotlightSection: { ...defaultContent.alumniSpotlightSection, ...(data.alumniSpotlightSection || {}) },
+          academicsPage: { ...defaultContent.academicsPage, ...(data.academicsPage || {}) },
+          admissionsPage: { ...defaultContent.admissionsPage, ...(data.admissionsPage || {}) },
+          contactPage: { ...defaultContent.contactPage, ...(data.contactPage || {}) },
+          studentLifePage: { ...defaultContent.studentLifePage, ...(data.studentLifePage || {}) },
+          missionVisionPage: { ...defaultContent.missionVisionPage, ...(data.missionVisionPage || {}) },
+          housesPage: { ...defaultContent.housesPage, ...(data.housesPage || {}) },
+          alumniPage: { ...defaultContent.alumniPage, ...(data.alumniPage || {}) },
+          campusPage: { ...defaultContent.campusPage, ...(data.campusPage || {}) },
+          clubsPage: { ...defaultContent.clubsPage, ...(data.clubsPage || {}) },
+          collegeCounselingPage: { ...defaultContent.collegeCounselingPage, ...(data.collegeCounselingPage || {}) },
+          employmentPage: { ...defaultContent.employmentPage, ...(data.employmentPage || {}) },
+          facultyPage: { ...defaultContent.facultyPage, ...(data.facultyPage || {}) },
+          historyPage: { ...defaultContent.historyPage, ...(data.historyPage || {}) },
+          parentsPage: { ...defaultContent.parentsPage, ...(data.parentsPage || {}) },
+          tuitionPage: { ...defaultContent.tuitionPage, ...(data.tuitionPage || {}) },
+          visitPage: { ...defaultContent.visitPage, ...(data.visitPage || {}) },
+        };
+        return mergedContent;
+      } else {
+        await setDoc(contentRef, defaultContent);
+        return defaultContent;
+      }
+    } catch (error) {
+      console.error("Error fetching website content:", error);
+      return defaultContent;
+    }
+  },
+  ['website_content'],
+  { revalidate: 3600 } // Revalidate every hour
+);
 
 export async function updateWebsiteSection(
   section: keyof WebsiteContent,
