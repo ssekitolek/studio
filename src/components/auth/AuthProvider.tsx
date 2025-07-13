@@ -5,12 +5,13 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, getDocs, limit, setDoc } from "firebase/firestore";
 import { auth, db } from '@/lib/firebase';
-import { createTeacherWithRole } from '@/lib/actions/dos-admin-actions';
+import { createTeacherWithRole } from '@/lib/actions/dos-actions';
 
 const ADMIN_EMAIL = "mathius@admin.staff";
 const DOS_EMAIL = "root@adminmathius.staff";
 
 async function determineUserRole(user: User): Promise<string | null> {
+  console.log(`[AuthProvider] Determining role for user: ${user.email}`);
   if (user.email === ADMIN_EMAIL) {
     console.log(`[AuthProvider] User ${user.email} is ADMIN.`);
     return 'admin';
@@ -109,7 +110,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log("[AuthProvider] Mounting and setting up onAuthStateChanged listener.");
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log(`[AuthProvider] onAuthStateChanged triggered. User: ${user?.email || 'null'}`);
-      setLoading(true);
       if (user) {
         setUser(user);
         const userRole = await determineUserRole(user);
