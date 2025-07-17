@@ -1,6 +1,5 @@
 
 
-
 import type { Timestamp } from "firebase/firestore";
 
 export interface Teacher {
@@ -53,6 +52,7 @@ export interface Exam {
   examDate?: string; // Should be ISO string date e.g., "YYYY-MM-DD"
   maxMarks: number;
   description?: string;
+  category?: 'Formative' | 'Summative'; // For Report Card classification
   // An exam can be for a specific subject, but not necessarily a specific class or teacher
   subjectId?: string; // Firestore document ID of the subject
   classId?: string; // Optional: To narrow down exam to one class

@@ -41,6 +41,7 @@ const examTypeFormSchema = z.object({
   stream: z.string().optional(),
   marksSubmissionDeadline: z.date().optional(),
   gradingPolicyId: z.string().optional(),
+  category: z.string().optional(), // Added category field
 }).refine(data => {
   if (data.classId && data.classId !== EMPTY_OPTION_VALUE && (!data.subjectId || data.subjectId === EMPTY_OPTION_VALUE)) {
     return false;
@@ -90,6 +91,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
       stream: initialData?.stream || EMPTY_OPTION_VALUE,
       marksSubmissionDeadline: initialData?.marksSubmissionDeadline ? new Date(initialData.marksSubmissionDeadline) : undefined,
       gradingPolicyId: initialData?.gradingPolicyId || DEFAULT_POLICY_VALUE,
+      category: initialData?.category || EMPTY_OPTION_VALUE,
     },
   });
   
@@ -119,7 +121,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
         setTerms(termsData);
         setClasses(classesData);
         setSubjects(subjectsData);
-        setTeachers(teachersData.filter(t => t.role !== 'dos')); // Exclude D.O.S. from teacher list
+        setTeachers(teachersData.filter(t => t.role !== 'dos'));
         setGradingPolicies(policiesData);
       } catch (error) {
         toast({ title: "Error", description: "Failed to load supporting data (terms, classes, etc.).", variant: "destructive" });
@@ -144,6 +146,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
         stream: initialData.stream || EMPTY_OPTION_VALUE,
         marksSubmissionDeadline: initialData.marksSubmissionDeadline ? new Date(initialData.marksSubmissionDeadline) : undefined,
         gradingPolicyId: initialData.gradingPolicyId || DEFAULT_POLICY_VALUE,
+        category: initialData.category || EMPTY_OPTION_VALUE,
       });
     }
   }, [initialData, form, isEditMode]);
@@ -159,6 +162,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
         teacherId: data.teacherId === EMPTY_OPTION_VALUE ? undefined : data.teacherId,
         stream: data.stream === EMPTY_OPTION_VALUE ? undefined : data.stream,
         gradingPolicyId: data.gradingPolicyId === DEFAULT_POLICY_VALUE ? undefined : data.gradingPolicyId,
+        category: data.category === EMPTY_OPTION_VALUE ? undefined : data.category,
       };
 
       try {
@@ -177,7 +181,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
               title: "Exam Created",
               description: `Exam "${result.exam.name}" has been successfully created.`,
             });
-            form.reset({ name: "", termId: "", maxMarks: 100, description: "", examDate: undefined, classId: EMPTY_OPTION_VALUE, subjectId: EMPTY_OPTION_VALUE, teacherId: EMPTY_OPTION_VALUE, stream: EMPTY_OPTION_VALUE, marksSubmissionDeadline: undefined, gradingPolicyId: DEFAULT_POLICY_VALUE });
+            form.reset({ name: "", termId: "", maxMarks: 100, description: "", examDate: undefined, classId: EMPTY_OPTION_VALUE, subjectId: EMPTY_OPTION_VALUE, teacherId: EMPTY_OPTION_VALUE, stream: EMPTY_OPTION_VALUE, marksSubmissionDeadline: undefined, gradingPolicyId: DEFAULT_POLICY_VALUE, category: EMPTY_OPTION_VALUE });
             if (onSuccess) onSuccess(); else router.push("/dos/settings/exams");
           } else {
             toast({
@@ -253,6 +257,29 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
                 />
                 <FormField
                     control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Exam Category (for Report Cards)</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || EMPTY_OPTION_VALUE}>
+                        <FormControl>
+                            <SelectTrigger>
+                            <SelectValue placeholder="Select a category"/>
+                            </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            <SelectItem value={EMPTY_OPTION_VALUE}>General/Uncategorized</SelectItem>
+                            <SelectItem value="Formative">Formative Assessment (AOI)</SelectItem>
+                            <SelectItem value="Summative">Summative Assessment (EOT)</SelectItem>
+                        </SelectContent>
+                        </Select>
+                        <FormDescription>Classify the exam for correct report card placement.</FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
                     name="examDate"
                     render={({ field }) => (
                     <FormItem className="flex flex-col">
@@ -271,7 +298,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
                     control={form.control}
                     name="gradingPolicyId"
                     render={({ field }) => (
-                    <FormItem className="md:col-span-2">
+                    <FormItem>
                         <FormLabel>Grading Policy</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value || DEFAULT_POLICY_VALUE} disabled={isLoadingData}>
                         <FormControl>

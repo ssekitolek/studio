@@ -2,6 +2,7 @@
 
 
 
+
 "use server";
 
 import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData, DailyAttendanceRecord, DOSAttendanceSummary, StudentDetail, ReportCardData } from "@/lib/types";
@@ -683,6 +684,7 @@ export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success:
       stream: examData.stream || null,
       marksSubmissionDeadline: examData.marksSubmissionDeadline || null,
       gradingPolicyId: examData.gradingPolicyId || null,
+      category: examData.category || null,
     };
     const docRef = await addDoc(collection(db, "exams"), examPayload);
     const newExam: Exam = {
@@ -698,6 +700,7 @@ export async function createExam(examData: Omit<Exam, 'id'>): Promise<{ success:
         stream: examPayload.stream === null ? undefined : examData.stream,
         marksSubmissionDeadline: examPayload.marksSubmissionDeadline === null ? undefined : examData.marksSubmissionDeadline,
         gradingPolicyId: examPayload.gradingPolicyId === null ? undefined : examData.gradingPolicyId,
+        category: examPayload.category === null ? undefined : examData.category,
     };
     revalidatePath("/dos/settings/exams");
     return { success: true, message: "Exam created successfully.", exam: newExam };
@@ -732,6 +735,7 @@ export async function getExamById(examId: string): Promise<Exam | null> {
         stream: data.stream === null ? undefined : data.stream,
         marksSubmissionDeadline: data.marksSubmissionDeadline === null ? undefined : data.marksSubmissionDeadline,
         gradingPolicyId: data.gradingPolicyId === null ? undefined : data.gradingPolicyId,
+        category: data.category === null ? undefined : data.category,
       } as Exam;
     }
     return null;
@@ -752,7 +756,7 @@ export async function updateExam(examId: string, examData: Partial<Omit<Exam, 'i
     if (examPayload.maxMarks !== undefined) {
       examPayload.maxMarks = Number(examPayload.maxMarks);
     }
-    const fieldsToPotentiallyNullify = ['description', 'examDate', 'classId', 'subjectId', 'teacherId', 'stream', 'marksSubmissionDeadline', 'gradingPolicyId'];
+    const fieldsToPotentiallyNullify = ['description', 'examDate', 'classId', 'subjectId', 'teacherId', 'stream', 'marksSubmissionDeadline', 'gradingPolicyId', 'category'];
     fieldsToPotentiallyNullify.forEach(field => {
         if (examPayload.hasOwnProperty(field)) {
             examPayload[field] = examPayload[field] || null;
@@ -1481,8 +1485,8 @@ export async function getReportCardData(studentId: string, termId: string): Prom
         if(!studentClass) return { success: false, message: "Student's class not found." };
 
         const examsForTerm = allExams.filter(e => e.termId === termId);
-        const aoiExams = examsForTerm.filter(e => e.name.toLowerCase().includes('aoi') || e.name.toLowerCase().includes('formative'));
-        const eotExams = examsForTerm.filter(e => e.name.toLowerCase().includes('eot') || e.name.toLowerCase().includes('summative'));
+        const aoiExams = examsForTerm.filter(e => e.category === 'Formative');
+        const eotExams = examsForTerm.filter(e => e.category === 'Summative');
 
         const subjectsInClass = new Set<string>();
         allTeachers.forEach(teacher => {
@@ -1746,6 +1750,7 @@ export async function getExams(): Promise<Exam[]> {
                 stream: data.stream === null ? undefined : data.stream,
                 marksSubmissionDeadline: data.marksSubmissionDeadline === null ? undefined : data.marksSubmissionDeadline,
                 gradingPolicyId: data.gradingPolicyId === null ? undefined : data.gradingPolicyId,
+                category: data.category === null ? undefined : data.category,
             } as Exam;
         });
         return examsList;
