@@ -1,8 +1,9 @@
 
 
+
 "use server";
 
-import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData, DailyAttendanceRecord, DOSAttendanceSummary, StudentDetail } from "@/lib/types";
+import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData, DailyAttendanceRecord, DOSAttendanceSummary, StudentDetail, ReportCardData } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { db, auth } from "@/lib/firebase";
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference, runTransaction, writeBatch, Timestamp, orderBy, setDoc } from "firebase/firestore";
@@ -1466,7 +1467,26 @@ export async function getReportCardData(studentId: string, termId: string): Prom
         if(!studentClass) return { success: false, message: "Student's class not found." };
 
         const examsForTerm = allExams.filter(e => e.termId === termId);
-        const assessmentIds = examsForTerm.map(e => `${e.id}_${student.classId}_${e.subjectId}`);
+        
+        // Find all subjects the student could have taken in their class
+        const subjectsInClass = new Set<string>();
+        allTeachers.forEach(teacher => {
+          if (teacher.subjectsAssigned) {
+            teacher.subjectsAssigned.forEach(sa => {
+              if (sa.classIds.includes(student.classId)) {
+                subjectsInClass.add(sa.subjectId);
+              }
+            });
+          }
+        });
+        
+        const assessmentIds = examsForTerm
+            .filter(e => subjectsInClass.has(e.subjectId!))
+            .map(e => `${e.id}_${student.classId}_${e.subjectId}`);
+        
+        if (assessmentIds.length === 0) {
+             return { success: false, message: "No relevant exams found for this student's class and term." };
+        }
 
         const q = query(collection(db, "markSubmissions"), where("assessmentId", "in", assessmentIds), where("dosStatus", "==", "Approved"));
         const approvedSubmissions = await getDocs(q);
@@ -1527,7 +1547,7 @@ export async function getReportCardData(studentId: string, termId: string): Prom
                 name: "St. Mbaaga's College",
                 address: "P.O. Box 8",
                 location: "Naddangira",
-                phone: "0758013161",
+                phone: "0758013161 / 0782923384",
                 email: "ssegawarichard7@gmail.com",
                 logoUrl: "https://i.imgur.com/lZDibio.png"
             },

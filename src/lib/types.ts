@@ -1,5 +1,6 @@
 
 
+
 import type { Timestamp } from "firebase/firestore";
 
 export interface Teacher {
@@ -337,6 +338,43 @@ export interface DOSAttendanceSummary {
     absentDetails: StudentDetail[];
     lateDetails: StudentDetail[];
 }
+
+
+// --- Report Card ---
+export interface ReportCardData {
+  schoolDetails: {
+    name: string;
+    address: string;
+    location: string;
+    phone: string;
+    email: string;
+    logoUrl: string;
+  };
+  student: Student;
+  term: Term;
+  class: ClassInfo;
+  results: Array<{
+    subjectName: string;
+    botScore?: number;
+    motScore?: number;
+    eotScore?: number;
+    finalScore: number;
+    grade: string;
+    comment: string;
+    teacherInitials: string;
+  }>;
+  summary: {
+    totalMarks: number;
+    average: number;
+    overallGrade: string;
+  };
+  comments: {
+    classTeacher: string;
+    headTeacher: string;
+  };
+  nextTermBegins: string;
+}
+
 
 // --- Website Content Management ---
 
