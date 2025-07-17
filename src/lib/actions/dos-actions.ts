@@ -1298,13 +1298,15 @@ export async function downloadSingleMarkSubmission(
             header: ["Student ID", "Student Name", "Score", "Grade"],
             skipHeader: true, // We'll add a styled header manually
         });
+        
+        const styledHeader = ["Student ID", "Student Name", "Score", "Grade"].map(h => ({ v: h, s: { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "4F81BD" } } } }));
 
         // Prepend styled header, title, and subtitle
         XLSX.utils.sheet_add_aoa(worksheet, [
             [{ v: reportTitle, s: { font: { bold: true, sz: 16 }, alignment: { horizontal: "center" } } }],
             [{ v: generatedOn, s: { font: { sz: 10, italic: true }, alignment: { horizontal: "center" } } }],
             [], // Spacer row
-            ["Student ID", "Student Name", "Score", "Grade"].map(h => ({ v: h, s: { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "4F81BD" } } } }))
+            styledHeader
         ], { origin: "A1" });
 
         // Merge title and subtitle cells
@@ -1445,7 +1447,116 @@ export async function getAssessmentAnalysisData(classId: string, subjectId: stri
   return { success: true, message: "Analysis complete.", data: analysisData };
 }
 
-// Data fetch functions used across the D.O.S. portal
+export async function getReportCardData(studentId: string, termId: string): Promise<{ success: boolean; message: string; data?: ReportCardData }> {
+    if (!db) return { success: false, message: "Database not initialized." };
+
+    try {
+        const [student, term, allSubjects, allExams, allTeachers, gradingPolicies, generalSettings] = await Promise.all([
+            getStudentById(studentId),
+            getTermById(termId),
+            getSubjects(),
+            getExams(),
+            getTeachers(),
+            getGradingPolicies(),
+            getGeneralSettings()
+        ]);
+        
+        if (!student || !term) return { success: false, message: "Student or term not found." };
+        const studentClass = await getClassById(student.classId);
+        if(!studentClass) return { success: false, message: "Student's class not found." };
+
+        const examsForTerm = allExams.filter(e => e.termId === termId);
+        const assessmentIds = examsForTerm.map(e => `${e.id}_${student.classId}_${e.subjectId}`);
+
+        const q = query(collection(db, "markSubmissions"), where("assessmentId", "in", assessmentIds), where("dosStatus", "==", "Approved"));
+        const approvedSubmissions = await getDocs(q);
+
+        const resultsMap = new Map<string, { subjectName: string, teacherInitials: string, botScore?: number, motScore?: number, eotScore?: number }>();
+
+        approvedSubmissions.forEach(doc => {
+            const submission = doc.data() as MarkSubmissionFirestoreRecord;
+            const [, , subjectId] = submission.assessmentId.split('_');
+            const examId = submission.assessmentId.split('_')[0];
+            const exam = examsForTerm.find(e => e.id === examId);
+            const subject = allSubjects.find(s => s.id === subjectId);
+            const teacher = allTeachers.find(t => t.id === submission.teacherId);
+
+            if (!subject || !exam) return;
+
+            const studentMark = submission.submittedMarks.find(m => m.studentId === student.studentIdNumber);
+            if(studentMark === undefined || studentMark.score === null) return;
+
+            if (!resultsMap.has(subjectId)) {
+                resultsMap.set(subjectId, {
+                    subjectName: subject.name,
+                    teacherInitials: teacher?.name.split(' ').map(n => n[0]).join('') || 'N/A'
+                });
+            }
+
+            const subjectResult = resultsMap.get(subjectId)!;
+            const score = (studentMark.score / exam.maxMarks) * 100;
+
+            if (exam.name.toLowerCase().includes('bot') || exam.name.toLowerCase().includes('beginning')) {
+                subjectResult.botScore = score;
+            } else if (exam.name.toLowerCase().includes('mot') || exam.name.toLowerCase().includes('mid')) {
+                subjectResult.motScore = score;
+            } else if (exam.name.toLowerCase().includes('eot') || exam.name.toLowerCase().includes('end')) {
+                subjectResult.eotScore = score;
+            }
+        });
+        
+        const defaultGradingPolicy = gradingPolicies.find(p => p.isDefault) || { scale: generalSettings.defaultGradingScale };
+        const results: ReportCardData['results'] = [];
+        let totalMarks = 0;
+        
+        resultsMap.forEach((value) => {
+             // Logic for final score would go here. Assuming EOT is final for now.
+             const finalScore = value.eotScore ?? value.motScore ?? value.botScore ?? 0;
+             if(finalScore > 0) totalMarks += finalScore;
+
+             results.push({
+                ...value,
+                finalScore,
+                grade: calculateGrade(finalScore, 100, defaultGradingPolicy.scale),
+                comment: "Good effort", // Placeholder
+             });
+        });
+
+        const reportCardData: ReportCardData = {
+            schoolDetails: {
+                name: "St. Mbaaga's College",
+                address: "P.O. Box 8",
+                location: "Naddangira",
+                phone: "0758013161",
+                email: "ssegawarichard7@gmail.com",
+                logoUrl: "https://i.imgur.com/lZDibio.png"
+            },
+            student,
+            term,
+            class: studentClass,
+            results: results.sort((a, b) => a.subjectName.localeCompare(b.subjectName)),
+            summary: {
+                totalMarks,
+                average: results.length > 0 ? totalMarks / results.length : 0,
+                overallGrade: calculateGrade(results.length > 0 ? totalMarks / results.length : 0, 100, defaultGradingPolicy.scale),
+            },
+            comments: {
+                classTeacher: "Shows great potential. Needs to focus more in class.",
+                headTeacher: "A satisfactory performance. Keep up the hard work."
+            },
+            nextTermBegins: "September 1, 2024" // Placeholder
+        };
+
+        return { success: true, message: "Report data generated.", data: reportCardData };
+
+    } catch (error) {
+        console.error("Error generating report card data:", error);
+        return { success: false, message: error instanceof Error ? error.message : "An unknown error occurred." };
+    }
+}
+
+
+// --- Data fetch functions used across the D.O.S. portal ---
 export async function getTeachers(): Promise<Teacher[]> {
   if (!db) {
     console.error("Firestore is not initialized. Check Firebase configuration.");
@@ -1498,6 +1609,15 @@ export async function getStudents(): Promise<Student[]> {
     console.error("Error fetching students:", error);
     return [];
   }
+}
+
+export async function getStudentsForClass(classId: string): Promise<Student[]> {
+    if (!db) return [];
+    const q = query(collection(db, "students"), where("classId", "==", classId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as Student))
+        .sort((a, b) => a.lastName.localeCompare(b.lastName));
 }
 
 export async function getClasses(): Promise<ClassInfo[]> {
@@ -1744,3 +1864,4 @@ export async function getAttendanceSummaryForDOS(classId: string, date: string):
     return { success: false, message: `Failed to fetch attendance summary: ${msg}` };
   }
 }
+    
