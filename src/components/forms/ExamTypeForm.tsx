@@ -119,7 +119,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
         setTerms(termsData);
         setClasses(classesData);
         setSubjects(subjectsData);
-        setTeachers(teachersData);
+        setTeachers(teachersData.filter(t => t.role !== 'dos')); // Exclude D.O.S. from teacher list
         setGradingPolicies(policiesData);
       } catch (error) {
         toast({ title: "Error", description: "Failed to load supporting data (terms, classes, etc.).", variant: "destructive" });
