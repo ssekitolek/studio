@@ -1,6 +1,7 @@
 
 
 
+
 "use server";
 
 import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData, DailyAttendanceRecord, DOSAttendanceSummary, StudentDetail, ReportCardData } from "@/lib/types";
@@ -1012,6 +1013,19 @@ export async function updateGeneralSettings(settings: Partial<GeneralSettings>):
 
 // --- Report Generation & Data Analysis ---
 
+const GRADE_DESCRIPTORS: { [key: string]: string } = {
+  'A': 'Achieved extraordinary level of competencies.',
+  'B': 'Achieved good level of competencies.',
+  'C': 'Achieved adequate level of competencies.',
+  'D': 'Achieved minimum level of competencies.',
+  'E': 'Achieved basic level of competencies.',
+};
+
+function getGradeDescriptor(grade: string): string {
+    return GRADE_DESCRIPTORS[grade] || 'Competency level not specified.';
+}
+
+
 function calculateGrade(
   score: number | null,
   maxMarks: number,
@@ -1467,31 +1481,35 @@ export async function getReportCardData(studentId: string, termId: string): Prom
         if(!studentClass) return { success: false, message: "Student's class not found." };
 
         const examsForTerm = allExams.filter(e => e.termId === termId);
-        
-        // Find all subjects the student could have taken in their class
+        const aoiExams = examsForTerm.filter(e => e.name.toLowerCase().includes('aoi') || e.name.toLowerCase().includes('formative'));
+        const eotExams = examsForTerm.filter(e => e.name.toLowerCase().includes('eot') || e.name.toLowerCase().includes('summative'));
+
         const subjectsInClass = new Set<string>();
         allTeachers.forEach(teacher => {
           if (teacher.subjectsAssigned) {
             teacher.subjectsAssigned.forEach(sa => {
-              if (sa.classIds.includes(student.classId)) {
-                subjectsInClass.add(sa.subjectId);
-              }
+              if (sa.classIds.includes(student.classId)) subjectsInClass.add(sa.subjectId);
             });
           }
         });
         
-        const assessmentIds = examsForTerm
-            .filter(e => subjectsInClass.has(e.subjectId!))
-            .map(e => `${e.id}_${student.classId}_${e.subjectId}`);
+        const assessmentIdsToFetch = new Set<string>();
+        subjectsInClass.forEach(subjectId => {
+            [...aoiExams, ...eotExams].forEach(exam => {
+                if(exam.subjectId === subjectId) {
+                    assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${subjectId}`);
+                }
+            });
+        });
         
-        if (assessmentIds.length === 0) {
-             return { success: false, message: "No relevant exams found for this student's class and term." };
+        if (assessmentIdsToFetch.size === 0) {
+             return { success: false, message: "No relevant exams (AOI/EOT) found for this student's class and term." };
         }
 
-        const q = query(collection(db, "markSubmissions"), where("assessmentId", "in", assessmentIds), where("dosStatus", "==", "Approved"));
+        const q = query(collection(db, "markSubmissions"), where("assessmentId", "in", Array.from(assessmentIdsToFetch)), where("dosStatus", "==", "Approved"));
         const approvedSubmissions = await getDocs(q);
 
-        const resultsMap = new Map<string, { subjectName: string, teacherInitials: string, botScore?: number, motScore?: number, eotScore?: number }>();
+        const resultsBySubject = new Map<string, ReportCardData['results'][0]>();
 
         approvedSubmissions.forEach(doc => {
             const submission = doc.data() as MarkSubmissionFirestoreRecord;
@@ -1505,41 +1523,45 @@ export async function getReportCardData(studentId: string, termId: string): Prom
 
             const studentMark = submission.submittedMarks.find(m => m.studentId === student.studentIdNumber);
             if(studentMark === undefined || studentMark.score === null) return;
-
-            if (!resultsMap.has(subjectId)) {
-                resultsMap.set(subjectId, {
+            
+            if (!resultsBySubject.has(subjectId)) {
+                resultsBySubject.set(subjectId, {
                     subjectName: subject.name,
-                    teacherInitials: teacher?.name.split(' ').map(n => n[0]).join('') || 'N/A'
+                    teacherInitials: teacher?.name.split(' ').map(n => n[0]).join('') || 'N/A',
+                    topics: [],
+                    aoiTotal: 0,
+                    eotScore: 0,
+                    finalScore: 0,
+                    grade: '',
+                    descriptor: '',
                 });
             }
+            const subjectResult = resultsBySubject.get(subjectId)!;
 
-            const subjectResult = resultsMap.get(subjectId)!;
-            const score = (studentMark.score / exam.maxMarks) * 100;
-
-            if (exam.name.toLowerCase().includes('bot') || exam.name.toLowerCase().includes('beginning')) {
-                subjectResult.botScore = score;
-            } else if (exam.name.toLowerCase().includes('mot') || exam.name.toLowerCase().includes('mid')) {
-                subjectResult.motScore = score;
-            } else if (exam.name.toLowerCase().includes('eot') || exam.name.toLowerCase().includes('end')) {
-                subjectResult.eotScore = score;
+            if (aoiExams.some(e => e.id === examId)) {
+                subjectResult.topics.push({ name: exam.name, aoiScore: studentMark.score });
+            }
+            if (eotExams.some(e => e.id === examId)) {
+                subjectResult.eotScore = (studentMark.score / exam.maxMarks) * 80;
             }
         });
         
-        const defaultGradingPolicy = gradingPolicies.find(p => p.isDefault) || { scale: generalSettings.defaultGradingScale };
-        const results: ReportCardData['results'] = [];
-        let totalMarks = 0;
-        
-        resultsMap.forEach((value) => {
-             // Logic for final score would go here. Assuming EOT is final for now.
-             const finalScore = value.eotScore ?? value.motScore ?? value.botScore ?? 0;
-             if(finalScore > 0) totalMarks += finalScore;
+        const defaultGradingPolicy = gradingPolicies.find(p => p.isDefault) || { scale: generalSettings.defaultGradingScale || [] };
+        let overallAverage = 0;
+        let subjectsCounted = 0;
 
-             results.push({
-                ...value,
-                finalScore,
-                grade: calculateGrade(finalScore, 100, defaultGradingPolicy.scale),
-                comment: "Good effort", // Placeholder
-             });
+        resultsBySubject.forEach((result) => {
+            const aoiSum = result.topics.reduce((acc, topic) => acc + (topic.aoiScore ?? 0), 0);
+            const aoiMax = result.topics.length * 20; // Assuming each AOI is out of 20
+            result.aoiTotal = aoiMax > 0 ? (aoiSum / aoiMax) * 20 : 0;
+            result.finalScore = result.aoiTotal + result.eotScore;
+            result.grade = calculateGrade(result.finalScore, 100, defaultGradingPolicy.scale);
+            result.descriptor = getGradeDescriptor(result.grade);
+
+            if(result.finalScore > 0) {
+                overallAverage += result.finalScore;
+                subjectsCounted++;
+            }
         });
 
         const reportCardData: ReportCardData = {
@@ -1549,22 +1571,26 @@ export async function getReportCardData(studentId: string, termId: string): Prom
                 location: "Naddangira",
                 phone: "0758013161 / 0782923384",
                 email: "ssegawarichard7@gmail.com",
-                logoUrl: "https://i.imgur.com/lZDibio.png"
+                logoUrl: "https://i.imgur.com/lZDibio.png",
+                theme: '"Built for greater works." Ephesians 2:10'
             },
             student,
             term,
             class: studentClass,
-            results: results.sort((a, b) => a.subjectName.localeCompare(b.subjectName)),
+            results: Array.from(resultsBySubject.values()).sort((a, b) => a.subjectName.localeCompare(b.subjectName)),
             summary: {
-                totalMarks,
-                average: results.length > 0 ? totalMarks / results.length : 0,
-                overallGrade: calculateGrade(results.length > 0 ? totalMarks / results.length : 0, 100, defaultGradingPolicy.scale),
+                average: subjectsCounted > 0 ? overallAverage / subjectsCounted : 0,
+                gradeScale: defaultGradingPolicy.scale.sort((a,b) => b.minScore - a.minScore) // Sort grades for display
             },
             comments: {
-                classTeacher: "Shows great potential. Needs to focus more in class.",
-                headTeacher: "A satisfactory performance. Keep up the hard work."
+                classTeacher: "Musiime has potential to achieve better. He should aim higher.", // Placeholder
+                headTeacher: "Musiime has potential to achieve better. He should aim higher." // Placeholder
             },
-            nextTermBegins: "September 1, 2024" // Placeholder
+            nextTerm: {
+                begins: "26-May-2025",
+                ends: "22-Aug-2025",
+                fees: "1,025,500"
+            }
         };
 
         return { success: true, message: "Report data generated.", data: reportCardData };

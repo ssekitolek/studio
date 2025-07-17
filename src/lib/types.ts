@@ -349,30 +349,34 @@ export interface ReportCardData {
     phone: string;
     email: string;
     logoUrl: string;
+    theme: string;
   };
   student: Student;
   term: Term;
   class: ClassInfo;
   results: Array<{
     subjectName: string;
-    botScore?: number;
-    motScore?: number;
-    eotScore?: number;
+    topics: Array<{ name: string; aoiScore: number | null }>;
+    aoiTotal: number;
+    eotScore: number;
     finalScore: number;
     grade: string;
-    comment: string;
+    descriptor: string;
     teacherInitials: string;
   }>;
   summary: {
-    totalMarks: number;
     average: number;
-    overallGrade: string;
+    gradeScale: GradingScaleItem[];
   };
   comments: {
     classTeacher: string;
     headTeacher: string;
   };
-  nextTermBegins: string;
+  nextTerm: {
+    begins: string;
+    ends: string;
+    fees: string;
+  };
 }
 
 

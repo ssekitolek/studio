@@ -90,19 +90,12 @@ export default function GenerateReportCardPage() {
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 10;
     
-    // Add custom font if needed (requires font file)
-    // doc.addFont('...'); 
-    // doc.setFont('...');
-
     // Header
     if (isValidUrl(reportData.schoolDetails.logoUrl)) {
-      // Note: jsPDF cannot directly use web URLs without CORS. A proxy or base64 conversion is needed for reliability.
-      // This is a simplified approach.
       try {
          doc.addImage(reportData.schoolDetails.logoUrl, 'PNG', margin, margin, 20, 20);
       } catch(e) {
          console.error("Error adding logo image to PDF. Using placeholder text. Image URL:", reportData.schoolDetails.logoUrl, e);
-         doc.text("Logo", margin, margin + 10);
       }
     }
     
@@ -144,17 +137,31 @@ export default function GenerateReportCardPage() {
     let finalY = (doc as any).lastAutoTable.finalY;
 
     // Results Table
-    const head = [['SUBJECT', 'BOT(%)', 'MOT(%)', 'EOT(%)', 'FINAL(100)', 'GRADE', 'COMMENT', 'INITIALS']];
-    const body = reportData.results.map(r => [
-      r.subjectName,
-      r.botScore?.toFixed(1) ?? '-',
-      r.motScore?.toFixed(1) ?? '-',
-      r.eotScore?.toFixed(1) ?? '-',
-      r.finalScore.toFixed(1),
-      r.grade,
-      r.comment,
-      r.teacherInitials
-    ]);
+    const head = [['SUBJECT', 'AOI(20)', 'EOT(80)', 'FINAL(100)', 'GRADE', 'DESCRIPTOR', 'INITIALS']];
+    const body: any[] = [];
+    
+    reportData.results.forEach(res => {
+        body.push([
+            { content: res.subjectName, styles: { fontStyle: 'bold' } },
+            '', '', '', '', '', ''
+        ]);
+        res.topics.forEach(topic => {
+            body.push([
+                `    ${topic.name}`,
+                topic.aoiScore?.toFixed(1) ?? '-',
+                '', '', '', '', ''
+            ]);
+        });
+        body.push([
+            { content: 'TOTALS', styles: { fontStyle: 'bold' } },
+            { content: res.aoiTotal.toFixed(1), styles: { fontStyle: 'bold' } },
+            { content: res.eotScore.toFixed(1), styles: { fontStyle: 'bold' } },
+            { content: res.finalScore.toFixed(1), styles: { fontStyle: 'bold' } },
+            { content: res.grade, styles: { fontStyle: 'bold' } },
+            res.descriptor,
+            res.teacherInitials
+        ]);
+    });
 
     autoTable(doc, {
       head: head,
@@ -170,28 +177,43 @@ export default function GenerateReportCardPage() {
 
     // Summary Section
     doc.setFontSize(10);
-    doc.text(`TOTAL MARKS: ${reportData.summary.totalMarks.toFixed(1)}`, margin, finalY + 10);
-    doc.text(`AVERAGE: ${reportData.summary.average.toFixed(2)}`, margin + 60, finalY + 10);
-    doc.text(`GRADE: ${reportData.summary.overallGrade}`, margin + 120, finalY + 10);
+    doc.text(`OVERALL AVERAGE MARK: ${reportData.summary.average.toFixed(2)}`, margin, finalY + 10);
     
     // Comments section
     const commentsY = finalY + 20;
     doc.setDrawColor(0);
-    doc.rect(margin, commentsY, pageWidth - (margin * 2), 30);
+    doc.rect(margin, commentsY, pageWidth - (margin * 2), 20); // Smaller box
     doc.setFont(undefined, 'bold');
     doc.text("Class Teacher's Comment:", margin + 2, commentsY + 5);
+    doc.text("Head Teacher's Comment:", margin + 2, commentsY + 13);
     doc.setFont(undefined, 'normal');
-    doc.text(reportData.comments.classTeacher, margin + 5, commentsY + 10);
+    doc.text(reportData.comments.classTeacher, margin + 45, commentsY + 5);
+    doc.text(reportData.comments.headTeacher, margin + 45, commentsY + 13);
+    
+    finalY = commentsY + 20;
+
+    // Next term details
+    doc.setFontSize(10);
+    doc.text(`NEXT TERM BEGINS: ${reportData.nextTerm.begins} AND ENDS: ${reportData.nextTerm.ends}`, margin, finalY + 8);
+    doc.text(`NEXT TERM FEES: UGX. ${reportData.nextTerm.fees}`, margin + 130, finalY + 8);
+    
+    // Note section
+    finalY += 15;
+    doc.setFontSize(9);
     doc.setFont(undefined, 'bold');
-    doc.text("Head Teacher's Comment:", margin + 2, commentsY + 20);
+    doc.text("NOTE", margin, finalY);
     doc.setFont(undefined, 'normal');
-    doc.text(reportData.comments.headTeacher, margin + 5, commentsY + 25);
+    doc.text("1. Under competency-based learning, we do not rank / position learners.", margin, finalY + 4);
+    doc.text("2. The 80% score (EOT) is intended to take care of the different levels of achievement separating outstanding performance from very good performance.", margin, finalY + 8);
+    doc.text("3. The scores in Formative category (20%) have been generated from Activities of Integration (AOI).", margin, finalY + 12);
     
     // Footer
     const footerY = pageHeight - 15;
     doc.setFontSize(8);
     doc.setLineHeightFactor(1.5);
-    doc.text(`This report is an official document of ${reportData.schoolDetails.name}. \nNext term begins on: ${reportData.nextTermBegins}.`, pageWidth / 2, footerY, { align: 'center' });
+    doc.text(`THEME FOR ${reportData.term.year}: "${reportData.schoolDetails.theme}"`, pageWidth / 2, footerY, { align: 'center' });
+    doc.text(`Printed on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth / 2, footerY + 4, { align: 'center' });
+
 
     doc.save(`Report_Card_${reportData.student.firstName}_${reportData.student.lastName}_${reportData.term.name}.pdf`);
   };

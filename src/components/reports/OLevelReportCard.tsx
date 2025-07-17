@@ -3,7 +3,6 @@
 
 import React from 'react';
 import type { ReportCardData } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { isValidUrl } from '@/lib/utils';
 
@@ -12,45 +11,43 @@ interface OLevelReportCardProps {
 }
 
 export function OLevelReportCard({ data }: OLevelReportCardProps) {
-  const { schoolDetails, student, term, class: studentClass, results, summary, comments, nextTermBegins } = data;
+  const { schoolDetails, student, term, class: studentClass, results, summary, comments, nextTerm } = data;
 
   return (
-    <div className="bg-white text-black p-4 md:p-8 font-sans border-2 border-black max-w-4xl mx-auto">
+    <div className="bg-white text-black p-4 font-sans border-2 border-black max-w-4xl mx-auto text-[9pt] leading-tight">
       {/* Header */}
-      <div className="text-center mb-4">
+      <div className="text-center mb-2">
         {isValidUrl(schoolDetails.logoUrl) && (
              <Image 
                 src={schoolDetails.logoUrl} 
                 alt={`${schoolDetails.name} Logo`} 
-                width={80} 
-                height={80} 
+                width={60} 
+                height={60} 
                 className="mx-auto"
                 data-ai-hint="school logo"
             />
         )}
-        <h1 className="text-2xl font-bold uppercase mt-2">{schoolDetails.name}</h1>
-        <p className="text-sm">{schoolDetails.address}, {schoolDetails.location}</p>
-        <p className="text-sm">Email: {schoolDetails.email} | Tel: {schoolDetails.phone}</p>
-        <div className="w-full h-px bg-black my-2"></div>
-        <h2 className="text-xl font-semibold">END OF TERM REPORT</h2>
+        <h1 className="text-xl font-bold uppercase mt-1">{schoolDetails.name}</h1>
+        <p className="text-xs">{schoolDetails.address}, {schoolDetails.location}</p>
+        <p className="text-xs">Email: {schoolDetails.email} | Tel: {schoolDetails.phone}</p>
+        <div className="w-full h-px bg-black my-1"></div>
+        <h2 className="text-lg font-semibold">END OF TERM REPORT</h2>
       </div>
 
       {/* Student Details */}
-      <div className="grid grid-cols-12 gap-2 text-sm mb-4">
-        <div className="col-span-10">
-            <div className="grid grid-cols-4 gap-x-4 gap-y-1">
+       <div className="grid grid-cols-12 gap-x-2 text-[9pt] mb-2">
+        <div className="col-span-8">
+            <div className="grid grid-cols-2">
                 <div className="font-bold">NAME:</div>
-                <div className="col-span-3">{student.firstName} {student.lastName}</div>
-                
+                <div>{student.firstName} {student.lastName}</div>
                 <div className="font-bold">INDEX No.:</div>
-                <div className="col-span-3">{student.studentIdNumber}</div>
-
+                <div>{student.studentIdNumber}</div>
                  <div className="font-bold">YEAR:</div>
                 <div>{term.year}</div>
             </div>
         </div>
-        <div className="col-span-2">
-            <div className="grid grid-cols-1 gap-y-1">
+        <div className="col-span-4">
+            <div className="grid grid-cols-1">
                 <div><span className="font-bold">CLASS:</span> {studentClass.name} {student.stream || ''}</div>
                 <div><span className="font-bold">TERM:</span> {term.name}</div>
                 <div><span className="font-bold">GENDER:</span> {student.gender || 'N/A'}</div>
@@ -58,55 +55,99 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
         </div>
       </div>
 
+
       {/* Results Table */}
-      <table className="w-full border-collapse border border-black text-sm">
-        <thead>
+      <table className="w-full border-collapse border border-black text-[8pt]">
+        <thead className="text-[7.5pt]">
           <tr className="bg-gray-200 font-bold">
-            <th className="border border-black p-1">SUBJECT</th>
-            <th className="border border-black p-1">BOT(%)</th>
-            <th className="border border-black p-1">MOT(%)</th>
-            <th className="border border-black p-1">EOT(%)</th>
-            <th className="border border-black p-1">FINAL(100)</th>
-            <th className="border border-black p-1">GRADE</th>
-            <th className="border border-black p-1 w-[200px]">COMMENT</th>
-            <th className="border border-black p-1">INITIALS</th>
+            <th className="border border-black p-1 w-[20%]">SUBJECT</th>
+            <th className="border border-black p-1 w-[8%]">AOI(20)</th>
+            <th className="border border-black p-1 w-[8%]">EOT(80)</th>
+            <th className="border border-black p-1 w-[8%]">FINAL(100)</th>
+            <th className="border border-black p-1 w-[7%]">GRADE</th>
+            <th className="border border-black p-1 w-[42%]">GRADE DESCRIPTOR</th>
+            <th className="border border-black p-1 w-[7%]">INITIALS</th>
           </tr>
         </thead>
         <tbody>
           {results.map((res, index) => (
-            <tr key={index}>
-              <td className="border border-black p-1 font-semibold">{res.subjectName}</td>
-              <td className="border border-black p-1 text-center">{res.botScore?.toFixed(1) ?? '-'}</td>
-              <td className="border border-black p-1 text-center">{res.motScore?.toFixed(1) ?? '-'}</td>
-              <td className="border border-black p-1 text-center">{res.eotScore?.toFixed(1) ?? '-'}</td>
-              <td className="border border-black p-1 text-center font-bold">{res.finalScore.toFixed(1)}</td>
-              <td className="border border-black p-1 text-center font-bold">{res.grade}</td>
-              <td className="border border-black p-1 text-xs">{res.comment}</td>
-              <td className="border border-black p-1 text-center">{res.teacherInitials}</td>
-            </tr>
+            <React.Fragment key={index}>
+              <tr className='bg-gray-100'>
+                <td className="border border-black p-1 font-bold">{res.subjectName}</td>
+                <td className="border border-black p-1 text-center font-bold">{res.aoiTotal.toFixed(1)}</td>
+                <td className="border border-black p-1 text-center font-bold">{res.eotScore.toFixed(1)}</td>
+                <td className="border border-black p-1 text-center font-bold">{res.finalScore.toFixed(1)}</td>
+                <td className="border border-black p-1 text-center font-bold">{res.grade}</td>
+                <td className="border border-black p-1">{res.descriptor}</td>
+                <td className="border border-black p-1 text-center">{res.teacherInitials}</td>
+              </tr>
+              {res.topics.map((topic, topicIndex) => (
+                 <tr key={topicIndex}>
+                    <td className="border-l border-r border-black p-1 pl-4 text-gray-700">{topicIndex + 1}. {topic.name}</td>
+                    <td className="border-l border-r border-black p-1 text-center text-gray-700">{topic.aoiScore?.toFixed(1) ?? '-'}</td>
+                    <td className="border-l border-r border-black p-1"></td>
+                    <td className="border-l border-r border-black p-1"></td>
+                    <td className="border-l border-r border-black p-1"></td>
+                    <td className="border-l border-r border-black p-1"></td>
+                    <td className="border-l border-r border-black p-1"></td>
+                 </tr>
+              ))}
+            </React.Fragment>
           ))}
         </tbody>
       </table>
 
       {/* Summary */}
-      <div className="mt-4 flex justify-around font-bold text-sm">
-        <p>TOTAL MARKS: {summary.totalMarks.toFixed(1)}</p>
-        <p>AVERAGE: {summary.average.toFixed(2)}</p>
-        <p>GRADE: {summary.overallGrade}</p>
+      <div className="mt-2 text-[9pt]">
+        <span className="font-bold">OVERALL AVERAGE MARK: {summary.average.toFixed(2)}</span>
       </div>
 
       {/* Comments */}
-      <div className="mt-4 text-sm">
-        <div className="border border-black p-2 h-[80px]">
-            <p><span className="font-bold">Class Teacher's Comment:</span> {comments.classTeacher}</p>
-            <p className="mt-4"><span className="font-bold">Head Teacher's Comment:</span> {comments.headTeacher}</p>
+      <div className="mt-2 text-[9pt]">
+        <div className="grid grid-cols-12">
+            <div className="col-span-3 font-bold">Class Teacher's Comment:</div>
+            <div className="col-span-9 border-b border-black border-dotted">{comments.classTeacher}</div>
+            <div className="col-span-3 font-bold">Head Teacher's Comment:</div>
+            <div className="col-span-9 border-b border-black border-dotted">{comments.headTeacher}</div>
+        </div>
+      </div>
+      
+       {/* Next term */}
+       <div className="mt-2 text-[9pt] flex justify-between">
+           <div>
+            <span className="font-bold">NEXT TERM BEGINS:</span> {nextTerm.begins} <span className="font-bold">AND ENDS:</span> {nextTerm.ends}
+           </div>
+           <div><span className="font-bold">NEXT TERM FEES:</span> UGX. {nextTerm.fees}</div>
+       </div>
+
+      {/* Note & Grade Descriptor */}
+      <div className="grid grid-cols-12 mt-2 gap-x-4">
+        <div className="col-span-8 text-[7.5pt]">
+            <p className="font-bold">NOTE</p>
+            <p>1. Under competency-based learning, we do not rank / position learners.</p>
+            <p>2. The 80% score (EOT) is intended to take care of the different levels of achievement separating outstanding performance from very good performance.</p>
+            <p>3. The scores in Formative category (20%) have been generated from Activities of Integration (AOI).</p>
+        </div>
+        <div className="col-span-4">
+            <table className="w-full border-collapse border border-black text-[8pt]">
+                <thead className='bg-gray-200'><tr><th colSpan={2} className='border border-black p-px'>GRADE DESCRIPTOR</th></tr></thead>
+                <tbody>
+                    <tr><td className='border border-black p-px text-center font-bold'>GRADE</td><td className='border border-black p-px text-center font-bold'>SCORE RANGE</td></tr>
+                    {summary.gradeScale.map(item => (
+                        <tr key={item.grade}>
+                            <td className='border border-black p-px text-center'>{item.grade}</td>
+                            <td className='border border-black p-px text-center'>{item.minScore}-{item.maxScore}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
         </div>
       </div>
       
       {/* Footer */}
-      <div className="mt-4 text-center text-xs">
-        <p>This report is an official document of {schoolDetails.name}.</p>
-        <p className="font-bold">Next term begins on: {nextTermBegins}.</p>
+      <div className="mt-2 text-center text-[8pt]">
+        <p className='font-bold'>THEME FOR {term.year}: "{schoolDetails.theme}"</p>
+        <p>Printed on {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
       </div>
     </div>
   );
