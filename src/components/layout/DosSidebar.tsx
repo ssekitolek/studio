@@ -38,6 +38,7 @@ import {
   BarChart3,
   FileUp,
   ClipboardCheck,
+  FileSpreadsheet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { auth } from "@/lib/firebase";
@@ -74,6 +75,7 @@ const dosNavItems = [
     subItems: [
         { href: "/dos/marks-review", label: "Marks Review", icon: ShieldAlert, tooltip: "Review submitted marks and check for anomalies"},
         { href: "/dos/reports/attendance-summary", label: "Attendance Summary", icon: ClipboardCheck, tooltip: "View student attendance summaries" },
+        { href: "/dos/reports/report-cards", label: "Report Cards", icon: FileSpreadsheet, tooltip: "Generate student report cards" },
         { href: "/dos/reports/download-marks", label: "Data Analysis", icon: BarChart3, tooltip: "Analyze assessment data" },
     ]
   }
@@ -124,46 +126,38 @@ export function DosSidebar() {
               if (item.isSection && item.subItems) {
                 return (
                   <React.Fragment key={index}>
-                    {/* Expanded View: Section Header and indented Sub-Items */}
-                    <div className="group-data-[state=collapsed]:hidden">
-                      <SidebarMenuItem className="mt-2">
-                        <div className="h-auto p-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 pointer-events-none flex items-center gap-2">
-                          <item.icon className="h-5 w-5 shrink-0" />
-                          <span>{item.label}</span>
-                        </div>
-                        <SidebarMenuSub>
-                          {item.subItems.map((subItem, subIndex) => (
-                            <SidebarMenuSubItem key={`${index}-${subIndex}`}>
-                              <Link href={subItem.href}>
-                                <SidebarMenuSubButton isActive={isItemActive(subItem.href)} className="justify-start">
-                                  <subItem.icon className="h-4 w-4 mr-2" />
-                                  <span>{subItem.label}</span>
-                                </SidebarMenuSubButton>
-                              </Link>
-                            </SidebarMenuSubItem>
-                          ))}
-                        </SidebarMenuSub>
-                      </SidebarMenuItem>
-                    </div>
-
-                    {/* Collapsed View: Each Sub-Item as a top-level icon */}
-                    <div className="group-data-[state=expanded]:hidden">
-                      {item.subItems.map((subItem, subIndex) => (
-                        <SidebarMenuItem key={`${index}-collapsed-${subIndex}`}>
-                          <Link href={subItem.href}>
+                    <SidebarMenuItem className="mt-2">
+                      <div className="h-auto p-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 pointer-events-none flex items-center gap-2 group-data-[state=collapsed]:hidden">
+                        <item.icon className="h-5 w-5 shrink-0" />
+                        <span>{item.label}</span>
+                      </div>
+                      <div className="group-data-[state=expanded]:hidden">
+                        {item.subItems.map((subItem, subIndex) => (
+                          <Link href={subItem.href} key={`${index}-collapsed-${subIndex}`}>
                             <SidebarMenuButton isActive={isItemActive(subItem.href)} tooltip={subItem.tooltip || subItem.label} className="justify-start">
                               <subItem.icon className="h-5 w-5" />
                               <span className="sr-only">{subItem.label}</span>
                             </SidebarMenuButton>
                           </Link>
-                        </SidebarMenuItem>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                      <SidebarMenuSub className="group-data-[state=collapsed]:hidden">
+                        {item.subItems.map((subItem, subIndex) => (
+                          <SidebarMenuSubItem key={`${index}-${subIndex}`}>
+                            <Link href={subItem.href}>
+                              <SidebarMenuSubButton isActive={isItemActive(subItem.href)} className="justify-start">
+                                <subItem.icon className="h-4 w-4 mr-2" />
+                                <span>{subItem.label}</span>
+                              </SidebarMenuSubButton>
+                            </Link>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </SidebarMenuItem>
                   </React.Fragment>
                 );
               }
 
-              // Render top-level items (like Dashboard, Marks Review, etc.)
               return (
                 <SidebarMenuItem key={index}>
                   <Link href={item.href}>
