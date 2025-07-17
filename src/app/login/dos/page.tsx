@@ -69,6 +69,9 @@ export default function DosLoginPage() {
           case 'auth/invalid-email':
             friendlyMessage = "Please enter a valid email address.";
             break;
+          case 'auth/network-request-failed':
+            friendlyMessage = "A network error occurred. Please check your internet connection. If the issue persists, ensure your Firebase project has authorized this domain: " + window.location.hostname;
+            break;
           case 'auth/user-disabled':
             friendlyMessage = "This D.O.S. account has been disabled. Please contact the main administrator.";
             break;
