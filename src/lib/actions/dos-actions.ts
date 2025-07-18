@@ -3,12 +3,13 @@
 
 
 
+
 "use server";
 
 import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData, DailyAttendanceRecord, DOSAttendanceSummary, StudentDetail, ReportCardData } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { db, auth } from "@/lib/firebase";
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference, runTransaction, writeBatch, Timestamp, orderBy, setDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference, runTransaction, writeBatch, Timestamp, orderBy, setDoc, QuerySnapshot, DocumentData } from "firebase/firestore";
 import * as XLSX from 'xlsx';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, deleteUser } from "firebase/auth";
 
@@ -1509,45 +1510,54 @@ export async function getReportCardData(studentId: string, termId: string): Prom
         if (assessmentIdsToFetch.size === 0) {
              return { success: false, message: "No relevant exams (AOI/EOT) found for this student's class and term." };
         }
-
-        const q = query(collection(db, "markSubmissions"), where("assessmentId", "in", Array.from(assessmentIdsToFetch)), where("dosStatus", "==", "Approved"));
-        const approvedSubmissions = await getDocs(q);
+        
+        const approvedSubmissionsSnapshots: QuerySnapshot<DocumentData>[] = [];
+        const assessmentIdArray = Array.from(assessmentIdsToFetch);
+        const chunkSize = 30; // Firestore 'in' query limit
+        for (let i = 0; i < assessmentIdArray.length; i += chunkSize) {
+            const chunk = assessmentIdArray.slice(i, i + chunkSize);
+            const q = query(collection(db, "markSubmissions"), where("assessmentId", "in", chunk), where("dosStatus", "==", "Approved"));
+            const snapshot = await getDocs(q);
+            approvedSubmissionsSnapshots.push(snapshot);
+        }
 
         const resultsBySubject = new Map<string, ReportCardData['results'][0]>();
 
-        approvedSubmissions.forEach(doc => {
-            const submission = doc.data() as MarkSubmissionFirestoreRecord;
-            const [, , subjectId] = submission.assessmentId.split('_');
-            const examId = submission.assessmentId.split('_')[0];
-            const exam = examsForTerm.find(e => e.id === examId);
-            const subject = allSubjects.find(s => s.id === subjectId);
-            const teacher = allTeachers.find(t => t.id === submission.teacherId);
+        approvedSubmissionsSnapshots.forEach(snapshot => {
+            snapshot.forEach(doc => {
+                const submission = doc.data() as MarkSubmissionFirestoreRecord;
+                const [, , subjectId] = submission.assessmentId.split('_');
+                const examId = submission.assessmentId.split('_')[0];
+                const exam = examsForTerm.find(e => e.id === examId);
+                const subject = allSubjects.find(s => s.id === subjectId);
+                const teacher = allTeachers.find(t => t.id === submission.teacherId);
 
-            if (!subject || !exam) return;
+                if (!subject || !exam) return;
 
-            const studentMark = submission.submittedMarks.find(m => m.studentId === student.studentIdNumber);
-            if(studentMark === undefined || studentMark.score === null) return;
-            
-            if (!resultsBySubject.has(subjectId)) {
-                resultsBySubject.set(subjectId, {
-                    subjectName: subject.name,
-                    teacherInitials: teacher?.name.split(' ').map(n => n[0]).join('') || 'N/A',
-                    topics: [],
-                    aoiTotal: 0,
-                    eotScore: 0,
-                    finalScore: 0,
-                    grade: '',
-                    descriptor: '',
-                });
-            }
-            const subjectResult = resultsBySubject.get(subjectId)!;
+                const studentMark = submission.submittedMarks.find(m => m.studentId === student.studentIdNumber);
+                if(studentMark === undefined || studentMark.score === null) return;
+                
+                if (!resultsBySubject.has(subjectId)) {
+                    resultsBySubject.set(subjectId, {
+                        subjectName: subject.name,
+                        teacherInitials: teacher?.name.split(' ').map(n => n[0]).join('') || 'N/A',
+                        topics: [],
+                        aoiTotal: 0,
+                        eotScore: 0,
+                        finalScore: 0,
+                        grade: '',
+                        descriptor: '',
+                    });
+                }
+                const subjectResult = resultsBySubject.get(subjectId)!;
 
-            if (aoiExams.some(e => e.id === examId)) {
-                subjectResult.topics.push({ name: exam.name, aoiScore: studentMark.score });
-            }
-            if (eotExams.some(e => e.id === examId)) {
-                subjectResult.eotScore = (studentMark.score / exam.maxMarks) * 80;
-            }
+                if (aoiExams.some(e => e.id === examId)) {
+                    subjectResult.topics.push({ name: exam.name, aoiScore: studentMark.score });
+                }
+                if (eotExams.some(e => e.id === examId)) {
+                    subjectResult.eotScore = (studentMark.score / exam.maxMarks) * 80;
+                }
+            });
         });
         
         const defaultGradingPolicy = gradingPolicies.find(p => p.isDefault) || { scale: generalSettings.defaultGradingScale || [] };
@@ -1916,3 +1926,4 @@ export async function getAttendanceSummaryForDOS(classId: string, date: string):
   }
 }
     
+
