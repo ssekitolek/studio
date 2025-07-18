@@ -5,6 +5,7 @@
 
 
 
+
 "use server";
 
 import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData, DailyAttendanceRecord, DOSAttendanceSummary, StudentDetail, ReportCardData } from "@/lib/types";
@@ -1316,7 +1317,6 @@ export async function downloadSingleMarkSubmission(
 
         // Create the worksheet from JSON data first
         const worksheet = XLSX.utils.json_to_sheet(studentMarksData, {
-            header: ["Student ID", "Student Name", "Score", "Grade"],
             skipHeader: true, // We'll add a styled header manually
         });
         
@@ -1476,7 +1476,7 @@ export async function getReportCardData(studentId: string, termId: string): Prom
             getStudentById(studentId),
             getTermById(termId),
             getSubjects(),
-            getAllExamsFromDOS(),
+            getExams(),
             getTeachers(),
             getGradingPolicies(),
             getGeneralSettings()
@@ -1698,15 +1698,6 @@ export async function getStudents(): Promise<Student[]> {
     console.error("Error fetching students:", error);
     return [];
   }
-}
-
-export async function getStudentsForClass(classId: string): Promise<Student[]> {
-    if (!db) return [];
-    const q = query(collection(db, "students"), where("classId", "==", classId));
-    const snapshot = await getDocs(q);
-    return snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() } as Student))
-        .sort((a, b) => a.lastName.localeCompare(b.lastName));
 }
 
 export async function getClasses(): Promise<ClassInfo[]> {
@@ -1954,6 +1945,16 @@ export async function getAttendanceSummaryForDOS(classId: string, date: string):
     return { success: false, message: `Failed to fetch attendance summary: ${msg}` };
   }
 }
+
+export async function getStudentsForClass(classId: string): Promise<Student[]> {
+    if (!db) return [];
+    const q = query(collection(db, "students"), where("classId", "==", classId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as Student))
+        .sort((a, b) => a.lastName.localeCompare(b.lastName));
+}
     
+
 
 
