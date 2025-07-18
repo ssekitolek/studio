@@ -295,7 +295,7 @@ export default function SubmitMarksPage() {
               <CardTitle className="font-headline text-xl text-primary">Select Assessment & Class</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
                   name="assessmentId"
@@ -352,6 +352,24 @@ export default function SubmitMarksPage() {
                     </FormItem>
                   )}
                 />
+                 <FormItem>
+                  <FormLabel>Stream (Optional)</FormLabel>
+                  <Select
+                    value={selectedStream}
+                    onValueChange={setSelectedStream}
+                    disabled={!selectedClassId || availableStreams.length === 0}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Streams" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL_STREAMS_VALUE}>All Streams</SelectItem>
+                      {availableStreams.map((stream) => (
+                        <SelectItem key={stream} value={stream}>{stream}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormItem>
               </div>
             </CardContent>
           </Card>
@@ -359,7 +377,7 @@ export default function SubmitMarksPage() {
           {selectedClassId && (
             <Card className="shadow-md">
               <CardHeader>
-                <CardTitle className="font-headline text-xl text-primary">Enter Marks for {availableClasses.find(c=>c.id === selectedClassId)?.name}</CardTitle>
+                <CardTitle className="font-headline text-xl text-primary">Enter Marks for {availableClasses.find(c=>c.id === selectedClassId)?.name} {selectedStream !== ALL_STREAMS_VALUE ? `(${selectedStream} Stream)` : ''}</CardTitle>
                 <CardDescription>Maximum possible score is {selectedAssessment?.maxMarks}. Leave blank if no mark is awarded.</CardDescription>
               </CardHeader>
               <CardContent>
