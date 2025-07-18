@@ -1,4 +1,5 @@
 
+
 "use server";
 
 import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData, DailyAttendanceRecord, DOSAttendanceSummary, StudentDetail, ReportCardData } from "@/lib/types";
@@ -1483,27 +1484,38 @@ export async function getReportCardData(studentId: string, termId: string): Prom
         const aoiExams = examsForTerm.filter(e => e.category === 'Formative');
         const eotExams = examsForTerm.filter(e => e.category === 'Summative');
 
-        const subjectsInClass = new Set<string>();
+        const subjectsInClass = new Map<string, Subject>();
         allTeachers.forEach(teacher => {
           if (teacher.subjectsAssigned) {
             teacher.subjectsAssigned.forEach(sa => {
-              if (sa.classIds.includes(student.classId)) subjectsInClass.add(sa.subjectId);
+              if (sa.classIds.includes(student.classId)) {
+                const subject = allSubjects.find(s => s.id === sa.subjectId);
+                if (subject && !subjectsInClass.has(subject.id)) {
+                    subjectsInClass.set(subject.id, subject);
+                }
+              }
             });
           }
         });
         
         const assessmentIdsToFetch = new Set<string>();
-        subjectsInClass.forEach(subjectId => {
-            examsForTerm.forEach(exam => {
-                // An exam is relevant if it's for this subject and class
-                if (exam.subjectId === subjectId && exam.classId === studentClass.id) {
-                    assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${subjectId}`);
+        // Iterate through all exams for the term
+        examsForTerm.forEach(exam => {
+            // Case 1: Exam is for a specific subject
+            if (exam.subjectId && exam.classId === studentClass.id) {
+                // If the student is taking this subject, add the assessment ID
+                if (subjectsInClass.has(exam.subjectId)) {
+                    assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${exam.subjectId}`);
                 }
-                // An exam is also relevant if it's a general exam for the class (no subject specified)
-                if (!exam.subjectId && exam.classId === studentClass.id) {
-                    assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${subjectId}`);
-                }
-            });
+            } 
+            // Case 2: Exam is a general exam for the class (no subject specified)
+            else if (!exam.subjectId && exam.classId === studentClass.id) {
+                // Since it's a general exam, it applies to all subjects in the class for aggregation purposes.
+                // We add an assessment ID for each subject the student takes.
+                subjectsInClass.forEach(subject => {
+                    assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${subject.id}`);
+                });
+            }
         });
         
         if (assessmentIdsToFetch.size === 0) {
@@ -1953,6 +1965,7 @@ export async function getStudentsForClass(classId: string): Promise<Student[]> {
         .sort((a, b) => a.lastName.localeCompare(b.lastName));
 }
     
+
 
 
 
