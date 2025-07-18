@@ -14,6 +14,7 @@ import { getSubmittedMarksHistory } from "@/lib/actions/teacher-actions";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import type { SubmissionHistoryDisplayItem } from "@/lib/types";
+import { SubmissionDetailsDialog } from "@/components/dialogs/SubmissionDetailsDialog";
 
 export default function MarksHistoryPage() {
   const { toast } = useToast();
@@ -21,6 +22,7 @@ export default function MarksHistoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [history, setHistory] = useState<SubmissionHistoryDisplayItem[]>([]);
   const [pageError, setPageError] = useState<string | null>(null);
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading) return; // Wait for auth state
@@ -108,76 +110,94 @@ export default function MarksHistoryPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Marks Submission History"
-        description="Review your past mark submissions and their D.O.S. review statuses."
-        icon={History}
-      />
+    <>
+      <div className="space-y-6">
+        <PageHeader
+          title="Marks Submission History"
+          description="Review your past mark submissions and their D.O.S. review statuses."
+          icon={History}
+        />
 
-      <Card className="shadow-md">
-        <CardHeader>
-          <CardTitle className="font-headline text-xl text-primary">Your Submissions</CardTitle>
-          <CardDescription>
-            A log of all marks you have submitted. Status reflects D.O.S. review.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {history.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Assessment Name</TableHead>
-                  <TableHead>Date Submitted</TableHead>
-                  <TableHead className="text-center">Students</TableHead>
-                  <TableHead className="text-center">Avg. Score</TableHead>
-                  <TableHead className="text-center">D.O.S. Status</TableHead>
-                  <TableHead>D.O.S. Reject Reason</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {history.map((item) => {
-                  const statusStyle = getStatusVariantAndClass(item);
-                  return (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.assessmentName || "N/A (Check Logs)"}</TableCell>
-                      <TableCell>{new Date(item.dateSubmitted).toLocaleDateString()}</TableCell>
-                      <TableCell className="text-center">{item.studentCount}</TableCell>
-                      <TableCell className="text-center">{item.averageScore !== null ? item.averageScore.toFixed(1) : 'N/A'}</TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant={statusStyle.variant} className={statusStyle.className}>
-                          {statusStyle.icon}{item.status}
-                        </Badge>
-                      </TableCell>
+        <Card className="shadow-md">
+          <CardHeader>
+            <CardTitle className="font-headline text-xl text-primary">Your Submissions</CardTitle>
+            <CardDescription>
+              A log of all marks you have submitted. Status reflects D.O.S. review.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {history.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Assessment Name</TableHead>
+                    <TableHead>Date Submitted</TableHead>
+                    <TableHead className="text-center">Students</TableHead>
+                    <TableHead className="text-center">Avg. Score</TableHead>
+                    <TableHead className="text-center">D.O.S. Status</TableHead>
+                    <TableHead>D.O.S. Reject Reason</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {history.map((item) => {
+                    const statusStyle = getStatusVariantAndClass(item);
+                    return (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.assessmentName || "N/A (Check Logs)"}</TableCell>
+                        <TableCell>{new Date(item.dateSubmitted).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-center">{item.studentCount}</TableCell>
+                        <TableCell className="text-center">{item.averageScore !== null ? item.averageScore.toFixed(1) : 'N/A'}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant={statusStyle.variant} className={statusStyle.className}>
+                            {statusStyle.icon}{item.status}
+                          </Badge>
+                        </TableCell>
                        <TableCell className="text-xs text-muted-foreground italic">
-                        {item.dosRejectReason || "N/A"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="outline" size="sm" className="mr-2" disabled>
-                          <Eye className="mr-1 h-4 w-4" /> View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          ) : (
-             <p className="text-center text-muted-foreground py-8">No submission history found for your account.</p>
-          )}
-        </CardContent>
-      </Card>
+                          {item.dosRejectReason || "N/A"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="mr-2"
+                            onClick={() => setSelectedSubmissionId(item.id)}
+                          >
+                            <Eye className="mr-1 h-4 w-4" /> View
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            ) : (
+               <p className="text-center text-muted-foreground py-8">No submission history found for your account.</p>
+            )}
+          </CardContent>
+        </Card>
 
-      {history.some(h => h.dosStatus === "Rejected") && (
-         <Alert variant="destructive" className="border-red-500 bg-red-500/10">
-            <AlertTriangle className="h-5 w-5 text-red-600" />
-            <AlertTitle className="font-headline text-red-700">Action Required</AlertTitle>
-            <AlertDescription className="text-red-600">
-            One or more of your submissions have been rejected by the D.O.S. Please review the rejection reasons. These assessments will reappear in your "Submit Marks" list for resubmission.
-          </AlertDescription>
-        </Alert>
+        {history.some(h => h.dosStatus === "Rejected") && (
+           <Alert variant="destructive" className="border-red-500 bg-red-500/10">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <AlertTitle className="font-headline text-red-700">Action Required</AlertTitle>
+              <AlertDescription className="text-red-600">
+              One or more of your submissions have been rejected by the D.O.S. Please review the rejection reasons. These assessments will reappear in your "Submit Marks" list for resubmission.
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
+      {selectedSubmissionId && (
+        <SubmissionDetailsDialog
+          submissionId={selectedSubmissionId}
+          open={!!selectedSubmissionId}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedSubmissionId(null);
+            }
+          }}
+        />
       )}
-    </div>
+    </>
   );
 }

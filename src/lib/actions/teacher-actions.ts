@@ -335,6 +335,22 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
     }
 }
 
+export async function getSubmissionDetails(submissionId: string): Promise<MarkSubmissionFirestoreRecord | null> {
+    if (!db) return null;
+    try {
+        const submissionRef = doc(db, "markSubmissions", submissionId);
+        const submissionSnap = await getDoc(submissionRef);
+        if (submissionSnap.exists()) {
+            return submissionSnap.data() as MarkSubmissionFirestoreRecord;
+        }
+        return null;
+    } catch (error) {
+        console.error("Error fetching submission details:", error);
+        return null;
+    }
+}
+
+
 async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<Map<string, { classObj: ClassInfo; subjectObj: SubjectType; examObj: ExamTypeFirebase }>> {
   const responsibilitiesMap = new Map<string, { classObj: ClassInfo; subjectObj: SubjectType; examObj: ExamTypeFirebase }>();
 
