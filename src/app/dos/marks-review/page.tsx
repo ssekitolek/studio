@@ -138,8 +138,17 @@ export default function MarksReviewPage() {
       toast({ title: "Cannot Run Check", description: "Load marks first and ensure exam/subject details are present before running the AI check.", variant: "destructive" });
       return;
     }
+    
+    // Filter out students with null grades before sending to the AI
+    const gradeEntries: GenkitGradeEntry[] = marksPayload.marks
+      .filter(m => m.grade !== null)
+      .map(m => ({ studentId: m.studentId, grade: m.grade }));
 
-    const gradeEntries: GenkitGradeEntry[] = marksPayload.marks.map(m => ({ studentId: m.studentId, grade: m.grade }));
+    if (gradeEntries.length === 0) {
+        toast({ title: "No Marks to Check", description: "There are no submitted scores to check for anomalies.", variant: "default" });
+        return;
+    }
+
     const anomalyInput: GradeAnomalyDetectionInput = {
       subject: marksPayload.subject.name,
       exam: marksPayload.exam.name,

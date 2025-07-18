@@ -324,25 +324,19 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
 
             try {
                 const data = rawData as MarkSubmissionFirestoreRecord;
-                let displayStatus = data.status; 
+                let displayStatus: string;
 
                 switch(data.dosStatus) {
                     case 'Approved':
-                        displayStatus = 'Approved by D.O.S.';
+                        displayStatus = 'Approved';
                         break;
                     case 'Rejected':
-                        displayStatus = 'Rejected by D.O.S.';
+                        displayStatus = 'Rejected';
                         break;
                     case 'Pending':
-                        if (data.status && data.status.includes('Anomaly')) {
-                            displayStatus = 'Pending D.O.S. Review (Anomaly)';
-                        } else {
-                            displayStatus = 'Pending D.O.S. Review';
-                        }
-                        break;
                     default: 
-                        displayStatus = data.status || 'Status Unknown';
-                        console.warn(`[getSubmittedMarksHistory] Doc ID ${docId} has unexpected dosStatus: '${data.dosStatus}'. Falling back to teacher status: '${displayStatus}'`);
+                        displayStatus = 'Pending D.O.S. Review';
+                        break;
                 }
 
                 if (!(data.dateSubmitted instanceof Timestamp)) {
@@ -351,7 +345,6 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
                 if (typeof data.assessmentName !== 'string' || !data.assessmentName) {
                      console.warn(`[getSubmittedMarksHistory] Missing or invalid 'assessmentName' for doc ID ${docId}. It should be a string like "Class - Subject - Exam". Record will use 'N/A - Error'. Value: ${data.assessmentName}`);
                 }
-
 
                 const item: SubmissionHistoryDisplayItem = {
                     id: docId,
