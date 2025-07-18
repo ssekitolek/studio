@@ -113,42 +113,13 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
     console.error("[Teacher Action - submitMarks] INVALID_SUBMISSION_DATA: Assessment ID or marks missing. Cannot proceed with submission.");
     return { success: false, message: "Invalid submission data. Assessment ID and marks are required. Marks could not be saved." };
   }
-  console.log(`[Teacher Action - submitMarks] Valid teacherId: ${teacherId} and composite assessmentId: ${data.assessmentId} received. Proceeding to get assessment details.`);
 
   const assessmentDetails = await getAssessmentDetails(data.assessmentId);
-  console.log(`[Teacher Action - submitMarks] Fetched assessment details (for assessmentName & AI check): ${JSON.stringify(assessmentDetails)}`);
   
   if (!assessmentDetails.exam || !assessmentDetails.subject || !assessmentDetails.class) { 
      const errorMessage = `Failed to retrieve full assessment details. Exam: ${!!assessmentDetails.exam}, Subject: ${!!assessmentDetails.subject}, Class: ${!!assessmentDetails.class}.`;
      console.error(`[Teacher Action - submitMarks] ABORTING_SUBMISSION due to incomplete details: ${errorMessage}. Marks not saved.`);
      return { success: false, message: `${errorMessage} Marks not saved.` };
-  }
-
-  const gradeEntries: GradeEntry[] = data.marks.map(mark => ({
-    studentId: mark.studentId,
-    grade: mark.score,
-  }));
-
-  let anomalyResult: GradeAnomalyDetectionOutput | undefined = undefined;
-  
-  const submittedGradeEntries = gradeEntries.filter(g => g.grade !== null);
-  if (submittedGradeEntries.length > 0) {
-    const anomalyInput: GradeAnomalyDetectionInput = {
-      subject: assessmentDetails.subject.name,
-      exam: assessmentDetails.exam.name,
-      grades: gradeEntries,
-      historicalAverage: undefined, // historicalAverage is not implemented yet
-    };
-    try {
-        console.log(`[Teacher Action - submitMarks] Calling gradeAnomalyDetection for composite assessmentId ${data.assessmentId} with input:`, JSON.stringify(anomalyInput));
-        anomalyResult = await gradeAnomalyDetection(anomalyInput);
-        console.log(`[Teacher Action - submitMarks] Anomaly detection result for composite assessmentId ${data.assessmentId}:`, JSON.stringify(anomalyResult));
-    } catch (error) {
-        console.error(`[Teacher Action - submitMarks] AI_ANOMALY_DETECTION_ERROR for composite assessmentId ${data.assessmentId}:`, error);
-        anomalyResult = { hasAnomalies: true, anomalies: [{studentId: "SYSTEM_ERROR", explanation: `Anomaly check failed: ${error instanceof Error ? error.message : String(error)}`}] };
-    }
-  } else {
-     console.log(`[Teacher Action - submitMarks] NO_GRADE_ENTRIES for composite assessmentId ${data.assessmentId}: No actual marks entered to process for anomaly detection.`);
   }
 
   const marksWithScores = data.marks.filter(m => m.score !== null && m.score !== undefined);
@@ -157,9 +128,6 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
   const totalScore = marksWithScores.reduce((sum, mark) => sum + (mark.score as number), 0);
   const averageScore = studentCountWithScores > 0 ? totalScore / studentCountWithScores : null;
 
-  const initialTeacherStatus: MarkSubmissionFirestoreRecord['status'] = anomalyResult?.hasAnomalies ? "Pending Review (Anomaly Detected)" : "Accepted";
-  console.log(`[Teacher Action - submitMarks] Initial teacher-facing status for composite assessmentId ${data.assessmentId} set to: "${initialTeacherStatus}"`);
-
   const submissionPayload: MarkSubmissionFirestoreRecord = {
     teacherId, 
     assessmentId: data.assessmentId, 
@@ -167,39 +135,27 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
     dateSubmitted: Timestamp.now(),
     studentCount,
     averageScore,
-    status: initialTeacherStatus, 
+    status: 'Accepted', // This status is internal/historical, D.O.S. status is king.
     submittedMarks: data.marks, 
-    anomalyExplanations: anomalyResult?.anomalies || [],
+    anomalyExplanations: [], // Anomalies are now checked by D.O.S., not on submission.
     dosStatus: 'Pending', 
   };
-  console.log(`[Teacher Action - submitMarks] PREPARED_SUBMISSION_PAYLOAD_FOR_FIRESTORE (composite assessmentId ${data.assessmentId}):`, JSON.stringify(submissionPayload, null, 2));
 
   try {
     const markSubmissionsRef = collection(db, "markSubmissions");
-    console.log(`[Teacher Action - submitMarks] ATTEMPTING_FIRESTORE_WRITE for Teacher ID: ${teacherId}, Composite Assessment ID: ${data.assessmentId}, Human-readable Name: ${submissionPayload.assessmentName}.`);
-    const docRef = await addDoc(markSubmissionsRef, submissionPayload);
-    console.log(`[Teacher Action - submitMarks] FIRESTORE_WRITE_SUCCESS! Document ID: ${docRef.id}. Teacher ID: ${submissionPayload.teacherId}, Composite Assessment ID: ${submissionPayload.assessmentId}, D.O.S Status: ${submissionPayload.dosStatus}`);
+    await addDoc(markSubmissionsRef, submissionPayload);
   } catch (error) {
     console.error(`[Teacher Action - submitMarks] FIRESTORE_WRITE_FAILED for composite assessmentId ${data.assessmentId}:`, error);
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred while saving.";
     return { success: false, message: `Failed to save submission to database: ${errorMessage}` };
   }
 
-  const teacherInfo = await getTeacherByUid(teacherId);
   revalidatePath("/teacher/marks/submit");
   revalidatePath("/teacher/marks/history");
   revalidatePath("/teacher/dashboard");
   revalidatePath("/dos/marks-review"); 
-  console.log(`[Teacher Action - submitMarks] Revalidation paths triggered for teacher ${teacherId} and D.O.S. after submission for composite assessmentId ${data.assessmentId}.`);
-
-
-  if (anomalyResult?.hasAnomalies) {
-    console.log(`[Teacher Action - submitMarks] END - Submission successful WITH ANOMALIES for teacher ${teacherId}, composite assessmentId ${data.assessmentId}.`);
-    return { success: true, message: "Marks submitted. Potential anomalies were detected and have been flagged for D.O.S. review.", anomalies: anomalyResult };
-  }
   
-  console.log(`[Teacher Action - submitMarks] END - Submission successful WITHOUT ANOMALIES for teacher ${teacherId}, composite assessmentId ${data.assessmentId}.`);
-  return { success: true, message: "Marks submitted successfully. No anomalies detected by initial AI check." };
+  return { success: true, message: "Marks submitted successfully. They are now pending D.O.S. review." };
 }
 
 

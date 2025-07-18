@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
@@ -248,26 +249,15 @@ export default function SubmitMarksPage() {
         });
 
         if (result.success) {
-          if (result.anomalies?.hasAnomalies) {
-            toast({
-                title: "Marks Submitted with Warnings",
-                description: "Potential anomalies detected. These have been flagged for D.O.S. review.",
-                variant: "default",
-                action: <ShieldAlert className="text-yellow-500" />,
-                duration: 10000,
-            });
-            setAnomalies(result.anomalies.anomalies);
-            setShowAnomalyWarning(true);
-          } else {
-            toast({
-                title: "Marks Submitted Successfully!",
-                description: "The D.O.S. has received them for review.",
-                variant: "default",
-                action: <CheckCircle className="text-green-500" />,
-            });
-            setAnomalies([]);
-            setShowAnomalyWarning(false);
-          }
+          toast({
+              title: "Marks Submitted Successfully!",
+              description: "The D.O.S. has received them for review.",
+              variant: "default",
+              action: <CheckCircle className="text-green-500" />,
+          });
+          setAnomalies([]);
+          setShowAnomalyWarning(false);
+          
            if(user) {
                 setIsLoadingAssessments(true);
                 const updatedAssessments = await getTeacherAssessments(user.uid);
