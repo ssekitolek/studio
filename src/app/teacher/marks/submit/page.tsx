@@ -181,6 +181,23 @@ export default function SubmitMarksPage() {
     return teacherSnap.exists() ? (teacherSnap.data() as Teacher) : null;
   }
 
+  const handleKeyDown = (event: React.KeyboardEvent, index: number) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const nextIndex = index + 1;
+      if (nextIndex < fields.length) {
+        const nextInput = document.getElementById(`mark-input-${nextIndex}`);
+        if (nextInput) {
+          nextInput.focus();
+        }
+      } else {
+        // Optionally, blur the last input or move focus to the submit button
+        (event.target as HTMLInputElement).blur();
+        document.getElementById('submit-marks-button')?.focus();
+      }
+    }
+  };
+
 
   const onSubmit = async (data: MarksSubmissionFormValues) => {
     if (!selectedAssessment) {
@@ -409,6 +426,7 @@ export default function SubmitMarksPage() {
                                   <FormItem>
                                     <FormControl>
                                       <Input
+                                        id={`mark-input-${index}`}
                                         type="number"
                                         placeholder={`0-${currentMaxMarks}`}
                                         className="text-right"
@@ -418,6 +436,7 @@ export default function SubmitMarksPage() {
                                             const val = e.target.value;
                                             field.onChange(val === '' ? null : Number(val));
                                         }}
+                                        onKeyDown={(e) => handleKeyDown(e, index)}
                                         min="0"
                                         max={currentMaxMarks}
                                         step="any"
@@ -459,7 +478,7 @@ export default function SubmitMarksPage() {
 
           {selectedClassId && fields.length > 0 && (
             <div className="flex justify-end">
-              <Button type="submit" disabled={isPending || isLoadingStudents} size="lg">
+              <Button type="submit" id="submit-marks-button" disabled={isPending || isLoadingStudents} size="lg">
                 {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
                 Submit Marks
               </Button>
