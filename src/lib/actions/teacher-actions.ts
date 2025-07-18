@@ -5,7 +5,7 @@
 import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation, Exam as ExamTypeFirebase, TeacherStats, MarkSubmissionFirestoreRecord, SubmissionHistoryDisplayItem, ClassInfo, Subject as SubjectType, ClassTeacherData, ClassManagementStudent, GradingScaleItem, ClassAssessment, StudentClassMark, AttendanceData, StudentAttendanceInput, DailyAttendanceRecord, AttendanceHistoryData } from "@/lib/types";
 import { gradeAnomalyDetection, type GradeAnomalyDetectionInput, type GradeAnomalyDetectionOutput } from "@/ai/flows/grade-anomaly-detection";
 import { revalidatePath } from "next/cache";
-import { getClasses, getSubjects, getExams as getAllExamsFromDOS, getGeneralSettings, getTeacherById as getTeacherByIdFromDOS, getTerms, getStudents as getAllStudents, getGradingPolicies, getExamById } from '@/lib/actions/dos-actions';
+import { getClasses, getSubjects, getExams, getGeneralSettings, getTeacherById as getTeacherByIdFromDOS, getTerms, getStudents as getAllStudents, getGradingPolicies, getExamById } from '@/lib/actions/dos-actions';
 import type { GeneralSettings, Term } from '@/lib/types';
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, limit, addDoc, orderBy, Timestamp, doc, getDoc, getCountFromServer, FieldPath, updateDoc, setDoc } from "firebase/firestore";
@@ -47,7 +47,7 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{ 
             return [];
         }
 
-        const allExams = await getAllExamsFromDOS();
+        const allExams = await getExams();
         const examsForCurrentTerm = allExams.filter(e => e.termId === currentTermId);
         const allSubjects = await getSubjects();
 
@@ -135,9 +135,9 @@ export async function submitMarks(teacherId: string, data: MarksSubmissionData):
     dateSubmitted: Timestamp.now(),
     studentCount,
     averageScore,
-    status: 'Accepted', // This status is internal/historical, D.O.S. status is king.
+    status: 'Pending',
     submittedMarks: data.marks, 
-    anomalyExplanations: [], // Anomalies are now checked by D.O.S., not on submission.
+    anomalyExplanations: [],
     dosStatus: 'Pending', 
   };
 
@@ -354,7 +354,7 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
   }
 
   const [allClasses, allSubjects, allExamsFromSystem, generalSettingsResult] = await Promise.all([
-    getClasses(), getSubjects(), getAllExamsFromDOS(), getGeneralSettings(),
+    getClasses(), getSubjects(), getExams(), getGeneralSettings(),
   ]);
   const { isDefaultTemplate: gsIsDefault, ...actualGeneralSettings } = generalSettingsResult;
 
@@ -547,7 +547,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     const [generalSettingsResult, allTerms, allExamsForDeadlineLookup] = await Promise.all([
       getGeneralSettings(),
       getTerms(),
-      getAllExamsFromDOS() 
+      getExams() 
     ]);
     const { isDefaultTemplate: gsIsDefault, ...actualGeneralSettings } = generalSettingsResult;
     console.log(`[LOG_TDD] General settings loaded. isDefaultTemplate: ${gsIsDefault}, currentTermId: ${actualGeneralSettings.currentTermId}`);
@@ -869,7 +869,7 @@ export async function getClassTeacherManagementData(teacherId: string): Promise<
             getClasses(),
             getAllStudents(),
             getSubjects(),
-            getAllExamsFromDOS(),
+            getExams(),
             getGeneralSettings(),
             getGradingPolicies(),
             getDocs(collection(db, "teachers")) // Fetch all teachers to determine subjects in a class
@@ -1117,3 +1117,4 @@ export async function getAttendanceHistory(classId: string, startDate: string, e
         throw new Error(`Failed to fetch attendance history: ${firestoreErrorMessage}`);
     }
 }
+
