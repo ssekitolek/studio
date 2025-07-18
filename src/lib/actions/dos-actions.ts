@@ -1,11 +1,4 @@
 
-
-
-
-
-
-
-
 "use server";
 
 import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData, DailyAttendanceRecord, DOSAttendanceSummary, StudentDetail, ReportCardData } from "@/lib/types";
@@ -1501,8 +1494,13 @@ export async function getReportCardData(studentId: string, termId: string): Prom
         
         const assessmentIdsToFetch = new Set<string>();
         subjectsInClass.forEach(subjectId => {
-            [...aoiExams, ...eotExams].forEach(exam => {
-                if(exam.subjectId === subjectId) {
+            examsForTerm.forEach(exam => {
+                // An exam is relevant if it's for this subject and class
+                if (exam.subjectId === subjectId && exam.classId === studentClass.id) {
+                    assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${subjectId}`);
+                }
+                // An exam is also relevant if it's a general exam for the class (no subject specified)
+                if (!exam.subjectId && exam.classId === studentClass.id) {
                     assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${subjectId}`);
                 }
             });
@@ -1955,6 +1953,8 @@ export async function getStudentsForClass(classId: string): Promise<Student[]> {
         .sort((a, b) => a.lastName.localeCompare(b.lastName));
 }
     
+
+
 
 
 
