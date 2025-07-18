@@ -37,7 +37,7 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{ 
     if (!db || !teacherId) return [];
 
     try {
-        const teacher = await getTeacherByUid(teacherId);
+        const teacher = await getTeacherByIdFromDOS(teacherId);
         if (!teacher || !teacher.subjectsAssigned) return [];
 
         const generalSettings = await getGeneralSettings();
@@ -347,7 +347,7 @@ async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<
     return responsibilitiesMap;
   }
 
-  const teacherDocument = await getTeacherByUid(teacherId);
+  const teacherDocument = await getTeacherByIdFromDOS(teacherId);
   if (!teacherDocument) {
     console.warn(`[getTeacherAssessmentResponsibilities] Teacher not found for ID: "${teacherId}". Returning empty map.`);
     return responsibilitiesMap;
@@ -438,7 +438,7 @@ async function getTeacherCurrentAssignments(teacherId: string): Promise<{ assign
         return { assignedClasses: [], assignedSubjects: [] };
     }
 
-    const teacherDoc = await getTeacherByUid(teacherId);
+    const teacherDoc = await getTeacherByIdFromDOS(teacherId);
     if (!teacherDoc) {
         return { assignedClasses: [], assignedSubjects: [] };
     }
@@ -481,23 +481,6 @@ async function getTeacherCurrentAssignments(teacherId: string): Promise<{ assign
     };
 }
 
-export async function getTeacherByUid(uid: string): Promise<TeacherType | null> {
-    if (!db) return null;
-    const teacherRef = doc(db, "teachers", uid);
-    const teacherSnap = await getDoc(teacherRef);
-    if (!teacherSnap.exists()) {
-        console.warn(`[getTeacherByUid] Teacher document not found for UID: ${uid}`);
-        return null;
-    }
-    const data = teacherSnap.data();
-    return {
-        id: teacherSnap.id,
-        uid: uid,
-        ...data,
-    } as TeacherType;
-}
-
-
 export async function getTeacherDashboardData(teacherId: string): Promise<TeacherDashboardData> {
   console.log(`[LOG_TDD] ACTION START for teacherId: "${teacherId}"`);
   let recentSubmissionsCount = 0;
@@ -532,7 +515,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
 
   try {
     console.log(`[LOG_TDD] Attempting to fetch teacher document for ID: "${teacherId}"`);
-    const teacherDocument = await getTeacherByUid(teacherId);
+    const teacherDocument = await getTeacherByIdFromDOS(teacherId);
 
     if (!teacherDocument) {
       console.warn(`[LOG_TDD] Teacher document not found for ID: "${teacherId}".`);
@@ -745,7 +728,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     console.error(`[LOG_TDD] CRITICAL ERROR processing dashboard for teacherId ${teacherId}:`, errorMessage, error);
     let teacherNameOnError: string | undefined = undefined;
     try {
-      const existingTeacherDoc = await getTeacherByUid(teacherId);
+      const existingTeacherDoc = await getTeacherByIdFromDOS(teacherId);
       teacherNameOnError = existingTeacherDoc?.name;
     } catch (nestedError) {
       console.error(`[LOG_TDD] Nested error fetching teacher name during error handling for teacherId ${teacherId}:`, nestedError);
@@ -772,7 +755,7 @@ export async function getTeacherProfileData(teacherId: string): Promise<{ name?:
     return null;
   }
   try {
-    const teacher = await getTeacherByUid(teacherId);
+    const teacher = await getTeacherByIdFromDOS(teacherId);
     if (teacher) {
       return { name: teacher.name, email: teacher.email };
     }
@@ -875,7 +858,7 @@ export async function getClassTeacherManagementData(teacherId: string): Promise<
             getDocs(collection(db, "teachers")) // Fetch all teachers to determine subjects in a class
         ]);
         
-        const teacherDoc = await getTeacherByUid(teacherId);
+        const teacherDoc = await getTeacherByIdFromDOS(teacherId);
         const allTeachers = allTeachersDocs.docs.map(d => d.data() as TeacherType);
 
         const teacherClasses = allClasses.filter(c => c.classTeacherId === teacherDoc?.id);
@@ -994,7 +977,7 @@ export async function getClassTeacherManagementData(teacherId: string): Promise<
 export async function getClassesForTeacher(teacherId: string, includeAllTeachingClasses: boolean = false): Promise<ClassInfo[]> {
     if (!db) return [];
     const allClasses = await getClasses();
-    const teacher = await getTeacherByUid(teacherId);
+    const teacher = await getTeacherByIdFromDOS(teacherId);
     if (!teacher) return [];
 
     const assignedClasses = new Map<string, ClassInfo>();
@@ -1117,4 +1100,3 @@ export async function getAttendanceHistory(classId: string, startDate: string, e
         throw new Error(`Failed to fetch attendance history: ${firestoreErrorMessage}`);
     }
 }
-

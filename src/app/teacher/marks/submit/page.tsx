@@ -22,6 +22,7 @@ import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
+import { getTeacherById as getTeacherByIdFromDOS } from '@/lib/actions/dos-actions';
 
 
 const markSchema = z.object({
@@ -121,7 +122,7 @@ export default function SubmitMarksPage() {
     setShowAnomalyWarning(false);
     
     if (assessment && user) {
-        const teacher = await getTeacherById(user.uid);
+        const teacher = await getTeacherByIdFromDOS(user.uid);
         if(teacher && teacher.subjectsAssigned) {
             const subjectAssignment = teacher.subjectsAssigned.find(sa => sa.subjectId === assessment.subjectId);
             if(subjectAssignment) {
@@ -173,14 +174,6 @@ export default function SubmitMarksPage() {
     }
     fetchStudentsForSelectedClass();
   }, [selectedClassId, selectedStream, replace, toast]);
-  
-  // Helper function to get teacher document by UID
-  async function getTeacherById(uid: string) {
-    if (!db) return null;
-    const teacherRef = doc(db, "teachers", uid);
-    const teacherSnap = await getDoc(teacherRef);
-    return teacherSnap.exists() ? (teacherSnap.data() as Teacher) : null;
-  }
 
   const handleKeyDown = (event: React.KeyboardEvent, index: number) => {
     if (event.key === 'Enter') {
