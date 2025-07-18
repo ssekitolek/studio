@@ -85,15 +85,16 @@ export default function GenerateReportCardPage() {
   const handleDownloadPdf = () => {
     if (!reportData) return;
 
-    const doc = new jsPDF();
+    const doc = new jsPDF('p', 'pt', 'a4');
     const pageHeight = doc.internal.pageSize.getHeight();
     const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 10;
+    const margin = 40;
     
     // Header
     if (isValidUrl(reportData.schoolDetails.logoUrl)) {
       try {
-         doc.addImage(reportData.schoolDetails.logoUrl, 'PNG', margin, margin, 20, 20);
+         // The coordinates and dimensions are in points. 1pt = 1/72 inch
+         doc.addImage(reportData.schoolDetails.logoUrl, 'PNG', margin, margin, 50, 50);
       } catch(e) {
          console.error("Error adding logo image to PDF. Using placeholder text. Image URL:", reportData.schoolDetails.logoUrl, e);
       }
@@ -101,21 +102,21 @@ export default function GenerateReportCardPage() {
     
     doc.setFontSize(18);
     doc.setFont(undefined, 'bold');
-    doc.text(reportData.schoolDetails.name, pageWidth / 2, margin + 8, { align: 'center' });
+    doc.text(reportData.schoolDetails.name, pageWidth / 2, margin + 15, { align: 'center' });
     doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
-    doc.text(`${reportData.schoolDetails.address}, ${reportData.schoolDetails.location}`, pageWidth / 2, margin + 14, { align: 'center' });
-    doc.text(`Email: ${reportData.schoolDetails.email} | Tel: ${reportData.schoolDetails.phone}`, pageWidth / 2, margin + 19, { align: 'center' });
+    doc.text(`${reportData.schoolDetails.address}, ${reportData.schoolDetails.location}`, pageWidth / 2, margin + 28, { align: 'center' });
+    doc.text(`Email: ${reportData.schoolDetails.email} | Tel: ${reportData.schoolDetails.phone}`, pageWidth / 2, margin + 40, { align: 'center' });
     
-    doc.setLineWidth(0.5);
-    doc.line(margin, margin + 25, pageWidth - margin, margin + 25);
+    doc.setLineWidth(1);
+    doc.line(margin, margin + 50, pageWidth - margin, margin + 50);
 
     doc.setFontSize(14);
     doc.setFont(undefined, 'bold');
-    doc.text("END OF TERM REPORT", pageWidth / 2, margin + 32, { align: 'center' });
+    doc.text("END OF TERM REPORT", pageWidth / 2, margin + 65, { align: 'center' });
     
     // Student Details
-    const studentDetailsY = margin + 40;
+    const studentDetailsY = margin + 80;
     doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
     const studentDetails = [
@@ -127,10 +128,12 @@ export default function GenerateReportCardPage() {
       body: studentDetails,
       startY: studentDetailsY,
       theme: 'plain',
-      styles: { fontSize: 10, cellPadding: 0.5 },
+      styles: { fontSize: 10, cellPadding: 1 },
       columnStyles: {
-        0: { fontStyle: 'bold' },
-        2: { fontStyle: 'bold' }
+        0: { fontStyle: 'bold', cellWidth: 60 },
+        1: { cellWidth: 180 },
+        2: { fontStyle: 'bold', cellWidth: 50 },
+        3: { cellWidth: 'auto' },
       }
     });
 
@@ -166,53 +169,71 @@ export default function GenerateReportCardPage() {
     autoTable(doc, {
       head: head,
       body: body,
-      startY: finalY + 5,
-      headStyles: { fillColor: [22, 163, 74], textColor: 255, fontStyle: 'bold' },
-      didDrawCell: (data) => {
-        // Custom styling if needed
+      startY: finalY + 10,
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [200, 200, 200], textColor: 0, fontStyle: 'bold', halign: 'center' },
+      columnStyles: {
+          0: { cellWidth: 90 }, // Subject
+          1: { cellWidth: 40, halign: 'center' }, // AOI
+          2: { cellWidth: 40, halign: 'center' }, // EOT
+          3: { cellWidth: 45, halign: 'center' }, // FINAL
+          4: { cellWidth: 40, halign: 'center' }, // GRADE
+          5: { cellWidth: 'auto' }, // DESCRIPTOR
+          6: { cellWidth: 40, halign: 'center' }, // INITIALS
+      },
+      didParseCell: (data) => {
+        if(data.row.raw.some((c:any) => c.content === 'TOTALS' && c.styles?.fontStyle === 'bold')) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = '#f0f0f0';
+        }
+        if (data.row.raw[0] && typeof data.row.raw[0] === 'object' && data.row.raw[0].content && data.row.raw[0].content.startsWith('    ')) {
+            data.cell.styles.fontStyle = 'italic';
+        }
       }
     });
 
     finalY = (doc as any).lastAutoTable.finalY;
 
     // Summary Section
+    finalY = finalY > pageHeight - 200 ? finalY : pageHeight - 200; // Push to bottom
     doc.setFontSize(10);
-    doc.text(`OVERALL AVERAGE MARK: ${reportData.summary.average.toFixed(2)}`, margin, finalY + 10);
+    doc.text(`OVERALL AVERAGE MARK: ${reportData.summary.average.toFixed(2)}`, margin, finalY);
     
     // Comments section
-    const commentsY = finalY + 20;
+    const commentsY = finalY + 15;
     doc.setDrawColor(0);
-    doc.rect(margin, commentsY, pageWidth - (margin * 2), 20); // Smaller box
+    doc.rect(margin, commentsY, pageWidth - (margin * 2), 40);
     doc.setFont(undefined, 'bold');
-    doc.text("Class Teacher's Comment:", margin + 2, commentsY + 5);
-    doc.text("Head Teacher's Comment:", margin + 2, commentsY + 13);
+    doc.text("Class Teacher's Comment:", margin + 5, commentsY + 12);
+    doc.text("Head Teacher's Comment:", margin + 5, commentsY + 30);
     doc.setFont(undefined, 'normal');
-    doc.text(reportData.comments.classTeacher, margin + 45, commentsY + 5);
-    doc.text(reportData.comments.headTeacher, margin + 45, commentsY + 13);
+    doc.text(reportData.comments.classTeacher, margin + 130, commentsY + 12);
+    doc.text(reportData.comments.headTeacher, margin + 130, commentsY + 30);
     
-    finalY = commentsY + 20;
+    finalY = commentsY + 40;
 
     // Next term details
     doc.setFontSize(10);
-    doc.text(`NEXT TERM BEGINS: ${reportData.nextTerm.begins} AND ENDS: ${reportData.nextTerm.ends}`, margin, finalY + 8);
-    doc.text(`NEXT TERM FEES: UGX. ${reportData.nextTerm.fees}`, margin + 130, finalY + 8);
+    doc.text(`NEXT TERM BEGINS: ${reportData.nextTerm.begins} AND ENDS: ${reportData.nextTerm.ends}`, margin, finalY + 15);
+    doc.text(`NEXT TERM FEES: UGX. ${reportData.nextTerm.fees}`, pageWidth - margin, finalY + 15, { align: 'right' });
     
     // Note section
-    finalY += 15;
-    doc.setFontSize(9);
+    finalY += 30;
+    doc.setFontSize(8);
     doc.setFont(undefined, 'bold');
     doc.text("NOTE", margin, finalY);
     doc.setFont(undefined, 'normal');
-    doc.text("1. Under competency-based learning, we do not rank / position learners.", margin, finalY + 4);
-    doc.text("2. The 80% score (EOT) is intended to take care of the different levels of achievement separating outstanding performance from very good performance.", margin, finalY + 8);
-    doc.text("3. The scores in Formative category (20%) have been generated from Activities of Integration (AOI).", margin, finalY + 12);
+    doc.text("1. Under competency-based learning, we do not rank / position learners.", margin, finalY + 10);
+    doc.text("2. The 80% score (EOT) is intended to take care of the different levels of achievement separating outstanding performance from very good performance.", margin, finalY + 20);
+    doc.text("3. The scores in Formative category (20%) have been generated from Activities of Integration (AOI).", margin, finalY + 30);
     
     // Footer
-    const footerY = pageHeight - 15;
-    doc.setFontSize(8);
+    const footerY = pageHeight - 30;
+    doc.setFontSize(9);
     doc.setLineHeightFactor(1.5);
     doc.text(`THEME FOR ${reportData.term.year}: "${reportData.schoolDetails.theme}"`, pageWidth / 2, footerY, { align: 'center' });
-    doc.text(`Printed on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth / 2, footerY + 4, { align: 'center' });
+    doc.text(`Printed on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth / 2, footerY + 12, { align: 'center' });
 
 
     doc.save(`Report_Card_${reportData.student.firstName}_${reportData.student.lastName}_${reportData.term.name}.pdf`);

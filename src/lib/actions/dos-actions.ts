@@ -4,6 +4,7 @@
 
 
 
+
 "use server";
 
 import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData, DailyAttendanceRecord, DOSAttendanceSummary, StudentDetail, ReportCardData } from "@/lib/types";
@@ -1002,7 +1003,7 @@ export async function updateGeneralSettings(settings: Partial<GeneralSettings>):
         return { success: true, message: "No settings were provided to update." };
     }
 
-    await setDoc(settingsRef, settingsToSave, { merge: true });
+    await setDoc(settingsRef, { ...settingsToSave }, { merge: true });
     
     revalidatePath("/dos/settings/general");
     revalidatePath("/dos/dashboard");
@@ -1475,7 +1476,7 @@ export async function getReportCardData(studentId: string, termId: string): Prom
             getStudentById(studentId),
             getTermById(termId),
             getSubjects(),
-            getExams(),
+            getAllExamsFromDOS(),
             getTeachers(),
             getGradingPolicies(),
             getGeneralSettings()
@@ -1521,7 +1522,18 @@ export async function getReportCardData(studentId: string, termId: string): Prom
             approvedSubmissionsSnapshots.push(snapshot);
         }
 
-        const resultsBySubject = new Map<string, ReportCardData['results'][0]>();
+        type SubjectResultTemp = {
+            subjectName: string;
+            teacherInitials: string;
+            topics: Array<{ name: string; aoiScore: number | null }>;
+            eotRawScore: number | null;
+            eotMaxScore: number;
+            finalScore: number;
+            grade: string;
+            descriptor: string;
+        };
+
+        const resultsBySubject = new Map<string, SubjectResultTemp>();
 
         approvedSubmissionsSnapshots.forEach(snapshot => {
             snapshot.forEach(doc => {
@@ -1542,8 +1554,8 @@ export async function getReportCardData(studentId: string, termId: string): Prom
                         subjectName: subject.name,
                         teacherInitials: teacher?.name.split(' ').map(n => n[0]).join('') || 'N/A',
                         topics: [],
-                        aoiTotal: 0,
-                        eotScore: 0,
+                        eotRawScore: null,
+                        eotMaxScore: 100, // Default, will be overwritten
                         finalScore: 0,
                         grade: '',
                         descriptor: '',
@@ -1555,7 +1567,8 @@ export async function getReportCardData(studentId: string, termId: string): Prom
                     subjectResult.topics.push({ name: exam.name, aoiScore: studentMark.score });
                 }
                 if (eotExams.some(e => e.id === examId)) {
-                    subjectResult.eotScore = (studentMark.score / exam.maxMarks) * 80;
+                    subjectResult.eotRawScore = studentMark.score;
+                    subjectResult.eotMaxScore = exam.maxMarks;
                 }
             });
         });
@@ -1564,18 +1577,34 @@ export async function getReportCardData(studentId: string, termId: string): Prom
         let overallAverage = 0;
         let subjectsCounted = 0;
 
+        const finalResults: ReportCardData['results'] = [];
+
         resultsBySubject.forEach((result) => {
             const aoiSum = result.topics.reduce((acc, topic) => acc + (topic.aoiScore ?? 0), 0);
-            const aoiMax = result.topics.length * 20; // Assuming each AOI is out of 20
-            result.aoiTotal = aoiMax > 0 ? (aoiSum / aoiMax) * 20 : 0;
-            result.finalScore = result.aoiTotal + result.eotScore;
-            result.grade = calculateGrade(result.finalScore, 100, defaultGradingPolicy.scale);
-            result.descriptor = getGradeDescriptor(result.grade);
+            const aoiMaxPossible = result.topics.length * 20; // Assuming each AOI is out of 20
+            const aoiTotal = aoiMaxPossible > 0 ? (aoiSum / aoiMaxPossible) * 20 : 0;
+            
+            const eotScore = result.eotRawScore !== null ? (result.eotRawScore / result.eotMaxScore) * 80 : 0;
+            const finalScore = aoiTotal + eotScore;
+            
+            const grade = calculateGrade(finalScore, 100, defaultGradingPolicy.scale);
+            const descriptor = getGradeDescriptor(grade);
 
-            if(result.finalScore > 0) {
-                overallAverage += result.finalScore;
+            if(finalScore > 0) {
+                overallAverage += finalScore;
                 subjectsCounted++;
             }
+
+            finalResults.push({
+                subjectName: result.subjectName,
+                teacherInitials: result.teacherInitials,
+                topics: result.topics,
+                aoiTotal: aoiTotal,
+                eotScore: eotScore,
+                finalScore: finalScore,
+                grade: grade,
+                descriptor: descriptor
+            });
         });
 
         const reportCardData: ReportCardData = {
@@ -1591,7 +1620,7 @@ export async function getReportCardData(studentId: string, termId: string): Prom
             student,
             term,
             class: studentClass,
-            results: Array.from(resultsBySubject.values()).sort((a, b) => a.subjectName.localeCompare(b.subjectName)),
+            results: finalResults.sort((a, b) => a.subjectName.localeCompare(b.subjectName)),
             summary: {
                 average: subjectsCounted > 0 ? overallAverage / subjectsCounted : 0,
                 gradeScale: defaultGradingPolicy.scale.sort((a,b) => b.minScore - a.minScore) // Sort grades for display
@@ -1926,4 +1955,5 @@ export async function getAttendanceSummaryForDOS(classId: string, date: string):
   }
 }
     
+
 
