@@ -127,10 +127,15 @@ export default function GenerateReportCardPage() {
         const pageWidth = doc.internal.pageSize.getWidth();
         const margin = 40;
 
-        // Header
+        // --- HEADER SECTION ---
+        const headerStartY = margin;
+        const logoSize = 50;
+        const photoSize = 60;
+        let finalY = headerStartY + logoSize;
+
+        // School Logo (Left)
         if (isValidUrl(schoolDetails.logoUrl)) {
             try {
-                // Use a proxy or direct fetch if CORS allows to get image data
                 const response = await fetch(schoolDetails.logoUrl);
                 const blob = await response.blob();
                 const reader = new FileReader();
@@ -138,28 +143,13 @@ export default function GenerateReportCardPage() {
                     reader.onload = () => resolve(reader.result);
                     reader.readAsDataURL(blob);
                 });
-                doc.addImage(dataUrl as string, 'PNG', margin, margin, 50, 50);
+                doc.addImage(dataUrl as string, 'PNG', margin, headerStartY, logoSize, logoSize);
             } catch(e) {
                 console.error("Error adding school logo image to PDF:", e);
             }
         }
         
-        doc.setFontSize(18);
-        doc.setFont(undefined, 'bold');
-        doc.text(schoolDetails.name, pageWidth / 2, margin + 15, { align: 'center' });
-        doc.setFontSize(10);
-        doc.setFont(undefined, 'normal');
-        doc.text(`${schoolDetails.address}, ${schoolDetails.location}`, pageWidth / 2, margin + 28, { align: 'center' });
-        doc.text(`Email: ${schoolDetails.email} | Tel: ${schoolDetails.phone}`, pageWidth / 2, margin + 40, { align: 'center' });
-        
-        doc.setLineWidth(1);
-        doc.line(margin, margin + 50, pageWidth - margin, margin + 50);
-
-        doc.setFontSize(14);
-        doc.setFont(undefined, 'bold');
-        doc.text(reportTitle, pageWidth / 2, margin + 65, { align: 'center' });
-        
-        // Student Photo
+        // Student Photo (Right)
         if (isValidUrl(student.imageUrl)) {
             try {
                  const response = await fetch(student.imageUrl);
@@ -169,20 +159,36 @@ export default function GenerateReportCardPage() {
                      reader.onload = () => resolve(reader.result);
                      reader.readAsDataURL(blob);
                  });
-                doc.addImage(dataUrl as string, 'PNG', pageWidth - margin - 80, margin + 80, 80, 80);
+                doc.addImage(dataUrl as string, 'PNG', pageWidth - margin - photoSize, headerStartY, photoSize, photoSize);
             } catch (e) {
                 console.error("Error adding student image to PDF:", e);
-                doc.rect(pageWidth - margin - 80, margin + 80, 80, 80);
-                doc.text("Photo", pageWidth - margin - 40, margin + 125, { align: 'center' });
+                doc.rect(pageWidth - margin - photoSize, headerStartY, photoSize, photoSize);
+                doc.text("Photo", pageWidth - margin - (photoSize/2), headerStartY + (photoSize/2), { align: 'center' });
             }
         } else {
-             doc.rect(pageWidth - margin - 80, margin + 80, 80, 80);
-             doc.text("Photo", pageWidth - margin - 40, margin + 125, { align: 'center' });
+             doc.rect(pageWidth - margin - photoSize, headerStartY, photoSize, photoSize);
+             doc.text("Photo", pageWidth - margin - (photoSize/2), headerStartY + (photoSize/2), { align: 'center' });
         }
 
+        // School Text Details (Center)
+        doc.setFontSize(18);
+        doc.setFont(undefined, 'bold');
+        doc.text(schoolDetails.name, pageWidth / 2, headerStartY + 15, { align: 'center' });
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+        doc.text(`${schoolDetails.address}, ${schoolDetails.location}`, pageWidth / 2, headerStartY + 28, { align: 'center' });
+        doc.text(`Email: ${schoolDetails.email} | Tel: ${schoolDetails.phone}`, pageWidth / 2, headerStartY + 40, { align: 'center' });
+        
+        // Line Separator and Report Title
+        doc.setLineWidth(1);
+        doc.line(margin, finalY, pageWidth - margin, finalY);
+        finalY += 15;
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.text(reportTitle, pageWidth / 2, finalY, { align: 'center' });
+        finalY += 15;
 
-        // Student Details
-        const studentDetailsY = margin + 80;
+        // --- STUDENT DETAILS ---
         doc.setFontSize(10);
         doc.setFont(undefined, 'normal');
         const studentDetails = [
@@ -195,19 +201,19 @@ export default function GenerateReportCardPage() {
         ];
         autoTable(doc, {
           body: studentDetails,
-          startY: studentDetailsY,
+          startY: finalY,
           theme: 'plain',
           styles: { fontSize: 10, cellPadding: 1 },
-          tableWidth: pageWidth - (margin * 2) - 90, // Adjust width to not overlap with photo
+          tableWidth: pageWidth - (margin * 2),
           columnStyles: {
             0: { fontStyle: 'bold', cellWidth: 80 },
             1: { cellWidth: 'auto' },
           }
         });
 
-        let finalY = (doc as any).lastAutoTable.finalY;
+        finalY = (doc as any).lastAutoTable.finalY;
 
-        // Results Table
+        // --- RESULTS TABLE ---
         const head = [['SUBJECT', 'AOI(20)', 'EOT(80)', 'FINAL(100)', 'GRADE', 'DESCRIPTOR', 'INITIALS']];
         const body: any[] = results.map(res => [
             { content: res.subjectName, styles: { fontStyle: 'bold' } },
@@ -246,7 +252,7 @@ export default function GenerateReportCardPage() {
         }
 
 
-        // Summary Section
+        // --- SUMMARY SECTION ---
         doc.setFontSize(10);
         doc.text(`OVERALL AVERAGE SCORES: ${summary.average.toFixed(2)}`, margin, bottomSectionY);
         

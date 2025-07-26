@@ -16,27 +16,46 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
   return (
     <div className="bg-white text-black p-4 font-sans border-2 border-black max-w-4xl mx-auto text-[9pt] leading-tight">
       {/* Header */}
-      <div className="text-center mb-2">
-        {isValidUrl(schoolDetails.logoUrl) && (
-             <Image 
-                src={schoolDetails.logoUrl} 
-                alt={`${schoolDetails.name} Logo`} 
-                width={60} 
-                height={60} 
-                className="mx-auto"
-                data-ai-hint="school logo"
-            />
-        )}
-        <h1 className="text-xl font-bold uppercase mt-1">{schoolDetails.name}</h1>
-        <p className="text-xs">{schoolDetails.address}, {schoolDetails.location}</p>
-        <p className="text-xs">Email: {schoolDetails.email} | Tel: {schoolDetails.phone}</p>
-        <div className="w-full h-px bg-black my-1"></div>
-        <h2 className="text-lg font-semibold">{reportTitle}</h2>
+      <div className="flex justify-between items-start mb-2">
+        <div className="w-1/5">
+            {isValidUrl(schoolDetails.logoUrl) && (
+                <Image 
+                    src={schoolDetails.logoUrl} 
+                    alt={`${schoolDetails.name} Logo`} 
+                    width={60} 
+                    height={60} 
+                    data-ai-hint="school logo"
+                />
+            )}
+        </div>
+        <div className="w-3/5 text-center">
+            <h1 className="text-xl font-bold uppercase mt-1">{schoolDetails.name}</h1>
+            <p className="text-xs">{schoolDetails.address}, {schoolDetails.location}</p>
+            <p className="text-xs">Email: {schoolDetails.email} | Tel: {schoolDetails.phone}</p>
+        </div>
+        <div className="w-1/5 flex justify-end">
+             {isValidUrl(student.imageUrl) ? (
+                <Image
+                    src={student.imageUrl}
+                    alt={`${student.firstName} ${student.lastName}`}
+                    width={60}
+                    height={60}
+                    className="object-cover border border-black"
+                    data-ai-hint="student portrait"
+                />
+            ) : (
+                <div className="w-[60px] h-[60px] border border-black flex items-center justify-center text-xs text-gray-500">
+                    Photo
+                </div>
+            )}
+        </div>
       </div>
+      <div className="w-full h-px bg-black my-1"></div>
+      <h2 className="text-lg font-semibold text-center">{reportTitle}</h2>
 
-      {/* Student Details & Photo */}
-       <div className="grid grid-cols-12 gap-x-2 text-[9pt] mb-2">
-        <div className="col-span-9">
+      {/* Student Details */}
+       <div className="grid grid-cols-12 gap-x-2 text-[9pt] my-2">
+        <div className="col-span-12">
             <div className="grid grid-cols-2">
                 <div className="font-bold">NAME:</div>
                 <div>{student.firstName} {student.lastName}</div>
@@ -51,22 +70,6 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
                 <div className="font-bold">GENDER:</div>
                 <div>{student.gender || 'N/A'}</div>
             </div>
-        </div>
-        <div className="col-span-3 flex items-center justify-center">
-             {isValidUrl(student.imageUrl) ? (
-                <Image
-                    src={student.imageUrl}
-                    alt={`${student.firstName} ${student.lastName}`}
-                    width={80}
-                    height={80}
-                    className="object-cover border-2 border-black"
-                    data-ai-hint="student portrait"
-                />
-            ) : (
-                <div className="w-20 h-20 border-2 border-black flex items-center justify-center text-xs text-gray-500">
-                    Photo
-                </div>
-            )}
         </div>
       </div>
 
