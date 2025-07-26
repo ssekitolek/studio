@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
@@ -175,14 +176,14 @@ export default function GenerateReportCardPage() {
         // School Text Details (Center)
         doc.setFontSize(18);
         doc.setFont(undefined, 'bold');
-        doc.text(schoolDetails.name, pageWidth / 2, headerStartY + 15, { align: 'center' });
+        doc.text(schoolDetails.name.toUpperCase(), pageWidth / 2, headerStartY + 15, { align: 'center' });
         doc.setFontSize(10);
         doc.setFont(undefined, 'normal');
         doc.text(`${schoolDetails.address}, ${schoolDetails.location}`, pageWidth / 2, headerStartY + 28, { align: 'center' });
         doc.text(`Email: ${schoolDetails.email} | Tel: ${schoolDetails.phone}`, pageWidth / 2, headerStartY + 40, { align: 'center' });
         
         // Line Separator and Report Title
-        finalY += 10; 
+        finalY += 5; // Extra space
         doc.setLineWidth(1);
         doc.line(margin, finalY, pageWidth - margin, finalY);
         finalY += 15;
@@ -476,3 +477,4 @@ export default function GenerateReportCardPage() {
     </div>
   );
 }
+

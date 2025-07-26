@@ -1640,7 +1640,7 @@ export async function getReportCardData(
 
             return {
                 schoolDetails: {
-                    name: "St. Mbaaga's College", address: "P.O. Box 8", location: "Naddangira",
+                    name: "ST. MBAAGA'S COLLEGE NADDANGIRA", address: "P.O. Box 8", location: "Naddangira",
                     phone: "0758013161 / 0782923384", email: "ssegawarichard7@gmail.com",
                     logoUrl: "https://i.imgur.com/lZDibio.png", theme: options.schoolTheme,
                 }, student, term, class: studentClass, reportTitle,
@@ -1993,6 +1993,7 @@ export async function getStudentsForClass(classId: string): Promise<Student[]> {
     
 
     
+
 
 
 

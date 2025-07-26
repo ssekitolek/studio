@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React from 'react';
@@ -128,7 +129,7 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
        {/* Next term */}
        <div className="mt-2 text-[9pt] flex justify-between">
             <div>
-                <span className="font-bold">NEXT TERM BEGINS:</span> {nextTerm?.begins || ''} <span className="font-bold">AND ENDS:</span> {nextTerm?.ends || ''}
+                <span className="font-bold">NEXT TERM BEGINS:</span> {nextTerm?.begins || ''} {nextTerm?.ends && <><span className="font-bold">AND ENDS:</span> {nextTerm.ends}</>}
             </div>
             <div>
                 <span className="font-bold">NEXT TERM FEES:</span> UGX. {nextTerm?.fees || ''}
@@ -145,15 +146,16 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
         </div>
         <div className="col-span-4">
             <table className="w-full border-collapse border border-black text-[8pt]">
-                <thead className='bg-gray-200'><tr><th colSpan={2} className='border border-black p-px'>GRADE DESCRIPTOR</th></tr></thead>
+                <thead className='bg-gray-200'><tr><th colSpan={summary.gradeScale.length + 1} className='border border-black p-px'>GRADE DESCRIPTOR</th></tr></thead>
                 <tbody>
-                    <tr><td className='border border-black p-px text-center font-bold'>GRADE</td><td className='border border-black p-px text-center font-bold'>SCORE RANGE</td></tr>
-                    {summary.gradeScale.map(item => (
-                        <tr key={item.grade}>
-                            <td className='border border-black p-px text-center'>{item.grade}</td>
-                            <td className='border border-black p-px text-center'>{item.minScore}-{item.maxScore}</td>
-                        </tr>
-                    ))}
+                    <tr>
+                        <td className='border border-black p-px text-center font-bold'>GRADE</td>
+                        {summary.gradeScale.map(item => <td key={item.grade} className='border border-black p-px text-center font-bold'>{item.grade}</td>)}
+                    </tr>
+                    <tr>
+                        <td className='border border-black p-px text-center font-bold'>SCORE RANGE</td>
+                        {summary.gradeScale.map(item => <td key={item.grade} className='border border-black p-px text-center'>{item.minScore}-{item.maxScore}</td>)}
+                    </tr>
                 </tbody>
             </table>
         </div>
