@@ -182,7 +182,7 @@ export default function GenerateReportCardPage() {
         doc.text(`Email: ${schoolDetails.email} | Tel: ${schoolDetails.phone}`, pageWidth / 2, headerStartY + 40, { align: 'center' });
         
         // Line Separator and Report Title
-        finalY += 5; // Add a small gap before the line
+        finalY += 10; // Add a small gap before the line
         doc.setLineWidth(1);
         doc.line(margin, finalY, pageWidth - margin, finalY);
         finalY += 15;
@@ -200,7 +200,7 @@ export default function GenerateReportCardPage() {
         const studentDetailsRight = [
             [{ content: 'TERM:', styles: { fontStyle: 'bold' } }, `${term.name}`],
             [{ content: 'YEAR:', styles: { fontStyle: 'bold' } }, `${term.year}`],
-            [{ content: 'GENDER:', styles: { fontStyle: 'bold' } }, `${student.gender || 'N/A'}`]
+            [{ content: 'GENDER:', styles: { fontStyle: 'bold' } }, `${student.gender || ''}`]
         ];
 
         const tableWidth = (pageWidth - (margin * 2) - 10) / 2;
@@ -295,16 +295,60 @@ export default function GenerateReportCardPage() {
         const nextTermFeesText = `NEXT TERM FEES: UGX. ${nextTerm?.fees || ''}`;
         doc.text(nextTermFeesText, pageWidth - margin, finalY, { align: 'right' });
         
-        // Note section
+        // Note section and Grade Descriptor section
         finalY += 20;
+
+        // Note section on the left
         doc.setFontSize(8);
         doc.setFont(undefined, 'bold');
         doc.text("NOTE", margin, finalY);
         doc.setFont(undefined, 'normal');
-        doc.text("1. Under competency-based learning, we do not rank / position learners.", margin, finalY + 10);
-        doc.text("2. The 80% score (EOT) is intended to take care of the different levels of achievement separating outstanding performance from very good performance.", margin, finalY + 20);
-        doc.text("3. The scores in Formative category (20%) have been generated from Activities of Integration (AOI).", margin, finalY + 30);
+        const noteText = [
+            "1. Under competency-based learning, we do not rank / position learners.",
+            "2. The 80% score (EOT) is intended to take care of the different levels of achievement separating outstanding performance from very good performance.",
+            "3. The scores in Formative category (20%) have been generated from Activities of Integration (AOI)."
+        ];
+        doc.text(noteText, margin, finalY + 10);
+        const noteFinalY = finalY + 10 + (noteText.length * 10);
+
+        // Grade Descriptor table on the right
+        const gradeDescriptorTableStartX = margin + (pageWidth - margin * 2) * (8/12); // Start at 2/3 of the page width
+        const gradeDescriptorTableWidth = (pageWidth - margin * 2) * (4/12) - 10;
         
+        autoTable(doc, {
+            head: [['GRADE DESCRIPTOR', '']], // Use a dummy second column for styling
+            body: [['GRADE', 'SCORE RANGE']],
+            startY: finalY,
+            theme: 'grid',
+            tableWidth: gradeDescriptorTableWidth,
+            margin: { left: gradeDescriptorTableStartX },
+            styles: { fontSize: 8, fontStyle: 'bold', halign: 'center' },
+            headStyles: { fillColor: [200, 200, 200], textColor: 0 },
+            columnStyles: {
+                0: { halign: 'left'},
+                1: { halign: 'left'}
+            },
+            didParseCell: function (data) {
+                if(data.section === 'head' && data.column.index === 0) {
+                     data.cell.styles.halign = 'center';
+                }
+                if (data.section === 'body' && data.row.index === 0) {
+                    data.cell.styles.fillColor = [220, 220, 220]; // Light gray for the sub-header
+                }
+            },
+        });
+
+        const lastTableY = (doc as any).lastAutoTable.finalY;
+
+        autoTable(doc, {
+            body: summary.gradeScale.map(item => [item.grade, `${item.minScore}-${item.maxScore}`]),
+            startY: lastTableY,
+            theme: 'grid',
+            tableWidth: gradeDescriptorTableWidth,
+            margin: { left: gradeDescriptorTableStartX },
+            styles: { fontSize: 8, halign: 'center' }
+        });
+
         // Footer
         const footerY = pageHeight - 30;
         doc.setFontSize(9);
