@@ -102,12 +102,22 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
       </div>
       
        {/* Next term */}
-       <div className="mt-2 text-[9pt] flex justify-between">
+       {(nextTerm.begins || nextTerm.fees) && (
+         <div className="mt-2 text-[9pt] flex justify-between">
            <div>
-            <span className="font-bold">NEXT TERM BEGINS:</span> {nextTerm.begins} <span className="font-bold">AND ENDS:</span> {nextTerm.ends}
+              {nextTerm.begins && nextTerm.ends && (
+                <>
+                  <span className="font-bold">NEXT TERM BEGINS:</span> {nextTerm.begins} <span className="font-bold">AND ENDS:</span> {nextTerm.ends}
+                </>
+              )}
            </div>
-           <div><span className="font-bold">NEXT TERM FEES:</span> UGX. {nextTerm.fees}</div>
-       </div>
+           <div>
+              {nextTerm.fees && (
+                <><span className="font-bold">NEXT TERM FEES:</span> UGX. {nextTerm.fees}</>
+              )}
+           </div>
+         </div>
+       )}
 
       {/* Note & Grade Descriptor */}
       <div className="grid grid-cols-12 mt-2 gap-x-4">
@@ -135,7 +145,7 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
       
       {/* Footer */}
       <div className="mt-2 text-center text-[8pt]">
-        <p className='font-bold'>THEME FOR {term.year}: "{schoolDetails.theme}"</p>
+        <p className='font-bold'>THEME FOR {term.year}: {schoolDetails.theme}</p>
         <p>Printed on {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
       </div>
     </div>

@@ -342,14 +342,14 @@ export interface DOSAttendanceSummary {
 
 // --- Report Card ---
 export interface NextTermDetails {
-    begins: string;
-    ends: string;
-    fees: string;
+    begins?: string;
+    ends?: string;
+    fees?: string;
 }
 
 export interface ReportGenerationOptions {
-  nextTerm: NextTermDetails;
   schoolTheme: string;
+  nextTerm: NextTermDetails;
 }
 
 export interface ReportCardData {

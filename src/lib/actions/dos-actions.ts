@@ -1524,7 +1524,7 @@ export async function getReportCardData(
             examsForTerm.forEach(exam => {
                 const isForStudentsClass = !exam.classId || exam.classId === student.classId;
                 const isForStudentsStream = !exam.stream || exam.stream === student.stream;
-                const isRelevantExam = isForStudentsClass && isForStudentsStream && (!exam.subjectId || subjectsInClass.has(exam.subjectId));
+                const isRelevantExam = isForStudentsClass && isForStudentsStream;
 
                 if(isRelevantExam) {
                     if(!exam.subjectId) {
@@ -1532,7 +1532,9 @@ export async function getReportCardData(
                             assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${subject.id}`);
                         });
                     } else { 
-                        assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${exam.subjectId}`);
+                        if(subjectsInClass.has(exam.subjectId)){
+                            assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${exam.subjectId}`);
+                        }
                     }
                 }
             });
@@ -1965,6 +1967,7 @@ export async function getStudentsForClass(classId: string): Promise<Student[]> {
     
 
     
+
 
 
 
