@@ -1036,12 +1036,12 @@ export async function updateGeneralSettings(settings: Partial<GeneralSettings>):
 // --- Report Generation & Data Analysis ---
 
 const GRADE_DESCRIPTORS: { [key: string]: string } = {
-  'A': 'Outstanding',
-  'B': 'Very Good',
-  'C': 'Good',
-  'D': 'Adequate',
-  'E': 'Basic',
-  'F': 'Below Basic',
+  'A': 'Excellent: Demonstrates a thorough understanding of concepts and skills.',
+  'B': 'Good: Shows a solid understanding of most concepts and skills.',
+  'C': 'Satisfactory: Grasps the basic concepts and skills.',
+  'D': 'Needs Improvement: Shows a partial understanding of concepts.',
+  'E': 'Unsatisfactory: Lacks understanding of fundamental concepts.',
+  'F': 'Failure: Has not met the minimum requirements for this subject.',
 };
 
 function getGradeDescriptor(grade: string): string {
@@ -2008,6 +2008,7 @@ export async function getStudentsForClass(classId: string): Promise<Student[]> {
     
 
     
+
 
 
 
