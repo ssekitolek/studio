@@ -16,7 +16,7 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
   return (
     <div className="bg-white text-black p-4 font-sans border-2 border-black max-w-4xl mx-auto text-[9pt] leading-tight">
       {/* Header */}
-      <div className="flex justify-between items-start mb-2">
+      <div className="flex justify-between items-center mb-2">
         <div className="w-1/5">
             {isValidUrl(schoolDetails.logoUrl) && (
                 <Image 

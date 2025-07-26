@@ -131,7 +131,9 @@ export default function GenerateReportCardPage() {
         const headerStartY = margin;
         const logoSize = 50;
         const photoSize = 60;
-        let finalY = headerStartY + logoSize;
+        
+        const headerMaxHeight = Math.max(logoSize, photoSize);
+        let finalY = headerStartY + headerMaxHeight;
 
         // School Logo (Left)
         if (isValidUrl(schoolDetails.logoUrl)) {
