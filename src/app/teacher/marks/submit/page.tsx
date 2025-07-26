@@ -15,7 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BookOpenCheck, Loader2, AlertTriangle, CheckCircle, ShieldAlert, FileWarning } from "lucide-react";
-import { getTeacherAssessments, getStudentsForAssessment, submitMarks, getClassesForTeacher } from "@/lib/actions/teacher-actions";
+import { getTeacherAssessments, getStudentsForAssessment } from "@/lib/actions/teacher-actions";
+import { submitMarks } from "@/lib/actions/teacher-actions";
 import type { Student, AnomalyExplanation, ClassInfo, Teacher } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -36,17 +37,15 @@ const markSchema = z.object({
 
 const marksSubmissionSchema = z.object({
   assessmentId: z.string().min(1, "Please select an assessment."),
-  classId: z.string().min(1, "Please select a class for this submission."),
   marks: z.array(markSchema),
 });
 
 type MarksSubmissionFormValues = z.infer<typeof marksSubmissionSchema>;
 
 interface AssessmentOption {
-  id: string; // Just examDocId
+  id: string; // Composite ID: examId_classId_subjectId
   name: string; // Human-readable name: Exam Name (Subject Name - Class Name)
   maxMarks: number;
-  subjectId: string;
 }
 
 const ALL_STREAMS_VALUE = "_ALL_";
@@ -59,27 +58,23 @@ export default function SubmitMarksPage() {
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [assessments, setAssessments] = useState<AssessmentOption[]>([]);
   const [selectedAssessment, setSelectedAssessment] = useState<AssessmentOption | null>(null);
-  const [availableClasses, setAvailableClasses] = useState<ClassInfo[]>([]);
   const [anomalies, setAnomalies] = useState<AnomalyExplanation[]>([]);
   const [showAnomalyWarning, setShowAnomalyWarning] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
-  const [availableStreams, setAvailableStreams] = useState<string[]>([]);
-  const [selectedStream, setSelectedStream] = useState<string>(ALL_STREAMS_VALUE);
 
   const form = useForm<MarksSubmissionFormValues>({
     resolver: zodResolver(marksSubmissionSchema),
     defaultValues: {
       assessmentId: "",
-      classId: "",
       marks: [],
     },
   });
-  const { fields, replace } = useFieldArray({
+  const { fields, replace, getValues } = useFieldArray({
     control: form.control,
     name: "marks",
   });
-
-  const selectedClassId = form.watch("classId");
+  
+  const selectedAssessmentId = form.watch("assessmentId");
 
   useEffect(() => {
     if (authLoading) return;
@@ -113,50 +108,22 @@ export default function SubmitMarksPage() {
     }
     fetchAssessments(user.uid);
   }, [user, authLoading, toast]);
-  
-  const handleAssessmentChange = async (assessmentId: string) => {
-    form.reset({ assessmentId, classId: "", marks: [] });
+
+  const handleAssessmentChange = (assessmentId: string) => {
     const assessment = assessments.find(a => a.id === assessmentId);
     setSelectedAssessment(assessment || null);
+    form.setValue("assessmentId", assessmentId);
+    replace([]); 
     setAnomalies([]);
     setShowAnomalyWarning(false);
-    
-    if (assessment && user) {
-        const teacher = await getTeacherByIdFromDOS(user.uid);
-        if(teacher && teacher.subjectsAssigned) {
-            const subjectAssignment = teacher.subjectsAssigned.find(sa => sa.subjectId === assessment.subjectId);
-            if(subjectAssignment) {
-                const allTeacherClasses = await getClassesForTeacher(user.uid, true); // Get all classes, even if not Class Teacher
-                const classesForThisSubject = allTeacherClasses.filter(cls => subjectAssignment.classIds.includes(cls.id));
-                setAvailableClasses(classesForThisSubject);
-
-                // Auto-select class if only one option is available
-                if (classesForThisSubject.length === 1) {
-                  form.setValue('classId', classesForThisSubject[0].id);
-                }
-            } else {
-                 setAvailableClasses([]);
-            }
-        }
-    } else {
-        setAvailableClasses([]);
-    }
   };
-
+  
   useEffect(() => {
-    const classInfo = availableClasses.find(c => c.id === selectedClassId);
-    setAvailableStreams(classInfo?.streams || []);
-    setSelectedStream(ALL_STREAMS_VALUE);
-  }, [selectedClassId, availableClasses]);
-
-
-  useEffect(() => {
-    async function fetchStudentsForSelectedClass() {
-      if (selectedClassId) {
+    async function fetchStudentsForSelectedAssessment() {
+      if (selectedAssessmentId) {
         setIsLoadingStudents(true);
-        const streamToFetch = selectedStream === ALL_STREAMS_VALUE ? undefined : selectedStream;
         try {
-          const students: Student[] = await getStudentsForAssessment(form.getValues('assessmentId'), streamToFetch);
+          const students: Student[] = await getStudentsForAssessment(selectedAssessmentId);
           const marksData = students.map(student => ({
             studentId: student.studentIdNumber,
             studentName: `${student.firstName} ${student.lastName}`,
@@ -164,7 +131,7 @@ export default function SubmitMarksPage() {
           }));
           replace(marksData);
           if (students.length === 0) {
-            toast({ title: "No Students Found", description: "No students found for the selected class and stream.", variant: "default" });
+            toast({ title: "No Students Found", description: "No students found for this assessment's class.", variant: "default" });
           }
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : "Unknown error";
@@ -177,8 +144,8 @@ export default function SubmitMarksPage() {
         replace([]);
       }
     }
-    fetchStudentsForSelectedClass();
-  }, [selectedClassId, selectedStream, replace, toast, form]);
+    fetchStudentsForSelectedAssessment();
+  }, [selectedAssessmentId, replace, toast]);
 
   const handleKeyDown = (event: React.KeyboardEvent, index: number) => {
     if (event.key === 'Enter') {
@@ -190,7 +157,6 @@ export default function SubmitMarksPage() {
           nextInput.focus();
         }
       } else {
-        // Optionally, blur the last input or move focus to the submit button
         (event.target as HTMLInputElement).blur();
         document.getElementById('submit-marks-button')?.focus();
       }
@@ -240,9 +206,8 @@ export default function SubmitMarksPage() {
 
     startTransition(async () => {
       try {
-        const compositeId = `${data.assessmentId}_${data.classId}_${selectedAssessment.subjectId}`;
         const result = await submitMarks(user.uid, {
-          assessmentId: compositeId,
+          assessmentId: data.assessmentId,
           marks: marksToSubmit as Array<{ studentId: string; score: number | null }>,
         });
 
@@ -261,8 +226,7 @@ export default function SubmitMarksPage() {
                 const updatedAssessments = await getTeacherAssessments(user.uid);
                 setAssessments(updatedAssessments);
                 setSelectedAssessment(null); 
-                form.reset({ assessmentId: "", classId: "", marks: [] }); 
-                setAvailableClasses([]);
+                form.reset({ assessmentId: "", marks: [] }); 
                 setIsLoadingAssessments(false);
             }
         } else {
@@ -297,10 +261,10 @@ export default function SubmitMarksPage() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Card className="shadow-md">
             <CardHeader>
-              <CardTitle className="font-headline text-xl text-primary">Select Assessment & Class</CardTitle>
+              <CardTitle className="font-headline text-xl text-primary">Select Assessment</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="assessmentId"
@@ -308,7 +272,7 @@ export default function SubmitMarksPage() {
                     <FormItem>
                       <FormLabel>Assessment</FormLabel>
                       <Select
-                          onValueChange={(value) => handleAssessmentChange(value)}
+                          onValueChange={handleAssessmentChange}
                           value={field.value}
                           disabled={isLoadingAssessments || !user}
                       >
@@ -329,60 +293,14 @@ export default function SubmitMarksPage() {
                     </FormItem>
                   )}
                 />
-                 <FormField
-                  control={form.control}
-                  name="classId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Class</FormLabel>
-                      <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          disabled={!selectedAssessment || availableClasses.length === 0}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder={!selectedAssessment ? "Select assessment first" : "Select class"} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                           {availableClasses.map(cls => (
-                              <SelectItem key={cls.id} value={cls.id}>
-                                  {cls.name}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormItem>
-                  <FormLabel>Stream (Optional)</FormLabel>
-                  <Select
-                    value={selectedStream}
-                    onValueChange={setSelectedStream}
-                    disabled={!selectedClassId || availableStreams.length === 0}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Streams" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={ALL_STREAMS_VALUE}>All Streams</SelectItem>
-                      {availableStreams.map((stream) => (
-                        <SelectItem key={stream} value={stream}>{stream}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormItem>
               </div>
             </CardContent>
           </Card>
 
-          {selectedClassId && (
+          {selectedAssessmentId && (
             <Card className="shadow-md">
               <CardHeader>
-                <CardTitle className="font-headline text-xl text-primary">Enter Marks for {availableClasses.find(c=>c.id === selectedClassId)?.name} {selectedStream !== ALL_STREAMS_VALUE ? `(${selectedStream} Stream)` : ''}</CardTitle>
+                <CardTitle className="font-headline text-xl text-primary">Enter Marks for {selectedAssessment?.name}</CardTitle>
                 <CardDescription>Maximum possible score is {selectedAssessment?.maxMarks}. Leave blank if no mark is awarded.</CardDescription>
               </CardHeader>
               <CardContent>
@@ -464,7 +382,7 @@ export default function SubmitMarksPage() {
             </Alert>
           )}
 
-          {selectedClassId && fields.length > 0 && (
+          {selectedAssessmentId && fields.length > 0 && (
             <div className="flex justify-end">
               <Button type="submit" id="submit-marks-button" disabled={isPending || isLoadingStudents} size="lg">
                 {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
@@ -477,3 +395,4 @@ export default function SubmitMarksPage() {
     </div>
   );
 }
+

@@ -1,4 +1,5 @@
 
+
 "use server";
 
 import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation, Exam as ExamTypeFirebase, TeacherStats, MarkSubmissionFirestoreRecord, SubmissionHistoryDisplayItem, ClassInfo, Subject as SubjectType, ClassTeacherData, ClassManagementStudent, GradingScaleItem, ClassAssessment, StudentClassMark, AttendanceData, StudentAttendanceInput, DailyAttendanceRecord, AttendanceHistoryData } from "@/lib/types";
@@ -31,7 +32,7 @@ function calculateGrade(
   return 'Ungraded'; 
 }
 
-export async function getTeacherAssessments(teacherId: string): Promise<Array<{ id: string; name: string; maxMarks: number; subjectId: string; }>> {
+export async function getTeacherAssessments(teacherId: string): Promise<Array<{ id: string; name: string; maxMarks: number; }>> {
     console.log(`[getTeacherAssessments] START - Fetching pending assessments for teacherId: "${teacherId}"`);
     if (!db || !teacherId) return [];
 
@@ -67,27 +68,26 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{ 
             }
         });
         
-        const pendingExamsForTeacher: Array<{ id: string; name: string; maxMarks: number; subjectId: string; }> = [];
+        const pendingExamsForTeacher: Array<{ id: string; name: string; maxMarks: number; }> = [];
         
         // Iterate through all potential exams for the current term
         examsForCurrentTerm.forEach(exam => {
             // Find teacher's assignments that match the subject of the exam
-            const relevantAssignments = teacher.subjectsAssigned.filter(sa => sa.subjectId === exam.subjectId);
+            const relevantAssignments = teacher.subjectsAssigned.filter(sa => !exam.subjectId || sa.subjectId === exam.subjectId);
 
             relevantAssignments.forEach(assignment => {
                 const subject = allSubjects.find(s => s.id === assignment.subjectId);
                 if (subject) {
                     assignment.classIds.forEach(classId => {
                         const cls = allClasses.find(c => c.id === classId);
-                        if (cls) {
-                            const compositeId = `${exam.id}_${classId}_${subject.id}`;
+                        if (cls && (!exam.classId || exam.classId === classId)) {
+                             const compositeId = `${exam.id}_${classId}_${subject.id}`;
                             // If this specific exam-class-subject combination has NOT been submitted, add it to the list.
                             if (!submittedAssessments.has(compositeId)) {
                                 pendingExamsForTeacher.push({
-                                    id: exam.id,
+                                    id: compositeId,
                                     name: `${exam.name} (${subject.name} - ${cls.name})`,
                                     maxMarks: exam.maxMarks,
-                                    subjectId: exam.subjectId!,
                                 });
                             }
                         }
@@ -211,15 +211,15 @@ async function getAssessmentDetails(assessmentId: string): Promise<AssessmentDet
     }
 }
 
-export async function getStudentsForAssessment(assessmentId: string, stream?: string): Promise<Student[]> {
-  console.log(`[getStudentsForAssessment] Called for assessmentId (Composite): ${assessmentId}, Stream: ${stream}`);
+export async function getStudentsForAssessment(assessmentId: string): Promise<Student[]> {
+  console.log(`[getStudentsForAssessment] Called for assessmentId (Composite): ${assessmentId}`);
   if (!db) {
     console.error("[getStudentsForAssessment] CRITICAL_ERROR_DB_NULL: Firestore db object is null.");
     return [];
   }
   const parts = assessmentId.split('_');
   if (parts.length !== 3) {
-      console.warn(`[getStudentsForAssessment] Invalid assessmentId format: ${assessmentId}. Expected examDocId_classDocId_subjectDocId.`);
+      console.warn(`[getStudentsForAssessment] Invalid assessmentId format: ${assessmentId}. Expected examId_classId_subjectId.`);
       return [];
   }
   const [examId, classId] = parts; 
@@ -227,27 +227,18 @@ export async function getStudentsForAssessment(assessmentId: string, stream?: st
 
   try {
     const exam = await getExamById(examId);
-    // This will now get all students for the class regardless of stream. Filtering happens next.
     const allStudentsForClass = await getStudentsForClass(classId); 
 
     if (exam && exam.stream) {
-      // Exam is for a specific stream, this overrides any user selection.
       console.log(`[getStudentsForAssessment] Exam is specific to stream: "${exam.stream}". Filtering ${allStudentsForClass.length} students.`);
       const filteredStudents = allStudentsForClass.filter(student => student.stream === exam.stream);
       console.log(`[getStudentsForAssessment] Found ${filteredStudents.length} students in exam's stream "${exam.stream}".`);
       return filteredStudents;
-    } else if (stream) {
-      // Exam is for the whole class, but user has selected a stream to filter by.
-      console.log(`[getStudentsForAssessment] User selected stream: "${stream}". Filtering ${allStudentsForClass.length} students.`);
-       const filteredStudents = allStudentsForClass.filter(student => student.stream === stream);
-       console.log(`[getStudentsForAssessment] Found ${filteredStudents.length} students in user-selected stream "${stream}".`);
-      return filteredStudents;
     }
-    else {
-      // Exam is for the whole class, and no stream is selected by user.
-      console.log(`[getStudentsForAssessment] Exam is for the whole class. Returning all ${allStudentsForClass.length} students.`);
-      return allStudentsForClass;
-    }
+    
+    console.log(`[getStudentsForAssessment] Exam is for the whole class. Returning all ${allStudentsForClass.length} students.`);
+    return allStudentsForClass;
+
   } catch(error) {
     console.error(`[getStudentsForAssessment] Error fetching students for assessment ${assessmentId}:`, error);
     return [];
