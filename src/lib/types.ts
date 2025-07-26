@@ -341,6 +341,12 @@ export interface DOSAttendanceSummary {
 
 
 // --- Report Card ---
+export interface NextTermDetails {
+    begins: string;
+    ends: string;
+    fees: string;
+}
+
 export interface ReportCardData {
   schoolDetails: {
     name: string;
@@ -372,11 +378,7 @@ export interface ReportCardData {
     classTeacher: string;
     headTeacher: string;
   };
-  nextTerm: {
-    begins: string;
-    ends: string;
-    fees: string;
-  };
+  nextTerm: NextTermDetails;
 }
 
 

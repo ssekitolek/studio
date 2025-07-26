@@ -6,6 +6,9 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { FileSpreadsheet, Loader2, Search, AlertTriangle, Download } from "lucide-react";
 import { getClasses, getStudentsForClass, getTerms, getReportCardData } from "@/lib/actions/dos-actions";
@@ -15,6 +18,7 @@ import { OLevelReportCard } from "@/components/reports/OLevelReportCard";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { isValidUrl } from "@/lib/utils";
+import { format } from "date-fns";
 
 export default function GenerateReportCardPage() {
   const { toast } = useToast();
@@ -30,6 +34,10 @@ export default function GenerateReportCardPage() {
   const [selectedTerm, setSelectedTerm] = useState("");
   const [selectedReportType, setSelectedReportType] = useState("'O' LEVEL REPORT");
   
+  const [nextTermBegins, setNextTermBegins] = useState<Date | undefined>();
+  const [nextTermEnds, setNextTermEnds] = useState<Date | undefined>();
+  const [nextTermFees, setNextTermFees] = useState("1,025,500");
+
   const [reportData, setReportData] = useState<ReportCardData | null>(null);
 
   useEffect(() => {
@@ -64,13 +72,18 @@ export default function GenerateReportCardPage() {
   }, [selectedClass]);
 
   const handleGenerateReport = () => {
-    if (!selectedClass || !selectedStudent || !selectedTerm) {
-      toast({ title: "Selection Missing", description: "Please select a class, student, and term.", variant: "destructive" });
+    if (!selectedClass || !selectedStudent || !selectedTerm || !nextTermBegins || !nextTermEnds || !nextTermFees) {
+      toast({ title: "Selection Missing", description: "Please select all fields, including next term details.", variant: "destructive" });
       return;
     }
     setReportData(null);
     startGenerationTransition(async () => {
-      const result = await getReportCardData(selectedStudent, selectedTerm, selectedReportType);
+      const result = await getReportCardData(selectedStudent, selectedTerm, selectedReportType, {
+        begins: format(nextTermBegins, "dd-MMM-yyyy"),
+        ends: format(nextTermEnds, "dd-MMM-yyyy"),
+        fees: nextTermFees,
+      });
+
       if (result.success && result.data) {
         setReportData(result.data);
          if (result.data.results.length === 0) {
@@ -133,7 +146,7 @@ export default function GenerateReportCardPage() {
       columnStyles: {
         0: { fontStyle: 'bold', cellWidth: 80 },
         1: { cellWidth: 180 },
-        2: { fontStyle: 'bold', cellWidth: 50 },
+        2: { fontStyle: 'bold', cellWidth: 60 },
         3: { cellWidth: 'auto' },
       }
     });
@@ -226,37 +239,66 @@ export default function GenerateReportCardPage() {
 
       <Card className="shadow-md">
         <CardHeader>
-          <CardTitle className="font-headline text-xl text-primary">Selection Criteria</CardTitle>
-          <CardDescription>Select the class, student, term and report type to generate.</CardDescription>
+          <CardTitle className="font-headline text-xl text-primary">Report Generation</CardTitle>
+          <CardDescription>Select the student, term, and options for the report card.</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Select value={selectedClass} onValueChange={setSelectedClass} disabled={isLoadingInitialData}>
-            <SelectTrigger><SelectValue placeholder={isLoadingInitialData ? "Loading..." : "Select Class"} /></SelectTrigger>
-            <SelectContent>{classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-          </Select>
-          <Select value={selectedStudent} onValueChange={setSelectedStudent} disabled={!selectedClass}>
-            <SelectTrigger><SelectValue placeholder={!selectedClass ? "Select class first" : "Select Student"} /></SelectTrigger>
-            <SelectContent>{students.map(s => <SelectItem key={s.id} value={s.id}>{s.firstName} {s.lastName}</SelectItem>)}</SelectContent>
-          </Select>
-          <Select value={selectedTerm} onValueChange={setSelectedTerm} disabled={isLoadingInitialData}>
-            <SelectTrigger><SelectValue placeholder={isLoadingInitialData ? "Loading..." : "Select Term"} /></SelectTrigger>
-            <SelectContent>{terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
-          </Select>
-          <Select value={selectedReportType} onValueChange={setSelectedReportType} disabled={isLoadingInitialData}>
-            <SelectTrigger><SelectValue placeholder="Select Report Type" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="'O' LEVEL REPORT">'O' LEVEL REPORT</SelectItem>
-              <SelectItem value="'A' LEVEL REPORT">'A' LEVEL REPORT</SelectItem>
-            </SelectContent>
-          </Select>
-           <Button
+        <CardContent className="space-y-6">
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Step 1: Select Student & Term</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Select value={selectedClass} onValueChange={setSelectedClass} disabled={isLoadingInitialData}>
+                <SelectTrigger><SelectValue placeholder={isLoadingInitialData ? "Loading..." : "Select Class"} /></SelectTrigger>
+                <SelectContent>{classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={selectedStudent} onValueChange={setSelectedStudent} disabled={!selectedClass}>
+                <SelectTrigger><SelectValue placeholder={!selectedClass ? "Select class first" : "Select Student"} /></SelectTrigger>
+                <SelectContent>{students.map(s => <SelectItem key={s.id} value={s.id}>{s.firstName} {s.lastName}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={selectedTerm} onValueChange={setSelectedTerm} disabled={isLoadingInitialData}>
+                <SelectTrigger><SelectValue placeholder={isLoadingInitialData ? "Loading..." : "Select Term"} /></SelectTrigger>
+                <SelectContent>{terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div>
+             <h3 className="text-lg font-semibold mb-2">Step 2: Set Report Options</h3>
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="flex flex-col space-y-1.5">
+                   <Label>Report Type</Label>
+                   <Select value={selectedReportType} onValueChange={setSelectedReportType} disabled={isLoadingInitialData}>
+                    <SelectTrigger><SelectValue placeholder="Select Report Type" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="'O' LEVEL REPORT">'O' LEVEL REPORT</SelectItem>
+                        <SelectItem value="'A' LEVEL REPORT">'A' LEVEL REPORT</SelectItem>
+                    </SelectContent>
+                   </Select>
+                </div>
+                <div className="flex flex-col space-y-1.5">
+                    <Label>Next Term Begins</Label>
+                    <DatePicker date={nextTermBegins} setDate={setNextTermBegins} placeholder="Select start date"/>
+                </div>
+                 <div className="flex flex-col space-y-1.5">
+                    <Label>Next Term Ends</Label>
+                    <DatePicker date={nextTermEnds} setDate={setNextTermEnds} placeholder="Select end date"/>
+                </div>
+                <div className="flex flex-col space-y-1.5">
+                    <Label htmlFor="next-term-fees">Next Term Fees (UGX)</Label>
+                    <Input id="next-term-fees" value={nextTermFees} onChange={(e) => setNextTermFees(e.target.value)} placeholder="e.g., 1,025,500"/>
+                </div>
+             </div>
+          </div>
+          
+          <div className="flex justify-end pt-4">
+            <Button
               onClick={handleGenerateReport}
               disabled={isLoadingInitialData || isGenerating || !selectedClass || !selectedStudent || !selectedTerm}
-              className="lg:col-span-2"
+              size="lg"
             >
-                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
-                Generate Report
+              {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+              Generate Report
             </Button>
+          </div>
         </CardContent>
       </Card>
       
