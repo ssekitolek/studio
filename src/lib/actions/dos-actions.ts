@@ -1820,7 +1820,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
   if (!db) {
     console.error("[DOS Action - getGeneralSettings] Firestore is not initialized. Check Firebase configuration. Returning placeholder settings.");
      return {
-        defaultGradingScale: [{ grade: 'N/A', minScore: 0, maxScore: 0 }],
+        defaultGradingScale: [{ grade: 'A', minScore: 80, maxScore: 100 }, { grade: 'B', minScore: 70, maxScore: 79 }, { grade: 'C', minScore: 60, maxScore: 69 }, { grade: 'D', minScore: 50, maxScore: 59 }, { grade: 'F', minScore: 0, maxScore: 49 }],
         markSubmissionTimeZone: 'UTC',
         currentTermId: undefined,
         globalMarksSubmissionDeadline: undefined,
@@ -1862,8 +1862,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
                 { grade: 'B', minScore: 70, maxScore: 79 },
                 { grade: 'C', minScore: 60, maxScore: 69 },
                 { grade: 'D', minScore: 50, maxScore: 59 },
-                { grade: 'E', minScore: 40, maxScore: 49 },
-                { grade: 'F', minScore: 0, maxScore: 39 },
+                { grade: 'F', minScore: 0, maxScore: 49 },
             ],
             markSubmissionTimeZone: 'UTC',
             currentTermId: undefined,
@@ -2008,6 +2007,7 @@ export async function getStudentsForClass(classId: string): Promise<Student[]> {
     
 
     
+
 
 
 
