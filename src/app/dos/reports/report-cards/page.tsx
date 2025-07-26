@@ -129,8 +129,8 @@ export default function GenerateReportCardPage() {
 
         // --- HEADER SECTION ---
         const headerStartY = margin;
-        const logoSize = 50;
-        const photoSize = 60;
+        const logoSize = 80;
+        const photoSize = 80;
         
         const headerMaxHeight = Math.max(logoSize, photoSize);
         let finalY = headerStartY + headerMaxHeight;

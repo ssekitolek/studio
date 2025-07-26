@@ -22,8 +22,8 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
                 <Image 
                     src={schoolDetails.logoUrl} 
                     alt={`${schoolDetails.name} Logo`} 
-                    width={60} 
-                    height={60} 
+                    width={80} 
+                    height={80} 
                     data-ai-hint="school logo"
                 />
             )}
@@ -38,13 +38,13 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
                 <Image
                     src={student.imageUrl}
                     alt={`${student.firstName} ${student.lastName}`}
-                    width={60}
-                    height={60}
+                    width={80}
+                    height={80}
                     className="object-cover border border-black"
                     data-ai-hint="student portrait"
                 />
             ) : (
-                <div className="w-[60px] h-[60px] border border-black flex items-center justify-center text-xs text-gray-500">
+                <div className="w-[80px] h-[80px] border border-black flex items-center justify-center text-xs text-gray-500">
                     Photo
                 </div>
             )}
