@@ -1499,20 +1499,18 @@ export async function getReportCardData(studentId: string, termId: string): Prom
         });
         
         const assessmentIdsToFetch = new Set<string>();
-        // Iterate through all exams for the term
+        
         examsForTerm.forEach(exam => {
-            const isGeneralExam = !exam.subjectId; // An exam for the whole class, not one subject.
             const isForStudentsClass = !exam.classId || exam.classId === student.classId;
             const isForStudentsStream = !exam.stream || exam.stream === student.stream;
+            const isGeneralExam = !exam.subjectId; 
 
             if (isForStudentsClass && isForStudentsStream) {
-                if (isGeneralExam) {
-                    // This general exam applies to all subjects the student takes.
-                    subjectsInClass.forEach(subject => {
+                if(isGeneralExam) {
+                     subjectsInClass.forEach(subject => {
                         assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${subject.id}`);
                     });
                 } else if (exam.subjectId && subjectsInClass.has(exam.subjectId)) {
-                    // This is a subject-specific exam, and the student takes this subject.
                     assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${exam.subjectId}`);
                 }
             }
@@ -1574,7 +1572,9 @@ export async function getReportCardData(studentId: string, termId: string): Prom
                 const subjectResult = resultsBySubject.get(subjectId)!;
 
                 if (aoiExams.some(e => e.id === examId)) {
-                    subjectResult.topics.push({ name: exam.name, aoiScore: studentMark.score });
+                    // Convert AOI score to be out of 20
+                    const convertedAoiScore = (studentMark.score / exam.maxMarks) * 20;
+                    subjectResult.topics.push({ name: exam.name, aoiScore: convertedAoiScore });
                 }
                 if (eotExams.some(e => e.id === examId)) {
                     subjectResult.eotRawScore = studentMark.score;
@@ -1971,3 +1971,6 @@ export async function getStudentsForClass(classId: string): Promise<Student[]> {
 
 
 
+
+
+    
