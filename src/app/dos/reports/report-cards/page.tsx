@@ -288,9 +288,11 @@ export default function GenerateReportCardPage() {
         doc.setFontSize(9);
         doc.setFont(undefined, 'normal');
         
-        const nextTermBeginsText = `NEXT TERM BEGINS: ${nextTerm?.begins || ''}`;
-        const nextTermEndsText = `AND ENDS: ${nextTerm?.ends || ''}`;
-        doc.text(`${nextTermBeginsText} ${nextTerm?.ends ? nextTermEndsText : ''}`, margin, finalY);
+        let nextTermBeginsText = `NEXT TERM BEGINS: ${nextTerm?.begins || ''}`;
+        if (nextTerm?.ends) {
+            nextTermBeginsText += ` AND ENDS: ${nextTerm.ends}`;
+        }
+        doc.text(nextTermBeginsText, margin, finalY);
 
         const nextTermFeesText = `NEXT TERM FEES: UGX. ${nextTerm?.fees || ''}`;
         doc.text(nextTermFeesText, pageWidth - margin, finalY, { align: 'right' });
