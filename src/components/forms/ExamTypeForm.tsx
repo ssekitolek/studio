@@ -88,7 +88,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
       teacherId: initialData?.teacherId || EMPTY_OPTION_VALUE,
       stream: initialData?.stream || EMPTY_OPTION_VALUE,
       marksSubmissionDeadline: initialData?.marksSubmissionDeadline ? new Date(initialData.marksSubmissionDeadline) : undefined,
-      gradingPolicyId: initialData?.gradingPolicyId || EMPTY_OPTION_VALUE,
+      gradingPolicyId: initialData?.gradingPolicyId,
       category: initialData?.category || EMPTY_OPTION_VALUE,
     },
   });
@@ -143,7 +143,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
         teacherId: initialData.teacherId || EMPTY_OPTION_VALUE,
         stream: initialData.stream || EMPTY_OPTION_VALUE,
         marksSubmissionDeadline: initialData.marksSubmissionDeadline ? new Date(initialData.marksSubmissionDeadline) : undefined,
-        gradingPolicyId: initialData.gradingPolicyId || EMPTY_OPTION_VALUE,
+        gradingPolicyId: initialData.gradingPolicyId,
         category: initialData.category || EMPTY_OPTION_VALUE,
       });
     }
@@ -179,7 +179,7 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
               title: "Exam Created",
               description: `Exam "${result.exam.name}" has been successfully created.`,
             });
-            form.reset({ name: "", termId: "", maxMarks: 100, description: "", examDate: undefined, classId: EMPTY_OPTION_VALUE, subjectId: EMPTY_OPTION_VALUE, teacherId: EMPTY_OPTION_VALUE, stream: EMPTY_OPTION_VALUE, marksSubmissionDeadline: undefined, gradingPolicyId: EMPTY_OPTION_VALUE, category: EMPTY_OPTION_VALUE });
+            form.reset({ name: "", termId: "", maxMarks: 100, description: "", examDate: undefined, classId: EMPTY_OPTION_VALUE, subjectId: EMPTY_OPTION_VALUE, teacherId: EMPTY_OPTION_VALUE, stream: EMPTY_OPTION_VALUE, marksSubmissionDeadline: undefined, gradingPolicyId: undefined, category: EMPTY_OPTION_VALUE });
             if (onSuccess) onSuccess(); else router.push("/dos/settings/exams");
           } else {
             toast({
@@ -298,14 +298,13 @@ export function ExamTypeForm({ initialData, examId, onSuccess }: ExamTypeFormPro
                     render={({ field }) => (
                     <FormItem>
                         <FormLabel>Grading Policy</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || EMPTY_OPTION_VALUE} disabled={isLoadingData}>
+                        <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingData}>
                         <FormControl>
                             <SelectTrigger>
                             <SelectValue placeholder={isLoadingData ? "Loading policies..." : "Select a grading policy"} />
                             </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                            <SelectItem value={EMPTY_OPTION_VALUE}>Use System Default</SelectItem>
                             {!isLoadingData && gradingPolicies.map(policy => (
                                 <SelectItem key={policy.id} value={policy.id}>
                                     {policy.name} {policy.isDefault && "(Default)"}

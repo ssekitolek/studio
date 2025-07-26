@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BookOpenCheck, Loader2, AlertTriangle, CheckCircle, ShieldAlert, FileWarning } from "lucide-react";
-import { getTeacherAssessments, getStudentsForClass, submitMarks, getClassesForTeacher } from "@/lib/actions/teacher-actions";
+import { getTeacherAssessments, getStudentsForAssessment, submitMarks, getClassesForTeacher } from "@/lib/actions/teacher-actions";
 import type { Student, AnomalyExplanation, ClassInfo, Teacher } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -156,7 +156,7 @@ export default function SubmitMarksPage() {
         setIsLoadingStudents(true);
         const streamToFetch = selectedStream === ALL_STREAMS_VALUE ? undefined : selectedStream;
         try {
-          const students: Student[] = await getStudentsForClass(selectedClassId, streamToFetch);
+          const students: Student[] = await getStudentsForAssessment(form.getValues('assessmentId'), streamToFetch);
           const marksData = students.map(student => ({
             studentId: student.studentIdNumber,
             studentName: `${student.firstName} ${student.lastName}`,
@@ -178,7 +178,7 @@ export default function SubmitMarksPage() {
       }
     }
     fetchStudentsForSelectedClass();
-  }, [selectedClassId, selectedStream, replace, toast]);
+  }, [selectedClassId, selectedStream, replace, toast, form]);
 
   const handleKeyDown = (event: React.KeyboardEvent, index: number) => {
     if (event.key === 'Enter') {
