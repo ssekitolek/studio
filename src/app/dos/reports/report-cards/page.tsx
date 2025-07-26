@@ -83,14 +83,14 @@ export default function GenerateReportCardPage() {
   }, [selectedClass, classes]);
 
   const handleGenerateReport = () => {
-    if (!selectedClass || !selectedTarget || !selectedTerm || !schoolTheme) {
-      toast({ title: "Selection Missing", description: "Please select a class, target, term, and provide a school theme.", variant: "destructive" });
+    if (!selectedClass || !selectedTarget || !selectedTerm) {
+      toast({ title: "Selection Missing", description: "Please select a class, target, and term.", variant: "destructive" });
       return;
     }
     setReportData(null);
     startGenerationTransition(async () => {
       const options: ReportGenerationOptions = {
-        schoolTheme: schoolTheme,
+        schoolTheme: schoolTheme || undefined,
         nextTerm: {
           begins: nextTermBegins ? format(nextTermBegins, "dd-MMM-yyyy") : undefined,
           ends: nextTermEnds ? format(nextTermEnds, "dd-MMM-yyyy") : undefined,
@@ -112,12 +112,12 @@ export default function GenerateReportCardPage() {
     });
   };
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     if (!reportData || reportData.length === 0) return;
 
     const doc = new jsPDF('p', 'pt', 'a4');
     
-    reportData.forEach((studentReportData, index) => {
+    for (const [index, studentReportData] of reportData.entries()) {
         if (index > 0) {
             doc.addPage();
         }
@@ -130,9 +130,17 @@ export default function GenerateReportCardPage() {
         // Header
         if (isValidUrl(schoolDetails.logoUrl)) {
             try {
-                doc.addImage(schoolDetails.logoUrl, 'PNG', margin, margin, 50, 50);
+                // Use a proxy or direct fetch if CORS allows to get image data
+                const response = await fetch(schoolDetails.logoUrl);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                const dataUrl = await new Promise(resolve => {
+                    reader.onload = () => resolve(reader.result);
+                    reader.readAsDataURL(blob);
+                });
+                doc.addImage(dataUrl as string, 'PNG', margin, margin, 50, 50);
             } catch(e) {
-                console.error("Error adding logo image to PDF. Using placeholder text. Image URL:", schoolDetails.logoUrl, e);
+                console.error("Error adding school logo image to PDF:", e);
             }
         }
         
@@ -151,25 +159,49 @@ export default function GenerateReportCardPage() {
         doc.setFont(undefined, 'bold');
         doc.text(reportTitle, pageWidth / 2, margin + 65, { align: 'center' });
         
+        // Student Photo
+        if (isValidUrl(student.imageUrl)) {
+            try {
+                 const response = await fetch(student.imageUrl);
+                 const blob = await response.blob();
+                 const reader = new FileReader();
+                 const dataUrl = await new Promise(resolve => {
+                     reader.onload = () => resolve(reader.result);
+                     reader.readAsDataURL(blob);
+                 });
+                doc.addImage(dataUrl as string, 'PNG', pageWidth - margin - 80, margin + 80, 80, 80);
+            } catch (e) {
+                console.error("Error adding student image to PDF:", e);
+                doc.rect(pageWidth - margin - 80, margin + 80, 80, 80);
+                doc.text("Photo", pageWidth - margin - 40, margin + 125, { align: 'center' });
+            }
+        } else {
+             doc.rect(pageWidth - margin - 80, margin + 80, 80, 80);
+             doc.text("Photo", pageWidth - margin - 40, margin + 125, { align: 'center' });
+        }
+
+
         // Student Details
         const studentDetailsY = margin + 80;
         doc.setFontSize(10);
         doc.setFont(undefined, 'normal');
         const studentDetails = [
-            [`NAME:`, `${student.firstName} ${student.lastName}`, `CLASS:`, `${studentClass.name} ${student.stream || ''}`.trim()],
-            [`STUDENT NO.:`, `${student.studentIdNumber}`, `TERM:`, `${term.name}`],
-            [`YEAR:`, `${term.year}`, `GENDER:`, `${student.gender || 'N/A'}`]
+            [`NAME:`, `${student.firstName} ${student.lastName}`],
+            [`STUDENT NO.:`, `${student.studentIdNumber}`],
+            [`CLASS:`, `${studentClass.name} ${student.stream || ''}`.trim()],
+            [`TERM:`, `${term.name}`],
+            [`YEAR:`, `${term.year}`],
+            [`GENDER:`, `${student.gender || 'N/A'}`]
         ];
         autoTable(doc, {
           body: studentDetails,
           startY: studentDetailsY,
           theme: 'plain',
           styles: { fontSize: 10, cellPadding: 1 },
+          tableWidth: pageWidth - (margin * 2) - 90, // Adjust width to not overlap with photo
           columnStyles: {
             0: { fontStyle: 'bold', cellWidth: 80 },
-            1: { cellWidth: 180 },
-            2: { fontStyle: 'bold', cellWidth: 60 },
-            3: { cellWidth: 'auto' },
+            1: { cellWidth: 'auto' },
           }
         });
 
@@ -232,11 +264,11 @@ export default function GenerateReportCardPage() {
         finalY = commentsY + 40;
 
         // Next term details
-        if (nextTerm.begins && nextTerm.ends) {
+        if (nextTerm?.begins && nextTerm?.ends) {
             doc.setFontSize(10);
             doc.text(`NEXT TERM BEGINS: ${nextTerm.begins} AND ENDS: ${nextTerm.ends}`, margin, finalY + 15);
         }
-        if (nextTerm.fees) {
+        if (nextTerm?.fees) {
             doc.text(`NEXT TERM FEES: UGX. ${nextTerm.fees}`, pageWidth - margin, finalY + 15, { align: 'right' });
         }
         
@@ -254,9 +286,11 @@ export default function GenerateReportCardPage() {
         const footerY = pageHeight - 30;
         doc.setFontSize(9);
         doc.setLineHeightFactor(1.5);
-        doc.text(`THEME FOR ${term.year}: ${schoolDetails.theme}`, pageWidth / 2, footerY, { align: 'center' });
+        if (schoolDetails.theme) {
+            doc.text(`THEME FOR ${term.year}: ${schoolDetails.theme}`, pageWidth / 2, footerY, { align: 'center' });
+        }
         doc.text(`Printed on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth / 2, footerY + 12, { align: 'center' });
-    });
+    }
 
     const selectedClassInfo = classes.find(c => c.id === selectedClass);
     const fileName = `Report_Cards_${selectedClassInfo?.name || 'Class'}.pdf`;
@@ -317,7 +351,7 @@ export default function GenerateReportCardPage() {
                    </Select>
                 </div>
                  <div className="flex flex-col space-y-1.5">
-                    <Label htmlFor="school-theme">School Theme</Label>
+                    <Label htmlFor="school-theme">School Theme (Optional)</Label>
                     <Input id="school-theme" value={schoolTheme} onChange={(e) => setSchoolTheme(e.target.value)} placeholder='e.g., "Knowledge is Power"'/>
                 </div>
                 <div className="flex flex-col space-y-1.5">
@@ -338,7 +372,7 @@ export default function GenerateReportCardPage() {
           <div className="flex justify-end pt-4">
             <Button
               onClick={handleGenerateReport}
-              disabled={isLoadingInitialData || isGenerating || !selectedTarget || !selectedTerm || !schoolTheme}
+              disabled={isLoadingInitialData || isGenerating || !selectedTarget || !selectedTerm}
               size="lg"
             >
               {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}

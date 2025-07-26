@@ -34,24 +34,39 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
         <h2 className="text-lg font-semibold">{reportTitle}</h2>
       </div>
 
-      {/* Student Details */}
+      {/* Student Details & Photo */}
        <div className="grid grid-cols-12 gap-x-2 text-[9pt] mb-2">
-        <div className="col-span-8">
+        <div className="col-span-9">
             <div className="grid grid-cols-2">
                 <div className="font-bold">NAME:</div>
                 <div>{student.firstName} {student.lastName}</div>
                 <div className="font-bold">STUDENT NO.:</div>
                 <div>{student.studentIdNumber}</div>
+                 <div className="font-bold">CLASS:</div>
+                <div>{studentClass.name} {student.stream || ''}</div>
+                <div className="font-bold">TERM:</div>
+                <div>{term.name}</div>
                  <div className="font-bold">YEAR:</div>
                 <div>{term.year}</div>
+                <div className="font-bold">GENDER:</div>
+                <div>{student.gender || 'N/A'}</div>
             </div>
         </div>
-        <div className="col-span-4">
-            <div className="grid grid-cols-1">
-                <div><span className="font-bold">CLASS:</span> {studentClass.name} {student.stream || ''}</div>
-                <div><span className="font-bold">TERM:</span> {term.name}</div>
-                <div><span className="font-bold">GENDER:</span> {student.gender || 'N/A'}</div>
-            </div>
+        <div className="col-span-3 flex items-center justify-center">
+             {isValidUrl(student.imageUrl) ? (
+                <Image
+                    src={student.imageUrl}
+                    alt={`${student.firstName} ${student.lastName}`}
+                    width={80}
+                    height={80}
+                    className="object-cover border-2 border-black"
+                    data-ai-hint="student portrait"
+                />
+            ) : (
+                <div className="w-20 h-20 border-2 border-black flex items-center justify-center text-xs text-gray-500">
+                    Photo
+                </div>
+            )}
         </div>
       </div>
 
@@ -102,7 +117,7 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
       </div>
       
        {/* Next term */}
-       {(nextTerm.begins || nextTerm.fees) && (
+       {(nextTerm?.begins || nextTerm?.fees) && (
          <div className="mt-2 text-[9pt] flex justify-between">
            <div>
               {nextTerm.begins && nextTerm.ends && (
@@ -145,7 +160,7 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
       
       {/* Footer */}
       <div className="mt-2 text-center text-[8pt]">
-        <p className='font-bold'>THEME FOR {term.year}: {schoolDetails.theme}</p>
+        {schoolDetails.theme && <p className='font-bold'>THEME FOR {term.year}: {schoolDetails.theme}</p>}
         <p>Printed on {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
       </div>
     </div>

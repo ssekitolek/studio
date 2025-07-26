@@ -84,7 +84,7 @@ export default function BulkImportPage() {
   };
 
   const handleDownloadTemplate = () => {
-    const csvContent = "studentIdNumber,firstName,lastName,gender\nS1001,John,Doe,Male\nS1002,Jane,Smith,Female";
+    const csvContent = "studentIdNumber,firstName,lastName,gender,imageUrl\nS1001,John,Doe,Male,https://placehold.co/100x100.png\nS1002,Jane,Smith,Female,https://placehold.co/100x100.png";
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
@@ -115,9 +115,9 @@ export default function BulkImportPage() {
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-            header: ["studentIdNumber", "firstName", "lastName", "gender"],
+            header: ["studentIdNumber", "firstName", "lastName", "gender", "imageUrl"],
             skipHeader: true,
-          }) as Array<{ studentIdNumber: string; firstName: string; lastName: string; gender?: string; }>;
+          }) as Array<{ studentIdNumber: string; firstName: string; lastName: string; gender?: string; imageUrl?: string; }>;
           
           if (jsonData.length === 0) {
             toast({ title: "Empty File", description: "The uploaded file contains no student data.", variant: "destructive"});
@@ -154,7 +154,7 @@ export default function BulkImportPage() {
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <h3 className="font-semibold">Step 1: Download Template</h3>
-            <p className="text-sm text-muted-foreground">Download the CSV template file. It contains the required columns: `studentIdNumber`, `firstName`, `lastName`, and optional `gender`.</p>
+            <p className="text-sm text-muted-foreground">Download the CSV template file. It contains the required columns: `studentIdNumber`, `firstName`, `lastName`, and optional `gender` and `imageUrl`.</p>
             <Button variant="outline" onClick={handleDownloadTemplate}>
               <Download className="mr-2 h-4 w-4" /> Download Template
             </Button>

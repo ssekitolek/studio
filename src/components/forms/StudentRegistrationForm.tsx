@@ -23,6 +23,7 @@ import { createStudent, getClasses, updateStudent } from "@/lib/actions/dos-acti
 import type { ClassInfo, Student } from "@/lib/types";
 import { Loader2, Save, UserPlus, Edit3 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { ImageUploadInput } from "../shared/ImageUploadInput";
 
 const studentRegistrationFormSchema = z.object({
   studentIdNumber: z.string().min(1, "Student ID Number is required."),
@@ -32,6 +33,7 @@ const studentRegistrationFormSchema = z.object({
   stream: z.string().optional(),
   dateOfBirth: z.date().optional(),
   gender: z.enum(["Male", "Female", "Other", ""]).optional(),
+  imageUrl: z.string().url("Must be a valid URL.").optional().or(z.literal('')),
 });
 
 type StudentFormValues = z.infer<typeof studentRegistrationFormSchema>;
@@ -64,6 +66,7 @@ export function StudentRegistrationForm({ initialData, studentDocumentId, onSucc
       stream: initialData?.stream || EMPTY_STREAM_VALUE,
       dateOfBirth: initialData?.dateOfBirth ? new Date(initialData.dateOfBirth) : undefined,
       gender: initialData?.gender || "",
+      imageUrl: initialData?.imageUrl || "",
     },
   });
   
@@ -115,6 +118,7 @@ export function StudentRegistrationForm({ initialData, studentDocumentId, onSucc
         stream: initialData.stream || EMPTY_STREAM_VALUE,
         dateOfBirth: initialData.dateOfBirth ? new Date(initialData.dateOfBirth) : undefined,
         gender: initialData.gender || "",
+        imageUrl: initialData.imageUrl || "",
       });
     }
   }, [initialData, form]);
@@ -127,6 +131,7 @@ export function StudentRegistrationForm({ initialData, studentDocumentId, onSucc
         dateOfBirth: data.dateOfBirth?.toISOString().split('T')[0], 
         gender: data.gender === "" ? undefined : data.gender,
         stream: data.stream === EMPTY_STREAM_VALUE ? undefined : data.stream,
+        imageUrl: data.imageUrl === "" ? undefined : data.imageUrl,
       };
 
       try {
@@ -145,7 +150,7 @@ export function StudentRegistrationForm({ initialData, studentDocumentId, onSucc
               title: "Student Registered",
               description: `Student "${result.student.firstName} ${result.student.lastName}" has been successfully registered.`,
             });
-            form.reset({ studentIdNumber: "", firstName: "", lastName: "", classId: "", stream: "", dateOfBirth: undefined, gender: "" });
+            form.reset({ studentIdNumber: "", firstName: "", lastName: "", classId: "", stream: "", dateOfBirth: undefined, gender: "", imageUrl: "" });
             if (onSuccess) {
               onSuccess();
             } else {
@@ -297,6 +302,9 @@ export function StudentRegistrationForm({ initialData, studentDocumentId, onSucc
               </FormItem>
             )}
           />
+          <div className="md:col-span-2">
+            <ImageUploadInput fieldName="imageUrl" label="Student Image URL (Optional)" />
+          </div>
         </div>
         <div className="flex justify-end">
           <Button type="submit" disabled={isPending || isLoadingClasses} size="lg">

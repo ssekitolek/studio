@@ -21,6 +21,7 @@ export interface Student {
   stream?: string;
   dateOfBirth?: string;
   gender?: 'Male' | 'Female' | 'Other';
+  imageUrl?: string;
 }
 
 export interface ClassInfo {
@@ -348,8 +349,8 @@ export interface NextTermDetails {
 }
 
 export interface ReportGenerationOptions {
-  schoolTheme: string;
-  nextTerm: NextTermDetails;
+  schoolTheme?: string;
+  nextTerm?: NextTermDetails;
 }
 
 export interface ReportCardData {
@@ -360,7 +361,7 @@ export interface ReportCardData {
     phone: string;
     email: string;
     logoUrl: string;
-    theme: string;
+    theme?: string;
   };
   student: Student;
   term: Term;
@@ -383,7 +384,7 @@ export interface ReportCardData {
     classTeacher: string;
     headTeacher: string;
   };
-  nextTerm: NextTermDetails;
+  nextTerm?: NextTermDetails;
 }
 
 

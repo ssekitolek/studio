@@ -221,6 +221,7 @@ export async function createStudent(studentData: Omit<Student, 'id'>): Promise<{
       dateOfBirth: studentData.dateOfBirth || undefined,
       gender: studentData.gender || undefined,
       stream: studentData.stream || undefined,
+      imageUrl: studentData.imageUrl || undefined,
     };
 
     const docRef = await addDoc(collection(db, "students"), studentPayload);
@@ -235,7 +236,7 @@ export async function createStudent(studentData: Omit<Student, 'id'>): Promise<{
 }
 
 export async function bulkImportStudents(
-  studentsData: Array<{ studentIdNumber: string; firstName: string; lastName: string; gender?: string }>,
+  studentsData: Array<{ studentIdNumber: string; firstName: string; lastName: string; gender?: string; imageUrl?: string; }>,
   classId: string,
   stream?: string
 ): Promise<{ success: boolean; successCount: number; errorCount: number; errors: string[] }> {
@@ -259,6 +260,7 @@ export async function bulkImportStudents(
       const firstName = String(student.firstName || "").trim();
       const lastName = String(student.lastName || "").trim();
       const genderRaw = String(student.gender || "").trim().toLowerCase();
+      const imageUrl = String(student.imageUrl || "").trim();
       const rowNum = index + 2; // Assuming row 1 is header
 
       if (!studentIdNumber || !firstName || !lastName) {
@@ -301,6 +303,9 @@ export async function bulkImportStudents(
       if (stream) {
         studentPayload.stream = stream;
       }
+      if (imageUrl) {
+        studentPayload.imageUrl = imageUrl;
+      }
       batch.set(studentRef, studentPayload);
       studentIdNumbersInFile.add(studentIdNumber);
       successCount++;
@@ -337,6 +342,7 @@ export async function getStudentById(studentId: string): Promise<Student | null>
         ...data,
         dateOfBirth: data.dateOfBirth ? data.dateOfBirth : undefined,
         gender: data.gender ? data.gender : undefined,
+        imageUrl: data.imageUrl ? data.imageUrl : undefined,
        } as Student;
     }
     return null;
@@ -357,6 +363,7 @@ export async function updateStudent(studentId: string, studentData: Partial<Omit
       dateOfBirth: studentData.dateOfBirth || null,
       gender: studentData.gender || null,
       stream: studentData.stream || null,
+      imageUrl: studentData.imageUrl || null,
     };
     await updateDoc(studentRef, dataToUpdate);
     revalidatePath("/dos/students");
@@ -1704,6 +1711,7 @@ export async function getStudents(): Promise<Student[]> {
         dateOfBirth: data.dateOfBirth,
         stream: data.stream,
         gender: data.gender,
+        imageUrl: data.imageUrl,
        } as Student;
     });
     return studentsList;
@@ -1981,6 +1989,7 @@ export async function getStudentsForClass(classId: string): Promise<Student[]> {
     
 
     
+
 
 
 
