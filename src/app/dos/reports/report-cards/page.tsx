@@ -12,7 +12,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { FileSpreadsheet, Loader2, Search, AlertTriangle, Download } from "lucide-react";
 import { getClasses, getStudentsForClass, getTerms, getReportCardData } from "@/lib/actions/dos-actions";
-import type { ClassInfo, Student, Term, ReportCardData } from "@/lib/types";
+import type { ClassInfo, Student, Term, ReportCardData, ReportGenerationOptions } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { OLevelReportCard } from "@/components/reports/OLevelReportCard";
 import jsPDF from "jspdf";
@@ -37,6 +37,7 @@ export default function GenerateReportCardPage() {
   const [nextTermBegins, setNextTermBegins] = useState<Date | undefined>();
   const [nextTermEnds, setNextTermEnds] = useState<Date | undefined>();
   const [nextTermFees, setNextTermFees] = useState("1,025,500");
+  const [schoolTheme, setSchoolTheme] = useState('"Built for greater works." Ephesians 2:10');
 
   const [reportData, setReportData] = useState<ReportCardData | null>(null);
 
@@ -72,17 +73,22 @@ export default function GenerateReportCardPage() {
   }, [selectedClass]);
 
   const handleGenerateReport = () => {
-    if (!selectedClass || !selectedStudent || !selectedTerm || !nextTermBegins || !nextTermEnds || !nextTermFees) {
-      toast({ title: "Selection Missing", description: "Please select all fields, including next term details.", variant: "destructive" });
+    if (!selectedClass || !selectedStudent || !selectedTerm || !nextTermBegins || !nextTermEnds || !nextTermFees || !schoolTheme) {
+      toast({ title: "Selection Missing", description: "Please fill out all fields before generating the report.", variant: "destructive" });
       return;
     }
     setReportData(null);
     startGenerationTransition(async () => {
-      const result = await getReportCardData(selectedStudent, selectedTerm, selectedReportType, {
-        begins: format(nextTermBegins, "dd-MMM-yyyy"),
-        ends: format(nextTermEnds, "dd-MMM-yyyy"),
-        fees: nextTermFees,
-      });
+      const options: ReportGenerationOptions = {
+        nextTerm: {
+          begins: format(nextTermBegins, "dd-MMM-yyyy"),
+          ends: format(nextTermEnds, "dd-MMM-yyyy"),
+          fees: nextTermFees,
+        },
+        schoolTheme: schoolTheme
+      };
+      
+      const result = await getReportCardData(selectedStudent, selectedTerm, selectedReportType, options);
 
       if (result.success && result.data) {
         setReportData(result.data);
@@ -222,7 +228,7 @@ export default function GenerateReportCardPage() {
     const footerY = pageHeight - 30;
     doc.setFontSize(9);
     doc.setLineHeightFactor(1.5);
-    doc.text(`THEME FOR ${reportData.term.year}: "${reportData.schoolDetails.theme}"`, pageWidth / 2, footerY, { align: 'center' });
+    doc.text(`THEME FOR ${reportData.term.year}: ${reportData.schoolDetails.theme}`, pageWidth / 2, footerY, { align: 'center' });
     doc.text(`Printed on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth / 2, footerY + 12, { align: 'center' });
 
 
@@ -263,7 +269,7 @@ export default function GenerateReportCardPage() {
 
           <div>
              <h3 className="text-lg font-semibold mb-2">Step 2: Set Report Options</h3>
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
                 <div className="flex flex-col space-y-1.5">
                    <Label>Report Type</Label>
                    <Select value={selectedReportType} onValueChange={setSelectedReportType} disabled={isLoadingInitialData}>
@@ -274,6 +280,10 @@ export default function GenerateReportCardPage() {
                     </SelectContent>
                    </Select>
                 </div>
+                 <div className="flex flex-col space-y-1.5">
+                    <Label htmlFor="school-theme">School Theme</Label>
+                    <Input id="school-theme" value={schoolTheme} onChange={(e) => setSchoolTheme(e.target.value)} placeholder='e.g., "Knowledge is Power"'/>
+                </div>
                 <div className="flex flex-col space-y-1.5">
                     <Label>Next Term Begins</Label>
                     <DatePicker date={nextTermBegins} setDate={setNextTermBegins} placeholder="Select start date"/>
@@ -282,7 +292,7 @@ export default function GenerateReportCardPage() {
                     <Label>Next Term Ends</Label>
                     <DatePicker date={nextTermEnds} setDate={setNextTermEnds} placeholder="Select end date"/>
                 </div>
-                <div className="flex flex-col space-y-1.5">
+                <div className="flex flex-col space-y-1.5 md:col-span-2">
                     <Label htmlFor="next-term-fees">Next Term Fees (UGX)</Label>
                     <Input id="next-term-fees" value={nextTermFees} onChange={(e) => setNextTermFees(e.target.value)} placeholder="e.g., 1,025,500"/>
                 </div>
@@ -332,3 +342,4 @@ export default function GenerateReportCardPage() {
     </div>
   );
 }
+

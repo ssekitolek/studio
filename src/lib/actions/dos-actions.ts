@@ -2,7 +2,7 @@
 
 "use server";
 
-import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData, DailyAttendanceRecord, DOSAttendanceSummary, StudentDetail, ReportCardData, NextTermDetails } from "@/lib/types";
+import type { Teacher, Student, ClassInfo, Subject, Term, Exam, GeneralSettings, GradingPolicy, GradingScaleItem, GradeEntry as GenkitGradeEntry, MarkSubmissionFirestoreRecord, AnomalyExplanation, MarksForReviewPayload, MarksForReviewEntry, AssessmentAnalysisData, DailyAttendanceRecord, DOSAttendanceSummary, StudentDetail, ReportCardData, ReportGenerationOptions } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { db, auth } from "@/lib/firebase";
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, getDoc, where, query, limit, DocumentReference, runTransaction, writeBatch, Timestamp, orderBy, setDoc, QuerySnapshot, DocumentData } from "firebase/firestore";
@@ -1462,7 +1462,7 @@ export async function getAssessmentAnalysisData(classId: string, subjectId: stri
   return { success: true, message: "Analysis complete.", data: analysisData };
 }
 
-export async function getReportCardData(studentId: string, termId: string, reportTitle: string, nextTermDetails: NextTermDetails): Promise<{ success: boolean; message: string; data?: ReportCardData }> {
+export async function getReportCardData(studentId: string, termId: string, reportTitle: string, options: ReportGenerationOptions): Promise<{ success: boolean; message: string; data?: ReportCardData }> {
     if (!db) return { success: false, message: "Database not initialized." };
 
     try {
@@ -1627,7 +1627,7 @@ export async function getReportCardData(studentId: string, termId: string, repor
                 phone: "0758013161 / 0782923384",
                 email: "ssegawarichard7@gmail.com",
                 logoUrl: "https://i.imgur.com/lZDibio.png",
-                theme: '"Built for greater works." Ephesians 2:10'
+                theme: options.schoolTheme,
             },
             student,
             term,
@@ -1642,7 +1642,7 @@ export async function getReportCardData(studentId: string, termId: string, repor
                 classTeacher: "",
                 headTeacher: ""
             },
-            nextTerm: nextTermDetails
+            nextTerm: options.nextTerm
         };
 
         return { success: true, message: "Report data generated.", data: reportCardData };
@@ -1976,5 +1976,6 @@ export async function getStudentsForClass(classId: string): Promise<Student[]> {
     
 
     
+
 
 

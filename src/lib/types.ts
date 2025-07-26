@@ -347,6 +347,11 @@ export interface NextTermDetails {
     fees: string;
 }
 
+export interface ReportGenerationOptions {
+  nextTerm: NextTermDetails;
+  schoolTheme: string;
+}
+
 export interface ReportCardData {
   schoolDetails: {
     name: string;
