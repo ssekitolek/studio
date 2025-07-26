@@ -93,8 +93,8 @@ export default function GenerateReportCardPage() {
       const options: ReportGenerationOptions = {
         schoolTheme: schoolTheme,
         nextTerm: {
-          begins: nextTermBegins ? format(nextTermBegins, "dd-MMM-yyyy") : undefined,
-          ends: nextTermEnds ? format(nextTermEnds, "dd-MMM-yyyy") : undefined,
+          begins: nextTermBegins ? format(nextTermBegins, "dd-MMM-yyyy") : "",
+          ends: nextTermEnds ? format(nextTermEnds, "dd-MMM-yyyy") : "",
           fees: nextTermFees,
         },
       };
@@ -134,7 +134,7 @@ export default function GenerateReportCardPage() {
         const photoSize = 80;
         
         const headerMaxHeight = Math.max(logoSize, photoSize);
-        let finalY = headerStartY + headerMaxHeight + 10; // Add a small buffer
+        let finalY = headerStartY + headerMaxHeight + 10; 
 
         // School Logo (Left)
         if (isValidUrl(schoolDetails.logoUrl)) {
@@ -183,13 +183,12 @@ export default function GenerateReportCardPage() {
         doc.text(`Email: ${schoolDetails.email} | Tel: ${schoolDetails.phone}`, pageWidth / 2, headerStartY + 40, { align: 'center' });
         
         // Line Separator and Report Title
-        finalY += 5; // Extra space
         doc.setLineWidth(1);
         doc.line(margin, finalY, pageWidth - margin, finalY);
-        finalY += 15;
+        finalY += 20; // Increased space after line
         doc.setFontSize(14);
         doc.setFont(undefined, 'bold');
-        doc.text(reportTitle, pageWidth / 2, finalY, { align: 'center' });
+        doc.text(reportTitle.toUpperCase(), pageWidth / 2, finalY, { align: 'center' });
         finalY += 15;
 
         // --- STUDENT DETAILS ---
@@ -201,7 +200,7 @@ export default function GenerateReportCardPage() {
         const studentDetailsRight = [
             [{ content: 'TERM:', styles: { fontStyle: 'bold' } }, `${term.name}`],
             [{ content: 'YEAR:', styles: { fontStyle: 'bold' } }, `${term.year}`],
-            [{ content: 'GENDER:', styles: { fontStyle: 'bold' } }, `${student.gender || ''}`]
+            [{ content: 'GENDER:', styles: { fontStyle: 'bold' } }, `${student.gender || 'N/A'}`]
         ];
 
         const tableWidth = (pageWidth - (margin * 2) - 10) / 2;
@@ -321,6 +320,10 @@ export default function GenerateReportCardPage() {
         const gradeDescriptorTableStartX = (pageWidth / 2) + 10;
         const gradeDescriptorTableWidth = (pageWidth / 2) - margin - 10;
         
+        doc.setFontSize(8);
+        doc.setFont(undefined, 'bold');
+        doc.text("GRADE DESCRIPTOR", gradeDescriptorTableStartX, noteSectionY, { align: 'left' });
+
         const gradeTableBody = [
           ['GRADE', ...summary.gradeScale.map(item => item.grade)],
           ['SCORE RANGE', ...summary.gradeScale.map(item => `${item.minScore}-${item.maxScore}`)]
@@ -328,7 +331,7 @@ export default function GenerateReportCardPage() {
         
         autoTable(doc, {
             body: gradeTableBody,
-            startY: noteSectionY,
+            startY: noteSectionY + 10,
             theme: 'grid',
             tableWidth: gradeDescriptorTableWidth,
             margin: { left: gradeDescriptorTableStartX },
@@ -477,4 +480,3 @@ export default function GenerateReportCardPage() {
     </div>
   );
 }
-
