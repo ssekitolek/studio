@@ -235,7 +235,7 @@ export async function createStudent(studentData: Omit<Student, 'id'>): Promise<{
 }
 
 export async function bulkImportStudents(
-  studentsData: Array<{ studentIdNumber: string; firstName: string; lastName: string }>,
+  studentsData: Array<{ studentIdNumber: string; firstName: string; lastName: string; gender?: string }>,
   classId: string,
   stream?: string
 ): Promise<{ success: boolean; successCount: number; errorCount: number; errors: string[] }> {
@@ -247,6 +247,7 @@ export async function bulkImportStudents(
   let errorCount = 0;
   const errors: string[] = [];
   const studentIdNumbersInFile = new Set<string>();
+  const validGenders = ['male', 'female', 'other'];
 
   try {
     const existingStudentsSnapshot = await getDocs(collection(db, "students"));
@@ -257,12 +258,24 @@ export async function bulkImportStudents(
       const studentIdNumber = String(student.studentIdNumber || "").trim();
       const firstName = String(student.firstName || "").trim();
       const lastName = String(student.lastName || "").trim();
+      const genderRaw = String(student.gender || "").trim().toLowerCase();
       const rowNum = index + 2; // Assuming row 1 is header
 
       if (!studentIdNumber || !firstName || !lastName) {
         errors.push(`Row ${rowNum}: Missing required data (studentIdNumber, firstName, or lastName).`);
         errorCount++;
         return;
+      }
+      
+      let gender: 'Male' | 'Female' | 'Other' | undefined = undefined;
+      if (genderRaw) {
+        if(validGenders.includes(genderRaw)) {
+          gender = (genderRaw.charAt(0).toUpperCase() + genderRaw.slice(1)) as 'Male' | 'Female' | 'Other';
+        } else {
+           errors.push(`Row ${rowNum}: Invalid gender "${student.gender}". Must be Male, Female, or Other.`);
+           errorCount++;
+           return;
+        }
       }
 
       if (existingStudentIdNumbers.has(studentIdNumber)) {
@@ -283,6 +296,7 @@ export async function bulkImportStudents(
         firstName,
         lastName,
         classId,
+        gender
       };
       if (stream) {
         studentPayload.stream = stream;
@@ -1967,6 +1981,7 @@ export async function getStudentsForClass(classId: string): Promise<Student[]> {
     
 
     
+
 
 
 
