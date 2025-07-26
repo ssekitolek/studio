@@ -121,7 +121,7 @@ export default function GenerateReportCardPage() {
     doc.setFont(undefined, 'normal');
     const studentDetails = [
         [`NAME:`, `${reportData.student.firstName} ${reportData.student.lastName}`, `CLASS:`, `${reportData.class.name} ${reportData.student.stream || ''}`.trim()],
-        [`INDEX No.:`, `${reportData.student.studentIdNumber}`, `TERM:`, `${reportData.term.name}`],
+        [`STUDENT NO.:`, `${reportData.student.studentIdNumber}`, `TERM:`, `${reportData.term.name}`],
         [`YEAR:`, `${reportData.term.year}`, `GENDER:`, `${reportData.student.gender || 'N/A'}`]
     ];
     autoTable(doc, {
@@ -130,7 +130,7 @@ export default function GenerateReportCardPage() {
       theme: 'plain',
       styles: { fontSize: 10, cellPadding: 1 },
       columnStyles: {
-        0: { fontStyle: 'bold', cellWidth: 60 },
+        0: { fontStyle: 'bold', cellWidth: 80 },
         1: { cellWidth: 180 },
         2: { fontStyle: 'bold', cellWidth: 50 },
         3: { cellWidth: 'auto' },
@@ -281,5 +281,3 @@ export default function GenerateReportCardPage() {
     </div>
   );
 }
-
-    

@@ -40,7 +40,7 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
             <div className="grid grid-cols-2">
                 <div className="font-bold">NAME:</div>
                 <div>{student.firstName} {student.lastName}</div>
-                <div className="font-bold">INDEX No.:</div>
+                <div className="font-bold">STUDENT NO.:</div>
                 <div>{student.studentIdNumber}</div>
                  <div className="font-bold">YEAR:</div>
                 <div>{term.year}</div>
@@ -141,5 +141,3 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
     </div>
   );
 }
-
-    
