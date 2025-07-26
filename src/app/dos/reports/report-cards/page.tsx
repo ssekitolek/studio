@@ -133,7 +133,7 @@ export default function GenerateReportCardPage() {
         const photoSize = 80;
         
         const headerMaxHeight = Math.max(logoSize, photoSize);
-        let finalY = headerStartY + headerMaxHeight;
+        let finalY = headerStartY + headerMaxHeight + 5; // Add a small buffer
 
         // School Logo (Left)
         if (isValidUrl(schoolDetails.logoUrl)) {
@@ -182,7 +182,7 @@ export default function GenerateReportCardPage() {
         doc.text(`Email: ${schoolDetails.email} | Tel: ${schoolDetails.phone}`, pageWidth / 2, headerStartY + 40, { align: 'center' });
         
         // Line Separator and Report Title
-        finalY += 10; // Add a small gap before the line
+        finalY += 10; 
         doc.setLineWidth(1);
         doc.line(margin, finalY, pageWidth - margin, finalY);
         finalY += 15;
@@ -271,13 +271,13 @@ export default function GenerateReportCardPage() {
         doc.text(`OVERALL AVERAGE SCORES: ${summary.average.toFixed(2)}`, margin, bottomSectionY);
         
         // --- Comments section ---
-        let commentsY = bottomSectionY + 30; // Increased starting Y for comments
+        let commentsY = bottomSectionY + 40; 
         doc.setFont(undefined, 'bold');
         doc.text("Class Teacher's Comment:", margin, commentsY);
         doc.setDrawColor(0);
         doc.line(margin + 125, commentsY, pageWidth - margin, commentsY);
 
-        commentsY += 30; // Increased space between comment lines
+        commentsY += 40; 
         doc.text("Head Teacher's Comment:", margin, commentsY);
         doc.line(margin + 125, commentsY, pageWidth - margin, commentsY);
         
@@ -298,44 +298,36 @@ export default function GenerateReportCardPage() {
         // Note section and Grade Descriptor section
         finalY += 20;
 
-        // Note section on the left
+        // --- Note section on the left ---
+        const noteSectionX = margin;
+        const noteSectionY = finalY;
+        const noteSectionWidth = (pageWidth / 2) - margin;
+        
         doc.setFontSize(8);
         doc.setFont(undefined, 'bold');
-        doc.text("NOTE", margin, finalY);
+        doc.text("NOTE", noteSectionX, noteSectionY);
         doc.setFont(undefined, 'normal');
         const noteText = [
             "1. Under competency-based learning, we do not rank / position learners.",
             "2. The 80% score (EOT) is intended to take care of the different levels of achievement separating outstanding performance from very good performance.",
             "3. The scores in Formative category (20%) have been generated from Activities of Integration (AOI)."
         ];
-        doc.text(noteText, margin, finalY + 10);
-        const noteFinalY = finalY + 10 + (noteText.length * 10);
+        doc.text(noteText, noteSectionX, noteSectionY + 10, { maxWidth: noteSectionWidth });
 
-        // Grade Descriptor table on the right
-        const gradeDescriptorTableStartX = margin + (pageWidth - margin * 2) * (8/12); // Start at 2/3 of the page width
-        const gradeDescriptorTableWidth = (pageWidth - margin * 2) * (4/12) - 10;
-        
+        // --- Grade Descriptor table on the right ---
+        const gradeDescriptorTableStartX = (pageWidth / 2) + 10;
+        const gradeDescriptorTableWidth = (pageWidth / 2) - margin - 10;
+
         autoTable(doc, {
-            head: [['GRADE DESCRIPTOR', '']], // Use a dummy second column for styling
+            head: [['GRADE DESCRIPTOR']],
             body: [['GRADE', 'SCORE RANGE']],
-            startY: finalY,
+            startY: noteSectionY,
             theme: 'grid',
             tableWidth: gradeDescriptorTableWidth,
             margin: { left: gradeDescriptorTableStartX },
             styles: { fontSize: 8, fontStyle: 'bold', halign: 'center' },
             headStyles: { fillColor: [200, 200, 200], textColor: 0 },
-            columnStyles: {
-                0: { halign: 'left'},
-                1: { halign: 'left'}
-            },
-            didParseCell: function (data) {
-                if(data.section === 'head' && data.column.index === 0) {
-                     data.cell.styles.halign = 'center';
-                }
-                if (data.section === 'body' && data.row.index === 0) {
-                    data.cell.styles.fillColor = [220, 220, 220]; // Light gray for the sub-header
-                }
-            },
+            bodyStyles: { fillColor: [220, 220, 220] },
         });
 
         const lastTableY = (doc as any).lastAutoTable.finalY;
@@ -348,6 +340,7 @@ export default function GenerateReportCardPage() {
             margin: { left: gradeDescriptorTableStartX },
             styles: { fontSize: 8, halign: 'center' }
         });
+
 
         // Footer
         const footerY = pageHeight - 30;
