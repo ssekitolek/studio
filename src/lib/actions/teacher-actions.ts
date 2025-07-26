@@ -1,5 +1,3 @@
-
-
 "use server";
 
 import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation, Exam as ExamTypeFirebase, TeacherStats, MarkSubmissionFirestoreRecord, SubmissionHistoryDisplayItem, ClassInfo, Subject as SubjectType, ClassTeacherData, ClassManagementStudent, GradingScaleItem, ClassAssessment, StudentClassMark, AttendanceData, StudentAttendanceInput, DailyAttendanceRecord, AttendanceHistoryData } from "@/lib/types";
@@ -575,37 +573,48 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     const currentTerm = currentTermId ? allTerms.find(t => t.id === currentTermId) : null;
     console.log(`[LOG_TDD] Current term determined: ${currentTerm ? currentTerm.name : 'None'}`);
 
-    const responsibilitiesMap = currentTermId ? await getTeacherAssessmentResponsibilities(teacherId) : new Map();
-    const assessmentsToSubmit = Array.from(responsibilitiesMap.values());
-    
-    const dashboardAssignments: TeacherDashboardAssignment[] = assessmentsToSubmit.map(resp => {
-        const { classObj, subjectObj, examObj } = resp;
-        let deadlineText = "Not set";
-        if (examObj.marksSubmissionDeadline) {
-             deadlineText = `Exam (${examObj.name}): ${new Date(examObj.marksSubmissionDeadline).toLocaleDateString()}`;
-        } else if (actualGeneralSettings.globalMarksSubmissionDeadline) {
-             deadlineText = `Global: ${new Date(actualGeneralSettings.globalMarksSubmissionDeadline).toLocaleDateString()}`;
-        } else if (currentTerm?.endDate) {
-            deadlineText = `Term End: ${new Date(currentTerm.endDate).toLocaleDateString()}`;
-        }
-
-        return {
-            id: `${examObj.id}_${classObj.id}`,
-            className: classObj.name,
-            subjectName: subjectObj.name,
-            examName: examObj.name,
-            nextDeadlineInfo: deadlineText, 
-        };
-    }).filter((assignment, index, self) => 
-        index === self.findIndex((a) => (
-            a.id === assignment.id
-        ))
-    );
-
-    console.log(`[LOG_TDD] Processed ${dashboardAssignments.length} dashboard assignments (assessments to submit).`);
-    
-    // This map is still needed for notification logic below.
     const allResponsibilitiesMap = currentTermId ? await getTeacherAssessmentResponsibilities(teacherId) : new Map(); 
+
+    // Fetch submitted marks to filter out completed tasks
+    const submittedAssessments = new Set<string>();
+    if (currentTermId) {
+        const submissionsQuery = query(collection(db, "markSubmissions"), where("teacherId", "==", teacherId));
+        const submissionsSnapshot = await getDocs(submissionsQuery);
+        submissionsSnapshot.forEach(doc => {
+            const data = doc.data() as MarkSubmissionFirestoreRecord;
+            const examId = data.assessmentId.split('_')[0];
+            const exam = allExamsForDeadlineLookup.find(e => e.id === examId);
+            // Only consider submissions for the current term and that are not rejected
+            if (exam && exam.termId === currentTermId && data.dosStatus !== 'Rejected') {
+                submittedAssessments.add(data.assessmentId);
+            }
+        });
+    }
+
+    // Filter responsibilities to get pending assignments
+    const pendingAssignments: TeacherDashboardAssignment[] = [];
+    allResponsibilitiesMap.forEach((resp, key) => {
+        if (!submittedAssessments.has(key)) {
+            const { classObj, subjectObj, examObj } = resp;
+            let deadlineText = "Not set";
+            if (examObj.marksSubmissionDeadline) {
+                 deadlineText = `Exam (${examObj.name}): ${new Date(examObj.marksSubmissionDeadline).toLocaleDateString()}`;
+            } else if (actualGeneralSettings.globalMarksSubmissionDeadline) {
+                 deadlineText = `Global: ${new Date(actualGeneralSettings.globalMarksSubmissionDeadline).toLocaleDateString()}`;
+            } else if (currentTerm?.endDate) {
+                deadlineText = `Term End: ${new Date(currentTerm.endDate).toLocaleDateString()}`;
+            }
+            pendingAssignments.push({
+                id: `${examObj.id}_${classObj.id}_${subjectObj.id}`, // Use composite key for uniqueness
+                className: classObj.name,
+                subjectName: subjectObj.name,
+                examName: examObj.name,
+                nextDeadlineInfo: deadlineText,
+            });
+        }
+    });
+
+    console.log(`[LOG_TDD] Processed ${pendingAssignments.length} dashboard assignments (assessments to submit).`);
     
     // NEW: Decoupled stats calculation using the new helper function
     const { assignedClasses, assignedSubjects } = await getTeacherCurrentAssignments(teacherId);
@@ -660,8 +669,8 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     let earliestOverallDeadline: Date | null = null;
     let earliestOverallDeadlineText: string = "Not set";
 
-    if (dashboardAssignments.length > 0) { 
-        dashboardAssignments.forEach(da => {
+    if (pendingAssignments.length > 0) { 
+        pendingAssignments.forEach(da => {
             const examIdForDeadline = da.id.split('_')[0]; 
             const examForDeadline = allExamsForDeadlineLookup.find(e => e.id === examIdForDeadline && e.termId === currentTermId);
             let assignmentSpecificDeadlineDate: Date | null = null;
@@ -714,7 +723,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       }
     }
 
-    if (currentTermId && dashboardAssignments.length === 0 && allResponsibilitiesMap.size > 0 && !gsIsDefault) {
+    if (currentTermId && pendingAssignments.length === 0 && allResponsibilitiesMap.size > 0 && !gsIsDefault) {
        notifications.push({
         id: 'all_marks_submitted_info',
         message: "All marks for your assigned assessments in the current term appear to be submitted and are awaiting D.O.S. review or have been approved. Check 'View Submissions' for details.",
@@ -737,7 +746,7 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
 
 
     console.log(`[LOG_TDD] ACTION END for teacherId: "${teacherId}". Returning data.`);
-    return { assignments: dashboardAssignments, notifications, teacherName, resourcesText, resourcesImageUrl, stats };
+    return { assignments: pendingAssignments, notifications, teacherName, resourcesText, resourcesImageUrl, stats };
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while processing dashboard data.";
