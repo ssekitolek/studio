@@ -191,27 +191,38 @@ export default function GenerateReportCardPage() {
         finalY += 15;
 
         // --- STUDENT DETAILS ---
-        doc.setFontSize(10);
-        doc.setFont(undefined, 'normal');
-        const studentDetails = [
-            [`NAME:`, `${student.firstName} ${student.lastName}`],
-            [`STUDENT NO.:`, `${student.studentIdNumber}`],
-            [`CLASS:`, `${studentClass.name} ${student.stream || ''}`.trim()],
-            [`TERM:`, `${term.name}`],
-            [`YEAR:`, `${term.year}`],
-            [`GENDER:`, `${student.gender || 'N/A'}`]
+        const studentDetailsLeft = [
+            [{ content: 'NAME:', styles: { fontStyle: 'bold' } }, `${student.firstName} ${student.lastName}`],
+            [{ content: 'STUDENT NO.:', styles: { fontStyle: 'bold' } }, `${student.studentIdNumber}`],
+            [{ content: 'CLASS:', styles: { fontStyle: 'bold' } }, `${studentClass.name} ${student.stream || ''}`.trim()]
         ];
+        const studentDetailsRight = [
+            [{ content: 'TERM:', styles: { fontStyle: 'bold' } }, `${term.name}`],
+            [{ content: 'YEAR:', styles: { fontStyle: 'bold' } }, `${term.year}`],
+            [{ content: 'GENDER:', styles: { fontStyle: 'bold' } }, `${student.gender || 'N/A'}`]
+        ];
+
+        const tableWidth = (pageWidth - (margin * 2) - 10) / 2;
+
         autoTable(doc, {
-          body: studentDetails,
+          body: studentDetailsLeft,
           startY: finalY,
           theme: 'plain',
-          styles: { fontSize: 10, cellPadding: 1 },
-          tableWidth: pageWidth - (margin * 2),
-          columnStyles: {
-            0: { fontStyle: 'bold', cellWidth: 80 },
-            1: { cellWidth: 'auto' },
-          }
+          tableWidth: tableWidth,
+          styles: { fontSize: 9, cellPadding: 1 },
+          columnStyles: { 0: { cellWidth: 80 } }
         });
+
+        autoTable(doc, {
+          body: studentDetailsRight,
+          startY: finalY,
+          theme: 'plain',
+          tableWidth: tableWidth,
+          styles: { fontSize: 9, cellPadding: 1 },
+          columnStyles: { 0: { cellWidth: 50 } },
+          margin: { left: margin + tableWidth + 10 }
+        });
+
 
         finalY = (doc as any).lastAutoTable.finalY;
 

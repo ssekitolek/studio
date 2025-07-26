@@ -54,8 +54,8 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
       <h2 className="text-lg font-semibold text-center">{reportTitle}</h2>
 
       {/* Student Details */}
-       <div className="grid grid-cols-12 gap-x-2 text-[9pt] my-2">
-        <div className="col-span-12">
+       <div className="grid grid-cols-2 gap-x-4 text-[9pt] my-2">
+         <div>
             <div className="grid grid-cols-2">
                 <div className="font-bold">NAME:</div>
                 <div>{student.firstName} {student.lastName}</div>
@@ -63,14 +63,18 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
                 <div>{student.studentIdNumber}</div>
                  <div className="font-bold">CLASS:</div>
                 <div>{studentClass.name} {student.stream || ''}</div>
+            </div>
+         </div>
+         <div>
+             <div className="grid grid-cols-2">
                 <div className="font-bold">TERM:</div>
                 <div>{term.name}</div>
                  <div className="font-bold">YEAR:</div>
                 <div>{term.year}</div>
                 <div className="font-bold">GENDER:</div>
                 <div>{student.gender || 'N/A'}</div>
-            </div>
-        </div>
+             </div>
+         </div>
       </div>
 
 
