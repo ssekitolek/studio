@@ -1650,7 +1650,11 @@ export async function getReportCardData(
                     gradeScale: defaultGradingPolicy.scale.sort((a,b) => b.minScore - a.minScore)
                 },
                 comments: { classTeacher: "", headTeacher: "" },
-                nextTerm: options.nextTerm
+                nextTerm: {
+                    begins: options.nextTerm?.begins || "",
+                    ends: options.nextTerm?.ends || "",
+                    fees: options.nextTerm?.fees || "",
+                }
             } as ReportCardData;
         }));
 
@@ -1989,6 +1993,7 @@ export async function getStudentsForClass(classId: string): Promise<Student[]> {
     
 
     
+
 
 
 

@@ -90,11 +90,11 @@ export default function GenerateReportCardPage() {
     setReportData(null);
     startGenerationTransition(async () => {
       const options: ReportGenerationOptions = {
-        schoolTheme: schoolTheme || undefined,
+        schoolTheme: schoolTheme,
         nextTerm: {
           begins: nextTermBegins ? format(nextTermBegins, "dd-MMM-yyyy") : undefined,
           ends: nextTermEnds ? format(nextTermEnds, "dd-MMM-yyyy") : undefined,
-          fees: nextTermFees || undefined,
+          fees: nextTermFees,
         },
       };
 
@@ -283,17 +283,16 @@ export default function GenerateReportCardPage() {
         finalY = commentsY + 10;
 
         // Next term details
-        if (nextTerm?.begins || nextTerm?.fees) {
-            finalY += 15;
-            doc.setFontSize(9);
-            doc.setFont(undefined, 'normal');
-            if (nextTerm.begins && nextTerm.ends) {
-                doc.text(`NEXT TERM BEGINS: ${nextTerm.begins} AND ENDS: ${nextTerm.ends}`, margin, finalY);
-            }
-            if (nextTerm.fees) {
-                doc.text(`NEXT TERM FEES: UGX. ${nextTerm.fees}`, pageWidth - margin, finalY, { align: 'right' });
-            }
-        }
+        finalY += 15;
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'normal');
+        
+        const nextTermBeginsText = `NEXT TERM BEGINS: ${nextTerm?.begins || ''}`;
+        const nextTermEndsText = `AND ENDS: ${nextTerm?.ends || ''}`;
+        doc.text(`${nextTermBeginsText} ${nextTerm?.ends ? nextTermEndsText : ''}`, margin, finalY);
+
+        const nextTermFeesText = `NEXT TERM FEES: UGX. ${nextTerm?.fees || ''}`;
+        doc.text(nextTermFeesText, pageWidth - margin, finalY, { align: 'right' });
         
         // Note section
         finalY += 20;
@@ -309,9 +308,7 @@ export default function GenerateReportCardPage() {
         const footerY = pageHeight - 30;
         doc.setFontSize(9);
         doc.setLineHeightFactor(1.5);
-        if (schoolDetails.theme) {
-            doc.text(`THEME FOR ${term.year}: ${schoolDetails.theme}`, pageWidth / 2, footerY, { align: 'center' });
-        }
+        doc.text(`THEME FOR ${term.year}: ${schoolDetails.theme || ''}`, pageWidth / 2, footerY, { align: 'center' });
         doc.text(`Printed on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth / 2, footerY + 12, { align: 'center' });
     }
 
