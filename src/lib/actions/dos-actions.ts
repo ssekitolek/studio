@@ -1501,20 +1501,20 @@ export async function getReportCardData(studentId: string, termId: string): Prom
         const assessmentIdsToFetch = new Set<string>();
         // Iterate through all exams for the term
         examsForTerm.forEach(exam => {
-            // Case 1: Exam is for a specific subject
-            if (exam.subjectId && exam.classId === studentClass.id) {
-                // If the student is taking this subject, add the assessment ID
-                if (subjectsInClass.has(exam.subjectId)) {
+            const isGeneralExam = !exam.subjectId; // An exam for the whole class, not one subject.
+            const isForStudentsClass = !exam.classId || exam.classId === student.classId;
+            const isForStudentsStream = !exam.stream || exam.stream === student.stream;
+
+            if (isForStudentsClass && isForStudentsStream) {
+                if (isGeneralExam) {
+                    // This general exam applies to all subjects the student takes.
+                    subjectsInClass.forEach(subject => {
+                        assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${subject.id}`);
+                    });
+                } else if (exam.subjectId && subjectsInClass.has(exam.subjectId)) {
+                    // This is a subject-specific exam, and the student takes this subject.
                     assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${exam.subjectId}`);
                 }
-            } 
-            // Case 2: Exam is a general exam for the class (no subject specified)
-            else if (!exam.subjectId && exam.classId === studentClass.id) {
-                // Since it's a general exam, it applies to all subjects in the class for aggregation purposes.
-                // We add an assessment ID for each subject the student takes.
-                subjectsInClass.forEach(subject => {
-                    assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${subject.id}`);
-                });
             }
         });
         
@@ -1590,9 +1590,8 @@ export async function getReportCardData(studentId: string, termId: string): Prom
         const finalResults: ReportCardData['results'] = [];
 
         resultsBySubject.forEach((result) => {
-            const aoiSum = result.topics.reduce((acc, topic) => acc + (topic.aoiScore ?? 0), 0);
-            const aoiMaxPossible = result.topics.length * 20; // Assuming each AOI is out of 20
-            const aoiTotal = aoiMaxPossible > 0 ? (aoiSum / aoiMaxPossible) * 20 : 0;
+            const aoiScores = result.topics.map(t => t.aoiScore).filter((s): s is number => s !== null);
+            const aoiTotal = aoiScores.length > 0 ? aoiScores.reduce((sum, score) => sum + score, 0) / aoiScores.length : 0;
             
             const eotScore = result.eotRawScore !== null ? (result.eotRawScore / result.eotMaxScore) * 80 : 0;
             const finalScore = aoiTotal + eotScore;
@@ -1965,6 +1964,7 @@ export async function getStudentsForClass(classId: string): Promise<Student[]> {
         .sort((a, b) => a.lastName.localeCompare(b.lastName));
 }
     
+
 
 
 
