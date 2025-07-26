@@ -141,37 +141,22 @@ export default function GenerateReportCardPage() {
 
     // Results Table
     const head = [['SUBJECT', 'AOI(20)', 'EOT(80)', 'FINAL(100)', 'GRADE', 'DESCRIPTOR', 'INITIALS']];
-    const body: any[] = [];
-    
-    reportData.results.forEach(res => {
-        body.push([
-            { content: res.subjectName, styles: { fontStyle: 'bold' } },
-            '', '', '', '', '', ''
-        ]);
-        res.topics.forEach(topic => {
-            body.push([
-                `    ${topic.name}`,
-                topic.aoiScore?.toFixed(1) ?? '-',
-                '', '', '', '', ''
-            ]);
-        });
-        body.push([
-            { content: 'TOTALS', styles: { fontStyle: 'bold' } },
-            { content: res.aoiTotal.toFixed(1), styles: { fontStyle: 'bold' } },
-            { content: res.eotScore.toFixed(1), styles: { fontStyle: 'bold' } },
-            { content: res.finalScore.toFixed(1), styles: { fontStyle: 'bold' } },
-            { content: res.grade, styles: { fontStyle: 'bold' } },
-            res.descriptor,
-            res.teacherInitials
-        ]);
-    });
+    const body: any[] = reportData.results.map(res => [
+        { content: res.subjectName, styles: { fontStyle: 'bold' } },
+        { content: res.aoiTotal.toFixed(1), styles: { fontStyle: 'bold' } },
+        { content: res.eotScore.toFixed(1), styles: { fontStyle: 'bold' } },
+        { content: res.finalScore.toFixed(1), styles: { fontStyle: 'bold' } },
+        { content: res.grade, styles: { fontStyle: 'bold' } },
+        res.descriptor,
+        res.teacherInitials
+    ]);
 
     autoTable(doc, {
       head: head,
       body: body,
       startY: finalY + 10,
       theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2 },
+      styles: { fontSize: 8, cellPadding: 2, fontStyle: 'bold' },
       headStyles: { fillColor: [200, 200, 200], textColor: 0, fontStyle: 'bold', halign: 'center' },
       columnStyles: {
           0: { cellWidth: 90 }, // Subject
@@ -179,18 +164,9 @@ export default function GenerateReportCardPage() {
           2: { cellWidth: 40, halign: 'center' }, // EOT
           3: { cellWidth: 45, halign: 'center' }, // FINAL
           4: { cellWidth: 40, halign: 'center' }, // GRADE
-          5: { cellWidth: 'auto' }, // DESCRIPTOR
+          5: { cellWidth: 'auto', fontStyle: 'normal' }, // DESCRIPTOR
           6: { cellWidth: 40, halign: 'center' }, // INITIALS
       },
-      didParseCell: (data) => {
-        if(data.row.raw.some((c:any) => c.content === 'TOTALS' && c.styles?.fontStyle === 'bold')) {
-            data.cell.styles.fontStyle = 'bold';
-            data.cell.styles.fillColor = '#f0f0f0';
-        }
-        if (data.row.raw[0] && typeof data.row.raw[0] === 'object' && data.row.raw[0].content && data.row.raw[0].content.startsWith('    ')) {
-            data.cell.styles.fontStyle = 'italic';
-        }
-      }
     });
 
     finalY = (doc as any).lastAutoTable.finalY;
@@ -305,3 +281,5 @@ export default function GenerateReportCardPage() {
     </div>
   );
 }
+
+    

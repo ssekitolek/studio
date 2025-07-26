@@ -81,17 +81,6 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
                 <td className="border border-black p-1">{res.descriptor}</td>
                 <td className="border border-black p-1 text-center">{res.teacherInitials}</td>
               </tr>
-              {res.topics.map((topic, topicIndex) => (
-                 <tr key={topicIndex}>
-                    <td className="border-l border-r border-black p-1 pl-4 text-gray-700">{topicIndex + 1}. {topic.name}</td>
-                    <td className="border-l border-r border-black p-1 text-center text-gray-700">{topic.aoiScore?.toFixed(1) ?? '-'}</td>
-                    <td className="border-l border-r border-black p-1"></td>
-                    <td className="border-l border-r border-black p-1"></td>
-                    <td className="border-l border-r border-black p-1"></td>
-                    <td className="border-l border-r border-black p-1"></td>
-                    <td className="border-l border-r border-black p-1"></td>
-                 </tr>
-              ))}
             </React.Fragment>
           ))}
         </tbody>
@@ -152,3 +141,5 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
     </div>
   );
 }
+
+    

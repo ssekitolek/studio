@@ -1503,14 +1503,16 @@ export async function getReportCardData(studentId: string, termId: string): Prom
         examsForTerm.forEach(exam => {
             const isForStudentsClass = !exam.classId || exam.classId === student.classId;
             const isForStudentsStream = !exam.stream || exam.stream === student.stream;
-            const isGeneralExam = !exam.subjectId; 
+            
+            // This is the fix: check for general exams OR exams for a subject the student takes
+            const isRelevantExam = isForStudentsClass && isForStudentsStream && (!exam.subjectId || subjectsInClass.has(exam.subjectId));
 
-            if (isForStudentsClass && isForStudentsStream) {
-                if(isGeneralExam) {
-                     subjectsInClass.forEach(subject => {
+            if(isRelevantExam) {
+                if(!exam.subjectId) { // General exam for the whole class
+                    subjectsInClass.forEach(subject => {
                         assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${subject.id}`);
                     });
-                } else if (exam.subjectId && subjectsInClass.has(exam.subjectId)) {
+                } else { // Subject-specific exam
                     assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${exam.subjectId}`);
                 }
             }
@@ -1533,7 +1535,7 @@ export async function getReportCardData(studentId: string, termId: string): Prom
         type SubjectResultTemp = {
             subjectName: string;
             teacherInitials: string;
-            topics: Array<{ name: string; aoiScore: number | null }>;
+            aoiScores: Array<{ raw: number; max: number; }>; // Store raw scores and max marks
             eotRawScore: number | null;
             eotMaxScore: number;
             finalScore: number;
@@ -1561,7 +1563,7 @@ export async function getReportCardData(studentId: string, termId: string): Prom
                     resultsBySubject.set(subjectId, {
                         subjectName: subject.name,
                         teacherInitials: teacher?.name.split(' ').map(n => n[0]).join('') || 'N/A',
-                        topics: [],
+                        aoiScores: [],
                         eotRawScore: null,
                         eotMaxScore: 100, // Default, will be overwritten
                         finalScore: 0,
@@ -1572,9 +1574,7 @@ export async function getReportCardData(studentId: string, termId: string): Prom
                 const subjectResult = resultsBySubject.get(subjectId)!;
 
                 if (aoiExams.some(e => e.id === examId)) {
-                    // Convert AOI score to be out of 20
-                    const convertedAoiScore = (studentMark.score / exam.maxMarks) * 20;
-                    subjectResult.topics.push({ name: exam.name, aoiScore: convertedAoiScore });
+                    subjectResult.aoiScores.push({ raw: studentMark.score, max: exam.maxMarks });
                 }
                 if (eotExams.some(e => e.id === examId)) {
                     subjectResult.eotRawScore = studentMark.score;
@@ -1590,11 +1590,14 @@ export async function getReportCardData(studentId: string, termId: string): Prom
         const finalResults: ReportCardData['results'] = [];
 
         resultsBySubject.forEach((result) => {
-            const aoiScores = result.topics.map(t => t.aoiScore).filter((s): s is number => s !== null);
-            const aoiTotal = aoiScores.length > 0 ? aoiScores.reduce((sum, score) => sum + score, 0) / aoiScores.length : 0;
+            let aoiTotalOutOf20 = 0;
+            if (result.aoiScores.length > 0) {
+                const convertedAoiScores = result.aoiScores.map(s => (s.raw / s.max) * 20);
+                aoiTotalOutOf20 = convertedAoiScores.reduce((sum, score) => sum + score, 0) / convertedAoiScores.length;
+            }
             
-            const eotScore = result.eotRawScore !== null ? (result.eotRawScore / result.eotMaxScore) * 80 : 0;
-            const finalScore = aoiTotal + eotScore;
+            const eotScoreOutOf80 = result.eotRawScore !== null ? (result.eotRawScore / result.eotMaxScore) * 80 : 0;
+            const finalScore = aoiTotalOutOf20 + eotScoreOutOf80;
             
             const grade = calculateGrade(finalScore, 100, defaultGradingPolicy.scale);
             const descriptor = getGradeDescriptor(grade);
@@ -1607,9 +1610,9 @@ export async function getReportCardData(studentId: string, termId: string): Prom
             finalResults.push({
                 subjectName: result.subjectName,
                 teacherInitials: result.teacherInitials,
-                topics: result.topics,
-                aoiTotal: aoiTotal,
-                eotScore: eotScore,
+                topics: [], // We are no longer displaying individual topic names
+                aoiTotal: aoiTotalOutOf20,
+                eotScore: eotScoreOutOf80,
                 finalScore: finalScore,
                 grade: grade,
                 descriptor: descriptor
@@ -1972,5 +1975,7 @@ export async function getStudentsForClass(classId: string): Promise<Student[]> {
 
 
 
+
+    
 
     
