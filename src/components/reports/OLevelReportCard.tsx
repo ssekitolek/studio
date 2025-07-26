@@ -119,7 +119,7 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
             <div className="col-span-3 font-bold">Class Teacher's Comment:</div>
             <div className="col-span-9 border-b border-black border-dotted h-4"></div>
         </div>
-        <div className="grid grid-cols-12 items-center">
+        <div className="mt-8 grid grid-cols-12 items-center">
             <div className="col-span-3 font-bold">Head Teacher's Comment:</div>
             <div className="col-span-9 border-b border-black border-dotted h-4"></div>
         </div>

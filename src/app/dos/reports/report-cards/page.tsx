@@ -40,7 +40,7 @@ export default function GenerateReportCardPage() {
   const [nextTermBegins, setNextTermBegins] = useState<Date | undefined>();
   const [nextTermEnds, setNextTermEnds] = useState<Date | undefined>();
   const [nextTermFees, setNextTermFees] = useState("");
-  const [schoolTheme, setSchoolTheme] = useState('"Built for greater works." Ephesians 2:10');
+  const [schoolTheme, setSchoolTheme] = useState('team work and time management for excellency');
 
   const [reportData, setReportData] = useState<ReportCardData[] | null>(null);
 
