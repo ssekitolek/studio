@@ -354,9 +354,9 @@ export interface ReportCardData {
   student: Student;
   term: Term;
   class: ClassInfo;
+  reportTitle: string;
   results: Array<{
     subjectName: string;
-    topics: Array<{ name: string; aoiScore: number | null }>;
     aoiTotal: number;
     eotScore: number;
     finalScore: number;

@@ -11,7 +11,7 @@ interface OLevelReportCardProps {
 }
 
 export function OLevelReportCard({ data }: OLevelReportCardProps) {
-  const { schoolDetails, student, term, class: studentClass, results, summary, comments, nextTerm } = data;
+  const { schoolDetails, student, term, class: studentClass, results, summary, comments, nextTerm, reportTitle } = data;
 
   return (
     <div className="bg-white text-black p-4 font-sans border-2 border-black max-w-4xl mx-auto text-[9pt] leading-tight">
@@ -31,7 +31,7 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
         <p className="text-xs">{schoolDetails.address}, {schoolDetails.location}</p>
         <p className="text-xs">Email: {schoolDetails.email} | Tel: {schoolDetails.phone}</p>
         <div className="w-full h-px bg-black my-1"></div>
-        <h2 className="text-lg font-semibold">END OF TERM REPORT</h2>
+        <h2 className="text-lg font-semibold">{reportTitle}</h2>
       </div>
 
       {/* Student Details */}
@@ -65,7 +65,7 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
             <th className="border border-black p-1 w-[8%]">EOT(80)</th>
             <th className="border border-black p-1 w-[8%]">FINAL(100)</th>
             <th className="border border-black p-1 w-[7%]">GRADE</th>
-            <th className="border border-black p-1 w-[42%]">GRADE DESCRIPTOR</th>
+            <th className="border border-black p-1 w-[42%]">DESCRIPTOR</th>
             <th className="border border-black p-1 w-[7%]">INITIALS</th>
           </tr>
         </thead>

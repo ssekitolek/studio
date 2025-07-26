@@ -28,6 +28,7 @@ export default function GenerateReportCardPage() {
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedStudent, setSelectedStudent] = useState("");
   const [selectedTerm, setSelectedTerm] = useState("");
+  const [selectedReportType, setSelectedReportType] = useState("'O' LEVEL REPORT");
   
   const [reportData, setReportData] = useState<ReportCardData | null>(null);
 
@@ -69,7 +70,7 @@ export default function GenerateReportCardPage() {
     }
     setReportData(null);
     startGenerationTransition(async () => {
-      const result = await getReportCardData(selectedStudent, selectedTerm);
+      const result = await getReportCardData(selectedStudent, selectedTerm, selectedReportType);
       if (result.success && result.data) {
         setReportData(result.data);
          if (result.data.results.length === 0) {
@@ -113,7 +114,7 @@ export default function GenerateReportCardPage() {
 
     doc.setFontSize(14);
     doc.setFont(undefined, 'bold');
-    doc.text("END OF TERM REPORT", pageWidth / 2, margin + 65, { align: 'center' });
+    doc.text(reportData.reportTitle, pageWidth / 2, margin + 65, { align: 'center' });
     
     // Student Details
     const studentDetailsY = margin + 80;
@@ -226,9 +227,9 @@ export default function GenerateReportCardPage() {
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle className="font-headline text-xl text-primary">Selection Criteria</CardTitle>
-          <CardDescription>Select the class, student, and term to generate the report for.</CardDescription>
+          <CardDescription>Select the class, student, term and report type to generate.</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Select value={selectedClass} onValueChange={setSelectedClass} disabled={isLoadingInitialData}>
             <SelectTrigger><SelectValue placeholder={isLoadingInitialData ? "Loading..." : "Select Class"} /></SelectTrigger>
             <SelectContent>{classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
@@ -241,9 +242,17 @@ export default function GenerateReportCardPage() {
             <SelectTrigger><SelectValue placeholder={isLoadingInitialData ? "Loading..." : "Select Term"} /></SelectTrigger>
             <SelectContent>{terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
           </Select>
+          <Select value={selectedReportType} onValueChange={setSelectedReportType} disabled={isLoadingInitialData}>
+            <SelectTrigger><SelectValue placeholder="Select Report Type" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="'O' LEVEL REPORT">'O' LEVEL REPORT</SelectItem>
+              <SelectItem value="'A' LEVEL REPORT">'A' LEVEL REPORT</SelectItem>
+            </SelectContent>
+          </Select>
            <Button
               onClick={handleGenerateReport}
               disabled={isLoadingInitialData || isGenerating || !selectedClass || !selectedStudent || !selectedTerm}
+              className="lg:col-span-2"
             >
                 {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
                 Generate Report

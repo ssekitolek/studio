@@ -1462,7 +1462,7 @@ export async function getAssessmentAnalysisData(classId: string, subjectId: stri
   return { success: true, message: "Analysis complete.", data: analysisData };
 }
 
-export async function getReportCardData(studentId: string, termId: string): Promise<{ success: boolean; message: string; data?: ReportCardData }> {
+export async function getReportCardData(studentId: string, termId: string, reportTitle: string): Promise<{ success: boolean; message: string; data?: ReportCardData }> {
     if (!db) return { success: false, message: "Database not initialized." };
 
     try {
@@ -1504,7 +1504,6 @@ export async function getReportCardData(studentId: string, termId: string): Prom
             const isForStudentsClass = !exam.classId || exam.classId === student.classId;
             const isForStudentsStream = !exam.stream || exam.stream === student.stream;
             
-            // This is the fix: check for general exams OR exams for a subject the student takes
             const isRelevantExam = isForStudentsClass && isForStudentsStream && (!exam.subjectId || subjectsInClass.has(exam.subjectId));
 
             if(isRelevantExam) {
@@ -1610,7 +1609,6 @@ export async function getReportCardData(studentId: string, termId: string): Prom
             finalResults.push({
                 subjectName: result.subjectName,
                 teacherInitials: result.teacherInitials,
-                topics: [], // We are no longer displaying individual topic names
                 aoiTotal: aoiTotalOutOf20,
                 eotScore: eotScoreOutOf80,
                 finalScore: finalScore,
@@ -1632,6 +1630,7 @@ export async function getReportCardData(studentId: string, termId: string): Prom
             student,
             term,
             class: studentClass,
+            reportTitle,
             results: finalResults.sort((a, b) => a.subjectName.localeCompare(b.subjectName)),
             summary: {
                 average: subjectsCounted > 0 ? overallAverage / subjectsCounted : 0,
