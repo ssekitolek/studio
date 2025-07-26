@@ -29,6 +29,8 @@ export default function DOSAttendanceSummaryPage() {
   // Filter state
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [selectedGender, setSelectedGender] = useState<'all' | 'Male' | 'Female'>('all');
+
 
   // Initial data loading for filters
   useEffect(() => {
@@ -58,11 +60,12 @@ export default function DOSAttendanceSummaryPage() {
       setIsLoading(true);
       setAttendanceSummary(null);
       try {
-        const result = await getAttendanceSummaryForDOS(selectedClassId, format(selectedDate, "yyyy-MM-dd"));
+        const genderToFetch = selectedGender === 'all' ? undefined : selectedGender;
+        const result = await getAttendanceSummaryForDOS(selectedClassId, format(selectedDate, "yyyy-MM-dd"), genderToFetch);
         if (result.success && result.data) {
           setAttendanceSummary(result.data);
           if (result.data.totalStudents === 0) {
-            toast({ title: "No Students", description: "No students are enrolled in the selected class.", variant: "default" });
+            toast({ title: "No Students", description: "No students match the selected class and gender.", variant: "default" });
           } else if (result.data.totalRecords === 0) {
             toast({ title: "No Record Found", description: "Attendance has not been recorded for this class on the selected date.", variant: "default" });
           }
@@ -85,14 +88,22 @@ export default function DOSAttendanceSummaryPage() {
       <Card>
         <CardHeader>
           <CardTitle>Filter Records</CardTitle>
-          <CardDescription>Select a class and a date to view the attendance summary.</CardDescription>
+          <CardDescription>Select a class, date, and gender to view the attendance summary.</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Select value={selectedClassId} onValueChange={setSelectedClassId} disabled={classes.length === 0 || isLoading}>
             <SelectTrigger><SelectValue placeholder="Select a class" /></SelectTrigger>
             <SelectContent>{classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
           </Select>
           <DatePicker date={selectedDate} setDate={setSelectedDate} placeholder="Select date" disabled={isLoading} />
+           <Select value={selectedGender} onValueChange={(value: 'all' | 'Male' | 'Female') => setSelectedGender(value)} disabled={isLoading}>
+            <SelectTrigger><SelectValue placeholder="Select Gender" /></SelectTrigger>
+            <SelectContent>
+                <SelectItem value="all">All Genders</SelectItem>
+                <SelectItem value="Male">Male</SelectItem>
+                <SelectItem value="Female">Female</SelectItem>
+            </SelectContent>
+          </Select>
           <Button onClick={handleFetchSummary} disabled={isTransitioning || isLoading || !selectedClassId || !selectedDate}>
             {isTransitioning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
             Get Summary
@@ -109,7 +120,7 @@ export default function DOSAttendanceSummaryPage() {
             <CardDescription>
                 Record submitted by: {attendanceSummary.teacherName || 'Unknown Teacher'}.
                 Last updated: {attendanceSummary.lastUpdatedAt ? format(new Date(attendanceSummary.lastUpdatedAt), "Pp") : 'N/A'}.
-                Total Students in Class: {attendanceSummary.totalStudents}.
+                Total Students in Filter: {attendanceSummary.totalStudents}.
             </CardDescription>
           </CardHeader>
           <CardContent>

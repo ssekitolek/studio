@@ -1892,7 +1892,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
     }
 }
 
-export async function getAttendanceSummaryForDOS(classId: string, date: string): Promise<{ success: boolean; message: string; data?: DOSAttendanceSummary }> {
+export async function getAttendanceSummaryForDOS(classId: string, date: string, gender?: 'Male' | 'Female'): Promise<{ success: boolean; message: string; data?: DOSAttendanceSummary }> {
   if (!db) {
     return { success: false, message: "Database not initialized." };
   }
@@ -1905,7 +1905,11 @@ export async function getAttendanceSummaryForDOS(classId: string, date: string):
     const attendanceRef = doc(db, "attendance", docId);
     const attendanceSnap = await getDoc(attendanceRef);
 
-    const allStudentsInClass = await getStudents().then(students => students.filter(s => s.classId === classId));
+    let allStudentsInClass = await getStudents().then(students => students.filter(s => s.classId === classId));
+
+    if (gender) {
+        allStudentsInClass = allStudentsInClass.filter(s => s.gender === gender);
+    }
 
     if (!attendanceSnap.exists()) {
       return { 
@@ -1949,16 +1953,19 @@ export async function getAttendanceSummaryForDOS(classId: string, date: string):
 
     record.records.forEach(r => {
       const studentInfo = studentMap.get(r.studentId);
-      const studentDetail: StudentDetail = { id: r.studentId, name: studentInfo ? `${studentInfo.firstName} ${studentInfo.lastName}` : "Unknown Student" };
-      if (r.status === 'present') {
-        summary.present++;
-        summary.presentDetails.push(studentDetail);
-      } else if (r.status === 'absent') {
-        summary.absent++;
-        summary.absentDetails.push(studentDetail);
-      } else if (r.status === 'late') {
-        summary.late++;
-        summary.lateDetails.push(studentDetail);
+      // Only include the record if the student is in the filtered list (by gender)
+      if (studentInfo) {
+        const studentDetail: StudentDetail = { id: r.studentId, name: studentInfo ? `${studentInfo.firstName} ${studentInfo.lastName}` : "Unknown Student" };
+        if (r.status === 'present') {
+          summary.present++;
+          summary.presentDetails.push(studentDetail);
+        } else if (r.status === 'absent') {
+          summary.absent++;
+          summary.absentDetails.push(studentDetail);
+        } else if (r.status === 'late') {
+          summary.late++;
+          summary.lateDetails.push(studentDetail);
+        }
       }
     });
 
@@ -1993,6 +2000,7 @@ export async function getStudentsForClass(classId: string): Promise<Student[]> {
     
 
     
+
 
 
 
