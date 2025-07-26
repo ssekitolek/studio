@@ -1462,190 +1462,178 @@ export async function getAssessmentAnalysisData(classId: string, subjectId: stri
   return { success: true, message: "Analysis complete.", data: analysisData };
 }
 
-export async function getReportCardData(studentId: string, termId: string, reportTitle: string, options: ReportGenerationOptions): Promise<{ success: boolean; message: string; data?: ReportCardData }> {
+export async function getReportCardData(
+    targetId: string, // Can be a studentId, stream name, or "all_students"
+    termId: string, 
+    reportTitle: string, 
+    options: ReportGenerationOptions,
+    classId: string
+): Promise<{ success: boolean; message: string; data?: ReportCardData[] }> {
     if (!db) return { success: false, message: "Database not initialized." };
 
     try {
-        const [student, term, allSubjects, allExams, allTeachers, gradingPolicies, generalSettings] = await Promise.all([
-            getStudentById(studentId),
-            getTermById(termId),
-            getSubjects(),
-            getExams(),
-            getTeachers(),
-            getGradingPolicies(),
-            getGeneralSettings()
-        ]);
-        
-        if (!student || !term) return { success: false, message: "Student or term not found." };
-        const studentClass = await getClassById(student.classId);
-        if(!studentClass) return { success: false, message: "Student's class not found." };
+        let studentsToProcess: Student[] = [];
+        const allStudentsInClass = await getStudentsForClass(classId);
 
-        const examsForTerm = allExams.filter(e => e.termId === termId);
-        const aoiExams = examsForTerm.filter(e => e.category === 'Formative');
-        const eotExams = examsForTerm.filter(e => e.category === 'Summative');
+        if (allStudentsInClass.some(s => s.id === targetId)) { // It's a single student
+            studentsToProcess = allStudentsInClass.filter(s => s.id === targetId);
+        } else if (targetId === "all_students") { // Whole class
+            studentsToProcess = allStudentsInClass;
+        } else { // It's a stream name
+            studentsToProcess = allStudentsInClass.filter(s => s.stream === targetId);
+        }
 
-        const subjectsInClass = new Map<string, Subject>();
-        allTeachers.forEach(teacher => {
-          if (teacher.subjectsAssigned) {
-            teacher.subjectsAssigned.forEach(sa => {
-              if (sa.classIds.includes(student.classId)) {
-                const subject = allSubjects.find(s => s.id === sa.subjectId);
-                if (subject && !subjectsInClass.has(subject.id)) {
-                    subjectsInClass.set(subject.id, subject);
-                }
+        if (studentsToProcess.length === 0) {
+            return { success: false, message: "No students found for the selected target." };
+        }
+
+        const allReportsData = await Promise.all(studentsToProcess.map(async (student) => {
+            const [term, allSubjects, allExams, allTeachers, gradingPolicies, generalSettings] = await Promise.all([
+                getTermById(termId),
+                getSubjects(),
+                getExams(),
+                getTeachers(),
+                getGradingPolicies(),
+                getGeneralSettings()
+            ]);
+            
+            if (!term) return null; // Should not happen if UI is correct
+            const studentClass = await getClassById(student.classId);
+            if(!studentClass) return null;
+
+            const examsForTerm = allExams.filter(e => e.termId === termId);
+            const aoiExams = examsForTerm.filter(e => e.category === 'Formative');
+            const eotExams = examsForTerm.filter(e => e.category === 'Summative');
+
+            const subjectsInClass = new Map<string, Subject>();
+            allTeachers.forEach(teacher => {
+              if (teacher.subjectsAssigned) {
+                teacher.subjectsAssigned.forEach(sa => {
+                  if (sa.classIds.includes(student.classId)) {
+                    const subject = allSubjects.find(s => s.id === sa.subjectId);
+                    if (subject && !subjectsInClass.has(subject.id)) {
+                        subjectsInClass.set(subject.id, subject);
+                    }
+                  }
+                });
               }
             });
-          }
-        });
-        
-        const assessmentIdsToFetch = new Set<string>();
-        
-        examsForTerm.forEach(exam => {
-            const isForStudentsClass = !exam.classId || exam.classId === student.classId;
-            const isForStudentsStream = !exam.stream || exam.stream === student.stream;
             
-            // An exam is relevant if it's not tied to a specific subject (general exam)
-            // OR if it's tied to a subject that is taught in the student's class.
-            const isRelevantExam = isForStudentsClass && isForStudentsStream && (!exam.subjectId || subjectsInClass.has(exam.subjectId));
+            const assessmentIdsToFetch = new Set<string>();
+            
+            examsForTerm.forEach(exam => {
+                const isForStudentsClass = !exam.classId || exam.classId === student.classId;
+                const isForStudentsStream = !exam.stream || exam.stream === student.stream;
+                const isRelevantExam = isForStudentsClass && isForStudentsStream && (!exam.subjectId || subjectsInClass.has(exam.subjectId));
 
-            if(isRelevantExam) {
-                if(!exam.subjectId) { // General exam for the whole class
-                    subjectsInClass.forEach(subject => {
-                        assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${subject.id}`);
-                    });
-                } else { // Subject-specific exam
-                    assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${exam.subjectId}`);
-                }
-            }
-        });
-        
-        if (assessmentIdsToFetch.size === 0) {
-             return { success: false, message: "No relevant exams (AOI/EOT) found for this student's class and term." };
-        }
-        
-        const approvedSubmissionsSnapshots: QuerySnapshot<DocumentData>[] = [];
-        const assessmentIdArray = Array.from(assessmentIdsToFetch);
-        const chunkSize = 30; // Firestore 'in' query limit
-        for (let i = 0; i < assessmentIdArray.length; i += chunkSize) {
-            const chunk = assessmentIdArray.slice(i, i + chunkSize);
-            const q = query(collection(db, "markSubmissions"), where("assessmentId", "in", chunk), where("dosStatus", "==", "Approved"));
-            const snapshot = await getDocs(q);
-            approvedSubmissionsSnapshots.push(snapshot);
-        }
-
-        type SubjectResultTemp = {
-            subjectName: string;
-            teacherInitials: string;
-            aoiScores: Array<{ raw: number; max: number; }>; // Store raw scores and max marks
-            eotRawScore: number | null;
-            eotMaxScore: number;
-            finalScore: number;
-            grade: string;
-            descriptor: string;
-        };
-
-        const resultsBySubject = new Map<string, SubjectResultTemp>();
-
-        approvedSubmissionsSnapshots.forEach(snapshot => {
-            snapshot.forEach(doc => {
-                const submission = doc.data() as MarkSubmissionFirestoreRecord;
-                const [, , subjectId] = submission.assessmentId.split('_');
-                const examId = submission.assessmentId.split('_')[0];
-                const exam = examsForTerm.find(e => e.id === examId);
-                const subject = allSubjects.find(s => s.id === subjectId);
-                const teacher = allTeachers.find(t => t.id === submission.teacherId);
-
-                if (!subject || !exam) return;
-
-                const studentMark = submission.submittedMarks.find(m => m.studentId === student.studentIdNumber);
-                if(studentMark === undefined || studentMark.score === null) return;
-                
-                if (!resultsBySubject.has(subjectId)) {
-                    resultsBySubject.set(subjectId, {
-                        subjectName: subject.name,
-                        teacherInitials: teacher?.name.split(' ').map(n => n[0]).join('') || 'N/A',
-                        aoiScores: [],
-                        eotRawScore: null,
-                        eotMaxScore: 100, // Default, will be overwritten
-                        finalScore: 0,
-                        grade: '',
-                        descriptor: '',
-                    });
-                }
-                const subjectResult = resultsBySubject.get(subjectId)!;
-
-                if (aoiExams.some(e => e.id === examId)) {
-                    subjectResult.aoiScores.push({ raw: studentMark.score, max: exam.maxMarks });
-                }
-                if (eotExams.some(e => e.id === examId)) {
-                    subjectResult.eotRawScore = studentMark.score;
-                    subjectResult.eotMaxScore = exam.maxMarks;
+                if(isRelevantExam) {
+                    if(!exam.subjectId) {
+                        subjectsInClass.forEach(subject => {
+                            assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${subject.id}`);
+                        });
+                    } else { 
+                        assessmentIdsToFetch.add(`${exam.id}_${student.classId}_${exam.subjectId}`);
+                    }
                 }
             });
-        });
-        
-        const defaultGradingPolicy = gradingPolicies.find(p => p.isDefault) || { scale: generalSettings.defaultGradingScale || [] };
-        let overallAverage = 0;
-        let subjectsCounted = 0;
-
-        const finalResults: ReportCardData['results'] = [];
-
-        resultsBySubject.forEach((result) => {
-            let aoiTotalOutOf20 = 0;
-            if (result.aoiScores.length > 0) {
-                const convertedAoiScores = result.aoiScores.map(s => (s.raw / s.max) * 20);
-                aoiTotalOutOf20 = convertedAoiScores.reduce((sum, score) => sum + score, 0) / convertedAoiScores.length;
-            }
             
-            const eotScoreOutOf80 = result.eotRawScore !== null ? (result.eotRawScore / result.eotMaxScore) * 80 : 0;
-            const finalScore = aoiTotalOutOf20 + eotScoreOutOf80;
+            if (assessmentIdsToFetch.size === 0) return null;
             
-            const grade = calculateGrade(finalScore, 100, defaultGradingPolicy.scale);
-            const descriptor = getGradeDescriptor(grade);
-
-            if(finalScore > 0) {
-                overallAverage += finalScore;
-                subjectsCounted++;
+            const approvedSubmissionsSnapshots: QuerySnapshot<DocumentData>[] = [];
+            const assessmentIdArray = Array.from(assessmentIdsToFetch);
+            const chunkSize = 30;
+            for (let i = 0; i < assessmentIdArray.length; i += chunkSize) {
+                const chunk = assessmentIdArray.slice(i, i + chunkSize);
+                const q = query(collection(db, "markSubmissions"), where("assessmentId", "in", chunk), where("dosStatus", "==", "Approved"));
+                const snapshot = await getDocs(q);
+                approvedSubmissionsSnapshots.push(snapshot);
             }
 
-            finalResults.push({
-                subjectName: result.subjectName,
-                teacherInitials: result.teacherInitials,
-                aoiTotal: aoiTotalOutOf20,
-                eotScore: eotScoreOutOf80,
-                finalScore: finalScore,
-                grade: grade,
-                descriptor: descriptor
+            type SubjectResultTemp = {
+                subjectName: string; teacherInitials: string; aoiScores: Array<{ raw: number; max: number; }>;
+                eotRawScore: number | null; eotMaxScore: number; finalScore: number; grade: string; descriptor: string;
+            };
+
+            const resultsBySubject = new Map<string, SubjectResultTemp>();
+
+            approvedSubmissionsSnapshots.forEach(snapshot => {
+                snapshot.forEach(doc => {
+                    const submission = doc.data() as MarkSubmissionFirestoreRecord;
+                    const [, , subjectId] = submission.assessmentId.split('_');
+                    const examId = submission.assessmentId.split('_')[0];
+                    const exam = examsForTerm.find(e => e.id === examId);
+                    const subject = allSubjects.find(s => s.id === subjectId);
+                    const teacher = allTeachers.find(t => t.id === submission.teacherId);
+
+                    if (!subject || !exam) return;
+                    const studentMark = submission.submittedMarks.find(m => m.studentId === student.studentIdNumber);
+                    if(studentMark === undefined || studentMark.score === null) return;
+                    
+                    if (!resultsBySubject.has(subjectId)) {
+                        resultsBySubject.set(subjectId, {
+                            subjectName: subject.name, teacherInitials: teacher?.name.split(' ').map(n => n[0]).join('') || 'N/A',
+                            aoiScores: [], eotRawScore: null, eotMaxScore: 100, finalScore: 0, grade: '', descriptor: '',
+                        });
+                    }
+                    const subjectResult = resultsBySubject.get(subjectId)!;
+
+                    if (aoiExams.some(e => e.id === examId)) {
+                        subjectResult.aoiScores.push({ raw: studentMark.score, max: exam.maxMarks });
+                    }
+                    if (eotExams.some(e => e.id === examId)) {
+                        subjectResult.eotRawScore = studentMark.score;
+                        subjectResult.eotMaxScore = exam.maxMarks;
+                    }
+                });
             });
-        });
+            
+            const defaultGradingPolicy = gradingPolicies.find(p => p.isDefault) || { scale: generalSettings.defaultGradingScale || [] };
+            let overallAverage = 0;
+            let subjectsCounted = 0;
+            const finalResults: ReportCardData['results'] = [];
 
-        const reportCardData: ReportCardData = {
-            schoolDetails: {
-                name: "St. Mbaaga's College",
-                address: "P.O. Box 8",
-                location: "Naddangira",
-                phone: "0758013161 / 0782923384",
-                email: "ssegawarichard7@gmail.com",
-                logoUrl: "https://i.imgur.com/lZDibio.png",
-                theme: options.schoolTheme,
-            },
-            student,
-            term,
-            class: studentClass,
-            reportTitle,
-            results: finalResults.sort((a, b) => a.subjectName.localeCompare(b.subjectName)),
-            summary: {
-                average: subjectsCounted > 0 ? overallAverage / subjectsCounted : 0,
-                gradeScale: defaultGradingPolicy.scale.sort((a,b) => b.minScore - a.minScore) // Sort grades for display
-            },
-            comments: {
-                classTeacher: "",
-                headTeacher: ""
-            },
-            nextTerm: options.nextTerm
-        };
+            resultsBySubject.forEach((result) => {
+                let aoiTotalOutOf20 = 0;
+                if (result.aoiScores.length > 0) {
+                    const convertedAoiScores = result.aoiScores.map(s => (s.raw / s.max) * 20);
+                    aoiTotalOutOf20 = convertedAoiScores.reduce((sum, score) => sum + score, 0) / convertedAoiScores.length;
+                }
+                const eotScoreOutOf80 = result.eotRawScore !== null ? (result.eotRawScore / result.eotMaxScore) * 80 : 0;
+                const finalScore = aoiTotalOutOf20 + eotScoreOutOf80;
+                const grade = calculateGrade(finalScore, 100, defaultGradingPolicy.scale);
+                const descriptor = getGradeDescriptor(grade);
 
-        return { success: true, message: "Report data generated.", data: reportCardData };
+                if(finalScore > 0) {
+                    overallAverage += finalScore;
+                    subjectsCounted++;
+                }
+
+                finalResults.push({
+                    subjectName: result.subjectName, teacherInitials: result.teacherInitials,
+                    aoiTotal: aoiTotalOutOf20, eotScore: eotScoreOutOf80, finalScore: finalScore,
+                    grade: grade, descriptor: descriptor
+                });
+            });
+
+            return {
+                schoolDetails: {
+                    name: "St. Mbaaga's College", address: "P.O. Box 8", location: "Naddangira",
+                    phone: "0758013161 / 0782923384", email: "ssegawarichard7@gmail.com",
+                    logoUrl: "https://i.imgur.com/lZDibio.png", theme: options.schoolTheme,
+                }, student, term, class: studentClass, reportTitle,
+                results: finalResults.sort((a, b) => a.subjectName.localeCompare(b.subjectName)),
+                summary: {
+                    average: subjectsCounted > 0 ? overallAverage / subjectsCounted : 0,
+                    gradeScale: defaultGradingPolicy.scale.sort((a,b) => b.minScore - a.minScore)
+                },
+                comments: { classTeacher: "", headTeacher: "" },
+                nextTerm: options.nextTerm
+            } as ReportCardData;
+        }));
+
+        const successfulReports = allReportsData.filter((report): report is ReportCardData => report !== null);
+
+        return { success: true, message: "Report data generated.", data: successfulReports };
 
     } catch (error) {
         console.error("Error generating report card data:", error);
@@ -1956,12 +1944,13 @@ export async function getAttendanceSummaryForDOS(classId: string, date: string):
 }
 
 export async function getStudentsForClass(classId: string): Promise<Student[]> {
-    if (!db) return [];
-    const q = query(collection(db, "students"), where("classId", "==", classId));
-    const snapshot = await getDocs(q);
-    return snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() } as Student))
-        .sort((a, b) => a.lastName.localeCompare(b.lastName));
+  if (!db) return [];
+  if (!classId) return [];
+  const q = query(collection(db, "students"), where("classId", "==", classId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() } as Student))
+      .sort((a, b) => (a.lastName || "").localeCompare(b.lastName || ""));
 }
     
 
@@ -1976,6 +1965,7 @@ export async function getStudentsForClass(classId: string): Promise<Student[]> {
     
 
     
+
 
 
 
