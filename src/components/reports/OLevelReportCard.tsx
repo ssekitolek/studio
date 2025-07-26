@@ -88,7 +88,7 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
 
       {/* Summary */}
       <div className="mt-2 text-[9pt]">
-        <span className="font-bold">OVERALL AVERAGE MARK: {summary.average.toFixed(2)}</span>
+        <span className="font-bold">OVERALL AVERAGE SCORES: {summary.average.toFixed(2)}</span>
       </div>
 
       {/* Comments */}

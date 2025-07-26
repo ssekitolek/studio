@@ -188,7 +188,7 @@ export default function GenerateReportCardPage() {
     // Summary Section
     finalY = finalY > pageHeight - 200 ? finalY : pageHeight - 200; // Push to bottom
     doc.setFontSize(10);
-    doc.text(`OVERALL AVERAGE MARK: ${reportData.summary.average.toFixed(2)}`, margin, finalY);
+    doc.text(`OVERALL AVERAGE SCORES: ${reportData.summary.average.toFixed(2)}`, margin, finalY);
     
     // Comments section
     const commentsY = finalY + 15;
