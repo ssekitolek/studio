@@ -83,7 +83,7 @@ export default function TeacherDashboardPage() {
                     'text-blue-700 dark:text-blue-300'
                 }
             >
-                {notification.id === 'dos_global_announcement' ? 'Global Announcement' :
+                {notification.id === 'dos_announcement' ? 'Global Announcement' :
                  notification.type === 'deadline' ? 'Upcoming Deadline' : 
                  notification.id.startsWith('error_') || notification.id.startsWith('critical_') || notification.type === 'warning' ? 'Important Alert' : 
                  notification.id.startsWith('system_settings_') || notification.id.startsWith('current_term_') ? 'System Configuration Alert' :
@@ -125,9 +125,9 @@ export default function TeacherDashboardPage() {
         <Card className="lg:col-span-2 shadow-md hover:shadow-lg transition-shadow">
           <CardHeader>
             <CardTitle className="font-headline text-xl text-primary flex items-center">
-              <ListChecks className="mr-2 h-6 w-6" /> Assigned Classes & Subjects for Assessment
+              <ListChecks className="mr-2 h-6 w-6" /> Pending Mark Submissions
             </CardTitle>
-            <CardDescription>Your current teaching assignments and upcoming deadlines for the active term. Assessments that are pending D.O.S. review or approved will not appear here.</CardDescription>
+            <CardDescription>Your current teaching assignments for the active term. Assessments that are submitted will not appear here unless they are rejected by the D.O.S.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {assignments && assignments.length > 0 ? (
@@ -135,7 +135,7 @@ export default function TeacherDashboardPage() {
                 <Card key={item.id} className="bg-secondary/50 p-4 rounded-lg">
                   <div className="flex justify-between items-center">
                     <div>
-                      <h3 className="font-semibold text-primary">{item.className} - {item.subjectName} - {item.examName}</h3>
+                      <h3 className="font-semibold text-primary">{item.examName} ({item.subjectName} - {item.className})</h3>
                       <p className="text-sm text-muted-foreground">
                         <CalendarClock className="inline-block mr-1 h-4 w-4" />
                         Next Deadline: {item.nextDeadlineInfo || "Not set"}

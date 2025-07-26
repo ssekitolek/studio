@@ -80,7 +80,11 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{ 
                 if (subject) {
                     assignment.classIds.forEach(classId => {
                         const cls = allClasses.find(c => c.id === classId);
-                        if (cls && (!exam.classId || exam.classId === classId)) {
+                        const isClassAndStreamMatch = cls && 
+                                                    (!exam.classId || exam.classId === classId) && 
+                                                    (!exam.stream || exam.stream === cls.streams?.find(s => s === exam.stream));
+                        
+                        if (isClassAndStreamMatch) {
                              const compositeId = `${exam.id}_${classId}_${subject.id}`;
                             // If this specific exam-class-subject combination has NOT been submitted, add it to the list.
                             if (!submittedAssessments.has(compositeId)) {
@@ -297,7 +301,7 @@ export async function getSubmittedMarksHistory(teacherId: string): Promise<Submi
                     console.warn(`[getSubmittedMarksHistory] Malformed 'dateSubmitted' for doc ID ${docId}. Expected Firestore Timestamp, got ${typeof data.dateSubmitted}. Record will be skipped or have incorrect date.`);
                 }
                 if (typeof data.assessmentName !== 'string' || !data.assessmentName) {
-                     console.warn(`[getSubmittedMarksHistory] Missing or invalid 'assessmentName' for doc ID ${docId}. It should be a string like "Class - Subject - Exam". Record will use 'N/A - Error'. Value: ${data.assessmentName}`);
+                     console.warn(`[getSubmittedMarksHistory] Missing or invalid 'assessmentName' for doc ID ${docId}. It should be a string like "Class - Subject - Exam". Value: ${data.assessmentName}`);
                 }
 
                 const item: SubmissionHistoryDisplayItem = {
@@ -347,7 +351,6 @@ export async function getSubmissionDetails(submissionId: string): Promise<MarkSu
         return null;
     }
 }
-
 
 async function getTeacherAssessmentResponsibilities(teacherId: string): Promise<Map<string, { classObj: ClassInfo; subjectObj: SubjectType; examObj: ExamTypeFirebase }>> {
   const responsibilitiesMap = new Map<string, { classObj: ClassInfo; subjectObj: SubjectType; examObj: ExamTypeFirebase }>();
@@ -497,7 +500,6 @@ async function getTeacherCurrentAssignments(teacherId: string): Promise<{ assign
 
 export async function getTeacherDashboardData(teacherId: string): Promise<TeacherDashboardData> {
   console.log(`[LOG_TDD] ACTION START for teacherId: "${teacherId}"`);
-  let recentSubmissionsCount = 0;
   const defaultStats: TeacherStats = {
     assignedClassesCount: 0,
     subjectsTaughtCount: 0,
@@ -528,7 +530,6 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
   }
 
   try {
-    console.log(`[LOG_TDD] Attempting to fetch teacher document for ID: "${teacherId}"`);
     const teacherDocument = await getTeacherByIdFromDOS(teacherId);
 
     if (!teacherDocument) {
@@ -541,13 +542,26 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
     const teacherName = teacherDocument.name;
     console.log(`[LOG_TDD] Teacher found: ${teacherName}`);
 
-    const [generalSettingsResult, allTerms, allExamsForDeadlineLookup] = await Promise.all([
+    const [generalSettingsResult, allTerms] = await Promise.all([
       getGeneralSettings(),
       getTerms(),
-      getExams() 
     ]);
     const { isDefaultTemplate: gsIsDefault, ...actualGeneralSettings } = generalSettingsResult;
-    console.log(`[LOG_TDD] General settings loaded. isDefaultTemplate: ${gsIsDefault}, currentTermId: ${actualGeneralSettings.currentTermId}`);
+
+    // Use the standardized function to get pending assessments
+    const pendingAssessmentsFromAction = await getTeacherAssessments(teacherId);
+
+    const pendingAssignments: TeacherDashboardAssignment[] = pendingAssessmentsFromAction.map(pa => {
+        const [examId, classId, subjectId] = pa.id.split('_');
+        const assessmentNameParts = pa.name.match(/(.+) \((.+) - (.+)\)/);
+        return {
+            id: pa.id,
+            className: assessmentNameParts ? assessmentNameParts[3] : 'Unknown Class',
+            subjectName: assessmentNameParts ? assessmentNameParts[2] : 'Unknown Subject',
+            examName: assessmentNameParts ? assessmentNameParts[1] : 'Unknown Exam',
+            nextDeadlineInfo: 'Check Exam Details', // Placeholder, deadline logic to be added
+        };
+    });
 
     const notifications: TeacherNotification[] = [];
     const resourcesText = actualGeneralSettings.teacherDashboardResourcesText || defaultResponse.resourcesText;
@@ -559,69 +573,18 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
             message: "Critical System Alert: GradeCentral general settings are not configured by the D.O.S. office. Essential features like term-based assignments cannot be determined. Please contact administration immediately.",
             type: 'warning',
         });
-        console.warn("[LOG_TDD] General settings are default template. Critical config missing.");
     } else if (!actualGeneralSettings.currentTermId) {
         notifications.push({
             id: 'current_term_not_set_warning',
             message: "System Configuration Alert: The current academic term has not been set by the D.O.S. office. Assignments and deadlines cannot be determined. Please contact administration.",
             type: 'warning',
         });
-        console.warn("[LOG_TDD] Current term ID not set in (non-default) general settings.");
     }
 
-    const currentTermId = actualGeneralSettings.currentTermId;
-    const currentTerm = currentTermId ? allTerms.find(t => t.id === currentTermId) : null;
-    console.log(`[LOG_TDD] Current term determined: ${currentTerm ? currentTerm.name : 'None'}`);
-
-    const allResponsibilitiesMap = currentTermId ? await getTeacherAssessmentResponsibilities(teacherId) : new Map(); 
-
-    // Fetch submitted marks to filter out completed tasks
-    const submittedAssessments = new Set<string>();
-    if (currentTermId) {
-        const submissionsQuery = query(collection(db, "markSubmissions"), where("teacherId", "==", teacherId));
-        const submissionsSnapshot = await getDocs(submissionsQuery);
-        submissionsSnapshot.forEach(doc => {
-            const data = doc.data() as MarkSubmissionFirestoreRecord;
-            const examId = data.assessmentId.split('_')[0];
-            const exam = allExamsForDeadlineLookup.find(e => e.id === examId);
-            // Only consider submissions for the current term and that are not rejected
-            if (exam && exam.termId === currentTermId && data.dosStatus !== 'Rejected') {
-                submittedAssessments.add(data.assessmentId);
-            }
-        });
-    }
-
-    // Filter responsibilities to get pending assignments
-    const pendingAssignments: TeacherDashboardAssignment[] = [];
-    allResponsibilitiesMap.forEach((resp, key) => {
-        if (!submittedAssessments.has(key)) {
-            const { classObj, subjectObj, examObj } = resp;
-            let deadlineText = "Not set";
-            if (examObj.marksSubmissionDeadline) {
-                 deadlineText = `Exam (${examObj.name}): ${new Date(examObj.marksSubmissionDeadline).toLocaleDateString()}`;
-            } else if (actualGeneralSettings.globalMarksSubmissionDeadline) {
-                 deadlineText = `Global: ${new Date(actualGeneralSettings.globalMarksSubmissionDeadline).toLocaleDateString()}`;
-            } else if (currentTerm?.endDate) {
-                deadlineText = `Term End: ${new Date(currentTerm.endDate).toLocaleDateString()}`;
-            }
-            pendingAssignments.push({
-                id: `${examObj.id}_${classObj.id}_${subjectObj.id}`, // Use composite key for uniqueness
-                className: classObj.name,
-                subjectName: subjectObj.name,
-                examName: examObj.name,
-                nextDeadlineInfo: deadlineText,
-            });
-        }
-    });
-
-    console.log(`[LOG_TDD] Processed ${pendingAssignments.length} dashboard assignments (assessments to submit).`);
-    
-    // NEW: Decoupled stats calculation using the new helper function
     const { assignedClasses, assignedSubjects } = await getTeacherCurrentAssignments(teacherId);
-
+    let recentSubmissionsCount = 0;
     try {
       const sevenDaysAgo = subDays(new Date(), 7);
-      console.log(`[LOG_TDD] Querying for recent submissions for teacherId: "${teacherId}" since ${sevenDaysAgo.toISOString()}`);
       const submissionsQuery = query(
         collection(db, "markSubmissions"),
         where("teacherId", "==", teacherId),
@@ -629,25 +592,12 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       );
       const submissionsSnapshot = await getCountFromServer(submissionsQuery);
       recentSubmissionsCount = submissionsSnapshot.data().count;
-      console.log(`[LOG_TDD] Recent submissions count (last 7 days): ${recentSubmissionsCount}`);
     } catch (e: any) {
-      console.error(`[LOG_TDD] Error fetching recent submissions count:`, e);
-      let errMessage = `Could not fetch recent submission count due to a server error: ${e.message || String(e)}`;
-      if (e.code === 'failed-precondition') {
-        console.error("*********************************************************************************");
-        console.error("FIRESTORE ERROR (Recent Submissions Query): The query requires an index.");
-        console.error("PLEASE CREATE THE REQUIRED COMPOSITE INDEX IN YOUR FIREBASE FIRESTORE CONSOLE.");
-        console.error("The full error message from Firebase (containing a direct link to create the index) should appear in your server logs when this specific error occurs.");
-        console.error("Example Index fields for this query: 'teacherId' (Ascending) AND 'dateSubmitted' (Ascending or Descending) on 'markSubmissions' collection.");
-        console.error("*********************************************************************************");
-        errMessage = "Could not fetch recent submissions. Firestore Database Index Required. Please check server logs for a Firebase link to create the index (collection: 'markSubmissions', fields: 'teacherId' and 'dateSubmitted').";
-      }
-       notifications.push({
-        id: 'error_fetching_recent_submissions',
-        message: errMessage,
-        type: 'warning',
-      });
-      recentSubmissionsCount = 0;
+        notifications.push({
+            id: 'error_fetching_recent_submissions',
+            message: "Could not fetch recent submission count due to a server error. An index may be required.",
+            type: 'warning',
+        });
     }
 
     const stats: TeacherStats = {
@@ -655,7 +605,6 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       subjectsTaughtCount: assignedSubjects.length,
       recentSubmissionsCount: recentSubmissionsCount,
     };
-    console.log(`[LOG_TDD] Calculated stats: ${JSON.stringify(stats)}`);
 
     if (actualGeneralSettings.dosGlobalAnnouncementText) {
       notifications.push({
@@ -666,86 +615,6 @@ export async function getTeacherDashboardData(teacherId: string): Promise<Teache
       });
     }
 
-    let earliestOverallDeadline: Date | null = null;
-    let earliestOverallDeadlineText: string = "Not set";
-
-    if (pendingAssignments.length > 0) { 
-        pendingAssignments.forEach(da => {
-            const examIdForDeadline = da.id.split('_')[0]; 
-            const examForDeadline = allExamsForDeadlineLookup.find(e => e.id === examIdForDeadline && e.termId === currentTermId);
-            let assignmentSpecificDeadlineDate: Date | null = null;
-            
-            if (examForDeadline?.marksSubmissionDeadline) {
-                assignmentSpecificDeadlineDate = new Date(examForDeadline.marksSubmissionDeadline);
-            } else if (actualGeneralSettings.globalMarksSubmissionDeadline) {
-                assignmentSpecificDeadlineDate = new Date(actualGeneralSettings.globalMarksSubmissionDeadline);
-            } else if (currentTerm?.endDate) {
-                assignmentSpecificDeadlineDate = new Date(currentTerm.endDate);
-            }
-
-            if(assignmentSpecificDeadlineDate) {
-                if (!earliestOverallDeadline || assignmentSpecificDeadlineDate < earliestOverallDeadline) {
-                    earliestOverallDeadline = assignmentSpecificDeadlineDate;
-                    if (examForDeadline?.marksSubmissionDeadline) {
-                        earliestOverallDeadlineText = `Exam (${examForDeadline.name})`;
-                    } else if (actualGeneralSettings.globalMarksSubmissionDeadline) {
-                        earliestOverallDeadlineText = `Global Deadline`;
-                    } else if (currentTerm?.endDate) {
-                        earliestOverallDeadlineText = `Term End`;
-                    }
-                }
-            }
-        });
-    }
-
-
-    if (earliestOverallDeadline && currentTermId) {
-      const today = new Date();
-      today.setHours(0,0,0,0);
-      const deadlineForComparison = new Date(earliestOverallDeadline.valueOf());
-      deadlineForComparison.setHours(0,0,0,0);
-
-      const diffTime = deadlineForComparison.getTime() - today.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      if (diffDays >= 0 && diffDays <= 7) { 
-         const deadlineTypeForMessage = earliestOverallDeadlineText.startsWith("Exam") ? "An exam submission deadline"
-                                     : earliestOverallDeadlineText.startsWith("Global") ? "The global marks submission deadline"
-                                     : "The current term submission deadline";
-        const deadlineDateString = earliestOverallDeadline.toLocaleDateString();
-
-        notifications.push({
-          id: 'deadline_reminder',
-          message: `${deadlineTypeForMessage} for '${earliestOverallDeadlineText}' is ${diffDays === 0 ? 'today' : diffDays === 1 ? 'tomorrow' : `in ${diffDays} days`} (${deadlineDateString}). Please ensure all marks are submitted.`,
-          type: 'deadline',
-        });
-        console.log(`[LOG_TDD] Added deadline reminder: ${deadlineTypeForMessage}`);
-      }
-    }
-
-    if (currentTermId && pendingAssignments.length === 0 && allResponsibilitiesMap.size > 0 && !gsIsDefault) {
-       notifications.push({
-        id: 'all_marks_submitted_info',
-        message: "All marks for your assigned assessments in the current term appear to be submitted and are awaiting D.O.S. review or have been approved. Check 'View Submissions' for details.",
-        type: 'info',
-      });
-      console.log(`[LOG_TDD] Added 'all marks submitted' notification.`);
-    } else if (currentTermId && allResponsibilitiesMap.size === 0 && !gsIsDefault) { 
-        let noAssignmentMessage = 'No teaching assignments found for the current academic term.';
-        const examsForThisTerm = allExamsForDeadlineLookup.filter(e => e.termId === currentTermId);
-        if (examsForThisTerm.length === 0) {
-            noAssignmentMessage = 'No exams are currently scheduled for the current academic term. Assignments cannot be determined.';
-        }
-        notifications.push({
-            id: 'no_assignments_info',
-            message: noAssignmentMessage,
-            type: 'info',
-        });
-        console.log(`[LOG_TDD] Added 'no assignments' notification. Message: ${noAssignmentMessage}`);
-    }
-
-
-    console.log(`[LOG_TDD] ACTION END for teacherId: "${teacherId}". Returning data.`);
     return { assignments: pendingAssignments, notifications, teacherName, resourcesText, resourcesImageUrl, stats };
 
   } catch (error) {
