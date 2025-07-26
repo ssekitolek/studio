@@ -44,7 +44,7 @@ type MarksSubmissionFormValues = z.infer<typeof marksSubmissionSchema>;
 
 interface AssessmentOption {
   id: string; // Just examDocId
-  name: string; // Human-readable name: Exam Name
+  name: string; // Human-readable name: Exam Name (Subject Name - Class Name)
   maxMarks: number;
   subjectId: string;
 }
@@ -129,6 +129,11 @@ export default function SubmitMarksPage() {
                 const allTeacherClasses = await getClassesForTeacher(user.uid, true); // Get all classes, even if not Class Teacher
                 const classesForThisSubject = allTeacherClasses.filter(cls => subjectAssignment.classIds.includes(cls.id));
                 setAvailableClasses(classesForThisSubject);
+
+                // Auto-select class if only one option is available
+                if (classesForThisSubject.length === 1) {
+                  form.setValue('classId', classesForThisSubject[0].id);
+                }
             } else {
                  setAvailableClasses([]);
             }
@@ -315,7 +320,7 @@ export default function SubmitMarksPage() {
                         <SelectContent>
                            {assessments.map(assessment => (
                               <SelectItem key={assessment.id} value={assessment.id}>
-                                  {assessment.name} (Out of {assessment.maxMarks})
+                                  {assessment.name}
                               </SelectItem>
                             ))}
                         </SelectContent>

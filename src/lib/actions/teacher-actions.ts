@@ -1,3 +1,4 @@
+
 "use server";
 
 import type { Mark, GradeEntry, Student, TeacherDashboardData, TeacherDashboardAssignment, TeacherNotification, Teacher as TeacherType, AnomalyExplanation, Exam as ExamTypeFirebase, TeacherStats, MarkSubmissionFirestoreRecord, SubmissionHistoryDisplayItem, ClassInfo, Subject as SubjectType, ClassTeacherData, ClassManagementStudent, GradingScaleItem, ClassAssessment, StudentClassMark, AttendanceData, StudentAttendanceInput, DailyAttendanceRecord, AttendanceHistoryData } from "@/lib/types";
@@ -11,7 +12,7 @@ import { subDays } from "date-fns";
 
 
 interface MarksSubmissionData {
-  assessmentId: string; // Composite ID: examDocId_classDocId_subjectDocId
+  assessmentId: string; // Composite ID: examDocId_classId_subjectId
   marks: Array<{ studentId: string; score: number | null }>; // studentId is studentIdNumber
 }
 
@@ -44,39 +45,47 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{ 
             console.warn("[getTeacherAssessments] No current term set. Cannot fetch assessments.");
             return [];
         }
-
+        
         const allExams = await getExams();
         const examsForCurrentTerm = allExams.filter(e => e.termId === currentTermId);
         const allSubjects = await getSubjects();
+        const allClasses = await getClasses();
 
-        const assignedSubjectIds = new Set(teacher.subjectsAssigned.map(sa => sa.subjectId));
-
+        // Get all submissions for the current teacher to find out what's done
         const submittedAssessments = new Set<string>();
         const submissionsQuery = query(collection(db, "markSubmissions"), where("teacherId", "==", teacherId));
         const submissionsSnapshot = await getDocs(submissionsQuery);
+        
         submissionsSnapshot.forEach(doc => {
-            if (doc.data().dosStatus !== 'Rejected') {
-                submittedAssessments.add(doc.data().assessmentId);
+            const data = doc.data() as MarkSubmissionFirestoreRecord;
+            const examIdForSubmission = data.assessmentId.split('_')[0];
+            const examForSubmission = allExams.find(e => e.id === examIdForSubmission);
+            
+            // Filter submissions to only consider those for the current term and not rejected
+            if (examForSubmission && examForSubmission.termId === currentTermId && data.dosStatus !== 'Rejected') {
+                submittedAssessments.add(data.assessmentId);
             }
         });
         
         const pendingExamsForTeacher: Array<{ id: string; name: string; maxMarks: number; subjectId: string; }> = [];
-
+        
+        // Iterate through all potential exams for the current term
         examsForCurrentTerm.forEach(exam => {
-            // Only consider exams that are assigned to a subject the teacher teaches, or general exams
-            if (exam.subjectId && assignedSubjectIds.has(exam.subjectId)) {
-                const subject = allSubjects.find(s => s.id === exam.subjectId);
-                const assignment = teacher.subjectsAssigned.find(sa => sa.subjectId === exam.subjectId);
+            // Find teacher's assignments that match the subject of the exam
+            const relevantAssignments = teacher.subjectsAssigned.filter(sa => sa.subjectId === exam.subjectId);
 
-                if (subject && assignment && assignment.classIds) {
+            relevantAssignments.forEach(assignment => {
+                const subject = allSubjects.find(s => s.id === assignment.subjectId);
+                if (subject) {
                     assignment.classIds.forEach(classId => {
-                        const compositeId = `${exam.id}_${classId}_${subject.id}`;
-                        if (!submittedAssessments.has(compositeId)) {
-                            // Check if this specific exam is already in the list to avoid duplicates
-                            if(!pendingExamsForTeacher.some(pe => pe.id === exam.id)) {
+                        const cls = allClasses.find(c => c.id === classId);
+                        if (cls) {
+                            const compositeId = `${exam.id}_${classId}_${subject.id}`;
+                            // If this specific exam-class-subject combination has NOT been submitted, add it to the list.
+                            if (!submittedAssessments.has(compositeId)) {
                                 pendingExamsForTeacher.push({
                                     id: exam.id,
-                                    name: `${exam.name} (${subject.name})`,
+                                    name: `${exam.name} (${subject.name} - ${cls.name})`,
                                     maxMarks: exam.maxMarks,
                                     subjectId: exam.subjectId!,
                                 });
@@ -84,7 +93,7 @@ export async function getTeacherAssessments(teacherId: string): Promise<Array<{ 
                         }
                     });
                 }
-            }
+            });
         });
         
         return pendingExamsForTeacher.sort((a,b) => a.name.localeCompare(b.name));
