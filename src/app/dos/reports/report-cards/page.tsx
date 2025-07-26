@@ -270,15 +270,15 @@ export default function GenerateReportCardPage() {
         doc.text(`OVERALL AVERAGE SCORES: ${summary.average.toFixed(2)}`, margin, bottomSectionY);
         
         // --- Comments section ---
-        let commentsY = bottomSectionY + 20; // Increased starting Y for comments
+        let commentsY = bottomSectionY + 30; // Increased starting Y for comments
         doc.setFont(undefined, 'bold');
         doc.text("Class Teacher's Comment:", margin, commentsY);
         doc.setDrawColor(0);
-        doc.line(margin + 125, commentsY, pageWidth - margin, commentsY); // Dotted line effect
+        doc.line(margin + 125, commentsY, pageWidth - margin, commentsY);
 
-        commentsY += 20; // Add space between comment lines
+        commentsY += 30; // Increased space between comment lines
         doc.text("Head Teacher's Comment:", margin, commentsY);
-        doc.line(margin + 125, commentsY, pageWidth - margin, commentsY); // Dotted line effect
+        doc.line(margin + 125, commentsY, pageWidth - margin, commentsY);
         
         finalY = commentsY + 10;
 
