@@ -133,7 +133,7 @@ export default function GenerateReportCardPage() {
         const photoSize = 80;
         
         const headerMaxHeight = Math.max(logoSize, photoSize);
-        let finalY = headerStartY + headerMaxHeight + 5; // Add a small buffer
+        let finalY = headerStartY + headerMaxHeight + 10; // Add a small buffer
 
         // School Logo (Left)
         if (isValidUrl(schoolDetails.logoUrl)) {
@@ -276,7 +276,7 @@ export default function GenerateReportCardPage() {
         doc.text("Class Teacher's Comment:", margin, commentsY);
         doc.setDrawColor(0);
         doc.line(margin + 125, commentsY, pageWidth - margin, commentsY);
-
+        
         commentsY += 40; 
         doc.text("Head Teacher's Comment:", margin, commentsY);
         doc.line(margin + 125, commentsY, pageWidth - margin, commentsY);
@@ -301,7 +301,7 @@ export default function GenerateReportCardPage() {
         // --- Note section on the left ---
         const noteSectionX = margin;
         const noteSectionY = finalY;
-        const noteSectionWidth = (pageWidth / 2) - margin;
+        const noteSectionWidth = (pageWidth / 2) - margin - 5;
         
         doc.setFontSize(8);
         doc.setFont(undefined, 'bold');
@@ -317,28 +317,27 @@ export default function GenerateReportCardPage() {
         // --- Grade Descriptor table on the right ---
         const gradeDescriptorTableStartX = (pageWidth / 2) + 10;
         const gradeDescriptorTableWidth = (pageWidth / 2) - margin - 10;
-
+        
+        const gradeTableBody = [
+          ['GRADE', ...summary.gradeScale.map(item => item.grade)],
+          ['SCORE RANGE', ...summary.gradeScale.map(item => `${item.minScore}-${item.maxScore}`)]
+        ];
+        
         autoTable(doc, {
-            head: [['GRADE DESCRIPTOR']],
-            body: [['GRADE', 'SCORE RANGE']],
+            body: gradeTableBody,
             startY: noteSectionY,
             theme: 'grid',
             tableWidth: gradeDescriptorTableWidth,
             margin: { left: gradeDescriptorTableStartX },
-            styles: { fontSize: 8, fontStyle: 'bold', halign: 'center' },
-            headStyles: { fillColor: [200, 200, 200], textColor: 0 },
-            bodyStyles: { fillColor: [220, 220, 220] },
-        });
-
-        const lastTableY = (doc as any).lastAutoTable.finalY;
-
-        autoTable(doc, {
-            body: summary.gradeScale.map(item => [item.grade, `${item.minScore}-${item.maxScore}`]),
-            startY: lastTableY,
-            theme: 'grid',
-            tableWidth: gradeDescriptorTableWidth,
-            margin: { left: gradeDescriptorTableStartX },
-            styles: { fontSize: 8, halign: 'center' }
+            styles: { fontSize: 7, fontStyle: 'bold', halign: 'center', cellPadding: 1 },
+            columnStyles: {
+                0: { halign: 'left', fontStyle: 'bold', cellWidth: 50 },
+            },
+            didParseCell: (data) => {
+                if (data.section === 'body' && data.row.index === 0 && data.column.index > 0) {
+                     data.cell.styles.fontStyle = 'bold';
+                }
+            }
         });
 
 
