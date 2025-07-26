@@ -1504,6 +1504,8 @@ export async function getReportCardData(studentId: string, termId: string, repor
             const isForStudentsClass = !exam.classId || exam.classId === student.classId;
             const isForStudentsStream = !exam.stream || exam.stream === student.stream;
             
+            // An exam is relevant if it's not tied to a specific subject (general exam)
+            // OR if it's tied to a subject that is taught in the student's class.
             const isRelevantExam = isForStudentsClass && isForStudentsStream && (!exam.subjectId || subjectsInClass.has(exam.subjectId));
 
             if(isRelevantExam) {
@@ -1637,8 +1639,8 @@ export async function getReportCardData(studentId: string, termId: string, repor
                 gradeScale: defaultGradingPolicy.scale.sort((a,b) => b.minScore - a.minScore) // Sort grades for display
             },
             comments: {
-                classTeacher: "Musiime has potential to achieve better. He should aim higher.", // Placeholder
-                headTeacher: "Musiime has potential to achieve better. He should aim higher." // Placeholder
+                classTeacher: "",
+                headTeacher: ""
             },
             nextTerm: {
                 begins: "26-May-2025",
@@ -1978,3 +1980,4 @@ export async function getStudentsForClass(classId: string): Promise<Student[]> {
     
 
     
+
