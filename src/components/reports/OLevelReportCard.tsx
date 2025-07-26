@@ -30,7 +30,7 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
             )}
         </div>
         <div className="w-3/5 text-center">
-            <h1 className="text-xl font-bold uppercase mt-1">{schoolDetails.name}</h1>
+            <h1 className="text-xl font-bold uppercase mt-1">{schoolDetails.name.toUpperCase()}</h1>
             <p className="text-xs">{schoolDetails.address}, {schoolDetails.location}</p>
             <p className="text-xs">Email: {schoolDetails.email} | Tel: {schoolDetails.phone}</p>
         </div>
@@ -145,13 +145,15 @@ export function OLevelReportCard({ data }: OLevelReportCardProps) {
             <p>3. The scores in Formative category (20%) have been generated from Activities of Integration (AOI).</p>
         </div>
         <div className="col-span-4">
+            <p className="font-bold text-[8pt]">GRADE DESCRIPTOR</p>
             <table className="w-full border-collapse border border-black text-[8pt]">
-                <thead className='bg-gray-200'><tr><th colSpan={summary.gradeScale.length + 1} className='border border-black p-px'>GRADE DESCRIPTOR</th></tr></thead>
-                <tbody>
+                <thead className='bg-gray-200'>
                     <tr>
                         <td className='border border-black p-px text-center font-bold'>GRADE</td>
                         {summary.gradeScale.map(item => <td key={item.grade} className='border border-black p-px text-center font-bold'>{item.grade}</td>)}
                     </tr>
+                </thead>
+                <tbody>
                     <tr>
                         <td className='border border-black p-px text-center font-bold'>SCORE RANGE</td>
                         {summary.gradeScale.map(item => <td key={item.grade} className='border border-black p-px text-center'>{item.minScore}-{item.maxScore}</td>)}

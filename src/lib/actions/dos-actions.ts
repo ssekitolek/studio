@@ -1036,11 +1036,12 @@ export async function updateGeneralSettings(settings: Partial<GeneralSettings>):
 // --- Report Generation & Data Analysis ---
 
 const GRADE_DESCRIPTORS: { [key: string]: string } = {
-  'A': 'Achieved extraordinary level of competencies.',
-  'B': 'Achieved good level of competencies.',
-  'C': 'Achieved adequate level of competencies.',
-  'D': 'Achieved minimum level of competencies.',
-  'E': 'Achieved basic level of competencies.',
+  'A': 'Outstanding',
+  'B': 'Very Good',
+  'C': 'Good',
+  'D': 'Adequate',
+  'E': 'Basic',
+  'F': 'Below Basic',
 };
 
 function getGradeDescriptor(grade: string): string {
@@ -1856,7 +1857,14 @@ export async function getGeneralSettings(): Promise<GeneralSettings & { isDefaul
         }
         console.warn("[DOS Action - getGeneralSettings] 'settings/general' document does not exist. Creating with default template settings.");
         const defaultSettings: GeneralSettings & { isDefaultTemplate: boolean } = {
-            defaultGradingScale: [{ grade: 'A', minScore: 80, maxScore: 100 }, { grade: 'B', minScore: 70, maxScore: 79 }],
+            defaultGradingScale: [
+                { grade: 'A', minScore: 80, maxScore: 100 },
+                { grade: 'B', minScore: 70, maxScore: 79 },
+                { grade: 'C', minScore: 60, maxScore: 69 },
+                { grade: 'D', minScore: 50, maxScore: 59 },
+                { grade: 'E', minScore: 40, maxScore: 49 },
+                { grade: 'F', minScore: 0, maxScore: 39 },
+            ],
             markSubmissionTimeZone: 'UTC',
             currentTermId: undefined,
             globalMarksSubmissionDeadline: undefined,
@@ -2000,6 +2008,7 @@ export async function getStudentsForClass(classId: string): Promise<Student[]> {
     
 
     
+
 
 
 
