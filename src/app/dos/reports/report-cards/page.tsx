@@ -182,6 +182,7 @@ export default function GenerateReportCardPage() {
         doc.text(`Email: ${schoolDetails.email} | Tel: ${schoolDetails.phone}`, pageWidth / 2, headerStartY + 40, { align: 'center' });
         
         // Line Separator and Report Title
+        finalY += 5; // Add a small gap before the line
         doc.setLineWidth(1);
         doc.line(margin, finalY, pageWidth - margin, finalY);
         finalY += 15;
