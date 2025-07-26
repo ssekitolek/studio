@@ -269,30 +269,34 @@ export default function GenerateReportCardPage() {
         doc.setFontSize(10);
         doc.text(`OVERALL AVERAGE SCORES: ${summary.average.toFixed(2)}`, margin, bottomSectionY);
         
-        // Comments section
-        const commentsY = bottomSectionY + 15;
-        doc.setDrawColor(0);
-        doc.rect(margin, commentsY, pageWidth - (margin * 2), 40);
+        // --- Comments section ---
+        let commentsY = bottomSectionY + 20; // Increased starting Y for comments
         doc.setFont(undefined, 'bold');
-        doc.text("Class Teacher's Comment:", margin + 5, commentsY + 12);
-        doc.text("Head Teacher's Comment:", margin + 5, commentsY + 30);
-        doc.setFont(undefined, 'normal');
-        doc.text(comments.classTeacher, margin + 130, commentsY + 12);
-        doc.text(comments.headTeacher, margin + 130, commentsY + 30);
+        doc.text("Class Teacher's Comment:", margin, commentsY);
+        doc.setDrawColor(0);
+        doc.line(margin + 125, commentsY, pageWidth - margin, commentsY); // Dotted line effect
+
+        commentsY += 20; // Add space between comment lines
+        doc.text("Head Teacher's Comment:", margin, commentsY);
+        doc.line(margin + 125, commentsY, pageWidth - margin, commentsY); // Dotted line effect
         
-        finalY = commentsY + 40;
+        finalY = commentsY + 10;
 
         // Next term details
-        if (nextTerm?.begins && nextTerm?.ends) {
-            doc.setFontSize(10);
-            doc.text(`NEXT TERM BEGINS: ${nextTerm.begins} AND ENDS: ${nextTerm.ends}`, margin, finalY + 15);
-        }
-        if (nextTerm?.fees) {
-            doc.text(`NEXT TERM FEES: UGX. ${nextTerm.fees}`, pageWidth - margin, finalY + 15, { align: 'right' });
+        if (nextTerm?.begins || nextTerm?.fees) {
+            finalY += 15;
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'normal');
+            if (nextTerm.begins && nextTerm.ends) {
+                doc.text(`NEXT TERM BEGINS: ${nextTerm.begins} AND ENDS: ${nextTerm.ends}`, margin, finalY);
+            }
+            if (nextTerm.fees) {
+                doc.text(`NEXT TERM FEES: UGX. ${nextTerm.fees}`, pageWidth - margin, finalY, { align: 'right' });
+            }
         }
         
         // Note section
-        finalY += 30;
+        finalY += 20;
         doc.setFontSize(8);
         doc.setFont(undefined, 'bold');
         doc.text("NOTE", margin, finalY);
