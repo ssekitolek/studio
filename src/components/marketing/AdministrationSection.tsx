@@ -34,23 +34,20 @@ export function AdministrationSection({ content }: AdministrationSectionProps) {
         {content.administrators.map((admin, index) => (
           <CarouselItem key={index} className="sm:basis-1/2 lg:basis-1/3">
             <div className="p-1">
-              <Card className="overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col group text-center border-2 border-transparent hover:border-primary hover:scale-[1.02]">
-                <div className="relative aspect-square w-full overflow-hidden">
-                  <Image
-                    src={isValidUrl(admin.imageUrl) ? admin.imageUrl : "https://placehold.co/400x400.png"}
-                    alt={admin.name}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-500 ease-in-out"
-                    data-ai-hint="person portrait professional"
-                  />
+              <div className="group relative overflow-hidden rounded-lg shadow-lg h-[400px] block">
+                <Image
+                  src={isValidUrl(admin.imageUrl) ? admin.imageUrl : "https://placehold.co/400x400.png"}
+                  alt={admin.name}
+                  fill
+                  className="object-cover transition-transform duration-500 ease-in-out group-hover:scale-105"
+                  data-ai-hint="person portrait professional"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                <div className="absolute bottom-0 left-0 p-6 text-white">
+                  <h3 className="text-xl font-headline font-bold drop-shadow-md">{admin.name}</h3>
+                  <p className="mt-1 text-white/90 drop-shadow-sm">{admin.title}</p>
                 </div>
-                <CardHeader>
-                  <CardTitle className="text-xl font-headline text-primary">{admin.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <p className="text-muted-foreground">{admin.title}</p>
-                </CardContent>
-              </Card>
+              </div>
             </div>
           </CarouselItem>
         ))}
