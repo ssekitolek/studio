@@ -446,6 +446,14 @@ export interface WebsiteContent {
         imageUrls: string[];
     }>;
   };
+  administrationSection: {
+    heading: string;
+    administrators: Array<{
+      name: string;
+      title: string;
+      imageUrl: string;
+    }>;
+  };
   newsSection: {
     heading: string;
     posts: Array<{

@@ -59,6 +59,14 @@ const defaultContent: WebsiteContent = {
       { title: "Arts & Humanities", description: "Cultivate your creativity and find your voice in our comprehensive arts and humanities programs.", imageUrls: ["https://placehold.co/600x400.png"] }
     ]
   },
+  administrationSection: {
+    heading: "Our Administration",
+    administrators: [
+      { name: "Rev. Fr. John Vianney", title: "Head Teacher", imageUrl: "https://placehold.co/400x400.png" },
+      { name: "Mr. Ssegawa Richard", title: "Director of Studies", imageUrl: "https://placehold.co/400x400.png" },
+      { name: "Mr. Matovu Tadeo", title: "Deputy Head Teacher", imageUrl: "https://placehold.co/400x400.png" },
+    ]
+  },
   newsSection: {
     heading: "What's Happening",
     posts: [
@@ -206,6 +214,7 @@ export const getWebsiteContent = unstable_cache(
           heroSlideshowSection: { ...defaultContent.heroSlideshowSection, ...(data.heroSlideshowSection || {}) },
           whyUsSection: { ...defaultContent.whyUsSection, ...(data.whyUsSection || {}) },
           signatureProgramsSection: { ...defaultContent.signatureProgramsSection, ...(data.signatureProgramsSection || {}) },
+          administrationSection: { ...defaultContent.administrationSection, ...(data.administrationSection || {}) },
           newsSection: { ...defaultContent.newsSection, ...(data.newsSection || {}) },
           alumniSpotlightSection: { ...defaultContent.alumniSpotlightSection, ...(data.alumniSpotlightSection || {}) },
           academicsPage: { ...defaultContent.academicsPage, ...(data.academicsPage || {}) },

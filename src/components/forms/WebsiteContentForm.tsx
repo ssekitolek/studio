@@ -78,6 +78,14 @@ const signatureProgramsSectionSchema = z.object({
         imageUrls: z.array(z.string().or(z.literal(''))),
     })),
 });
+const administrationSectionSchema = z.object({
+    heading: z.string().min(1),
+    administrators: z.array(z.object({
+        name: z.string().min(1),
+        title: z.string().min(1),
+        imageUrl: z.string().or(z.literal('')),
+    })),
+});
 const newsSectionSchema = z.object({
     heading: z.string().min(1),
     posts: z.array(z.object({
@@ -427,6 +435,45 @@ function SignatureProgramsForm({ initialData }: { initialData: WebsiteContent['s
     );
 }
 
+function AdministrationSectionForm({ initialData }: { initialData: WebsiteContent['administrationSection'] }) {
+    const { toast } = useToast();
+    const [isPending, startTransition] = React.useTransition();
+    const form = useForm<z.infer<typeof administrationSectionSchema>>({
+        resolver: zodResolver(administrationSectionSchema),
+        defaultValues: initialData,
+    });
+    const { control } = form;
+
+    const onSubmit = (data: z.infer<typeof administrationSectionSchema>) => {
+        startTransition(async () => {
+            const result = await updateWebsiteSection('administrationSection', data);
+            if (result.success) toast({ title: "Success", description: "Administration section updated." });
+            else toast({ title: "Error", description: result.message, variant: "destructive" });
+        });
+    };
+
+    return (
+        <FormProvider {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField control={control} name="heading" render={({ field }) => ( <FormItem><FormLabel>Heading</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <ArrayEditor name="administrators" title="Administrator" control={control} defaultItem={{ name: '', title: '', imageUrl: '' }} renderItem={(index) => (
+                    <>
+                        <FormField control={control} name={`administrators.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <FormField control={control} name={`administrators.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                        <ImageUploadInput fieldName={`administrators.${index}.imageUrl`} label="Image URL"/>
+                    </>
+                )}/>
+                <div className="flex justify-end">
+                    <Button type="submit" disabled={isPending}>
+                        {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        Save Administration Section
+                    </Button>
+                </div>
+            </form>
+        </FormProvider>
+    );
+}
+
 function NewsForm({ initialData }: { initialData: WebsiteContent['newsSection'] }) {
     const { toast } = useToast();
     const [isPending, startTransition] = React.useTransition();
@@ -700,6 +747,10 @@ export function WebsiteContentForm({ initialData }: { initialData: WebsiteConten
             <AccordionItem value="item-sigprog" className="border rounded-lg bg-card">
                 <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage: Signature Programs</CardTitle></AccordionTrigger>
                 <AccordionContent className="p-4 pt-0"><SignatureProgramsForm initialData={initialData.signatureProgramsSection} /></AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-administration" className="border rounded-lg bg-card">
+                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage: Our Administration</CardTitle></AccordionTrigger>
+                <AccordionContent className="p-4 pt-0"><AdministrationSectionForm initialData={initialData.administrationSection} /></AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-alumni" className="border rounded-lg bg-card">
                 <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage: Alumni Spotlight</CardTitle></AccordionTrigger>
