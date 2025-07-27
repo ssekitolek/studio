@@ -70,6 +70,13 @@ const whyUsSectionSchema = z.object({
         imageUrl: z.string().or(z.literal('')),
     })),
 });
+const headTeacherMessageSectionSchema = z.object({
+    heading: z.string().min(1),
+    message: z.string().min(1),
+    name: z.string().min(1),
+    title: z.string().min(1),
+    imageUrl: z.string().or(z.literal('')),
+});
 const signatureProgramsSectionSchema = z.object({
     heading: z.string().min(1),
     programs: z.array(z.object({
@@ -389,6 +396,42 @@ function WhyUsForm({ initialData }: { initialData: WebsiteContent['whyUsSection'
                     <Button type="submit" disabled={isPending}>
                         {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Save Why Us Section
+                    </Button>
+                </div>
+            </form>
+        </FormProvider>
+    );
+}
+
+function HeadTeacherMessageForm({ initialData }: { initialData: WebsiteContent['headTeacherMessageSection'] }) {
+    const { toast } = useToast();
+    const [isPending, startTransition] = React.useTransition();
+    const form = useForm<z.infer<typeof headTeacherMessageSectionSchema>>({
+        resolver: zodResolver(headTeacherMessageSectionSchema),
+        defaultValues: initialData,
+    });
+    const { control } = form;
+
+    const onSubmit = (data: z.infer<typeof headTeacherMessageSectionSchema>) => {
+        startTransition(async () => {
+            const result = await updateWebsiteSection('headTeacherMessageSection', data);
+            if (result.success) toast({ title: "Success", description: "Head Teacher Message section updated." });
+            else toast({ title: "Error", description: result.message, variant: "destructive" });
+        });
+    };
+    
+    return (
+        <FormProvider {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField control={control} name="heading" render={({ field }) => ( <FormItem><FormLabel>Heading</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={control} name="message" render={({ field }) => ( <FormItem><FormLabel>Message</FormLabel><FormControl><Textarea {...field} className="min-h-[150px]" /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={control} name="name" render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={control} name="title" render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <ImageUploadInput fieldName="imageUrl" label="Image URL"/>
+                 <div className="flex justify-end">
+                    <Button type="submit" disabled={isPending}>
+                        {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        Save Head Teacher Message
                     </Button>
                 </div>
             </form>
@@ -743,6 +786,10 @@ export function WebsiteContentForm({ initialData }: { initialData: WebsiteConten
              <AccordionItem value="item-whyus" className="border rounded-lg bg-card">
                 <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage: Why Us</CardTitle></AccordionTrigger>
                 <AccordionContent className="p-4 pt-0"><WhyUsForm initialData={initialData.whyUsSection} /></AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-headteacher" className="border rounded-lg bg-card">
+                <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage: Head Teacher's Message</CardTitle></AccordionTrigger>
+                <AccordionContent className="p-4 pt-0"><HeadTeacherMessageForm initialData={initialData.headTeacherMessageSection} /></AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-sigprog" className="border rounded-lg bg-card">
                 <AccordionTrigger className="p-4 hover:no-underline"><CardTitle>Homepage: Signature Programs</CardTitle></AccordionTrigger>

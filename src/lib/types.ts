@@ -438,6 +438,13 @@ export interface WebsiteContent {
       imageUrl: string;
     }>;
   };
+  headTeacherMessageSection: {
+    heading: string;
+    message: string;
+    name: string;
+    title: string;
+    imageUrl: string;
+  };
   signatureProgramsSection: {
     heading: string;
     programs: Array<{

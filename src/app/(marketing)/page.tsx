@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import type { ReactElement } from 'react';
 import { AdministrationSection } from '@/components/marketing/AdministrationSection';
+import { HeadTeacherMessage } from '@/components/marketing/HeadTeacherMessage';
 
 const iconMap: { [key: string]: ReactElement } = {
   Athletics: <Shield className="h-10 w-10 text-primary mb-4" />,
@@ -25,6 +26,7 @@ export default async function SchoolHomePage() {
   const { 
     heroSlideshowSection, 
     whyUsSection,
+    headTeacherMessageSection,
     signatureProgramsSection,
     administrationSection,
     alumniSpotlightSection, 
@@ -51,9 +53,21 @@ export default async function SchoolHomePage() {
             </div>
           </div>
         </section>
+
+        {/* Head Teacher Message Section */}
+        <section id="head-teacher-message" className="py-20 md:py-32 bg-background animate-fade-in-up opacity-0" style={{ animationDelay: '300ms', animationFillMode: 'forwards' }}>
+          <div className="container mx-auto px-4 md:px-6">
+             <div className="text-center max-w-3xl mx-auto mb-16">
+              <h2 className="text-4xl md:text-5xl font-headline font-bold text-primary">{headTeacherMessageSection.heading}</h2>
+            </div>
+            <div>
+              <HeadTeacherMessage content={headTeacherMessageSection} />
+            </div>
+          </div>
+        </section>
         
         {/* Signature Programs Section */}
-        <section id="signature-programs" className="py-20 md:py-32 bg-background animate-fade-in-up opacity-0" style={{ animationDelay: '300ms', animationFillMode: 'forwards' }}>
+        <section id="signature-programs" className="py-20 md:py-32 bg-secondary animate-fade-in-up opacity-0" style={{ animationDelay: '400ms', animationFillMode: 'forwards' }}>
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
               <h2 className="text-4xl md:text-5xl font-headline font-bold text-primary">{signatureProgramsSection.heading}</h2>
@@ -65,7 +79,7 @@ export default async function SchoolHomePage() {
         </section>
 
         {/* Administration Section */}
-        <section id="administration" className="py-20 md:py-32 bg-secondary animate-fade-in-up opacity-0" style={{ animationDelay: '400ms', animationFillMode: 'forwards' }}>
+        <section id="administration" className="py-20 md:py-32 bg-background animate-fade-in-up opacity-0" style={{ animationDelay: '500ms', animationFillMode: 'forwards' }}>
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
               <h2 className="text-4xl md:text-5xl font-headline font-bold text-primary">{administrationSection.heading}</h2>
@@ -77,7 +91,7 @@ export default async function SchoolHomePage() {
         </section>
 
         {/* Alumni Spotlight Section */}
-        <section id="alumni-spotlight" className="py-20 md:py-32 bg-background animate-fade-in-up opacity-0" style={{ animationDelay: '500ms', animationFillMode: 'forwards' }}>
+        <section id="alumni-spotlight" className="py-20 md:py-32 bg-secondary animate-fade-in-up opacity-0" style={{ animationDelay: '600ms', animationFillMode: 'forwards' }}>
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
               <h2 className="text-4xl md:text-5xl font-headline font-bold text-primary">{alumniSpotlightSection.heading}</h2>
@@ -90,7 +104,7 @@ export default async function SchoolHomePage() {
         </section>
 
         {/* News Section */}
-        <section id="news" className="py-20 md:py-32 bg-secondary animate-fade-in-up opacity-0" style={{ animationDelay: '600ms', animationFillMode: 'forwards' }}>
+        <section id="news" className="py-20 md:py-32 bg-background animate-fade-in-up opacity-0" style={{ animationDelay: '700ms', animationFillMode: 'forwards' }}>
           <div className="container mx-auto px-4 md:px-6">
             <div className="flex flex-col md:flex-row justify-between items-center text-center md:text-left mb-16">
               <div className="max-w-xl">

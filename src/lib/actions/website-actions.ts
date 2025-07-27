@@ -51,6 +51,13 @@ const defaultContent: WebsiteContent = {
       }
     ]
   },
+  headTeacherMessageSection: {
+    heading: "A Word from the Head Teacher",
+    message: "Welcome to St. Mbaaga's College! Our commitment is to provide an environment where students are challenged to reach their full potential. We believe in a holistic education that balances academic rigor with character development, preparing our students to be thoughtful and engaged citizens of the world.",
+    name: "Rev. Fr. John Vianney",
+    title: "Head Teacher",
+    imageUrl: "https://placehold.co/600x600.png"
+  },
   signatureProgramsSection: {
     heading: "Signature Programs",
     programs: [
@@ -213,6 +220,7 @@ export const getWebsiteContent = unstable_cache(
           ...data,
           heroSlideshowSection: { ...defaultContent.heroSlideshowSection, ...(data.heroSlideshowSection || {}) },
           whyUsSection: { ...defaultContent.whyUsSection, ...(data.whyUsSection || {}) },
+          headTeacherMessageSection: { ...defaultContent.headTeacherMessageSection, ...(data.headTeacherMessageSection || {}) },
           signatureProgramsSection: { ...defaultContent.signatureProgramsSection, ...(data.signatureProgramsSection || {}) },
           administrationSection: { ...defaultContent.administrationSection, ...(data.administrationSection || {}) },
           newsSection: { ...defaultContent.newsSection, ...(data.newsSection || {}) },
