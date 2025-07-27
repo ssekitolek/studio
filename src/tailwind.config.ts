@@ -99,6 +99,26 @@ export default {
             transform: 'translateY(0)',
           },
         },
+        'fade-in-left': {
+          '0%': {
+            opacity: '0',
+            transform: 'translateX(-24px)',
+          },
+          '100%': {
+            opacity: '1',
+            transform: 'translateX(0)',
+          },
+        },
+        'fade-in-right': {
+          '0%': {
+            opacity: '0',
+            transform: 'translateX(24px)',
+          },
+          '100%': {
+            opacity: '1',
+            transform: 'translateX(0)',
+          },
+        },
         'image-zoom': {
           '0%': { transform: 'scale(1)' },
           '100%': { transform: 'scale(1.15)' },
