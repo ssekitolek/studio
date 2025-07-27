@@ -28,7 +28,7 @@ export function NewsCarousel({ posts }: NewsCarouselProps) {
                 src={(featuredPost.imageUrls && featuredPost.imageUrls.length > 0) ? featuredPost.imageUrls[0] : "https://placehold.co/800x600.png"}
                 alt={featuredPost.title}
                 fill
-                className="object-cover transition-transform duration-500 ease-in-out group-hover:scale-105"
+                className="object-contain transition-transform duration-500 ease-in-out group-hover:scale-105"
                 data-ai-hint="school news event"
               />
             </div>
@@ -55,7 +55,7 @@ export function NewsCarousel({ posts }: NewsCarouselProps) {
                   src={(post.imageUrls && post.imageUrls.length > 0) ? post.imageUrls[0] : "https://placehold.co/400x300.png"}
                   alt={post.title}
                   fill
-                  className="object-cover transition-transform duration-500 ease-in-out group-hover:scale-105"
+                  className="object-contain transition-transform duration-500 ease-in-out group-hover:scale-105"
                   data-ai-hint="school event"
                 />
               </div>
