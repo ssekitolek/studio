@@ -34,7 +34,7 @@ export default async function SchoolHomePage() {
   } = content;
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground overflow-x-hidden">
+    <div className="flex flex-col min-h-screen bg-background text-foreground">
       {/* Hero Section */}
       <HeroSlideshow content={heroSlideshowSection} />
 
@@ -42,7 +42,7 @@ export default async function SchoolHomePage() {
       <div>
         
         {/* Why Us Section */}
-        <section id="why-us" className="py-20 md:py-32 bg-secondary animate-fade-in-left opacity-0" style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}>
+        <section id="why-us" className="py-20 md:py-32 bg-secondary animate-fade-in-up opacity-0" style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}>
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
               <h2 className="text-4xl md:text-5xl font-headline font-bold text-primary">{whyUsSection.heading}</h2>
@@ -55,7 +55,7 @@ export default async function SchoolHomePage() {
         </section>
 
         {/* Head Teacher Message Section */}
-        <section id="head-teacher-message" className="py-20 md:py-32 bg-background animate-fade-in-right opacity-0" style={{ animationDelay: '300ms', animationFillMode: 'forwards' }}>
+        <section id="head-teacher-message" className="py-20 md:py-32 bg-background animate-fade-in-up opacity-0" style={{ animationDelay: '300ms', animationFillMode: 'forwards' }}>
           <div className="container mx-auto px-4 md:px-6">
              <div className="text-center max-w-3xl mx-auto mb-16">
               <h2 className="text-4xl md:text-5xl font-headline font-bold text-primary">{headTeacherMessageSection.heading}</h2>
@@ -67,7 +67,7 @@ export default async function SchoolHomePage() {
         </section>
         
         {/* Signature Programs Section */}
-        <section id="signature-programs" className="py-20 md:py-32 bg-secondary animate-fade-in-left opacity-0" style={{ animationDelay: '400ms', animationFillMode: 'forwards' }}>
+        <section id="signature-programs" className="py-20 md:py-32 bg-secondary animate-fade-in-up opacity-0" style={{ animationDelay: '400ms', animationFillMode: 'forwards' }}>
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
               <h2 className="text-4xl md:text-5xl font-headline font-bold text-primary">{signatureProgramsSection.heading}</h2>
@@ -79,7 +79,7 @@ export default async function SchoolHomePage() {
         </section>
 
         {/* Administration Section */}
-        <section id="administration" className="py-20 md:py-32 bg-background animate-fade-in-right opacity-0" style={{ animationDelay: '500ms', animationFillMode: 'forwards' }}>
+        <section id="administration" className="py-20 md:py-32 bg-background animate-fade-in-up opacity-0" style={{ animationDelay: '500ms', animationFillMode: 'forwards' }}>
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
               <h2 className="text-4xl md:text-5xl font-headline font-bold text-primary">{administrationSection.heading}</h2>
@@ -91,7 +91,7 @@ export default async function SchoolHomePage() {
         </section>
 
         {/* Alumni Spotlight Section */}
-        <section id="alumni-spotlight" className="py-20 md:py-32 bg-secondary animate-fade-in-left opacity-0" style={{ animationDelay: '600ms', animationFillMode: 'forwards' }}>
+        <section id="alumni-spotlight" className="py-20 md:py-32 bg-secondary animate-fade-in-up opacity-0" style={{ animationDelay: '600ms', animationFillMode: 'forwards' }}>
           <div className="container mx-auto px-4 md:px-6">
             <div className="text-center max-w-3xl mx-auto mb-16">
               <h2 className="text-4xl md:text-5xl font-headline font-bold text-primary">{alumniSpotlightSection.heading}</h2>
