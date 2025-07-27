@@ -45,7 +45,7 @@ export function WhyUsCarousel({ points }: WhyUsCarouselProps) {
   };
 
   return (
-    <div className="relative w-full h-[50vh] min-h-[400px] md:h-[65vh] md:min-h-[550px] card-glow">
+    <div className="relative w-full h-[50vh] min-h-[400px] md:h-[65vh] md:min-h-[550px]">
       <div className="relative w-full h-full overflow-hidden rounded-lg shadow-2xl">
         {points.map((point, index) => (
           <div

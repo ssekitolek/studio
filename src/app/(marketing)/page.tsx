@@ -39,7 +39,7 @@ export default async function SchoolHomePage() {
       <HeroSlideshow content={heroSlideshowSection} />
 
       {/* Main Content Wrapper */}
-      <div>
+      <div className="overflow-x-hidden">
         
         {/* Why Us Section */}
         <section id="why-us" className="py-20 md:py-32 bg-secondary animate-fade-in-up">

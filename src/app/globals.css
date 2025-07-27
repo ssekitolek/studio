@@ -87,18 +87,4 @@
   body {
     @apply bg-background text-foreground;
   }
-  .card-glow {
-      animation: card-glow 4s linear infinite;
-  }
-  @keyframes card-glow {
-      0% {
-          box-shadow: 0 0 5px -5px hsl(var(--primary) / 0.5);
-      }
-      50% {
-          box-shadow: 0 0 20px -5px hsl(var(--primary) / 0.5);
-      }
-      100% {
-          box-shadow: 0 0 5px -5px hsl(var(--primary) / 0.5);
-      }
-  }
 }

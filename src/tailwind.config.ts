@@ -103,24 +103,12 @@ export default {
           '0%': { transform: 'scale(1)' },
           '100%': { transform: 'scale(1.15)' },
         },
-        'card-glow': {
-          '0%': {
-              boxShadow: '0 0 5px -5px hsl(var(--primary) / 0.5)',
-          },
-          '50%': {
-              boxShadow: '0 0 20px -5px hsl(var(--primary) / 0.5)',
-          },
-          '100%': {
-              boxShadow: '0 0 5px -5px hsl(var(--primary) / 0.5)',
-          },
-        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
-        'fade-in-up': 'fade-in-up 1s ease-out',
+        'fade-in-up': 'fade-in-up 1s ease-out forwards',
         'image-zoom': 'image-zoom 8s ease-in-out infinite alternate',
-        'card-glow': 'card-glow 4s linear infinite',
       },
     },
   },
